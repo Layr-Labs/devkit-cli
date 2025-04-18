@@ -1,0 +1,73 @@
+[project]
+name = "my-avs"
+version = "0.1.0"
+description = "Default Hourglass AVS with minimal settings."
+
+[operator]
+count = 2
+image = "eigen/ponos-client:v1.0"
+
+# === STRATEGY-BASED ALLOCATIONS ===
+# Allocations must be scoped per strategy. Each operator starts with 1e18 magnitude per strategy.
+# Placeholder: Replace this with actual strategy address after AVS deployment.
+[operator.allocations."<STRATEGY_ADDRESS>"]
+task-executors = "300000000000000000"   # 30%
+aggregators    = "250000000000000000"   # 25%
+# non-slashable  = "450000000000000000"   # 45% This should automatically reflect in state
+
+
+# === OPERATOR SET MAPPINGS ===
+# Maps logical names to the protocol operator set (AVS + operator_set_id)
+
+[operator.operator_sets.task-executors]
+avs = "<AVS_ADDRESS>"
+operator_set_id = 0
+
+[operator.operator_sets.aggregators]
+avs = "<AVS_ADDRESS>"
+operator_set_id = 1
+
+# === ENVIRONMENTS ===
+# At least ONE env block must be defined (devnet, testnet, or mainnet).
+
+[env.devnet]
+ethrpc = "http://localhost:8545"
+nemesis_contract_address = "0x123..."
+chain_image = "ghcr.io/foundry-rs/foundry:latest"
+chain_args = ["--chain-id", "31337", "--block-time", "3"]
+
+# [env.testnet] Not in default.eigen.toml
+# ethrpc = "https://testnet.node.xyz"
+# nemesis_contract_address = "0xabc..."
+
+# [env.mainnet] Not in default.eigen.toml
+# ethrpc = "https://mainnet.infura.io/v3/..."
+# nemesis_contract_address = "0xdef..."
+
+# === OPERATOR SET CONFIG ===
+
+[operatorsets.default]
+task_execution = "task-executors"
+aggregation = "aggregators"
+
+[operatorsets.task-executors]
+operator_set_id = 0
+description = "Operators responsible for executing tasks."
+count = 1
+rpc_endpoint = "http://localhost:8546"
+submit_wallet = "0xabc..." # if env == local, we should automatically fund the wallet
+mininum_required_stake_weight = "10ETH"
+
+[operatorsets.aggregators]
+operator_set_id = 1
+description = "Operators responsible for signature aggregation and submission."
+count = 1   
+rpc_endpoint = "http://localhost:8547"
+submit_wallet = "0xdef..." # if env == local, we should automatically fund the wallet
+mininum_required_stake_weight = "10ETH"
+
+# === RELEASE CONFIG ===
+
+[release]
+avs_logic_image_tag = "some-org/avs-logic:v0.1"
+push_image = false
