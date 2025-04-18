@@ -35,14 +35,14 @@ avs = "0xAVS..." # TODO(supernova): Fill post-deployment
 submit_wallet = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" # Default Anvil key (index 1)
 
 [operatorsets.task-executors.operators]
-# ⚠️ Order matters: operator_keys[i] maps to mininum_required_stake_weight[i]
+# ⚠️ Order matters: operator_keys[i] maps to minimum_required_stake_weight[i]
 operator_keys = ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]  # Default Anvil key (index 0)
-mininum_required_stake_weight = ["1000ETH"] # 'ETH' is symbolic; it represents token amounts with 18 decimals. Actual token can be any ERC20.
+minimum_required_stake_weight = ["1000ETH"] # 'ETH' is symbolic; it represents token amounts with 18 decimals. Actual token can be any ERC20.
 
 [operatorsets.aggregators.operators]
-# ⚠️ Order matters: operator_keys[i] maps to mininum_required_stake_weight[i]
+# ⚠️ Order matters: operator_keys[i] maps to minimum_required_stake_weight[i]
 operator_keys = ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]  # Default Anvil key (index 0)
-mininum_required_stake_weight = ["1000ETH"] # 'ETH' is symbolic; it represents token amounts with 18 decimals. Actual token can be any ERC20.
+minimum_required_stake_weight = ["1000ETH"] # 'ETH' is symbolic; it represents token amounts with 18 decimals. Actual token can be any ERC20.
 
 [operatorsets.aggregators]
 operator_set_id = 1
