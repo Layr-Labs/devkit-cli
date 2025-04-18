@@ -1,6 +1,6 @@
 # EigenLayer Development Kit
 
-A CLI tool for developing and managing EigenLayer AVS (Actively Validated Services) projects.
+A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Services) projects.
 
 ## Quick Start
 
@@ -45,6 +45,6 @@ make lint      # Run linter
 ## Example
 
 ```bash
-devkit create MyAVS --lang go
-devkit devnet start --fork base
+devkit avs create MyAVS --lang go
+devkit avs devnet start --fork base
 ```

@@ -52,6 +52,8 @@ var CreateCommand = &cli.Command{
 			log.Printf("Environment: %s", cCtx.String("env"))
 			if cCtx.Bool("no-telemetry") {
 				log.Printf("Telemetry: disabled")
+			} else {
+				log.Printf("Telemetry: enabled")
 			}
 		}
 
