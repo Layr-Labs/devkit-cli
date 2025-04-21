@@ -52,12 +52,14 @@ var DevnetCommand = &cli.Command{
 					log.Printf("Port: %d", cCtx.Int("port"))
 				}
 				cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
-				cmd.Env = append(os.Environ(), "FOUNDRY_IMAGE=ghcr.io/foundry-rs/foundry:latest") //TODO(supernova): Get this value from  eigen.toml .
-				cmd.Env = append(os.Environ(), "ANVIL_ARGS=--block-time 3 --base-fee 0 --gas-price 0")
+				// Foundry version Date :
+				cmd.Env = append(os.Environ(), "FOUNDRY_IMAGE="+common.FOUNDRY_IMAGE)                  // TODO(supernova): Load image from config(eigen.toml) , if not provided , use our constant as fallback.
+				cmd.Env = append(os.Environ(), "ANVIL_ARGS=--block-time 3 --base-fee 0 --gas-price 0") // // TODO(supernova): Use args from eigen.toml
 				cmd.Run()
-				common.FundWallets("100ether", []string{
+				// TODO(supernova): get addresses to fund from eigen.toml . Value can be constant 10 ether?
+				common.FundWallets("10ether", []string{
 					"0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // submit wallet
-				}, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "http://localhost:8545")
+				}, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "http://localhost:8545") // TODO(nova): Use rpcurl from eigen.toml instead
 				elapsed := time.Since(startTime).Round(time.Second)
 				log.Printf("Devnet started successfully in %s", elapsed)
 
