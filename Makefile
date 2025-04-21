@@ -25,3 +25,6 @@ install: build ## Install binary to ~/bin
 
 clean: ## Remove binary
 	@rm -f $(APP_NAME) ~/bin/$(APP_NAME) 
+
+dump-state:
+	./contracts/anvil/dump-state.sh

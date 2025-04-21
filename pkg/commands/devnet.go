@@ -1,9 +1,11 @@
 package commands
 
 import (
-	"log"
-
 	"github.com/urfave/cli/v2"
+	"log"
+	"os"
+	"os/exec"
+	"time"
 )
 
 // DevnetCommand defines the "devnet" command
@@ -34,6 +36,7 @@ var DevnetCommand = &cli.Command{
 				},
 			},
 			Action: func(cCtx *cli.Context) error {
+				startTime := time.Now() // <-- start timing
 				if cCtx.Bool("verbose") {
 					log.Printf("Starting devnet...")
 					if cCtx.Bool("reset") {
@@ -47,7 +50,12 @@ var DevnetCommand = &cli.Command{
 					}
 					log.Printf("Port: %d", cCtx.Int("port"))
 				}
-				log.Printf("Devnet started successfully")
+				cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
+				cmd.Env = append(os.Environ(), "FOUNDRY_IMAGE=ghcr.io/foundry-rs/foundry:latest") //TODO(supernova): Get this value from  eigen.toml .
+				cmd.Env = append(os.Environ(), "ANVIL_ARGS=--block-time 3")
+				cmd.Run()
+				elapsed := time.Since(startTime).Round(time.Second)
+				log.Printf("Devnet started successfully in %s", elapsed)
 				return nil
 			},
 		},
@@ -56,9 +64,31 @@ var DevnetCommand = &cli.Command{
 			Usage: "Stops and removes all containers and resources",
 			Action: func(cCtx *cli.Context) error {
 				if cCtx.Bool("verbose") {
-					log.Printf("Stopping devnet...")
+					log.Printf("Attempting to stop devnet containers...")
 				}
-				log.Printf("Devnet stopped successfully")
+
+				// Check if any devnet containers are running
+				checkCmd := exec.Command("docker", "ps", "--filter", "name=devkit-devnet", "--format", "{{.Names}}")
+				output, err := checkCmd.Output()
+				if err != nil {
+					log.Fatalf("Failed to check running containers: %v", err)
+				}
+
+				if len(output) == 0 {
+					log.Printf("No running devkit devnet containers found. Nothing to stop.")
+					return nil
+				}
+
+				// Stop and remove containers via docker compose
+				stopCmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "down")
+				stopCmd.Stdout = os.Stdout
+				stopCmd.Stderr = os.Stderr
+
+				if err := stopCmd.Run(); err != nil {
+					log.Fatalf("Failed to stop devnet containers: %v", err)
+				}
+
+				log.Printf("Devnet containers stopped and removed successfully.")
 				return nil
 			},
 		},
