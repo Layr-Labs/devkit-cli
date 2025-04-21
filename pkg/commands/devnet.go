@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"devkit-cli/pkg/common"
 	"github.com/urfave/cli/v2"
 	"log"
 	"os"
@@ -52,10 +53,14 @@ var DevnetCommand = &cli.Command{
 				}
 				cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
 				cmd.Env = append(os.Environ(), "FOUNDRY_IMAGE=ghcr.io/foundry-rs/foundry:latest") //TODO(supernova): Get this value from  eigen.toml .
-				cmd.Env = append(os.Environ(), "ANVIL_ARGS=--block-time 3")
+				cmd.Env = append(os.Environ(), "ANVIL_ARGS=--block-time 3 --base-fee 0 --gas-price 0")
 				cmd.Run()
+				common.FundWallets("100ether", []string{
+					"0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // submit wallet
+				}, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "http://localhost:8545")
 				elapsed := time.Since(startTime).Round(time.Second)
 				log.Printf("Devnet started successfully in %s", elapsed)
+
 				return nil
 			},
 		},
@@ -89,6 +94,7 @@ var DevnetCommand = &cli.Command{
 				}
 
 				log.Printf("Devnet containers stopped and removed successfully.")
+
 				return nil
 			},
 		},
