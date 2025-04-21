@@ -2,11 +2,13 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
-	"github.com/urfave/cli/v2"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/urfave/cli/v2"
 )
 
 // DevnetCommand defines the "devnet" command
@@ -52,14 +54,21 @@ var DevnetCommand = &cli.Command{
 					log.Printf("Port: %d", cCtx.Int("port"))
 				}
 				cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
-				// Foundry version Date :
-				cmd.Env = append(os.Environ(), "FOUNDRY_IMAGE="+common.FOUNDRY_IMAGE)                  // TODO(supernova): Load image from config(eigen.toml) , if not provided , use our constant as fallback.
-				cmd.Env = append(os.Environ(), "ANVIL_ARGS=--block-time 3 --base-fee 0 --gas-price 0") // // TODO(supernova): Use args from eigen.toml
+				CHAIN_IMAGE_FROM_TOML := "" // TODO(supernova): Load image from eigen.toml.
+				CHAIN_ARGS_FROM_TOML := ""  // TODO(supernova): Load args from eigen.toml
+				chain_image := common.GetImageConfigOrDefault(CHAIN_IMAGE_FROM_TOML)
+				chain_args := common.GetChainArgsConfigOrDefault(CHAIN_ARGS_FROM_TOML)
+				port := cCtx.Int("port")
+				rpc_url := fmt.Sprintf("http://localhost:%d", port)
+				cmd.Env = append(os.Environ(),
+					"FOUNDRY_IMAGE="+chain_image,
+					"ANVIL_ARGS="+chain_args,
+				)
 				cmd.Run()
-				// TODO(supernova): get addresses to fund from eigen.toml . Value can be constant 10 ether?
-				common.FundWallets("10ether", []string{
+				// TODO(supernova): get addresses to fund from eigen.toml.
+				common.FundWallets(common.FUND_VALUE, []string{
 					"0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // submit wallet
-				}, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "http://localhost:8545") // TODO(nova): Use rpcurl from eigen.toml instead
+				}, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", rpc_url)
 				elapsed := time.Since(startTime).Round(time.Second)
 				log.Printf("Devnet started successfully in %s", elapsed)
 
