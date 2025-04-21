@@ -100,8 +100,10 @@ var DevnetCommand = &cli.Command{
 
 				// Stop and remove containers via docker compose
 				stopCmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "down")
-				stopCmd.Stdout = os.Stdout
-				stopCmd.Stderr = os.Stderr
+				stopCmd.Env = append(os.Environ(), // We don't actually need to pass these. But docker throws warning variable is not set.
+					"FOUNDRY_IMAGE="+common.GetImageConfigOrDefault(""),
+					"ANVIL_ARGS="+common.GetChainArgsConfigOrDefault(""),
+				)
 
 				if err := stopCmd.Run(); err != nil {
 					log.Fatalf("Failed to stop devnet containers: %v", err)

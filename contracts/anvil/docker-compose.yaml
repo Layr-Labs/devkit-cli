@@ -1,8 +1,8 @@
 services:
   devkit-devnet:
-    image: ghcr.io/foundry-rs/foundry:nightly-1ae64e38a1c69bda45343947875f7c86bad00038
+    image: ${FOUNDRY_IMAGE}
     volumes:
-     - ./contracts_deployed_anvil_state/state.json:/anvil/state.json
+      - ./contracts_deployed_anvil_state/state.json:/anvil/state.json
     entrypoint: anvil
     command: "--host 0.0.0.0 --load-state /anvil/state.json ${ANVIL_ARGS}"
     ports:
