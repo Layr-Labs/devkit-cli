@@ -64,7 +64,10 @@ var DevnetCommand = &cli.Command{
 					"FOUNDRY_IMAGE="+chain_image,
 					"ANVIL_ARGS="+chain_args,
 				)
-				cmd.Run()
+				err := cmd.Run()
+				if err != nil {
+					log.Printf("Failed to start devnet %s", err)
+				}
 				// TODO(supernova): get addresses to fund from eigen.toml.
 				common.FundWallets(common.FUND_VALUE, []string{
 					"0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // submit wallet
