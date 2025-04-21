@@ -63,6 +63,7 @@ var DevnetCommand = &cli.Command{
 				cmd.Env = append(os.Environ(),
 					"FOUNDRY_IMAGE="+chain_image,
 					"ANVIL_ARGS="+chain_args,
+					fmt.Sprintf("DEVNET_PORT=%d", port),
 				)
 				err := cmd.Run()
 				if err != nil {
@@ -97,12 +98,13 @@ var DevnetCommand = &cli.Command{
 					log.Printf("No running devkit devnet containers found. Nothing to stop.")
 					return nil
 				}
-
+				port := cCtx.Int("port")
 				// Stop and remove containers via docker compose
 				stopCmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "down")
 				stopCmd.Env = append(os.Environ(), // We don't actually need to pass these. But docker throws warning variable is not set.
 					"FOUNDRY_IMAGE="+common.GetImageConfigOrDefault(""),
 					"ANVIL_ARGS="+common.GetChainArgsConfigOrDefault(""),
+					fmt.Sprintf("DEVNET_PORT=%d", port),
 				)
 
 				if err := stopCmd.Run(); err != nil {
