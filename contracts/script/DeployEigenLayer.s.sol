@@ -116,9 +116,7 @@ contract DeployEigenLayer is Script, Test {
     uint32 STRATEGY_MANAGER_INIT_WITHDRAWAL_DELAY_BLOCKS;
     uint256 DELEGATION_WITHDRAWAL_DELAY_BLOCKS;
 
-    function run(
-        string memory configFileName
-    ) public {
+    function run(string memory configFileName) public {
         // read and log the chainID
         uint256 chainId = block.chainid;
         emit log_named_uint("You are deploying on ChainID", chainId);
