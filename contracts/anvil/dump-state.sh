@@ -16,17 +16,9 @@ RPC_URL=http://localhost:8545
 PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 set +a
 
-
-# CHAIN_ID=$(cast chain-id --rpc-url $RPC_URL)
-
 # # start an empty anvil chain in the background and dump its state to a json file upon exit
 start_anvil_docker "" $parent_path/contracts_deployed_anvil_state
 
 # Deploy Contracts
 cd "$root_dir/contracts"
-# forge create src/ContractsRegistry.sol:ContractsRegistry --rpc-url $RPC_URL --private-key $DEPLOYER_PRIVATE_KEY --broadcast
 forge script script/DeployEigenLayer.s.sol --rpc-url $RPC_URL -vvvv --private-key $PRIVATE_KEY --broadcast --sig "run(string memory configFile)" -- devnet/eigenlayer_config.json
-
-# cd "$root_dir/operator_sets_contracts"
-# forge script script/DeployMockAvs.s.sol --rpc-url $RPC_URL --private-key $DEPLOYER_PRIVATE_KEY --broadcast --slow -vvv
-# forge script script/ContractsRegistry.s.sol --rpc-url $RPC_URL --private-key $DEPLOYER_PRIVATE_KEY --broadcast --slow
