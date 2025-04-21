@@ -7,8 +7,3 @@ services:
     command: "--host 0.0.0.0 --load-state /anvil/state.json ${ANVIL_ARGS}"
     ports:
       - "8545:8545"
-    networks:
-      - devnet
-
-networks:
-  devnet:
