@@ -7,10 +7,10 @@ architectures:
         template: ""
       rust:
         template: ""
-  teal:
+  hello-world-avs:
     languages:
       go:
-        template: "https://github.com/Layr-Labs/teal"
+        template: "https://github.com/Layr-Labs/hello-world-avs"
       ts:
         template: ""
       rust:

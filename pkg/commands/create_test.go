@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/urfave/cli/v2"
@@ -43,5 +45,37 @@ func TestCreateCommand(t *testing.T) {
 	// Test 3: Project exists (trying to create same project again)
 	if err := app.Run([]string{"app", "create", "test-project"}); err == nil {
 		t.Error("Expected error when creating existing project")
+	}
+
+	// Test 4: Test build after project creation
+	projectPath := filepath.Join(tmpDir, "test-project")
+
+	// Create a mock Makefile.Devkit in the project directory
+	mockMakefile := `
+.PHONY: build
+build:
+	@echo "Mock build executed"
+	`
+	if err := os.WriteFile(filepath.Join(projectPath, "Makefile.Devkit"), []byte(mockMakefile), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Change to project directory to test build
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(projectPath); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(oldWd)
+
+	buildApp := &cli.App{
+		Name:     "test",
+		Commands: []*cli.Command{BuildCommand},
+	}
+
+	if err := buildApp.Run([]string{"app", "build"}); err != nil {
+		t.Errorf("Failed to execute build command: %v", err)
 	}
 }
