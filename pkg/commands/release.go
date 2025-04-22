@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"devkit-cli/pkg/common"
 	"log"
 
 	"github.com/urfave/cli/v2"
@@ -10,7 +11,7 @@ import (
 var ReleaseCommand = &cli.Command{
 	Name:  "release",
 	Usage: "Packages and publishes AVS artifacts to a registry or channel",
-	Flags: []cli.Flag{
+	Flags: append([]cli.Flag{
 		&cli.StringFlag{
 			Name:  "tag",
 			Usage: "Tag the release (e.g. v0.1, beta, mainnet)",
@@ -24,7 +25,7 @@ var ReleaseCommand = &cli.Command{
 			Name:  "sign",
 			Usage: "Sign the release artifacts with a local key",
 		},
-	},
+	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		if cCtx.Bool("verbose") {
 			log.Printf("Preparing release...")

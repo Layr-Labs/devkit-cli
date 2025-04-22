@@ -12,12 +12,11 @@ import (
 
 func main() {
 	app := &cli.App{
-		Name:  "devkit",
-		Usage: "EigenLayer Development Kit",
-		Flags: common.GlobalFlags,
-		Commands: []*cli.Command{
-			commands.AVSCommand,
-		},
+		Name:                   "devkit",
+		Usage:                  "EigenLayer Development Kit",
+		Flags:                  common.GlobalFlags,
+		Commands:               []*cli.Command{commands.AVSCommand},
+		UseShortOptionHandling: true,
 	}
 
 	if err := app.Run(os.Args); err != nil {

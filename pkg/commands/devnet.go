@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"devkit-cli/pkg/common"
 	"log"
 
 	"github.com/urfave/cli/v2"
@@ -14,7 +15,7 @@ var DevnetCommand = &cli.Command{
 		{
 			Name:  "start",
 			Usage: "Starts Docker containers and deploys local contracts",
-			Flags: []cli.Flag{
+			Flags: append([]cli.Flag{
 				&cli.BoolFlag{
 					Name:  "reset",
 					Usage: "Wipe and restart the devnet from scratch",
@@ -32,7 +33,7 @@ var DevnetCommand = &cli.Command{
 					Usage: "Specify a custom port for local devnet",
 					Value: 8545,
 				},
-			},
+			}, common.GlobalFlags...),
 			Action: func(cCtx *cli.Context) error {
 				if cCtx.Bool("verbose") {
 					log.Printf("Starting devnet...")
@@ -54,6 +55,7 @@ var DevnetCommand = &cli.Command{
 		{
 			Name:  "stop",
 			Usage: "Stops and removes all containers and resources",
+			Flags: append([]cli.Flag{}, common.GlobalFlags...),
 			Action: func(cCtx *cli.Context) error {
 				if cCtx.Bool("verbose") {
 					log.Printf("Stopping devnet...")
