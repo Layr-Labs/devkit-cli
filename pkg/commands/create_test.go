@@ -68,7 +68,11 @@ build:
 	if err := os.Chdir(projectPath); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Logf("Failed to change back to original directory: %v", err)
+		}
+	}()
 
 	buildApp := &cli.App{
 		Name:     "test",

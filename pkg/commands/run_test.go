@@ -29,7 +29,11 @@ run:
 	if err := os.Chdir(tmpDir); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Chdir(oldWd)
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Logf("Failed to change back to original directory: %v", err)
+		}
+	}()
 
 	app := &cli.App{
 		Name:     "test",
