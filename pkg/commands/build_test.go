@@ -11,7 +11,6 @@ import (
 func TestBuildCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create a mock Makefile.Devkit
 	mockMakefile := `
 .PHONY: build
 build:
@@ -21,7 +20,6 @@ build:
 		t.Fatal(err)
 	}
 
-	// Run from temp directory
 	oldWd, err := os.Getwd()
 	if err != nil {
 		t.Fatal(err)
@@ -31,13 +29,13 @@ build:
 	}
 	defer func() {
 		if err := os.Chdir(oldWd); err != nil {
-			t.Logf("Failed to change back to original directory: %v", err)
+			t.Logf("Failed to restore original directory: %v", err)
 		}
 	}()
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{BuildCommand},
+		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
 	}
 
 	if err := app.Run([]string{"app", "build"}); err != nil {
