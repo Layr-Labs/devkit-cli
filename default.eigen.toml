@@ -21,7 +21,7 @@ aggregators    = ["250000000000000000"]   # 25%
 ethrpc = "http://localhost:8545"
 nemesis_contract_address = "0x123..." # TODO(supernova): Fill post-deployment
 chain_image = "ghcr.io/foundry-rs/foundry:latest"
-chain_args = ["--chain-id", "31337", "--block-time", "3"]
+chain_args = ["--chain-id", "31337", "--block-time", "3","--gas-price","0","--base-fee","0"]
 
 [operatorset_aliases]
 task_execution = "task-executors"

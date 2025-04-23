@@ -2,7 +2,7 @@ services:
   devkit-devnet:
     image: ${FOUNDRY_IMAGE}
     volumes:
-      - ./contracts_deployed_anvil_state/state.json:/anvil/state.json
+      - "${STATE_PATH}:/anvil/state.json"
     entrypoint: anvil
     command: "--host 0.0.0.0 --load-state /anvil/state.json ${ANVIL_ARGS}"
     ports:

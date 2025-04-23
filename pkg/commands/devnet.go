@@ -1,15 +1,15 @@
 package commands
 
 import (
+	"devkit-cli/docker/anvil"
 	"devkit-cli/pkg/common"
 	"fmt"
+	"github.com/urfave/cli/v2"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
-
-	"github.com/urfave/cli/v2"
 )
 
 // DevnetCommand defines the "devnet" command
@@ -63,19 +63,27 @@ var DevnetCommand = &cli.Command{
 						log.Printf("Chain Image: %s", chain_image)
 					}
 				}
-				cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
+				composePath, _ := assets.WriteDockerComposeToPath()
+				statePath, _ := assets.WriteStateJSONToPath()
+
+				cmd := exec.Command("docker", "compose", "-f", composePath, "up", "-d")
+				// cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
 				chain_image := common.GetImageConfigOrDefault(config.Env["devnet"].ChainImage)
 				chain_args := common.GetChainArgsConfigOrDefault(strings.Join(config.Env["devnet"].ChainArgs, " "))
 				port := cCtx.Int("port")
 				rpc_url := fmt.Sprintf("http://localhost:%d", port)
+				log.Printf("chain_image %s", chain_image)
+				log.Printf("chain_args %s", chain_args)
 				cmd.Env = append(os.Environ(),
 					"FOUNDRY_IMAGE="+chain_image,
 					"ANVIL_ARGS="+chain_args,
 					fmt.Sprintf("DEVNET_PORT=%d", port),
+					"STATE_PATH="+statePath,
 				)
-				err := cmd.Run()
-				if err != nil {
-					log.Printf("Failed to start devnet %s", err)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				if err := cmd.Run(); err != nil {
+					return fmt.Errorf("❌ Failed to start devnet: %w", err)
 				}
 				// TODO(supernova): get addresses to fund from eigen.toml.
 				common.FundWallets(common.FUND_VALUE, []string{
@@ -106,21 +114,28 @@ var DevnetCommand = &cli.Command{
 					log.Printf("No running devkit devnet containers found. Nothing to stop.")
 					return nil
 				}
+
+				composePath := assets.GetDockerComposePath()
+				statePath := assets.GetStateJSONPath()
+
 				port := cCtx.Int("port")
-				// Stop and remove containers via docker compose
-				stopCmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "down")
-				stopCmd.Env = append(os.Environ(), // We don't actually need to pass these. But docker throws warning variable is not set.
+
+				stopCmd := exec.Command("docker", "compose", "-f", composePath, "down")
+				stopCmd.Env = append(os.Environ(), // required for ${} to resolve in compose
 					"FOUNDRY_IMAGE="+common.GetImageConfigOrDefault(""),
 					"ANVIL_ARGS="+common.GetChainArgsConfigOrDefault(""),
 					fmt.Sprintf("DEVNET_PORT=%d", port),
+					"STATE_PATH="+statePath,
 				)
+
+				stopCmd.Stdout = os.Stdout
+				stopCmd.Stderr = os.Stderr
 
 				if err := stopCmd.Run(); err != nil {
 					log.Fatalf("Failed to stop devnet containers: %v", err)
 				}
 
 				log.Printf("Devnet containers stopped and removed successfully.")
-
 				return nil
 			},
 		},

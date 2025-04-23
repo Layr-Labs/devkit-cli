@@ -17,7 +17,7 @@ PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
 set +a
 
 # # start an empty anvil chain in the background and dump its state to a json file upon exit
-start_anvil_docker "" $parent_path/contracts_deployed_anvil_state
+start_anvil_docker "" $root_dir/docker/anvil
 
 # Deploy Contracts
 cd "$root_dir/contracts"
