@@ -13,12 +13,8 @@ import (
 )
 
 // FundWallets sends ETH to a list of addresses using `cast send`
-// Only funds wallets with balance < 10 ether, and only for `devnet`.
-func FundWallets(cfg *devkitcommon.EigenConfig, rpcURL string) {
-	if cfg.Env["devnet"].EthRPC != rpcURL {
-		return // Only fund in devnet mode
-	}
-
+// Only funds wallets with balance < 10 ether.
+func FundWalletsDevnet(cfg *devkitcommon.EigenConfig, rpcURL string) {
 	var client *ethclient.Client
 	var err error
 

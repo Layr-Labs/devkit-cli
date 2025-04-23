@@ -15,8 +15,3 @@ func GetDevnetChainArgs(cfg *common.EigenConfig) string {
 func GetDevnetChainImage(cfg *common.EigenConfig) string {
 	return cfg.Env[DEVNET_ENV_KEY].ChainImage
 }
-
-// GetDevnetRPC returns the RPC URL for the devnet.
-func GetDevnetRPC(cfg *common.EigenConfig) string {
-	return cfg.Env[DEVNET_ENV_KEY].EthRPC
-}

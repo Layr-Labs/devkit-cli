@@ -24,7 +24,6 @@ type OperatorAllocations struct {
 }
 
 type EnvConfig struct {
-	EthRPC                 string   `toml:"ethrpc"`
 	NemesisContractAddress string   `toml:"nemesis_contract_address"`
 	ChainImage             string   `toml:"chain_image"`
 	ChainArgs              []string `toml:"chain_args"`
