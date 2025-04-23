@@ -31,13 +31,16 @@ jobs:
 
       - name: Install devkit CLI
         run: make install
-        
+
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
-
+      
+      - name: Prepare eigen.toml config
+        run: cp default.eigen.toml eigen.toml
+        
       - name: Start devnet
         run: |
-          devkit avs devnet start --headless &
+          devkit avs devnet start &
           sleep 10 # wait for devnet to fully start
 
       - name: Check block number with cast
