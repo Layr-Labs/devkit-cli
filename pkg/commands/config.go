@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"devkit-cli/pkg/common"
 	"log"
 
 	"github.com/urfave/cli/v2"
@@ -10,7 +11,7 @@ import (
 var ConfigCommand = &cli.Command{
 	Name:  "config",
 	Usage: "Views or manages project-specific configuration (stored in eigen.toml)",
-	Flags: []cli.Flag{
+	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
 			Name:  "list",
 			Usage: "Display all current project configuration settings",
@@ -19,7 +20,7 @@ var ConfigCommand = &cli.Command{
 			Name:  "set",
 			Usage: "Set or update a specific configuration key in eigen.toml",
 		},
-	},
+	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		if cCtx.Bool("verbose") {
 			log.Printf("Managing project configuration...")

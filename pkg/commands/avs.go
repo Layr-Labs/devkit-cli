@@ -4,7 +4,6 @@ import (
 	"context"
 	"devkit-cli/pkg/common"
 	"fmt"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -14,7 +13,7 @@ const ConfigContextKey ctxKey = "eigenConfig"
 
 var AVSCommand = &cli.Command{
 	Name:  "avs",
-	Usage: "Manage EigenLayer AVS (Actively Validated Services) projects",
+	Usage: "Manage EigenLayer AVS (Autonomous Verifiable Services) projects",
 	Before: func(cCtx *cli.Context) error {
 		cfg, err := common.LoadEigenConfig()
 		if err != nil {
