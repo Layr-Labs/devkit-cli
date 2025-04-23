@@ -43,14 +43,20 @@ jobs:
           devkit avs devnet start &
           sleep 10 # wait for devnet to fully start
 
-      - name: Check block number with cast
+      - name: Check block number with cast (with retry)
         run: |
-          bn=$(cast block-number --rpc-url http://localhost:8545)
-          echo "Current block number: $bn"
-          if [ "$bn" -lt 1 ]; then
-            echo "Devnet didn't start properly"
-            exit 1
-          fi
+          for i in {1..10}; do
+            bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
+            if [ "$bn" != "error" ]; then
+              echo "Current block number: $bn"
+              exit 0
+            fi
+            echo "Anvil not ready yet, retrying in 2s..."
+            sleep 2
+          done
+          echo "Devnet didn't start properly after waiting"
+          exit 1
+
 
       - name: Stop devnet
         run: devkit avs devnet stop
