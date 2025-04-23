@@ -16,8 +16,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Load
 	config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
 	port := cCtx.Int("port")
-	chain_image := devnet.GetDevnetChainImage(config)
-	chain_args := devnet.GetDevnetChainArgs(config)
+	chain_image := devnet.GetDevnetChainImageOrDefault(config)
+	chain_args := devnet.GetDevnetChainArgsOrDefault(config)
 
 	startTime := time.Now() // <-- start timing
 
@@ -86,8 +86,8 @@ func StopDevnetAction(cCtx *cli.Context) error {
 	// Run docker compose down for anvil devnet
 	stopCmd := exec.Command("docker", "compose", "-f", composePath, "down")
 	stopCmd.Env = append(os.Environ(), // required for ${} to resolve in compose
-		"FOUNDRY_IMAGE="+devnet.GetDevnetChainImage(config),
-		"ANVIL_ARGS="+devnet.GetDevnetChainArgs(config),
+		"FOUNDRY_IMAGE="+devnet.GetDevnetChainImageOrDefault(config),
+		"ANVIL_ARGS="+devnet.GetDevnetChainArgsOrDefault(config),
 		fmt.Sprintf("DEVNET_PORT=%d", port),
 		"STATE_PATH="+statePath,
 	)

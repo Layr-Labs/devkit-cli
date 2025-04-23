@@ -1,17 +1,27 @@
 package devnet
 
 import (
-	"devkit-cli/pkg/common"
 	"strings"
+
+	"devkit-cli/pkg/common"
 )
 
-// GetDevnetChainArgs extracts and formats the chain arguments for devnet.
-func GetDevnetChainArgs(cfg *common.EigenConfig) string {
+// GetDevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
+// Falls back to CHAIN_ARGS constant if value is empty.
+func GetDevnetChainArgsOrDefault(cfg *common.EigenConfig) string {
 	args := cfg.Env[DEVNET_ENV_KEY].ChainArgs
+	if len(args) == 0 {
+		return CHAIN_ARGS
+	}
 	return strings.Join(args, " ")
 }
 
-// GetDevnetChainImage returns the devnet chain image.
-func GetDevnetChainImage(cfg *common.EigenConfig) string {
-	return cfg.Env[DEVNET_ENV_KEY].ChainImage
+// GetDevnetChainImageOrDefault returns the devnet chain image,
+// falling back to FOUNDRY_IMAGE if not provided.
+func GetDevnetChainImageOrDefault(cfg *common.EigenConfig) string {
+	image := cfg.Env[DEVNET_ENV_KEY].ChainImage
+	if image == "" {
+		return FOUNDRY_IMAGE
+	}
+	return image
 }
