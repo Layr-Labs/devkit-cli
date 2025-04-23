@@ -41,7 +41,7 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 
 	// Operator
 	assert.Equal(t, "eigen/ponos-client:v1.0", cfg.Operator.Image)
-	assert.Equal(t, []string{"0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}, cfg.Operator.Keys)
+	assert.Equal(t, []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}, cfg.Operator.Keys)
 	assert.Equal(t, "1000ETH", cfg.Operator.TotalStake)
 
 	// Allocations
@@ -61,8 +61,8 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "Operators responsible for executing tasks.", taskSet.Description)
 	assert.Equal(t, "http://localhost:8546", taskSet.RPCEndpoint)
 	assert.Equal(t, "0xAVS...", taskSet.AVS)
-	assert.Equal(t, "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", taskSet.SubmitWallet)
-	assert.Equal(t, []string{"0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}, taskSet.Operators.OperatorKeys)
+	assert.Equal(t, "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d", taskSet.SubmitWallet)
+	assert.Equal(t, []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}, taskSet.Operators.OperatorKeys)
 	assert.Equal(t, []string{"1000ETH"}, taskSet.Operators.MinimumRequiredStakeWeight)
 
 	// Aliases
