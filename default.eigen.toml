@@ -23,7 +23,7 @@ nemesis_contract_address = "0x123..." # TODO(supernova): Fill post-deployment
 chain_image = "ghcr.io/foundry-rs/foundry:latest"
 chain_args = ["--chain-id", "31337", "--block-time", "3"]
 
-[operatorsets]
+[operatorset_aliases]
 task_execution = "task-executors"
 aggregation = "aggregators"
 
