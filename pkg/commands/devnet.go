@@ -3,12 +3,12 @@ package commands
 import (
 	"devkit-cli/docker/anvil"
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/devnet"
 	"fmt"
 	"github.com/urfave/cli/v2"
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 )
 
@@ -67,13 +67,10 @@ var DevnetCommand = &cli.Command{
 				statePath, _ := assets.WriteStateJSONToPath()
 
 				cmd := exec.Command("docker", "compose", "-f", composePath, "up", "-d")
-				// cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
-				chain_image := common.GetImageConfigOrDefault(config.Env["devnet"].ChainImage)
-				chain_args := common.GetChainArgsConfigOrDefault(strings.Join(config.Env["devnet"].ChainArgs, " "))
+				chain_image := devnet.GetDevnetChainImage(config)
+				chain_args := devnet.GetDevnetChainArgs(config)
 				port := cCtx.Int("port")
 				rpc_url := fmt.Sprintf("http://localhost:%d", port)
-				log.Printf("chain_image %s", chain_image)
-				log.Printf("chain_args %s", chain_args)
 				cmd.Env = append(os.Environ(),
 					"FOUNDRY_IMAGE="+chain_image,
 					"ANVIL_ARGS="+chain_args,
@@ -85,9 +82,7 @@ var DevnetCommand = &cli.Command{
 				if err := cmd.Run(); err != nil {
 					return fmt.Errorf("❌ Failed to start devnet: %w", err)
 				}
-				// TODO(supernova): get addresses to fund from eigen.toml.
-
-				common.FundWallets(config, rpc_url)
+				devnet.FundWallets(config, rpc_url)
 				elapsed := time.Since(startTime).Round(time.Second)
 				log.Printf("Devnet started successfully in %s", elapsed)
 
@@ -98,6 +93,7 @@ var DevnetCommand = &cli.Command{
 			Name:  "stop",
 			Usage: "Stops and removes all containers and resources",
 			Action: func(cCtx *cli.Context) error {
+				config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
 				if cCtx.Bool("verbose") {
 					log.Printf("Attempting to stop devnet containers...")
 				}
@@ -121,12 +117,12 @@ var DevnetCommand = &cli.Command{
 
 				stopCmd := exec.Command("docker", "compose", "-f", composePath, "down")
 				stopCmd.Env = append(os.Environ(), // required for ${} to resolve in compose
-					"FOUNDRY_IMAGE="+common.GetImageConfigOrDefault(""),
-					"ANVIL_ARGS="+common.GetChainArgsConfigOrDefault(""),
+					"FOUNDRY_IMAGE="+devnet.GetDevnetChainImage(config),
+					"ANVIL_ARGS="+devnet.GetDevnetChainArgs(config),
 					fmt.Sprintf("DEVNET_PORT=%d", port),
 					"STATE_PATH="+statePath,
 				)
-
+				
 				stopCmd.Stdout = os.Stdout
 				stopCmd.Stderr = os.Stderr
 
