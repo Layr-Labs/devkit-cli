@@ -86,9 +86,8 @@ var DevnetCommand = &cli.Command{
 					return fmt.Errorf("❌ Failed to start devnet: %w", err)
 				}
 				// TODO(supernova): get addresses to fund from eigen.toml.
-				common.FundWallets(common.FUND_VALUE, []string{
-					"0x70997970c51812dc3a010c7d01b50e0d17dc79c8", // submit wallet
-				}, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", rpc_url)
+
+				common.FundWallets(config, rpc_url)
 				elapsed := time.Since(startTime).Round(time.Second)
 				log.Printf("Devnet started successfully in %s", elapsed)
 
