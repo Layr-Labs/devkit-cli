@@ -31,6 +31,9 @@ jobs:
 
       - name: Install devkit CLI
         run: make install
+        
+      - name: Add ~/bin to PATH
+        run: echo "$HOME/bin" >> $GITHUB_PATH
 
       - name: Start devnet
         run: |
