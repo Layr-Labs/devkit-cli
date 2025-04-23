@@ -3,6 +3,8 @@ package commands
 import (
 	"devkit-cli/pkg/common"
 	"log"
+	"os"
+	"os/exec"
 
 	"github.com/urfave/cli/v2"
 )
@@ -11,12 +13,13 @@ import (
 var BuildCommand = &cli.Command{
 	Name:  "build",
 	Usage: "Compiles AVS components (smart contracts via Foundry, Go binaries for operators/aggregators)",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
+	Flags: append([]cli.Flag{
+		// TBD: Release flag will be implemented in future
+		/*&cli.BoolFlag{
 			Name:  "release",
 			Usage: "Produce production-optimized artifacts",
-		},
-	},
+		},*/
+	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		cfg := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
 		if cCtx.Bool("verbose") {
@@ -27,7 +30,14 @@ var BuildCommand = &cli.Command{
 			}
 		}
 
-		// Placeholder for future implementation
+		// Execute make build with Makefile.Devkit
+		cmd := exec.Command("make", "-f", "Makefile.Devkit", "build")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return err
+		}
+
 		log.Printf("Build completed successfully")
 		return nil
 	},

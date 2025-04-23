@@ -12,7 +12,7 @@ var DevnetCommand = &cli.Command{
 		{
 			Name:  "start",
 			Usage: "Starts Docker containers and deploys local contracts",
-			Flags: []cli.Flag{
+			Flags: append([]cli.Flag{
 				&cli.BoolFlag{
 					Name:  "reset",
 					Usage: "Wipe and restart the devnet from scratch",

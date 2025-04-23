@@ -19,15 +19,6 @@ go build -o devkit ./cmd/devkit
 devkit --help
 ```
 
-## Core Commands (under devkit)
-
-- `avs create` - Scaffold new AVS projects
-- `avs config` - Manage project configuration
-- `avs build` - Compile contracts and binaries
-- `avs devnet` - Run local development network
-- `avs run` - Execute and simulate tasks
-- `avs release` - Package for deployment
-
 ## Development
 
 ```bash
@@ -35,7 +26,19 @@ make help      # Show all commands
 make build     # Build binary
 make tests     # Run tests
 make lint      # Run linter
+
+# Install pre-commit hooks
+pre-commit install
 ```
+
+## Core Commands
+
+- `devkit avs create` - Scaffold new AVS projects
+- `devkit avs config` - Manage project configuration
+- `devkit avs build` - Compile contracts and binaries
+- `devkit avs devnet` - Run local development network
+- `devkit avs run` - Execute and simulate tasks
+- `devkit avs release` - Package for deployment
 
 ## Options
 

@@ -1,0 +1,17 @@
+architectures:
+  hourglass:
+    languages:
+      go:
+        template: "https://github.com/Layr-Labs/hourglass-avs-template/tree/sm-templateExample"
+      ts:
+        template: ""
+      rust:
+        template: ""
+  hello-world-avs:
+    languages:
+      go:
+        template: "https://github.com/Layr-Labs/hello-world-avs"
+      ts:
+        template: ""
+      rust:
+        template: ""
