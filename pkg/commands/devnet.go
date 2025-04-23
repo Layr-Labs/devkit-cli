@@ -1,15 +1,7 @@
 package commands
 
 import (
-	"devkit-cli/docker/anvil"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/devnet"
-	"fmt"
 	"github.com/urfave/cli/v2"
-	"log"
-	"os"
-	"os/exec"
-	"time"
 )
 
 // DevnetCommand defines the "devnet" command
@@ -39,100 +31,12 @@ var DevnetCommand = &cli.Command{
 					Value: 8545,
 				},
 			},
-			Action: func(cCtx *cli.Context) error {
-				startTime := time.Now() // <-- start timing
-				config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
-
-				if cCtx.Bool("verbose") {
-					log.Printf("Starting devnet... ")
-
-					if cCtx.Bool("reset") {
-						log.Printf("Resetting devnet...")
-					}
-					if fork := cCtx.String("fork"); fork != "" {
-						log.Printf("Forking from chain: %s", fork)
-					}
-					if cCtx.Bool("headless") {
-						log.Printf("Running in headless mode")
-					}
-					log.Printf("Port: %d", cCtx.Int("port"))
-					chain_image := config.Env["devnet"].ChainImage
-					if chain_image == "" {
-						log.Printf("chain image not provided")
-					} else {
-						log.Printf("Chain Image: %s", chain_image)
-					}
-				}
-				composePath, _ := assets.WriteDockerComposeToPath()
-				statePath, _ := assets.WriteStateJSONToPath()
-
-				cmd := exec.Command("docker", "compose", "-f", composePath, "up", "-d")
-				chain_image := devnet.GetDevnetChainImage(config)
-				chain_args := devnet.GetDevnetChainArgs(config)
-				port := cCtx.Int("port")
-				rpc_url := fmt.Sprintf("http://localhost:%d", port)
-				cmd.Env = append(os.Environ(),
-					"FOUNDRY_IMAGE="+chain_image,
-					"ANVIL_ARGS="+chain_args,
-					fmt.Sprintf("DEVNET_PORT=%d", port),
-					"STATE_PATH="+statePath,
-				)
-				cmd.Stdout = os.Stdout
-				cmd.Stderr = os.Stderr
-				if err := cmd.Run(); err != nil {
-					return fmt.Errorf("❌ Failed to start devnet: %w", err)
-				}
-				devnet.FundWallets(config, rpc_url)
-				elapsed := time.Since(startTime).Round(time.Second)
-				log.Printf("Devnet started successfully in %s", elapsed)
-
-				return nil
-			},
+			Action: StartDevnetAction,
 		},
 		{
-			Name:  "stop",
-			Usage: "Stops and removes all containers and resources",
-			Action: func(cCtx *cli.Context) error {
-				config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
-				if cCtx.Bool("verbose") {
-					log.Printf("Attempting to stop devnet containers...")
-				}
-
-				// Check if any devnet containers are running
-				checkCmd := exec.Command("docker", "ps", "--filter", "name=devkit-devnet", "--format", "{{.Names}}")
-				output, err := checkCmd.Output()
-				if err != nil {
-					log.Fatalf("Failed to check running containers: %v", err)
-				}
-
-				if len(output) == 0 {
-					log.Printf("No running devkit devnet containers found. Nothing to stop.")
-					return nil
-				}
-
-				composePath := assets.GetDockerComposePath()
-				statePath := assets.GetStateJSONPath()
-
-				port := cCtx.Int("port")
-
-				stopCmd := exec.Command("docker", "compose", "-f", composePath, "down")
-				stopCmd.Env = append(os.Environ(), // required for ${} to resolve in compose
-					"FOUNDRY_IMAGE="+devnet.GetDevnetChainImage(config),
-					"ANVIL_ARGS="+devnet.GetDevnetChainArgs(config),
-					fmt.Sprintf("DEVNET_PORT=%d", port),
-					"STATE_PATH="+statePath,
-				)
-				
-				stopCmd.Stdout = os.Stdout
-				stopCmd.Stderr = os.Stderr
-
-				if err := stopCmd.Run(); err != nil {
-					log.Fatalf("Failed to stop devnet containers: %v", err)
-				}
-
-				log.Printf("Devnet containers stopped and removed successfully.")
-				return nil
-			},
+			Name:   "stop",
+			Usage:  "Stops and removes all containers and resources",
+			Action: StopDevnetAction,
 		},
 	},
 }
