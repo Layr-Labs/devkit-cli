@@ -54,7 +54,7 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "http://localhost:8545", devnet.EthRPC)
 	assert.Equal(t, "0x123...", devnet.NemesisContractAddress)
 	assert.Equal(t, "ghcr.io/foundry-rs/foundry:latest", devnet.ChainImage)
-	assert.Equal(t, []string{"--chain-id", "31337", "--block-time", "3"}, devnet.ChainArgs)
+	assert.Equal(t, []string{"--chain-id", "31337", "--block-time", "3", "--gas-price", "0", "--base-fee", "0"}, devnet.ChainArgs)
 
 	// Operator sets
 	taskSet := cfg.OperatorSets["task-executors"]
