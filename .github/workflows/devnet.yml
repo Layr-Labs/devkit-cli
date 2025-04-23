@@ -1,0 +1,53 @@
+name: Devnet Smoke Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [ '**' ]
+
+env:
+  FOUNDRY_PROFILE: ci
+jobs:
+  devnet-test:
+    strategy:
+      fail-fast: true
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./contracts
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
+
+      - name: Install devkit CLI
+        run: make install
+
+      - name: Start devnet
+        run: |
+          devkit avs devnet start --headless &
+          sleep 10 # wait for devnet to fully start
+
+      - name: Check block number with cast
+        run: |
+          bn=$(cast block-number --rpc-url http://localhost:8545)
+          echo "Current block number: $bn"
+          if [ "$bn" -lt 1 ]; then
+            echo "Devnet didn't start properly"
+            exit 1
+          fi
+
+      - name: Stop devnet
+        run: devkit avs devnet stop

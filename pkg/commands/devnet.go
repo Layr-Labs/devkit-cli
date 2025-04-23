@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/urfave/cli/v2"
@@ -63,10 +64,8 @@ var DevnetCommand = &cli.Command{
 					}
 				}
 				cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
-				CHAIN_IMAGE_FROM_TOML := "" // TODO(supernova): Load image from eigen.toml.
-				CHAIN_ARGS_FROM_TOML := ""  // TODO(supernova): Load args from eigen.toml
-				chain_image := common.GetImageConfigOrDefault(CHAIN_IMAGE_FROM_TOML)
-				chain_args := common.GetChainArgsConfigOrDefault(CHAIN_ARGS_FROM_TOML)
+				chain_image := common.GetImageConfigOrDefault(config.Env["devnet"].ChainImage)
+				chain_args := common.GetChainArgsConfigOrDefault(strings.Join(config.Env["devnet"].ChainArgs, " "))
 				port := cCtx.Int("port")
 				rpc_url := fmt.Sprintf("http://localhost:%d", port)
 				cmd.Env = append(os.Environ(),
