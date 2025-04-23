@@ -1,0 +1,56 @@
+[project]
+name = "my-avs"
+version = "0.1.0"
+description = "Default Hourglass AVS with minimal settings."
+
+[operator]
+image = "eigen/ponos-client:v1.0"
+keys = ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"] # Default Anvil key (index 0)
+total_stake = "1000ETH" # keeping this as constant for all operators in above keys array
+
+[operator.allocations]
+# Each strategy must map to the corresponding operator set allocation
+# ⚠️ Order matters: strategies[i] aligns with task-executors[i], aggregators[i], etc.
+# For example:
+# strategies[0] => task-executors[0] = 30%, aggregators[0] = 25%
+strategies = ["0xf951e335afb289353dc249e82926178eac7ded78"] # TODO(supernova): Replace with actual AVS strategy
+task-executors = ["300000000000000000"]   # 30%
+aggregators    = ["250000000000000000"]   # 25%
+
+[env.devnet]
+ethrpc = "http://localhost:8545"
+nemesis_contract_address = "0x123..." # TODO(supernova): Fill post-deployment
+chain_image = "ghcr.io/foundry-rs/foundry:latest"
+chain_args = ["--chain-id", "31337", "--block-time", "3"]
+
+[operatorset_aliases]
+task_execution = "task-executors"
+aggregation = "aggregators"
+
+[operatorsets.task-executors]
+operator_set_id = 0
+description = "Operators responsible for executing tasks."
+rpc_endpoint = "http://localhost:8546"
+avs = "0xAVS..." # TODO(supernova): Fill post-deployment
+submit_wallet = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" # Default Anvil key (index 1)
+
+[operatorsets.task-executors.operators]
+# ⚠️ Order matters: operator_keys[i] maps to minimum_required_stake_weight[i]
+operator_keys = ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]  # Default Anvil key (index 0)
+minimum_required_stake_weight = ["1000ETH"] # 'ETH' is symbolic; it represents token amounts with 18 decimals. Actual token can be any ERC20.
+
+[operatorsets.aggregators.operators]
+# ⚠️ Order matters: operator_keys[i] maps to minimum_required_stake_weight[i]
+operator_keys = ["0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"]  # Default Anvil key (index 0)
+minimum_required_stake_weight = ["1000ETH"] # 'ETH' is symbolic; it represents token amounts with 18 decimals. Actual token can be any ERC20.
+
+[operatorsets.aggregators]
+operator_set_id = 1
+description = "Operators responsible for signature aggregation and submission."
+rpc_endpoint = "http://localhost:8547"
+avs = "0xAVS..." # TODO(supernova): Fill post-deployment
+submit_wallet = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" # Default Anvil key (index 1)
+
+[release]
+avs_logic_image_tag = "some-org/avs-logic:v0.1"
+push_image = false

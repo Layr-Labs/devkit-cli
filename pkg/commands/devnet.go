@@ -40,8 +40,11 @@ var DevnetCommand = &cli.Command{
 			},
 			Action: func(cCtx *cli.Context) error {
 				startTime := time.Now() // <-- start timing
+				config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+
 				if cCtx.Bool("verbose") {
-					log.Printf("Starting devnet...")
+					log.Printf("Starting devnet... ")
+
 					if cCtx.Bool("reset") {
 						log.Printf("Resetting devnet...")
 					}
@@ -52,6 +55,12 @@ var DevnetCommand = &cli.Command{
 						log.Printf("Running in headless mode")
 					}
 					log.Printf("Port: %d", cCtx.Int("port"))
+					chain_image := config.Env["devnet"].ChainImage
+					if chain_image == "" {
+						log.Printf("chain image not provided")
+					} else {
+						log.Printf("Chain Image: %s", chain_image)
+					}
 				}
 				cmd := exec.Command("docker", "compose", "-f", "contracts/anvil/docker-compose.yaml", "up", "-d")
 				CHAIN_IMAGE_FROM_TOML := "" // TODO(supernova): Load image from eigen.toml.
