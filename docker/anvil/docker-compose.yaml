@@ -7,3 +7,6 @@ services:
     command: "--host 0.0.0.0 --load-state /anvil/state.json ${ANVIL_ARGS}"
     ports:
       - "${DEVNET_PORT}:8545"
+    labels:
+      devkit.role: anvil
+      devkit.project: avs-devnet

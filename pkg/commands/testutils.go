@@ -12,7 +12,7 @@ type ctxKey string
 // ConfigContextKey identifies the eigenConfig in context
 const ConfigContextKey ctxKey = "eigenConfig"
 
-const DockerComposeAnvilContainer = "devkit-devkit-devnet-1"
+const DevkitRoleAnvil = "anvil"
 
 func WithTestConfig(cmd *cli.Command) *cli.Command {
 	cmd.Before = func(cCtx *cli.Context) error {

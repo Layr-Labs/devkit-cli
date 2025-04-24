@@ -25,6 +25,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	startTime := time.Now() // <-- start timing
 
+	if !cCtx.Bool("headless") {
+		log.Printf("Starting devnet with eigenlayer contracts deployed ")
+	}
+	if cCtx.Bool("headless") {
+		log.Printf("Running in headless mode")
+	}
+
 	if cCtx.Bool("verbose") {
 
 		if cCtx.Bool("reset") {
@@ -32,13 +39,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 		if fork := cCtx.String("fork"); fork != "" {
 			log.Printf("Forking from chain: %s", fork)
-		}
-
-		if !cCtx.Bool("headless") {
-			log.Printf("Starting devnet with eigenlayer contracts deployed ")
-		}
-		if cCtx.Bool("headless") {
-			log.Printf("Running in headless mode")
 		}
 
 		devnet.LogDevnetEnv(config, cCtx.Int("port"))
@@ -64,14 +64,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	elapsed := time.Since(startTime).Round(time.Second)
 	log.Printf("Devnet started successfully in %s", elapsed)
 
-	if cCtx.Bool("verbose") {
-		log.Printf("Starting stream for anvil logs")
-		if !cCtx.Bool("headless") {
-			log.Printf("📺 Streaming container logs to console")
-			return devnet.StreamLogs(DockerComposeAnvilContainer)
-		} else {
-			log.Printf("Headless mode : Streaming logs to file (unimplemented)")
-		}
+	log.Printf("Starting stream for anvil logs")
+	if !cCtx.Bool("headless") {
+		log.Printf("📺 Streaming container logs to console")
+		return devnet.StreamLogsWithLabel(DevkitRoleAnvil)
+	} else {
+		log.Printf("Headless mode : Streaming logs to file (unimplemented)")
 	}
 
 	return nil
