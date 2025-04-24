@@ -99,6 +99,12 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to initialize eigen.toml: %w", err)
 		}
 
+		// Save project settings with telemetry preference
+		telemetryEnabled := !cCtx.Bool("no-telemetry")
+		if err := common.SaveProjectSettings(targetDir, telemetryEnabled); err != nil {
+			return fmt.Errorf("failed to save project settings: %w", err)
+		}
+
 		log.Printf("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
