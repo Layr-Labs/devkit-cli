@@ -27,7 +27,7 @@ var ReleaseCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+		config, _ := common.LoadEigenConfig()
 
 		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Preparing release...")
