@@ -2,9 +2,10 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"log"
+
 	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli/v2"
-	"log"
 )
 
 var ConfigCommand = &cli.Command{
@@ -35,7 +36,12 @@ var ConfigCommand = &cli.Command{
 		// load by default , if --set is not provided
 		// dev: If any other subcommand needs to be added in ConfigCommand apart from set and list, handle it above this line.
 		log.Println("Displaying current configuration...")
-
+		projectSetting, err := common.LoadProjectSettings()
+		if err != nil {
+			log.Printf("failed to load project settings to get telemetry status: %w", err)
+		} else {
+			log.Printf("telemetry enabled %s", projectSetting.TelemetryEnabled)
+		}
 		map_val, err := common.StructToMap(config)
 		if err != nil {
 			return err
