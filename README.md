@@ -16,7 +16,7 @@ A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Ser
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Layr-Labs/devkit-cli
 cd devkit-cli
 
 # Install the CLI
