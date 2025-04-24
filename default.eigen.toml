@@ -53,3 +53,6 @@ submit_wallet = "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690
 [release]
 avs_logic_image_tag = "some-org/avs-logic:v0.1"
 push_image = false
+
+[log]
+level = "debug" # valid options: "info", "debug", "warn", "error"

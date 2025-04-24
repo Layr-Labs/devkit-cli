@@ -22,7 +22,8 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		if cCtx.Bool("verbose") {
+		config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Managing project configuration...")
 		}
 

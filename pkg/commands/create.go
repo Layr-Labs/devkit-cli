@@ -52,13 +52,15 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
+		config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+
 		if cCtx.NArg() == 0 {
 			return fmt.Errorf("project name is required\nUsage: avs create <project-name> [flags]")
 		}
 		projectName := cCtx.Args().First()
 		targetDir := filepath.Join(cCtx.String("dir"), projectName)
 
-		if cCtx.Bool("verbose") {
+		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Creating new AVS project: %s", projectName)
 			log.Printf("Directory: %s", cCtx.String("dir"))
 			log.Printf("Language: %s", cCtx.String("lang"))

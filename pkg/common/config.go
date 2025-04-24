@@ -55,6 +55,10 @@ type ReleaseConfig struct {
 	PushImage        bool   `toml:"push_image"`
 }
 
+type LogConfig struct {
+	Level string `toml:"level"` // Expected values: "debug", "info", "warn", "error"
+}
+
 type EigenConfig struct {
 	Project      ProjectConfig        `toml:"project"`
 	Operator     OperatorConfig       `toml:"operator"`
@@ -62,6 +66,7 @@ type EigenConfig struct {
 	OperatorSets OperatorSetsMap      `toml:"operatorsets"`
 	Aliases      OperatorSetsAliases  `toml:"operatorset_aliases"`
 	Release      ReleaseConfig        `toml:"release"`
+	Log          LogConfig            `toml:"log"`
 }
 
 func LoadEigenConfig() (*EigenConfig, error) {
