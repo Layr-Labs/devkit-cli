@@ -38,9 +38,9 @@ var ConfigCommand = &cli.Command{
 		log.Println("Displaying current configuration...")
 		projectSetting, err := common.LoadProjectSettings()
 		if err != nil {
-			log.Printf("failed to load project settings to get telemetry status: %w", err)
+			log.Printf("failed to load project settings to get telemetry status: %v", err)
 		} else {
-			log.Printf("telemetry enabled %s", projectSetting.TelemetryEnabled)
+			log.Printf("telemetry enabled: %t", projectSetting.TelemetryEnabled)
 		}
 		map_val, err := common.StructToMap(config)
 		if err != nil {
