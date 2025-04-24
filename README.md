@@ -6,7 +6,6 @@ A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Ser
 
 ## 🚀 Quick Start
 
-
 ### Prerequisites
 
 - [Docker](https://docs.docker.com/engine/install/)
@@ -47,7 +46,6 @@ make lint      # Run linter and static checks
 ## 💻 Core DevKit Commands
 > [!IMPORTANT]  
 > All <code>devkit avs</code> commands must be run from the root of your AVS project — the directory that contains the <code>eigen.toml</code> file.  
->  
 > If <code>eigen.toml</code> is missing or located elsewhere, the CLI will fail to load the project configuration.
 
 | Command                     | Description                                 |
@@ -97,9 +95,3 @@ devkit avs devnet stop
 
 ## 🤝 Contributing
 Pull requests are welcome! For major changes, open an issue first to discuss what you would like to change.
-
-Make sure to:
-```bash
-pre-commit install
-make lint
-```
