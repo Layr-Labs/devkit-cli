@@ -32,11 +32,10 @@ var ConfigCommand = &cli.Command{
 			return nil
 		}
 
-		if cCtx.Bool("verbose") {
-			log.Println("Managing project configuration...")
-		}
-
 		// load by default , if --set is not provided
+		// dev: If any other subcommand needs to be added in ConfigCommand apart from set and list, handle it above this line.
+		log.Println("Displaying current configuration...")
+
 		map_val, err := common.StructToMap(config)
 		if err != nil {
 			return err
