@@ -53,7 +53,11 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+		// Load config
+		config, err := common.LoadEigenConfig()
+		if err != nil {
+			return err
+		}
 
 		if cCtx.NArg() == 0 {
 			return fmt.Errorf("project name is required\nUsage: avs create <project-name> [flags]")
@@ -86,7 +90,7 @@ var CreateCommand = &cli.Command{
 			return err
 		}
 
-		if cCtx.Bool("verbose") {
+		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Using template: %s", templateURL)
 		}
 

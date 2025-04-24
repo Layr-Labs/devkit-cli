@@ -22,7 +22,12 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+		// Load config
+		config, err := common.LoadEigenConfig()
+		if err != nil {
+			return err
+		}
+
 		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Managing project configuration...")
 		}
