@@ -29,7 +29,7 @@ func TestCreateCommand(t *testing.T) {
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{&tmpCmd},
+		Commands: []*cli.Command{WithTestConfig(&tmpCmd)},
 	}
 
 	// Test 1: Missing project name
@@ -76,7 +76,7 @@ build:
 
 	buildApp := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{BuildCommand},
+		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
 	}
 
 	if err := buildApp.Run([]string{"app", "build"}); err != nil {
