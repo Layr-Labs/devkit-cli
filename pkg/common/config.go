@@ -107,9 +107,18 @@ func PrintStyledConfig(tomlOutput string) {
 	}
 }
 
-func StructToMap(cfg interface{}) map[string]interface{} {
+// StructToMap converts a struct to a map[string]interface{}
+func StructToMap(cfg interface{}) (map[string]interface{}, error) {
 	var result map[string]interface{}
-	tmp, _ := json.Marshal(cfg)
-	json.Unmarshal(tmp, &result)
-	return result
+
+	tmp, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal struct: %w", err)
+	}
+
+	if err := json.Unmarshal(tmp, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal into map: %w", err)
+	}
+
+	return result, nil
 }

@@ -37,7 +37,11 @@ var ConfigCommand = &cli.Command{
 		}
 
 		// load by default , if --set is not provided
-		tree, _ := toml.TreeFromMap(common.StructToMap(config))
+		map_val, err := common.StructToMap(config)
+		if err != nil {
+			return err
+		}
+		tree, _ := toml.TreeFromMap(map_val)
 		common.PrintStyledConfig(tree.String())
 
 		return nil
