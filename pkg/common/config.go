@@ -1,9 +1,11 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
-
 	"github.com/BurntSushi/toml"
+	"github.com/fatih/color"
+	"strings"
 )
 
 type ProjectConfig struct {
@@ -74,4 +76,40 @@ func LoadEigenConfig() (*EigenConfig, error) {
 		return nil, fmt.Errorf("eigen.toml not found. Are you running this command from your project directory?")
 	}
 	return &config, nil
+}
+
+func PrintStyledConfig(tomlOutput string) {
+	sectionColor := color.New(color.FgHiBlue).SprintFunc()
+	keyColor := color.New(color.FgHiWhite).SprintFunc()
+	valueColor := color.New(color.FgHiCyan).SprintFunc()
+
+	lines := strings.Split(tomlOutput, "\n")
+	for _, line := range lines {
+		trim := strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]"):
+			// Section headers
+			fmt.Println(sectionColor(line))
+
+		case strings.Contains(trim, "="):
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := keyColor(strings.TrimSpace(parts[0]))
+				value := valueColor(strings.TrimSpace(parts[1]))
+				fmt.Printf("%s = %s\n", key, value)
+			} else {
+				fmt.Println(line)
+			}
+
+		default:
+			fmt.Println(line)
+		}
+	}
+}
+
+func StructToMap(cfg interface{}) map[string]interface{} {
+	var result map[string]interface{}
+	tmp, _ := json.Marshal(cfg)
+	json.Unmarshal(tmp, &result)
+	return result
 }

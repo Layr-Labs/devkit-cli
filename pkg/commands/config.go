@@ -2,12 +2,11 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
-	"log"
-
+	"github.com/pelletier/go-toml"
 	"github.com/urfave/cli/v2"
+	"log"
 )
 
-// ConfigCommand defines the "config" command
 var ConfigCommand = &cli.Command{
 	Name:  "config",
 	Usage: "Views or manages project-specific configuration (stored in eigen.toml)",
@@ -22,24 +21,25 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		if cCtx.Bool("verbose") {
-			log.Printf("Managing project configuration...")
+		// Load config
+		config, err := common.LoadEigenConfig()
+		if err != nil {
+			return err
 		}
-
-		if cCtx.Bool("list") {
-			log.Printf("Listing all configuration settings...")
-			// Placeholder for future implementation
-			return nil
-		}
-
 		if setValue := cCtx.String("set"); setValue != "" {
 			log.Printf("Setting configuration: %s", setValue)
-			// Placeholder for future implementation
+			// TODO: Parse and apply the key=value update
 			return nil
 		}
 
-		// If no flags are provided, show current config
-		log.Printf("Displaying current configuration...")
+		if cCtx.Bool("verbose") {
+			log.Println("Managing project configuration...")
+		}
+
+		// load by default , if --set is not provided
+		tree, _ := toml.TreeFromMap(common.StructToMap(config))
+		common.PrintStyledConfig(tree.String())
+
 		return nil
 	},
 }
