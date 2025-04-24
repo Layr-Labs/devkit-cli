@@ -64,7 +64,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	elapsed := time.Since(startTime).Round(time.Second)
 	log.Printf("Devnet started successfully in %s", elapsed)
 
-	log.Printf("Starting stream for anvil logs")
 	if !cCtx.Bool("headless") {
 		log.Printf("📺 Streaming container logs to console")
 		return devnet.StreamLogsWithLabel(DevkitRoleAnvil)
