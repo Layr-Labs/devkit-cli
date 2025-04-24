@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/template"
@@ -93,6 +94,11 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to fetch template from %s: %w", templateURL, err)
 		}
 
+		// Copy default.eigen.toml to the project directory
+		if err := copyDefaultTomlToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {
+			return fmt.Errorf("failed to initialize eigen.toml: %w", err)
+		}
+
 		log.Printf("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
@@ -135,4 +141,25 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 		}
 	}
 	return os.MkdirAll(targetDir, 0755)
+}
+
+// copyDefaultTomlToProject copies default.eigen.toml to the project directory with updated project name
+func copyDefaultTomlToProject(targetDir, projectName string, verbose bool) error {
+	// Read default.eigen.toml from current directory
+	content, err := os.ReadFile("default.eigen.toml")
+	if err != nil {
+		return fmt.Errorf("default.eigen.toml not found: %w", err)
+	}
+
+	// Replace project name and write to target
+	newContent := strings.Replace(string(content), `name = "my-avs"`, fmt.Sprintf(`name = "%s"`, projectName), 1)
+	err = os.WriteFile(filepath.Join(targetDir, "eigen.toml"), []byte(newContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write eigen.toml: %w", err)
+	}
+
+	if verbose {
+		log.Printf("Created eigen.toml in project directory")
+	}
+	return nil
 }

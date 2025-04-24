@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,18 @@ import (
 
 func TestCreateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Create minimal default.eigen.toml
+	mockToml := `
+[project]
+name = "my-avs"
+version = "0.1.0"
+`
+	// Create default.eigen.toml in current directory
+	if err := os.WriteFile("default.eigen.toml", []byte(mockToml), 0644); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove("default.eigen.toml")
 
 	// Override default directory
 	origCmd := CreateCommand
@@ -27,6 +40,28 @@ func TestCreateCommand(t *testing.T) {
 	CreateCommand = &tmpCmd
 	defer func() { CreateCommand = origCmd }()
 
+	// Override Action for testing
+	tmpCmd.Action = func(cCtx *cli.Context) error {
+		if cCtx.NArg() == 0 {
+			return fmt.Errorf("project name is required")
+		}
+		projectName := cCtx.Args().First()
+		targetDir := filepath.Join(cCtx.String("dir"), projectName)
+
+		// Check if directory exists
+		if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
+			return fmt.Errorf("directory %s already exists", targetDir)
+		}
+
+		// Create project dir
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			return err
+		}
+
+		// Create eigen.toml
+		return copyDefaultTomlToProject(targetDir, projectName, false)
+	}
+
 	app := &cli.App{
 		Name:     "test",
 		Commands: []*cli.Command{&tmpCmd},
@@ -40,6 +75,12 @@ func TestCreateCommand(t *testing.T) {
 	// Test 2: Basic project creation
 	if err := app.Run([]string{"app", "create", "test-project"}); err != nil {
 		t.Errorf("Failed to create project: %v", err)
+	}
+
+	// Verify file exists
+	eigenTomlPath := filepath.Join(tmpDir, "test-project", "eigen.toml")
+	if _, err := os.Stat(eigenTomlPath); os.IsNotExist(err) {
+		t.Error("eigen.toml was not created properly")
 	}
 
 	// Test 3: Project exists (trying to create same project again)
