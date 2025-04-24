@@ -26,7 +26,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	startTime := time.Now() // <-- start timing
 
 	if cCtx.Bool("verbose") {
-		log.Printf("Starting devnet... ")
 
 		if cCtx.Bool("reset") {
 			log.Printf("Resetting devnet...")
@@ -34,9 +33,14 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		if fork := cCtx.String("fork"); fork != "" {
 			log.Printf("Forking from chain: %s", fork)
 		}
+
+		if !cCtx.Bool("headless") {
+			log.Printf("Starting devnet with eigenlayer contracts deployed ")
+		}
 		if cCtx.Bool("headless") {
 			log.Printf("Running in headless mode")
 		}
+
 		devnet.LogDevnetEnv(config, cCtx.Int("port"))
 	}
 	// docker-compose for anvil devnet and anvil state.json
@@ -59,6 +63,16 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	devnet.FundWalletsDevnet(config, rpc_url)
 	elapsed := time.Since(startTime).Round(time.Second)
 	log.Printf("Devnet started successfully in %s", elapsed)
+
+	if cCtx.Bool("verbose") {
+		log.Printf("Starting stream for anvil logs")
+		if !cCtx.Bool("headless") {
+			log.Printf("📺 Streaming container logs to console")
+			return devnet.StreamLogs(DockerComposeAnvilContainer)
+		} else {
+			log.Printf("Headless mode : Streaming logs to file (unimplemented)")
+		}
+	}
 
 	return nil
 }

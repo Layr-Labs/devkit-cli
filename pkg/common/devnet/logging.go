@@ -2,6 +2,8 @@ package devnet
 
 import (
 	"log"
+	"os"
+	"os/exec"
 
 	"devkit-cli/pkg/common/config"
 )
@@ -15,4 +17,11 @@ func LogDevnetEnv(config *config.EigenConfig, port int) {
 	} else {
 		log.Printf("Chain Image: %s", chainImage)
 	}
+}
+
+func StreamLogs(containerName string) error {
+	cmd := exec.Command("docker", "logs", "-f", containerName)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run() // blocks until logs stop
 }
