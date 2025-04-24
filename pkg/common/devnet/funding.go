@@ -1,7 +1,7 @@
 package devnet
 
 import (
-	devkitcommon "devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/config"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -14,7 +14,7 @@ import (
 
 // FundWallets sends ETH to a list of addresses using `cast send`
 // Only funds wallets with balance < 10 ether.
-func FundWalletsDevnet(cfg *devkitcommon.EigenConfig, rpcURL string) {
+func FundWalletsDevnet(cfg *config.EigenConfig, rpcURL string) {
 	var client *ethclient.Client
 	var err error
 

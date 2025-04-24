@@ -2,7 +2,7 @@ package commands
 
 import (
 	"context"
-	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/config"
 
 	"github.com/urfave/cli/v2"
 )
@@ -14,9 +14,9 @@ const ConfigContextKey ctxKey = "eigenConfig"
 
 func WithTestConfig(cmd *cli.Command) *cli.Command {
 	cmd.Before = func(cCtx *cli.Context) error {
-		cfg := &common.EigenConfig{
+		cfg := &config.EigenConfig{
 			// Optionally mock config values if needed
-			Project: common.ProjectConfig{
+			Project: config.ProjectConfig{
 				Name: "test-avs",
 			},
 		}

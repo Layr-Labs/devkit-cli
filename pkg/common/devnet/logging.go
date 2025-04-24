@@ -3,10 +3,10 @@ package devnet
 import (
 	"log"
 
-	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/config"
 )
 
-func LogDevnetEnv(config *common.EigenConfig, port int) {
+func LogDevnetEnv(config *config.EigenConfig, port int) {
 	log.Printf("Port: %d", port)
 
 	chainImage := config.Env[DEVNET_ENV_KEY].ChainImage

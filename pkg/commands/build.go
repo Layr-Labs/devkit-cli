@@ -2,6 +2,7 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/config"
 	"log"
 	"os"
 	"os/exec"
@@ -21,15 +22,15 @@ var BuildCommand = &cli.Command{
 		},*/
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		var cfg *common.EigenConfig
+		var cfg *config.EigenConfig
 
 		// First check if config is in context (for testing)
 		if cfgValue := cCtx.Context.Value(ConfigContextKey); cfgValue != nil {
-			cfg = cfgValue.(*common.EigenConfig)
+			cfg = cfgValue.(*config.EigenConfig)
 		} else {
 			// Load from file if not in context
 			var err error
-			cfg, err = common.LoadEigenConfig()
+			cfg, err = config.LoadEigenConfig()
 			if err != nil {
 				return err
 			}

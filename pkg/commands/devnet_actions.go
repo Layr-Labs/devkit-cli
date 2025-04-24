@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/config"
 	"devkit-cli/pkg/common/devnet"
 	"fmt"
 	"log"
@@ -14,7 +14,7 @@ import (
 
 func StartDevnetAction(cCtx *cli.Context) error {
 	// Load config
-	config, err := common.LoadEigenConfig()
+	config, err := config.LoadEigenConfig()
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 func StopDevnetAction(cCtx *cli.Context) error {
 	// Load config
-	config, err := common.LoadEigenConfig()
+	config, err := config.LoadEigenConfig()
 	if err != nil {
 		return err
 	}

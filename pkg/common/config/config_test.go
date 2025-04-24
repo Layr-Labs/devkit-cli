@@ -1,7 +1,7 @@
-package common_test
+package config_test
 
 import (
-	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/config"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,7 +16,7 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 	tempDir := t.TempDir()
 	tempTomlPath := filepath.Join(tempDir, "eigen.toml")
 
-	srcPath := filepath.Join("..", "..", "default.eigen.toml")
+	srcPath := filepath.Join("..", "..", "..", "default.eigen.toml")
 	src, err := os.Open(srcPath)
 	assert.NoError(t, err)
 	defer src.Close()
@@ -74,8 +74,8 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 	assert.False(t, cfg.Release.PushImage)
 }
 
-func LoadEigenConfigFromPath(path string) (*common.EigenConfig, error) {
-	var config common.EigenConfig
+func LoadEigenConfigFromPath(path string) (*config.EigenConfig, error) {
+	var config config.EigenConfig
 	if _, err := toml.DecodeFile(path, &config); err != nil {
 		return nil, err
 	}
