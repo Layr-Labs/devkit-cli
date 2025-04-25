@@ -43,18 +43,19 @@ jobs:
         run: |
           devkit avs devnet start &
           sleep 10
-
-      - name: Check block number (non-headless)
+      
+      - name: Check block number (headless)
         run: |
-          for i in {1..10}; do
+          for i in $(seq 1 10); do
             bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
             if [ "$bn" != "error" ]; then
               echo "Current block number: $bn"
               exit 0
             fi
-            echo "Waiting for devnet (non-headless)..."
+            echo "Waiting for devnet (headless)..."
             sleep 2
           done
+          echo "Devnet didn't start properly after waiting"
           exit 1
 
       - name: Stop devnet (non-headless)
