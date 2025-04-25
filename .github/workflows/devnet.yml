@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [ '**' ]
+    branches: ['**']
 
 env:
   FOUNDRY_PROFILE: ci
@@ -37,13 +37,14 @@ jobs:
       
       - name: Prepare eigen.toml config
         run: cp default.eigen.toml eigen.toml
-        
-      - name: Start devnet
+
+      # 🔍 Non-headless devnet start test
+      - name: Start devnet (non-headless)
         run: |
           devkit avs devnet start &
-          sleep 10 # wait for devnet to fully start
+          sleep 10
 
-      - name: Check block number with cast (with retry)
+      - name: Check block number (non-headless)
         run: |
           for i in {1..10}; do
             bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
@@ -51,12 +52,22 @@ jobs:
               echo "Current block number: $bn"
               exit 0
             fi
-            echo "Anvil not ready yet, retrying in 2s..."
+            echo "Waiting for devnet (non-headless)..."
             sleep 2
           done
-          echo "Devnet didn't start properly after waiting"
           exit 1
 
-
-      - name: Stop devnet
+      - name: Stop devnet (non-headless)
         run: devkit avs devnet stop
+
+      # 🔍 Headless devnet start test
+      - name: Start devnet (headless)
+        run: |
+          devkit avs devnet start --headless &
+          sleep 10
+
+      - name: Check block number (headless)
+        run: |
+          for i in {1..10}; do
+            bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
+            if
