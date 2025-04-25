@@ -1,10 +1,14 @@
 package common
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
+
+const DEFAULT_CONFIG_FILE = "eigen.toml"
 
 type ProjectConfig struct {
 	Name        string `toml:"name"`
@@ -67,11 +71,22 @@ type EigenConfig struct {
 }
 
 func LoadEigenConfig() (*EigenConfig, error) {
-	const defaultPath = "eigen.toml"
-
 	var config EigenConfig
-	if _, err := toml.DecodeFile(defaultPath, &config); err != nil {
-		return nil, fmt.Errorf("eigen.toml not found. Are you running this command from your project directory?")
+	if _, err := toml.DecodeFile(DEFAULT_CONFIG_FILE, &config); err != nil {
+		return nil, fmt.Errorf("%s not found. Are you running this command from your project directory?", DEFAULT_CONFIG_FILE)
 	}
+
+	// Validate the config after loading
+	validationResult := ValidateEigenConfig(&config)
+	if !validationResult.Valid {
+		// Construct a meaningful error message with all validation issues
+		var errMsg strings.Builder
+		errMsg.WriteString("Configuration validation failed:\n")
+		for _, err := range validationResult.Errors {
+			errMsg.WriteString(fmt.Sprintf("- %s: %s\n", err.Field, err.Message))
+		}
+		return &config, errors.New(errMsg.String())
+	}
+
 	return &config, nil
 }

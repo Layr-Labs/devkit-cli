@@ -159,13 +159,13 @@ func copyDefaultTomlToProject(targetDir, projectName string, verbose bool) error
 
 	// Replace project name and write to target
 	newContent := strings.Replace(string(content), `name = "my-avs"`, fmt.Sprintf(`name = "%s"`, projectName), 1)
-	err = os.WriteFile(filepath.Join(targetDir, "eigen.toml"), []byte(newContent), 0644)
+	err = os.WriteFile(filepath.Join(targetDir, common.DEFAULT_CONFIG_FILE), []byte(newContent), 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write eigen.toml: %w", err)
+		return fmt.Errorf("failed to write %s: %w", common.DEFAULT_CONFIG_FILE, err)
 	}
 
 	if verbose {
-		log.Printf("Created eigen.toml in project directory")
+		log.Printf("Created %s in project directory", common.DEFAULT_CONFIG_FILE)
 	}
 	return nil
 }
