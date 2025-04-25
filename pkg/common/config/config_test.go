@@ -19,11 +19,17 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 	srcPath := filepath.Join("..", "..", "..", "default.eigen.toml")
 	src, err := os.Open(srcPath)
 	assert.NoError(t, err)
-	defer src.Close()
+	defer func() {
+		err := src.Close()
+		assert.NoError(t, err)
+	}()
 
 	dest, err := os.Create(tempTomlPath)
 	assert.NoError(t, err)
-	defer dest.Close()
+	defer func() {
+		err := dest.Close()
+		assert.NoError(t, err)
+	}()
 
 	_, err = io.Copy(dest, src)
 	assert.NoError(t, err)
