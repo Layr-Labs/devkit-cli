@@ -10,6 +10,9 @@ import (
 	"devkit-cli/pkg/common/config"
 )
 
+// ExecCommand is a mockable wrapper around exec.Command
+var ExecCommand = exec.Command
+
 func LogDevnetEnv(config *config.EigenConfig, port int) {
 	log.Printf("Port: %d", port)
 
@@ -24,7 +27,7 @@ func LogDevnetEnv(config *config.EigenConfig, port int) {
 // StreamLogs attaches and streams logs from a container with the given role label.
 func StreamLogsWithLabel(role string) error {
 	// Find the container by label
-	cmd := exec.Command("docker", "ps", "--filter", fmt.Sprintf("label=devkit.role=%s", role), "--format", "{{.Names}}")
+	cmd := ExecCommand("docker", "ps", "--filter", fmt.Sprintf("label=devkit.role=%s", role), "--format", "{{.Names}}")
 	output, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("failed to find container with label devkit.role=%s: %w", role, err)
@@ -37,7 +40,7 @@ func StreamLogsWithLabel(role string) error {
 
 	// Stream logs
 	log.Printf("📺 Attaching to logs of container: %s", name)
-	logCmd := exec.Command("docker", "logs", "-f", name)
+	logCmd := ExecCommand("docker", "logs", "-f", name)
 	logCmd.Stdout = os.Stdout
 	logCmd.Stderr = os.Stderr
 	return logCmd.Run()
