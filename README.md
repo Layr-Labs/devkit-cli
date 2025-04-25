@@ -44,7 +44,13 @@ pre-commit install
 
 - `--verbose, -v` - Enable detailed logging
 - `--help, -h` - Show command help
-- `--no-telemetry` - Disable anonymous usage analytics
+
+## Example
+
+```bash
+devkit avs create MyAVS --lang go
+devkit avs devnet start --fork base
+```
 
 ## Telemetry
 
@@ -55,19 +61,11 @@ The CLI collects anonymous usage data to help improve the tool. This includes:
 - Errors encountered
 
 No personal information or project details are collected. You can disable telemetry:
-- Use the `--no-telemetry` flag when running commands
-- Set the `DEVKIT_NO_TELEMETRY=1` environment variable
-- Run any command with `--no-telemetry` once to permanently disable it
+- Use the `--no-telemetry` flag when running create command
 
 ## For Developers
 
-Adding custom telemetry metrics is simple with a single line of code:
-
-```go
-// Track a custom event with properties
-hooks.Track(ctx.Context, hooks.FormatEventName("avs_devnet", "containers_up"), props)
-```
-
+Adding custom telemetry metrics is simple with a single line of code: 
 Example in a command implementation:
 
 ```go
@@ -85,10 +83,3 @@ Action: func(cCtx *cli.Context) error {
 ```
 
 Standard metrics like command invocation, completion, and errors are tracked automatically.
-
-## Example
-
-```bash
-devkit avs create MyAVS --lang go
-devkit avs devnet start --fork base
-```
