@@ -2,6 +2,7 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"fmt"
 	"log"
 
 	"github.com/pelletier/go-toml"
@@ -46,7 +47,13 @@ var ConfigCommand = &cli.Command{
 		if err != nil {
 			return err
 		}
-		tree, _ := toml.TreeFromMap(map_val)
+		tree, err := toml.TreeFromMap(map_val)
+		if err != nil {
+			return fmt.Errorf("failed to convert config map to TOML tree: %w", err)
+		}
+		if tree == nil {
+			return fmt.Errorf("unexpected nil TOML tree from config map")
+		}
 		common.PrintStyledConfig(tree.String())
 
 		return nil

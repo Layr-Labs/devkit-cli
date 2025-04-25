@@ -1,12 +1,14 @@
 package commands
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
-
-	"github.com/urfave/cli/v2"
 )
 
 func TestCreateCommand(t *testing.T) {
@@ -123,4 +125,58 @@ build:
 	if err := buildApp.Run([]string{"app", "build"}); err != nil {
 		t.Errorf("Failed to execute build command: %v", err)
 	}
+}
+
+func TestConfigCommand_ListOutput(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 📥 Load the default.eigen.toml content
+	defaultTomlPath := filepath.Join("..", "..", "default.eigen.toml") // adjust as needed
+	defaultContent, err := os.ReadFile(defaultTomlPath)
+	require.NoError(t, err)
+
+	// 📝 Write it to test directory as eigen.toml
+	eigenPath := filepath.Join(tmpDir, "eigen.toml")
+	require.NoError(t, os.WriteFile(eigenPath, defaultContent, 0644))
+
+	// 🔁 Change into the test directory
+	originalWD, _ := os.Getwd()
+	defer os.Chdir(originalWD)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// 🧪 Capture os.Stdout
+	var buf bytes.Buffer
+	stdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// ⚙️ Run the CLI app with nested subcommands
+	app := &cli.App{
+		Commands: []*cli.Command{
+			{
+				Name: "avs",
+				Subcommands: []*cli.Command{
+					ConfigCommand,
+				},
+			},
+		},
+	}
+	err = app.Run([]string{"devkit", "avs", "config", "--list"})
+	require.NoError(t, err)
+
+	// 📤 Finish capturing output
+	w.Close()
+	os.Stdout = stdout
+	_, _ = buf.ReadFrom(r)
+	output := stripANSI(buf.String())
+
+	// ✅ Validating output
+	require.Contains(t, output, "[Project]")
+	require.Contains(t, output, "[Operator]")
+	require.Contains(t, output, "[Env]")
+}
+
+func stripANSI(input string) string {
+	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return ansi.ReplaceAllString(input, "")
 }
