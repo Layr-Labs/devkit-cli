@@ -72,4 +72,3 @@ func LoadEigenConfig() (*EigenConfig, error) {
 	}
 	return &config, nil
 }
-
