@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
@@ -68,10 +69,17 @@ var CreateCommand = &cli.Command{
 			if cCtx.String("template-path") != "" {
 				log.Printf("Template Path: %s", cCtx.String("template-path"))
 			}
+
+			// Log telemetry status (accounting for client type)
 			if cCtx.Bool("no-telemetry") {
-				log.Printf("Telemetry: disabled")
+				log.Printf("Telemetry: disabled (via flag)")
 			} else {
-				log.Printf("Telemetry: enabled")
+				client, ok := telemetry.FromContext(cCtx.Context)
+				if !ok || telemetry.IsNoopClient(client) {
+					log.Printf("Telemetry: disabled")
+				} else {
+					log.Printf("Telemetry: enabled")
+				}
 			}
 		}
 

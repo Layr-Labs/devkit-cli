@@ -44,6 +44,47 @@ pre-commit install
 
 - `--verbose, -v` - Enable detailed logging
 - `--help, -h` - Show command help
+- `--no-telemetry` - Disable anonymous usage analytics
+
+## Telemetry
+
+The CLI collects anonymous usage data to help improve the tool. This includes:
+- Command usage (which commands are run)
+- Basic system information (OS, architecture)
+- Command execution time
+- Errors encountered
+
+No personal information or project details are collected. You can disable telemetry:
+- Use the `--no-telemetry` flag when running commands
+- Set the `DEVKIT_NO_TELEMETRY=1` environment variable
+- Run any command with `--no-telemetry` once to permanently disable it
+
+## For Developers
+
+Adding custom telemetry metrics is simple with a single line of code:
+
+```go
+// Track a custom event with properties
+hooks.Track(ctx.Context, hooks.FormatEventName("avs_devnet", "containers_up"), props)
+```
+
+Example in a command implementation:
+
+```go
+Action: func(cCtx *cli.Context) error {
+    // ... 
+    // Track a custom event with properties
+    props := map[string]interface{}{
+        "port": cCtx.Int("port"),
+        "contract_count": 5,
+    }
+    hooks.Track(cCtx.Context, hooks.FormatEventName("avs_devnet", "containers_up"), props)
+    
+    return nil
+}
+```
+
+Standard metrics like command invocation, completion, and errors are tracked automatically.
 
 ## Example
 

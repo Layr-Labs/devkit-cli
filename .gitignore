@@ -4,6 +4,7 @@
 *.dll
 *.so
 *.dylib
+devkit
 
 # Build outputs
 /bin/

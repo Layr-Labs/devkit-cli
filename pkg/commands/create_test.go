@@ -22,7 +22,11 @@ version = "0.1.0"
 	if err := os.WriteFile("default.eigen.toml", []byte(mockToml), 0644); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove("default.eigen.toml")
+	defer func() {
+		if err := os.Remove("default.eigen.toml"); err != nil {
+			t.Logf("Failed to remove test file: %v", err)
+		}
+	}()
 
 	// Override default directory
 	origCmd := CreateCommand
@@ -67,12 +71,11 @@ version = "0.1.0"
 		Commands: []*cli.Command{&tmpCmd},
 	}
 
-	// Test 1: Missing project name
+	// Test cases
 	if err := app.Run([]string{"app", "create"}); err == nil {
-		t.Error("Expected error for missing project name")
+		t.Error("Expected error for missing project name, but got nil")
 	}
 
-	// Test 2: Basic project creation
 	if err := app.Run([]string{"app", "create", "test-project"}); err != nil {
 		t.Errorf("Failed to create project: %v", err)
 	}
