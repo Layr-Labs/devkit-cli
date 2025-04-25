@@ -141,7 +141,11 @@ func TestConfigCommand_ListOutput(t *testing.T) {
 
 	// 🔁 Change into the test directory
 	originalWD, _ := os.Getwd()
-	defer os.Chdir(originalWD)
+	defer func() {
+		if err := os.Chdir(originalWD); err != nil {
+			t.Logf("Failed to return to original directory: %v", err)
+		}
+	}()
 	require.NoError(t, os.Chdir(tmpDir))
 
 	// 🧪 Capture os.Stdout
