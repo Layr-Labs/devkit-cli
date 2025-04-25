@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: ['**']
+    branches: [ '**' ]
 
 env:
   FOUNDRY_PROFILE: ci
@@ -28,7 +28,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
-        
+
       - name: Install devkit CLI
         run: make install
 
@@ -37,18 +37,26 @@ jobs:
       
       - name: Prepare eigen.toml config
         run: cp default.eigen.toml eigen.toml
-
-      # 🔍 Headless devnet start test
-      - name: Start devnet (headless)
+        
+      - name: Start devnet
         run: |
-          devkit avs devnet start --headless &
-          sleep 10
+          devkit avs devnet start &
+          sleep 10 # wait for devnet to fully start
 
-      - name: Check block number (headless)
+      - name: Check block number with cast (with retry)
         run: |
           for i in {1..10}; do
             bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
-            if
-      
+            if [ "$bn" != "error" ]; then
+              echo "Current block number: $bn"
+              exit 0
+            fi
+            echo "Anvil not ready yet, retrying in 2s..."
+            sleep 2
+          done
+          echo "Devnet didn't start properly after waiting"
+          exit 1
+
+
       - name: Stop devnet
         run: devkit avs devnet stop
