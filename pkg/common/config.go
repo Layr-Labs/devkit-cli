@@ -1,12 +1,8 @@
 package common
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
-
 	"github.com/BurntSushi/toml"
-	"github.com/fatih/color"
 )
 
 type ProjectConfig struct {
