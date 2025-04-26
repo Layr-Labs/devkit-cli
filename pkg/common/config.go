@@ -2,9 +2,13 @@ package common
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
-	"github.com/BurntSushi/toml"
+	"github.com/naoina/toml"
 )
+
+const EigenTomlPath = "eigen.toml"
 
 type ProjectConfig struct {
 	Name        string `toml:"name"`
@@ -66,12 +70,64 @@ type EigenConfig struct {
 	Release      ReleaseConfig        `toml:"release"`
 }
 
+// LoadEigenConfig loads into structured Go structs
 func LoadEigenConfig() (*EigenConfig, error) {
-	const defaultPath = "eigen.toml"
+	f, err := os.Open(EigenTomlPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open eigen.toml: %w", err)
+	}
+	defer f.Close()
 
 	var config EigenConfig
-	if _, err := toml.DecodeFile(defaultPath, &config); err != nil {
-		return nil, fmt.Errorf("eigen.toml not found. Are you running this command from your project directory?")
+	if err := toml.NewDecoder(f).Decode(&config); err != nil {
+		return nil, fmt.Errorf("failed to decode TOML: %w", err)
 	}
 	return &config, nil
+}
+
+// LoadEigenTree loads eigen.toml into a mutable map
+func LoadEigenTree() (map[string]interface{}, error) {
+	f, err := os.Open(EigenTomlPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open eigen.toml: %w", err)
+	}
+	defer f.Close()
+
+	var data map[string]interface{}
+	if err := toml.NewDecoder(f).Decode(&data); err != nil {
+		return nil, fmt.Errorf("failed to decode TOML: %w", err)
+	}
+	return data, nil
+}
+
+// SaveEigenTree saves the mutable map back to eigen.toml
+func SaveEigenTree(tree map[string]interface{}) error {
+	f, err := os.Create(EigenTomlPath)
+	if err != nil {
+		return fmt.Errorf("failed to open eigen.toml for writing: %w", err)
+	}
+	defer f.Close()
+
+	encoder := toml.NewEncoder(f)
+	return encoder.Encode(tree)
+}
+
+// SetKey sets a value in a nested TOML tree
+func SetKey(tree map[string]interface{}, keyPath string, value interface{}) error {
+	parts := strings.Split(keyPath, ".")
+	last := len(parts) - 1
+
+	current := tree
+	for i, part := range parts {
+		if i == last {
+			current[part] = value
+			return nil
+		}
+		if next, ok := current[part].(map[string]interface{}); ok {
+			current = next
+		} else {
+			return fmt.Errorf("invalid path: %s", strings.Join(parts[:i+1], "."))
+		}
+	}
+	return nil
 }

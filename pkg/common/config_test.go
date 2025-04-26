@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/BurntSushi/toml"
+	"github.com/naoina/toml"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -81,8 +81,14 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 }
 
 func LoadEigenConfigFromPath(path string) (*common.EigenConfig, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
 	var config common.EigenConfig
-	if _, err := toml.DecodeFile(path, &config); err != nil {
+	if err := toml.NewDecoder(f).Decode(&config); err != nil {
 		return nil, err
 	}
 	return &config, nil

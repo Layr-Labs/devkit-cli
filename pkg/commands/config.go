@@ -2,7 +2,9 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"fmt"
 	"log"
+	"strings"
 
 	"github.com/urfave/cli/v2"
 )
@@ -34,9 +36,38 @@ var ConfigCommand = &cli.Command{
 
 		if setValue := cCtx.String("set"); setValue != "" {
 			log.Printf("Setting configuration: %s", setValue)
-			// Placeholder for future implementation
+		
+			parts := strings.SplitN(setValue, "=", 2)
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid format for --set. Expected key=value")
+			}
+			keyPath := parts[0]
+			rawValue := parts[1]
+		
+			var value interface{}
+			if strings.Contains(rawValue, ",") {
+				value = strings.Split(rawValue, ",")
+			} else {
+				value = rawValue
+			}
+		
+			tree, err := common.LoadEigenTree()
+			if err != nil {
+				return err
+			}
+		
+			if err := common.SetKey(tree, keyPath, value); err != nil {
+				return err
+			}
+		
+			if err := common.SaveEigenTree(tree); err != nil {
+				return err
+			}
+		
+			log.Printf("✅ Updated %s in eigen.toml", keyPath)
 			return nil
 		}
+		
 
 		// If no flags are provided, show current config
 		log.Printf("Displaying current configuration...")
