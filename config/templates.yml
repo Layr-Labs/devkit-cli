@@ -1,5 +1,5 @@
 architectures:
-  hourglass:
+  task:
     languages:
       go:
         template: "https://github.com/Layr-Labs/hourglass-avs-template/tree/sm-templateExample"
