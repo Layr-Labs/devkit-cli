@@ -92,7 +92,7 @@ devkit avs devnet stop
 > [!Warning]
 > These commands must be run from the directory of the project you created using `devkit avs create`.
 #### List the current config
-This commands lists the currrent configuration including `eigen.toml` , telemetry status etc.
+This commands lists the current configuration including `eigen.toml` , telemetry status etc.
 
 ```bash
 devkit avs config 
