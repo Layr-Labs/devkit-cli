@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
@@ -74,10 +75,17 @@ var CreateCommand = &cli.Command{
 			if cCtx.String("template-path") != "" {
 				log.Printf("Template Path: %s", cCtx.String("template-path"))
 			}
+
+			// Log telemetry status (accounting for client type)
 			if cCtx.Bool("no-telemetry") {
-				log.Printf("Telemetry: disabled")
+				log.Printf("Telemetry: disabled (via flag)")
 			} else {
-				log.Printf("Telemetry: enabled")
+				client, ok := telemetry.FromContext(cCtx.Context)
+				if !ok || telemetry.IsNoopClient(client) {
+					log.Printf("Telemetry: disabled")
+				} else {
+					log.Printf("Telemetry: enabled")
+				}
 			}
 		}
 
@@ -103,6 +111,12 @@ var CreateCommand = &cli.Command{
 		// Copy default.eigen.toml to the project directory
 		if err := copyDefaultTomlToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {
 			return fmt.Errorf("failed to initialize eigen.toml: %w", err)
+		}
+
+		// Save project settings with telemetry preference
+		telemetryEnabled := !cCtx.Bool("no-telemetry")
+		if err := common.SaveProjectSettings(targetDir, telemetryEnabled); err != nil {
+			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
 		log.Printf("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)

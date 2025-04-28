@@ -1,12 +1,14 @@
 package commands
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
-
-	"github.com/urfave/cli/v2"
 )
 
 func TestCreateCommand(t *testing.T) {
@@ -22,7 +24,11 @@ version = "0.1.0"
 	if err := os.WriteFile("default.eigen.toml", []byte(mockToml), 0644); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove("default.eigen.toml")
+	defer func() {
+		if err := os.Remove("default.eigen.toml"); err != nil {
+			t.Logf("Failed to remove test file: %v", err)
+		}
+	}()
 
 	// Override default directory
 	origCmd := CreateCommand
@@ -67,12 +73,11 @@ version = "0.1.0"
 		Commands: []*cli.Command{WithTestConfig(&tmpCmd)},
 	}
 
-	// Test 1: Missing project name
+	// Test cases
 	if err := app.Run([]string{"app", "create"}); err == nil {
-		t.Error("Expected error for missing project name")
+		t.Error("Expected error for missing project name, but got nil")
 	}
 
-	// Test 2: Basic project creation
 	if err := app.Run([]string{"app", "create", "test-project"}); err != nil {
 		t.Errorf("Failed to create project: %v", err)
 	}
@@ -123,4 +128,62 @@ build:
 	if err := buildApp.Run([]string{"app", "build"}); err != nil {
 		t.Errorf("Failed to execute build command: %v", err)
 	}
+}
+
+func TestConfigCommand_ListOutput(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 📥 Load the default.eigen.toml content
+	defaultTomlPath := filepath.Join("..", "..", "default.eigen.toml") // adjust as needed
+	defaultContent, err := os.ReadFile(defaultTomlPath)
+	require.NoError(t, err)
+
+	// 📝 Write it to test directory as eigen.toml
+	eigenPath := filepath.Join(tmpDir, "eigen.toml")
+	require.NoError(t, os.WriteFile(eigenPath, defaultContent, 0644))
+
+	// 🔁 Change into the test directory
+	originalWD, _ := os.Getwd()
+	defer func() {
+		if err := os.Chdir(originalWD); err != nil {
+			t.Logf("Failed to return to original directory: %v", err)
+		}
+	}()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// 🧪 Capture os.Stdout
+	var buf bytes.Buffer
+	stdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// ⚙️ Run the CLI app with nested subcommands
+	app := &cli.App{
+		Commands: []*cli.Command{
+			{
+				Name: "avs",
+				Subcommands: []*cli.Command{
+					ConfigCommand,
+				},
+			},
+		},
+	}
+	err = app.Run([]string{"devkit", "avs", "config", "--list"})
+	require.NoError(t, err)
+
+	// 📤 Finish capturing output
+	w.Close()
+	os.Stdout = stdout
+	_, _ = buf.ReadFrom(r)
+	output := stripANSI(buf.String())
+
+	// ✅ Validating output
+	require.Contains(t, output, "[project]")
+	require.Contains(t, output, "[operator]")
+	require.Contains(t, output, "[env]")
+}
+
+func stripANSI(input string) string {
+	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return ansi.ReplaceAllString(input, "")
 }
