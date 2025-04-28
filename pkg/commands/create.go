@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
@@ -53,13 +54,19 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
+		// Load config
+		config, err := common.LoadEigenConfig()
+		if err != nil {
+			return err
+		}
+
 		if cCtx.NArg() == 0 {
 			return fmt.Errorf("project name is required\nUsage: avs create <project-name> [flags]")
 		}
 		projectName := cCtx.Args().First()
 		targetDir := filepath.Join(cCtx.String("dir"), projectName)
 
-		if cCtx.Bool("verbose") {
+		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Creating new AVS project: %s", projectName)
 			log.Printf("Directory: %s", cCtx.String("dir"))
 			log.Printf("Language: %s", cCtx.String("lang"))
@@ -68,10 +75,17 @@ var CreateCommand = &cli.Command{
 			if cCtx.String("template-path") != "" {
 				log.Printf("Template Path: %s", cCtx.String("template-path"))
 			}
+
+			// Log telemetry status (accounting for client type)
 			if cCtx.Bool("no-telemetry") {
-				log.Printf("Telemetry: disabled")
+				log.Printf("Telemetry: disabled (via flag)")
 			} else {
-				log.Printf("Telemetry: enabled")
+				client, ok := telemetry.FromContext(cCtx.Context)
+				if !ok || telemetry.IsNoopClient(client) {
+					log.Printf("Telemetry: disabled")
+				} else {
+					log.Printf("Telemetry: enabled")
+				}
 			}
 		}
 
@@ -84,7 +98,7 @@ var CreateCommand = &cli.Command{
 			return err
 		}
 
-		if cCtx.Bool("verbose") {
+		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Using template: %s", templateURL)
 		}
 

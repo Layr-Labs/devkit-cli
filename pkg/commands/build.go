@@ -36,7 +36,7 @@ var BuildCommand = &cli.Command{
 			}
 		}
 
-		if cCtx.Bool("verbose") {
+		if common.IsVerboseEnabled(cCtx, cfg) {
 			log.Printf("Project Name: %s", cfg.Project.Name)
 			log.Printf("Building AVS components...")
 			if cCtx.Bool("release") {
