@@ -45,7 +45,6 @@ require (
 	github.com/ethereum/go-ethereum v1.15.9
 	github.com/fatih/color v1.18.0
 	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
-	github.com/pelletier/go-toml v1.9.5
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/stretchr/testify v1.10.0
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
