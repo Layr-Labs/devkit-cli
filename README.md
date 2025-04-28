@@ -46,6 +46,8 @@ devkit avs create --overwrite my-existing-hourglass-project
 # Once you have a project directory, following commands should be run from the project directory you created.
 devkit avs build
 
+devkit avs devnet start
+
 devkit avs run
 ```
 
@@ -58,8 +60,6 @@ make build     # Build CLI binary
 make tests     # Run all unit tests
 make lint      # Run linter and static checks
 ```
-
----
 
 
 ## 💻 Core DevKit Commands
@@ -88,6 +88,20 @@ devkit avs devnet start
 devkit avs devnet stop
 ```
 
+### Config
+> [!Warning]
+> These commands must be run from the directory of the project you created using `devkit avs create`.
+#### List the current config
+This commands lists the currrent configuration including `eigen.toml` , telemetry status etc.
+
+```bash
+devkit avs config 
+```
+Or 
+```bash
+devkit avs config --list
+```
+
 ## ⚙️ Global Options
 
 | Flag             | Description            |
@@ -95,7 +109,6 @@ devkit avs devnet stop
 | `--verbose`, `-v`| Enable verbose logging |
 | `--help`, `-h`   | Show help output       |
 
----
 
 ## 💡 Example Usage
 ```bash
@@ -105,13 +118,9 @@ devkit avs create MyAVS --lang go
 # Start a local devnet
 devkit avs devnet start
 
-# Check block number using cast
-cast block-number --rpc-url http://localhost:8545
-
 # Stop the devnet
 devkit avs devnet stop
 ```
-
 
 ## Telemetry
 
