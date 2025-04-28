@@ -13,8 +13,12 @@ import (
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
-	// Load
-	config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+	// Load config
+	config, err := common.LoadEigenConfig()
+	if err != nil {
+		return err
+	}
+
 	port := cCtx.Int("port")
 	chain_image := devnet.GetDevnetChainImageOrDefault(config)
 	chain_args := devnet.GetDevnetChainArgsOrDefault(config)
@@ -60,8 +64,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 }
 
 func StopDevnetAction(cCtx *cli.Context) error {
-	// Load
-	config := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+	// Load config
+	config, err := common.LoadEigenConfig()
+	if err != nil {
+		return err
+	}
+
 	port := cCtx.Int("port")
 
 	if cCtx.Bool("verbose") {

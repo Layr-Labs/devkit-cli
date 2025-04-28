@@ -21,7 +21,20 @@ var BuildCommand = &cli.Command{
 		},*/
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		cfg := cCtx.Context.Value(ConfigContextKey).(*common.EigenConfig)
+		var cfg *common.EigenConfig
+
+		// First check if config is in context (for testing)
+		if cfgValue := cCtx.Context.Value(ConfigContextKey); cfgValue != nil {
+			cfg = cfgValue.(*common.EigenConfig)
+		} else {
+			// Load from file if not in context
+			var err error
+			cfg, err = common.LoadEigenConfig()
+			if err != nil {
+				return err
+			}
+		}
+
 		if cCtx.Bool("verbose") {
 			log.Printf("Project Name: %s", cfg.Project.Name)
 			log.Printf("Building AVS components...")

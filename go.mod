@@ -3,6 +3,8 @@ module devkit-cli
 go 1.23.2
 
 require (
+	github.com/google/uuid v1.6.0
+	github.com/posthog/posthog-go v1.4.10
 	github.com/urfave/cli/v2 v2.27.6
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -23,6 +25,8 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
@@ -32,17 +36,14 @@ require (
 	golang.org/x/crypto v0.35.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/ethereum/go-ethereum v1.15.9
+	github.com/fatih/color v1.18.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/stretchr/testify v1.10.0
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect

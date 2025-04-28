@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"github.com/BurntSushi/toml"
 )
 
@@ -14,13 +15,7 @@ type OperatorConfig struct {
 	Image       string              `toml:"image"`
 	Keys        []string            `toml:"keys"`
 	TotalStake  string              `toml:"total_stake"`
-	Allocations OperatorAllocations `toml:"allocations"`
-}
-
-type OperatorAllocations struct {
-	Strategies    []string `toml:"strategies"`
-	TaskExecutors []string `toml:"task-executors"`
-	Aggregators   []string `toml:"aggregators"`
+	Allocations map[string][]string `toml:"allocations"`
 }
 
 type EnvConfig struct {
@@ -69,7 +64,7 @@ func LoadEigenConfig() (*EigenConfig, error) {
 
 	var config EigenConfig
 	if _, err := toml.DecodeFile(defaultPath, &config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("eigen.toml not found. Are you running this command from your project directory?")
 	}
 	return &config, nil
 }
