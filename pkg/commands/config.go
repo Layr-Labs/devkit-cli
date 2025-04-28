@@ -29,7 +29,13 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		if cCtx.Bool("verbose") {
+		// Load config
+		config, err := common.LoadEigenConfig()
+		if err != nil {
+			return err
+		}
+
+		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Managing project configuration...")
 		}
 
@@ -38,8 +44,7 @@ var ConfigCommand = &cli.Command{
 			return editConfig(cCtx)
 		}
 
-		// load by default , if no flags are provided
-		// dev: If any other subcommand needs to be added in ConfigCommand apart from set and list, handle it above this line.
+		// list by default, if no flags are provided
 		log.Println("Displaying current configuration...")
 		projectSetting, err := common.LoadProjectSettings()
 		if err != nil {
