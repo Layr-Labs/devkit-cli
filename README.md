@@ -6,8 +6,8 @@ A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Ser
 
 ```bash
 # Clone and build
-git clone <repository-url>
-cd devkit
+git clone https://github.com/Layr-Labs/devkit-cli
+cd devkit-cli
 
 # Build using make
 make install
@@ -17,6 +17,26 @@ go build -o devkit ./cmd/devkit
 
 # Get started
 devkit --help
+```
+
+# Demo flow
+```bash
+# If not already, clone it
+git clone https://github.com/Layr-Labs/devkit-cli
+cd devkit-cli
+
+# If not already, pull the latest commit
+git pull origin main
+
+# Note that you have to run the create command from repository directory
+devkit avs create my-hourglass-project  # by default pick task arch and go lang
+OR
+devkit avs create --overwrite my-existing-hourglass-project
+
+# Once you have a project directory, following commands should be run from the project directory you created.
+devkit avs build
+
+devkit avs run
 ```
 
 ## Development
