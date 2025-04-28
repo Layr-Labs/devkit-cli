@@ -6,6 +6,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/posthog/posthog-go v1.4.10
 	github.com/urfave/cli/v2 v2.27.6
+	golang.org/x/text v0.22.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -54,19 +54,13 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		// Load config
-		config, err := common.LoadEigenConfig()
-		if err != nil {
-			return err
-		}
-
 		if cCtx.NArg() == 0 {
 			return fmt.Errorf("project name is required\nUsage: avs create <project-name> [flags]")
 		}
 		projectName := cCtx.Args().First()
 		targetDir := filepath.Join(cCtx.String("dir"), projectName)
 
-		if common.IsVerboseEnabled(cCtx, config) {
+		if cCtx.Bool("verbose") {
 			log.Printf("Creating new AVS project: %s", projectName)
 			log.Printf("Directory: %s", cCtx.String("dir"))
 			log.Printf("Language: %s", cCtx.String("lang"))
@@ -98,7 +92,7 @@ var CreateCommand = &cli.Command{
 			return err
 		}
 
-		if common.IsVerboseEnabled(cCtx, config) {
+		if cCtx.Bool("verbose") {
 			log.Printf("Using template: %s", templateURL)
 		}
 
