@@ -3,10 +3,11 @@ package commands
 import (
 	"devkit-cli/pkg/common"
 	"fmt"
-	"log"
-
-	"github.com/pelletier/go-toml"
+	"github.com/naoina/toml"
 	"github.com/urfave/cli/v2"
+	"log"
+	"os"
+	"strings"
 )
 
 var ConfigCommand = &cli.Command{
@@ -23,11 +24,6 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		// Load config
-		config, err := common.LoadEigenConfig()
-		if err != nil {
-			return err
-		}
 		if setValue := cCtx.String("set"); setValue != "" {
 			log.Printf("Setting configuration: %s", setValue)
 			// TODO: Parse and apply the key=value update
@@ -43,19 +39,33 @@ var ConfigCommand = &cli.Command{
 		} else {
 			log.Printf("telemetry enabled: %t", projectSetting.TelemetryEnabled)
 		}
-		map_val, err := common.StructToMap(config)
-		if err != nil {
-			return err
-		}
-		tree, err := toml.TreeFromMap(map_val)
-		if err != nil {
-			return fmt.Errorf("failed to convert config map to TOML tree: %w", err)
-		}
-		if tree == nil {
-			return fmt.Errorf("unexpected nil TOML tree from config map")
-		}
-		common.PrintStyledConfig(tree.String())
 
+		file, err := os.Open(common.EigenTomlPath)
+		if err != nil {
+			return fmt.Errorf("failed to open eigen.toml: %w", err)
+		}
+		defer file.Close()
+
+		var data map[string]interface{}
+		err = toml.NewDecoder(file).Decode(&data)
+		if err != nil {
+			return fmt.Errorf("failed to decode eigen.toml: %w", err)
+		}
+
+		printTOMLMap(data, 0)
 		return nil
 	},
+}
+
+func printTOMLMap(m map[string]interface{}, indent int) {
+	pad := strings.Repeat("  ", indent)
+	for key, val := range m {
+		switch v := val.(type) {
+		case map[string]interface{}:
+			fmt.Printf("%s[%s]\n", pad, key)
+			printTOMLMap(v, indent+1)
+		default:
+			fmt.Printf("%s%s = %v\n", pad, key, v)
+		}
+	}
 }

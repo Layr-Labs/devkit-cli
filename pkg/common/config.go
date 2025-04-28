@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const EigenTomlPath = "eigen.toml"
+
 type ProjectConfig struct {
 	Name        string `toml:"name"`
 	Version     string `toml:"version"`
