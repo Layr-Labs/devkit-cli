@@ -1,4 +1,4 @@
-.PHONY: help build test fmt lint install clean
+.PHONY: help build test fmt lint install clean test-telemetry
 
 APP_NAME=devkit
 GO_PACKAGES=./pkg/... ./cmd/...
@@ -11,6 +11,9 @@ build: ## Build the binary
 
 tests: ## Run tests
 	@go test $(GO_PACKAGES)
+
+test-telemetry: ## Run telemetry tests
+	@go test ./pkg/telemetry/...
 
 fmt: ## Format code
 	@go fmt $(GO_PACKAGES)

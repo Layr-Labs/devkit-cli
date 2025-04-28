@@ -20,13 +20,7 @@ type OperatorConfig struct {
 	Image       string              `toml:"image"`
 	Keys        []string            `toml:"keys"`
 	TotalStake  string              `toml:"total_stake"`
-	Allocations OperatorAllocations `toml:"allocations"`
-}
-
-type OperatorAllocations struct {
-	Strategies    []string `toml:"strategies"`
-	TaskExecutors []string `toml:"task-executors"`
-	Aggregators   []string `toml:"aggregators"`
+	Allocations map[string][]string `toml:"allocations"`
 }
 
 type EnvConfig struct {

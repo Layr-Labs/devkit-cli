@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -51,9 +52,9 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "1000ETH", cfg.Operator.TotalStake)
 
 	// Allocations
-	assert.Equal(t, []string{"0xf951e335afb289353dc249e82926178eac7ded78"}, cfg.Operator.Allocations.Strategies)
-	assert.Equal(t, []string{"300000000000000000"}, cfg.Operator.Allocations.TaskExecutors)
-	assert.Equal(t, []string{"250000000000000000"}, cfg.Operator.Allocations.Aggregators)
+	assert.Equal(t, []string{"0xf951e335afb289353dc249e82926178eac7ded78"}, cfg.Operator.Allocations["strategies"])
+	assert.Equal(t, []string{"300000000000000000"}, cfg.Operator.Allocations["task-executors"])
+	assert.Equal(t, []string{"250000000000000000"}, cfg.Operator.Allocations["aggregators"])
 
 	// Environment
 	devnet := cfg.Env["devnet"]
@@ -78,6 +79,58 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 	// Release
 	assert.Equal(t, "some-org/avs-logic:v0.1", cfg.Release.AVSLogicImageTag)
 	assert.False(t, cfg.Release.PushImage)
+}
+
+func TestLoadEigenConfig_WithAdditionalOperatorSet(t *testing.T) {
+	tempDir := t.TempDir()
+	tempTomlPath := filepath.Join(tempDir, "eigen.toml")
+
+	// Load default template
+	srcPath := filepath.Join("..", "..", "default.eigen.toml")
+	srcBytes, err := os.ReadFile(srcPath)
+	assert.NoError(t, err)
+
+	tomlStr := string(srcBytes)
+
+	// Append new allocation into existing [operator.allocations]
+	tomlStr = strings.Replace(tomlStr, "[operator.allocations]",
+		`[operator.allocations]
+additional-set = ["200000000000000000"]`, 1)
+
+	// Append new operator set at the end
+	tomlStr += `
+[operatorsets.additional-set]
+operator_set_id = 2
+description = "Handles fallback tasks"
+rpc_endpoint = "http://localhost:8548"
+avs = "0xAVS_EXTRA"
+submit_wallet = "0xWalletExtra"
+
+  [operatorsets.additional-set.operators]
+  operator_keys = ["0xkey3"]
+  minimum_required_stake_weight = ["750ETH"]
+`
+
+	// Write to temp path
+	assert.NoError(t, os.WriteFile(tempTomlPath, []byte(tomlStr), 0644))
+
+	// Load config and validate
+	cfg, err := LoadEigenConfigFromPath(tempTomlPath)
+	assert.NoError(t, err)
+
+	// Check allocations
+	assert.Contains(t, cfg.Operator.Allocations, "additional-set")
+	assert.Equal(t, []string{"200000000000000000"}, cfg.Operator.Allocations["additional-set"])
+
+	// Check new operator set
+	addSet := cfg.OperatorSets["additional-set"]
+	assert.Equal(t, 2, addSet.OperatorSetID)
+	assert.Equal(t, "Handles fallback tasks", addSet.Description)
+	assert.Equal(t, "http://localhost:8548", addSet.RPCEndpoint)
+	assert.Equal(t, "0xAVS_EXTRA", addSet.AVS)
+	assert.Equal(t, "0xWalletExtra", addSet.SubmitWallet)
+	assert.Equal(t, []string{"0xkey3"}, addSet.Operators.OperatorKeys)
+	assert.Equal(t, []string{"750ETH"}, addSet.Operators.MinimumRequiredStakeWeight)
 }
 
 func LoadEigenConfigFromPath(path string) (*common.EigenConfig, error) {
