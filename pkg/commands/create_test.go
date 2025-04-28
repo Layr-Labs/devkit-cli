@@ -175,9 +175,9 @@ func TestConfigCommand_ListOutput(t *testing.T) {
 	output := stripANSI(buf.String())
 
 	// ✅ Validating output
-	require.Contains(t, output, "[Project]")
-	require.Contains(t, output, "[Operator]")
-	require.Contains(t, output, "[Env]")
+	require.Contains(t, output, "[project]")
+	require.Contains(t, output, "[operator]")
+	require.Contains(t, output, "[env]")
 }
 
 func stripANSI(input string) string {
