@@ -64,7 +64,7 @@ make lint      # Run linter and static checks
 
 ## 💻 Core DevKit Commands
 > [!IMPORTANT]  
-> All <code>devkit avs</code> commands must be run from the root of your AVS project — the directory that contains the <code>eigen.toml</code> file.  
+> All <code>devkit avs</code> commands(except `devkit avs create`) must be run from the root of your AVS project — the directory that contains the <code>eigen.toml</code> file.  
 > If <code>eigen.toml</code> is missing or located elsewhere, the CLI will fail to load the project configuration.
 
 | Command                     | Description                                 |
@@ -77,6 +77,9 @@ make lint      # Run linter and static checks
 | `devkit avs release`       | Package your AVS for testnet/mainnet        |
 
 ### Devnet 
+The devnet consists of [eigenlayer-contracts-1.3.0](https://github.com/Layr-Labs/eigenlayer-contracts/tree/v1.3.0) deployed on top of a fresh anvil state.
+We automatically fund the wallets(`operator_keys` and `submit_wallet`) used in the `eigen.toml` if balance is low(< `10 ether`).
+
 > [!Warning]
 > Docker daemon must be running beforehand.
 #### Starting the devnet 
@@ -89,6 +92,8 @@ devkit avs devnet stop
 ```
 
 ### Config
+We autogenerate a default config file called `eigen.toml` in the avs project directory. 
+
 > [!Warning]
 > These commands must be run from the directory of the project you created using `devkit avs create`.
 #### List the current config
@@ -101,6 +106,18 @@ Or
 ```bash
 devkit avs config --list
 ```
+
+#### Edit the config
+There are 2 ways to edit `eigen.toml` config of the respective avs project.
+
+##### Option 1
+This will allow to edit the config in a text editor.
+```bash
+devkit avs config --edit
+```
+
+##### Option 2
+Manually edit the config in `eigen.toml`.
 
 ## ⚙️ Global Options
 
@@ -120,6 +137,18 @@ devkit avs devnet start
 
 # Stop the devnet
 devkit avs devnet stop
+```
+
+## Logging
+- To enable persistent logging , you can set the verbosity under the key `[log]` in `eigen.toml`. By default it's set to `debug`.
+```toml
+[log]
+level = "debug" # valid options: "info", "debug", "warn", "error"
+```
+
+- You can also use `--verbose` flag with the respective command, example:
+```bash
+devkit --verbose avs build
 ```
 
 ## Telemetry
