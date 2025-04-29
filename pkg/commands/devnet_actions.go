@@ -20,6 +20,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	port := cCtx.Int("port")
+	if !devnet.IsPortAvailable(port) {
+		log.Printf("is_port_available %d, %t", port, false)
+		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --port", port)
+	} else {
+		log.Printf("is_port_available %d, %t", port, true)
+
+	}
 	chain_image := devnet.GetDevnetChainImageOrDefault(config)
 	chain_args := devnet.GetDevnetChainArgsOrDefault(config)
 
@@ -43,13 +50,15 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	composePath, statePath := devnet.WriteEmbeddedArtifacts()
 
 	// Run docker compose up for anvil devnet
-	cmd := exec.Command("docker", "compose", "-f", composePath, "up", "-d")
+	cmd := exec.Command("docker", "compose", "-p", config.Project.Name, "-f", composePath, "up", "-d")
 
+	containerName := fmt.Sprintf("devkit-devnet-%s", config.Project.Name)
 	cmd.Env = append(os.Environ(),
 		"FOUNDRY_IMAGE="+chain_image,
 		"ANVIL_ARGS="+chain_args,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
 		"STATE_PATH="+statePath,
+		"AVS_CONTAINER_NAME="+containerName,
 	)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
@@ -90,14 +99,17 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 	// docker-compose for anvil devnet and anvil state.json
 	composePath, statePath := devnet.WriteEmbeddedArtifacts()
+	containerName := fmt.Sprintf("devkit-devnet-%s", config.Project.Name)
 
 	// Run docker compose down for anvil devnet
-	stopCmd := exec.Command("docker", "compose", "-f", composePath, "down")
+	stopCmd := exec.Command("docker", "compose", "-p", config.Project.Name, "-f", composePath, "down")
+
 	stopCmd.Env = append(os.Environ(), // required for ${} to resolve in compose
 		"FOUNDRY_IMAGE="+devnet.GetDevnetChainImageOrDefault(config),
 		"ANVIL_ARGS="+devnet.GetDevnetChainArgsOrDefault(config),
 		fmt.Sprintf("DEVNET_PORT=%d", port),
 		"STATE_PATH="+statePath,
+		"AVS_CONTAINER_NAME="+containerName,
 	)
 
 	if err := stopCmd.Run(); err != nil {
