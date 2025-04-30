@@ -50,10 +50,9 @@ type PermissionConfig struct {
 }
 
 func LoadPermissionConfig() (*PermissionConfig, error) {
-	const defaultPath = "uam-permissions.toml"
 	var config PermissionConfig
-	if _, err := toml.DecodeFile(defaultPath, &config); err != nil {
-		return nil, fmt.Errorf("%s not found. Are you running this command from your project directory?", defaultPath)
+	if _, err := toml.DecodeFile(PermissionsTomlPath, &config); err != nil {
+		return nil, fmt.Errorf("%s not found. Are you running this command from your project directory?", PermissionsTomlPath)
 	}
 	return &config, nil
 }
