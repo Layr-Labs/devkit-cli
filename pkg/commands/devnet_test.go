@@ -1,16 +1,16 @@
 package commands
 
 import (
+	"devkit-cli/pkg/common"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli/v2"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/urfave/cli/v2"
 )
 
 // helper to create a temp AVS project dir with eigen.toml copied
@@ -20,7 +20,7 @@ func createTempAVSProject(defaultEigenPath string) (string, error) {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 
-	destEigen := filepath.Join(tempDir, "eigen.toml")
+	destEigen := filepath.Join(tempDir, common.EigenTomlPath)
 
 	// Copy default eigen.toml
 	srcFile, err := os.Open(defaultEigenPath)
@@ -44,6 +44,12 @@ func createTempAVSProject(defaultEigenPath string) (string, error) {
 }
 
 func TestStartAndStopDevnet(t *testing.T) {
+	// Save current working directory
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Chdir(originalCwd) // Restore cwd after test
+	})
 	defaultEigenPath := filepath.Join("..", "..", "default.eigen.toml")
 
 	projectDir, err := createTempAVSProject(defaultEigenPath)
@@ -84,7 +90,16 @@ func TestStartAndStopDevnet(t *testing.T) {
 }
 
 func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
-	defaultEigenPath := filepath.Join("..", "..", "default.eigen.toml")
+	// Save current working directory
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Chdir(originalCwd) // Restore cwd after test
+	})
+
+	defaultEigenPath, err := filepath.Abs(filepath.Join("..", "..", "default.eigen.toml"))
+	assert.NoError(t, err, "failed to resolve default.eigen.toml path")
+	assert.FileExists(t, defaultEigenPath, "eigen file does not exist at computed path")
 
 	projectDir1, err := createTempAVSProject(defaultEigenPath)
 	assert.NoError(t, err)
