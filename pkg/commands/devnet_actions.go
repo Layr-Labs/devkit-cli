@@ -23,9 +23,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if !devnet.IsPortAvailable(port) {
 		log.Printf("is_port_available %d, %t", port, false)
 		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --port", port)
-	} else {
-		log.Printf("is_port_available %d, %t", port, true)
-
 	}
 	chain_image := devnet.GetDevnetChainImageOrDefault(config)
 	chain_args := devnet.GetDevnetChainArgsOrDefault(config)
