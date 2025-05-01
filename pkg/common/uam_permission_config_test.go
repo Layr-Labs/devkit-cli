@@ -1,4 +1,4 @@
-package config
+package common
 
 import (
 	"io"
@@ -15,7 +15,7 @@ func TestLoadPermissionsConfig_FromCopiedTempFile(t *testing.T) {
 	tempDir := t.TempDir()
 	tempTomlPath := filepath.Join(tempDir, PermissionsTomlPath)
 
-	srcPath := filepath.Join("..", "default.uam-permissions.toml")
+	srcPath := filepath.Join("..", "..", "config", "default.uam-permissions.toml")
 	src, err := os.Open(srcPath)
 	assert.NoError(t, err)
 	defer func() {
