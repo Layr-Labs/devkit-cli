@@ -13,19 +13,23 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout devkit-cli
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
+      - name: Checkout hourglass-monorepo
+        uses: actions/checkout@v4
+        with:
+          repository: Layr-Labs/hourglass-monorepo
+          path: external/hourglass-monorepo
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
           go-version: '1.23'
 
-      - name: Clone hourglass-monorepo privately
-        env:
-          HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
+      - name: Replace module and tidy
         run: |
-          git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
-          git clone --depth=1 https://github.com/Layr-Labs/hourglass-monorepo.git temp_external/hourglass-monorepo
-          go mod edit -replace=github.com/Layr-Labs/hourglass-monorepo=./temp_external/hourglass-monorepo
+          go mod edit -replace=github.com/Layr-Labs/hourglass-monorepo=./external/hourglass-monorepo
           go mod tidy
 
       - name: Build
