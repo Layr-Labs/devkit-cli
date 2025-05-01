@@ -30,7 +30,7 @@ jobs:
           version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
 
       - name: Clone hourglass-monorepo privately
-        env:  # ← this needs to be indented under the step
+        env: 
             HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
         run: |
             git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
