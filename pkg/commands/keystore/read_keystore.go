@@ -3,12 +3,10 @@ package keystore
 import (
 	"devkit-cli/pkg/common"
 	"fmt"
-	"log"
-
-	// "encoding/hex"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
 	"github.com/urfave/cli/v2"
+	"log"
 )
 
 var ReadCommand = &cli.Command{
@@ -18,27 +16,24 @@ var ReadCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:     "path",
 			Usage:    "Path to the keystore JSON",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "type",
-			Usage:    "Curve type (only 'bn254' supported)",
-			Required: false,
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "password",
 			Usage:    "Password to decrypt the keystore file",
-			Required: false,
+			Required: true,
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		path := cCtx.String("path")
-		curve := cCtx.String("type")
 		password := cCtx.String("password")
 
-		log.Printf("🔐 Creating keystore with curve '%s' at: %s", curve, path)
 		scheme := bn254.NewScheme()
-		keystoreData, _ := keystore.LoadKeystoreFile(path)
+		keystoreData, err := keystore.LoadKeystoreFile(path)
+
+		if err != nil {
+			return fmt.Errorf("failed to load the keystore file from given path %s", path)
+		}
 
 		privateKeyData, err := keystoreData.GetPrivateKey(password, scheme)
 		if err != nil {

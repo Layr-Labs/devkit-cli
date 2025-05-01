@@ -13,16 +13,17 @@ import (
 
 var CreateCommand = &cli.Command{
 	Name:  "create",
-	Usage: "Generates a keystore JSON file for a private key",
+	Usage: "Generates a BLS keystore JSON file for a private key",
 	Flags: append([]cli.Flag{
 		&cli.StringFlag{
 			Name:     "key",
-			Usage:    "Private key in large number",
+			Usage:    "Bls private key in large number",
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "path",
-			Usage: "Full path to save keystore file, including filename (e.g., ./operator_keys/operator1.json)",
+			Name:     "path",
+			Usage:    "Full path to save keystore file, including filename (e.g., ./operator_keys/operator1.json)",
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:  "type",
@@ -31,7 +32,8 @@ var CreateCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "password",
-			Usage: "Password to encrypt the keystore file",
+			Usage: `Password to encrypt the keystore file. Default password is "" `,
+			Value: "",
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
@@ -46,7 +48,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		if verbose {
-			log.Printf("🔐 Starting keystore creation")
+			log.Printf("🔐 Starting Bls keystore creation")
 			log.Printf("• Curve: %s", curve)
 			log.Printf("• Output Path: %s", path)
 		}
