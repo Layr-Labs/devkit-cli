@@ -55,3 +55,5 @@ require (
 	github.com/stretchr/testify v1.10.0
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 )
+
+replace github.com/Layr-Labs/hourglass-monorepo => ./temp_external/hourglass-monorepo
