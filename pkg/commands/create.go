@@ -110,7 +110,7 @@ var CreateCommand = &cli.Command{
 
 		// Copies the default keystore json files in the keystores/ directory
 		if err := copyDefaultKeystoresToProject(targetDir, cCtx.Bool("verbose")); err != nil {
-			return fmt.Errorf("failed to initilize keystores: %w", err)
+			return fmt.Errorf("failed to initialize keystores: %w", err)
 		}
 
 		// Save project settings with telemetry preference
