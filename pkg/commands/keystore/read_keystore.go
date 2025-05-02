@@ -11,7 +11,7 @@ import (
 
 var ReadCommand = &cli.Command{
 	Name:  "read",
-	Usage: "Read the bls key from a given keystore file, password",
+	Usage: "Print the Bls key from a given keystore file, password",
 	Flags: append([]cli.Flag{
 		&cli.StringFlag{
 			Name:     "path",
