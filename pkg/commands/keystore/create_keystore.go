@@ -13,7 +13,7 @@ import (
 
 var CreateCommand = &cli.Command{
 	Name:  "create",
-	Usage: "Generates a BLS keystore JSON file for a private key",
+	Usage: "Generates a Bls keystore JSON file for a private key",
 	Flags: append([]cli.Flag{
 		&cli.StringFlag{
 			Name:     "key",
