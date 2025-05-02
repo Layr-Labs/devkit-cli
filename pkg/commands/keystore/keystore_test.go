@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,51 +18,41 @@ func TestKeystoreCreateAndRead(t *testing.T) {
 	password := "testpass"
 	path := filepath.Join(tmpDir, "operator1.keystore.json")
 
-	// --- Run create keystore ---
+	// Create keystore
 	app := &cli.App{
 		Name: "devkit",
 		Commands: []*cli.Command{
-			{
-				Name: "keystore",
-				Subcommands: []*cli.Command{
-					CreateCommand,
-				},
-			},
+			{Name: "keystore", Subcommands: []*cli.Command{CreateCommand}},
 		},
 	}
-
-	args := []string{
+	err := app.Run([]string{
 		"devkit", "keystore", "create",
 		"--key", key,
 		"--path", path,
 		"--type", "bn254",
 		"--password", password,
-	}
-
-	err := app.Run(args)
+	})
 	require.NoError(t, err)
 
 	// 🔒 Verify keystore file was created
 	_, err = os.Stat(path)
 	require.NoError(t, err, "expected keystore file to be created")
 
-	// --- Run read keystore ---
+	// Read keystore
 	readApp := &cli.App{
 		Name: "devkit",
 		Commands: []*cli.Command{
-			{
-				Name: "keystore",
-				Subcommands: []*cli.Command{
-					ReadCommand,
-				},
-			},
+			{Name: "keystore", Subcommands: []*cli.Command{ReadCommand}},
 		},
 	}
 
-	// 🧪 Capture stdout
-	oldStdout := os.Stdout
+	// 🧪 Capture logs via pipe
 	r, w, _ := os.Pipe()
+	oldStdout := os.Stdout
+	oldStderr := os.Stderr
 	os.Stdout = w
+	os.Stderr = w
+	log.SetOutput(w)
 
 	readArgs := []string{
 		"devkit", "keystore", "read",
@@ -71,13 +62,17 @@ func TestKeystoreCreateAndRead(t *testing.T) {
 	err = readApp.Run(readArgs)
 	require.NoError(t, err)
 
+	// Close writer and restore
 	w.Close()
 	os.Stdout = oldStdout
+	os.Stderr = oldStderr
+	log.SetOutput(os.Stderr) // Restore default log output
 
+	// Read from pipe
 	var buf bytes.Buffer
 	_, _ = io.Copy(&buf, r)
 
 	output := buf.String()
-	require.Contains(t, output, "Save this BLS private key", "expected private key output in read command")
-	require.Contains(t, output, key, "expected same private key as input")
+	require.Contains(t, output, "Save this BLS private key in a secure location")
+	require.Contains(t, output, key)
 }

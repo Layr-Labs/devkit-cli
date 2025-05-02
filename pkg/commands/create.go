@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -107,6 +108,11 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to initialize eigen.toml: %w", err)
 		}
 
+		// Copies the default keystore json files in the keystores/ directory
+		if err := copyDefaultKeystoresToProject(targetDir, cCtx.Bool("verbose")); err != nil {
+			return fmt.Errorf("failed to initilize keystores: %w", err)
+		}
+
 		// Save project settings with telemetry preference
 		telemetryEnabled := !cCtx.Bool("no-telemetry")
 		if err := common.SaveProjectSettings(targetDir, telemetryEnabled); err != nil {
@@ -175,5 +181,56 @@ func copyDefaultTomlToProject(targetDir, projectName string, verbose bool) error
 	if verbose {
 		log.Printf("Created eigen.toml in project directory")
 	}
+	return nil
+}
+
+// / Creates a keystores directory with default keystore json files
+func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
+	srcKeystoreDir := "keystores"
+	destKeystoreDir := filepath.Join(targetDir, "keystores")
+
+	// Create the destination keystore directory
+	if err := os.MkdirAll(destKeystoreDir, 0755); err != nil {
+		return fmt.Errorf("failed to create keystores directory: %w", err)
+	}
+	if verbose {
+		log.Printf("Created directory: %s", destKeystoreDir)
+	}
+
+	// Read files from the source keystores directory
+	files, err := os.ReadDir(srcKeystoreDir)
+	if err != nil {
+		return fmt.Errorf("failed to read keystores directory: %w", err)
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue // skip subdirectories
+		}
+
+		srcPath := filepath.Join(srcKeystoreDir, file.Name())
+		destPath := filepath.Join(destKeystoreDir, file.Name())
+
+		srcFile, err := os.Open(srcPath)
+		if err != nil {
+			return fmt.Errorf("failed to open source keystore file %s: %w", srcPath, err)
+		}
+		defer srcFile.Close()
+
+		destFile, err := os.Create(destPath)
+		if err != nil {
+			return fmt.Errorf("failed to create destination keystore file %s: %w", destPath, err)
+		}
+		defer destFile.Close()
+
+		if _, err := io.Copy(destFile, srcFile); err != nil {
+			return fmt.Errorf("failed to copy file %s: %w", file.Name(), err)
+		}
+
+		if verbose {
+			log.Printf("Copied keystore: %s", file.Name())
+		}
+	}
+
 	return nil
 }
