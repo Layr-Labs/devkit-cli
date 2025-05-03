@@ -2,9 +2,11 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 )
@@ -44,14 +46,38 @@ var BuildCommand = &cli.Command{
 		}
 
 		// Execute make build with Makefile.Devkit
-		cmd := exec.Command("make", "-f", "Makefile.Devkit", "build")
+		cmd := exec.Command("make", "-f", common.DevkitMakefile, "build")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
 			return err
 		}
 
+		// Build contracts if available
+		if err := buildContractsIfAvailable(); err != nil {
+			return err
+		}
+
 		log.Printf("Build completed successfully")
 		return nil
 	},
+}
+
+// buildContractsIfAvailable builds the contracts if the contracts directory exists
+func buildContractsIfAvailable() error {
+	contractsDir := common.ContractsDir
+	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+		return nil
+	}
+
+	makefilePath := filepath.Join(contractsDir, common.DevkitMakefile)
+	if _, err := os.Stat(makefilePath); os.IsNotExist(err) {
+		return fmt.Errorf("contracts directory exists but no %s found", common.DevkitMakefile)
+	}
+
+	cmd := exec.Command("make", "-f", common.DevkitMakefile, "build")
+	cmd.Dir = contractsDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }

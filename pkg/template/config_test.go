@@ -33,7 +33,7 @@ architectures:
 	}
 
 	// Test template URL lookup
-	url, err := GetTemplateURL(config, "task", "go")
+	url, _, err := GetTemplateURLs(config, "task", "go")
 	if err != nil {
 		t.Fatalf("Failed to get template URL: %v", err)
 	}
@@ -42,7 +42,7 @@ architectures:
 	}
 
 	// Test non-existent architecture
-	url, err = GetTemplateURL(config, "nonexistent", "go")
+	url, _, err = GetTemplateURLs(config, "nonexistent", "go")
 	if err != nil {
 		t.Fatalf("Failed to get template URL: %v", err)
 	}

@@ -7,6 +7,12 @@ architectures:
         template: ""
       rust:
         template: ""
+    contracts:
+      languages:
+        solidity:
+          template: "https://github.com/Layr-Labs/hourglass-contracts-template"
+        viper:
+          template: ""
   hello-world-avs:
     languages:
       go:

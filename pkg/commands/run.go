@@ -20,7 +20,7 @@ var RunCommand = &cli.Command{
 		}
 
 		// Execute make run with Makefile.Devkit
-		cmd := exec.Command("make", "-f", "Makefile.Devkit", "run")
+		cmd := exec.Command("make", "-f", common.DevkitMakefile, "run")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
