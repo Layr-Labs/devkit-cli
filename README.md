@@ -151,6 +151,30 @@ level = "debug" # valid options: "info", "debug", "warn", "error"
 devkit --verbose avs build
 ```
 
+## Environment Variables
+
+The DevKit CLI automatically loads environment variables from a `.env` file in your project directory:
+
+- If a `.env` file exists in your project directory, its variables will be loaded for all commands except `create`
+- Template repositories should include a `.env.example` file that you can copy to `.env` and modify
+- This is useful for storing configuration that shouldn't be committed to version control (API keys, private endpoints, etc.)
+
+Example workflow:
+```bash
+# After creating a project from a template
+cd my-avs-project
+
+# Copy the example env file (if provided by the template)
+cp .env.example .env
+
+# Edit with your specific values
+nano .env
+
+# Run commands - the .env file will be automatically loaded
+devkit avs build
+devkit avs run
+```
+
 ## Telemetry
 
 The CLI collects anonymous usage data to help improve the tool. This includes:
