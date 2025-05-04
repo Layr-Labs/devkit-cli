@@ -16,11 +16,21 @@ type ProjectConfig struct {
 	Description string `toml:"description"`
 }
 
+type OperatorKeystore struct {
+	Path     string `toml:"path"`
+	Password string `toml:"password"`
+}
+
+type OperatorBLS struct {
+	Keystores []OperatorKeystore `toml:"keystores"`
+}
+
 type OperatorConfig struct {
 	Image       string              `toml:"image"`
 	Keys        []string            `toml:"keys"`
 	TotalStake  string              `toml:"total_stake"`
 	Allocations map[string][]string `toml:"allocations"`
+	BLS         OperatorBLS         `toml:"bls"`
 }
 
 type EnvConfig struct {

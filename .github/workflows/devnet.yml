@@ -29,11 +29,23 @@ jobs:
         with:
           version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
 
-      - name: Install devkit CLI
-        run: make install
-
-      - name: Add ~/bin to PATH
-        run: echo "$HOME/bin" >> $GITHUB_PATH
+      - name: Clone hourglass-monorepo privately
+        env: 
+            HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
+        run: |
+            git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
+            git clone --depth=1 https://github.com/Layr-Labs/hourglass-monorepo.git temp_external/hourglass-monorepo
+            go mod edit -replace=github.com/Layr-Labs/hourglass-monorepo=./temp_external/hourglass-monorepo
+            go mod tidy
+  
+      - name: Build the devkit binary
+        run: make build
+          
+      - name: Add devkit to PATH
+        run: |
+              mkdir -p $HOME/bin
+              mv devkit $HOME/bin/
+              echo "$HOME/bin" >> $GITHUB_PATH
       
       - name: Prepare eigen.toml config
         run: cp default.eigen.toml eigen.toml

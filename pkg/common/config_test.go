@@ -48,8 +48,15 @@ func TestLoadEigenConfig_FromCopiedTempFile(t *testing.T) {
 
 	// Operator
 	assert.Equal(t, "eigen/ponos-client:v1.0", cfg.Operator.Image)
-	assert.Equal(t, []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"}, cfg.Operator.Keys)
+	assert.Equal(t, []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", "2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"}, cfg.Operator.Keys)
 	assert.Equal(t, "1000ETH", cfg.Operator.TotalStake)
+
+	/// bls keys
+	assert.Len(t, cfg.Operator.BLS.Keystores, 2)
+	assert.Equal(t, "keystores/operator1.keystore.json", cfg.Operator.BLS.Keystores[0].Path)
+	assert.Equal(t, "password...", cfg.Operator.BLS.Keystores[0].Password)
+	assert.Equal(t, "keystores/operator2.keystore.json", cfg.Operator.BLS.Keystores[1].Path)
+	assert.Equal(t, "password...", cfg.Operator.BLS.Keystores[1].Password)
 
 	// Allocations
 	assert.Equal(t, []string{"0xf951e335afb289353dc249e82926178eac7ded78"}, cfg.Operator.Allocations["strategies"])
