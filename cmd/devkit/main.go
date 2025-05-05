@@ -12,8 +12,11 @@ import (
 )
 
 func main() {
+
+	printBanner()
+
 	app := &cli.App{
-		Name:                   "devkit",
+		Name:                   "DevKit",
 		Usage:                  "EigenLayer Development Kit",
 		Flags:                  common.GlobalFlags,
 		Commands:               []*cli.Command{commands.AVSCommand},
@@ -26,4 +29,13 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func printBanner() {
+	banner := `
+ ╭─────────────────────────────────────────╮
+ │  E I G E N L A Y E R   D E V K I T      │
+ ╰─────────────────────────────────────────╯
+`
+	println(banner)
 }
