@@ -2,7 +2,7 @@ architectures:
   task:
     languages:
       go:
-        template: "https://github.com/Layr-Labs/hourglass-avs-template"
+        template: "https://github.com/Layr-Labs/hourglass-avs-template/tree/nova/hourglass_devkit_devnet"
       ts:
         template: ""
       rust:
@@ -10,8 +10,8 @@ architectures:
     contracts:
       languages:
         solidity:
-          template: "https://github.com/Layr-Labs/hourglass-contracts-template"
-        viper:
+          template: "https://github.com/Layr-Labs/hourglass-contracts-template/tree/nova/hourglass_devkit_template"
+        vyper:
           template: ""
   hello-world-avs:
     languages:

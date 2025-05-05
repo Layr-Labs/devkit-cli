@@ -66,6 +66,60 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	elapsed := time.Since(startTime).Round(time.Second)
 	log.Printf("Devnet started successfully in %s", elapsed)
 
+	// Execute make run with Makefile.Devkit
+	// hourglass_cmd := exec.Command("make", "-f", common.DevkitMakefile, "setup-submodules")
+	// hourglass_cmd.Stdout = os.Stdout
+	// hourglass_cmd.Stderr = os.Stderr
+	// if err := hourglass_cmd.Run(); err != nil {
+	// 	return err
+	// }
+	// log.Printf("Hourglass contracts submodules setup successful")
+
+	hourglass_cmd := exec.Command("make", "-f", common.DevkitMakefile, "deploy-taskmailbox")
+	hourglass_cmd.Stdout = os.Stdout
+	hourglass_cmd.Stderr = os.Stderr
+	if err := hourglass_cmd.Run(); err != nil {
+		return err
+	}
+	log.Printf("TaskMailbox contract deployed!")
+
+	hourglass_cmd = exec.Command("make", "-f", common.DevkitMakefile, "deploy-taskavsregistrar")
+	hourglass_cmd.Stdout = os.Stdout
+	hourglass_cmd.Stderr = os.Stderr
+	if err := hourglass_cmd.Run(); err != nil {
+		return err
+	}
+
+	log.Printf("TaskAvsRegistrar contract deployed!")
+
+	hourglass_cmd = exec.Command("make", "-f", common.DevkitMakefile, "deploy-avsl2contracts")
+	hourglass_cmd.Stdout = os.Stdout
+	hourglass_cmd.Stderr = os.Stderr
+	if err := hourglass_cmd.Run(); err != nil {
+		return err
+	}
+
+	log.Printf("Avs L2 contracts deployed!")
+	
+	hourglass_cmd = exec.Command("make", "-f", common.DevkitMakefile, "setup-avsl1contracts")
+	hourglass_cmd.Stdout = os.Stdout
+	hourglass_cmd.Stderr = os.Stderr
+	if err := hourglass_cmd.Run(); err != nil {
+		return err
+	}
+
+	log.Printf("Avs L1 contracts setup success!")
+
+	hourglass_cmd = exec.Command("make", "-f", common.DevkitMakefile, "create-operator-set")
+	hourglass_cmd.Stdout = os.Stdout
+	hourglass_cmd.Stderr = os.Stderr
+	if err := hourglass_cmd.Run(); err != nil {
+		return err
+	}
+
+	log.Printf("Created operator sets")
+
+	
 	return nil
 }
 

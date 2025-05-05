@@ -21,4 +21,9 @@ start_anvil_docker "" $root_dir/docker/anvil
 
 # Deploy Contracts
 cd "$root_dir/contracts"
+cp .env.example .env
+forge script script/DeployContractsRegistry.s.sol --rpc-url $RPC_URL -vvvv  --broadcast --sig "run()"
+
 forge script script/DeployEigenLayer.s.sol --rpc-url $RPC_URL -vvvv --private-key $PRIVATE_KEY --broadcast --sig "run(string memory configFile)" -- devnet/eigenlayer_config.json
+
+forge script script/WriteToContractsRegistry.s.sol --rpc-url $RPC_URL -vvvv --private-key $PRIVATE_KEY --broadcast --sig "run(string memory outputFileName)" -- devnet/SLASHING_deploy_from_scratch_deployment_data.json
