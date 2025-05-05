@@ -17,7 +17,7 @@ import (
 // CreateCommand defines the "create" command
 var CreateCommand = &cli.Command{
 	Name:      "create",
-	Usage:     "Initializes a new AVS project scaffold (Hourglass model)",
+	Usage:     "Initializes a new AVS project scaffold (task-based model)",
 	ArgsUsage: "<project-name>",
 	Flags: append([]cli.Flag{
 		&cli.StringFlag{
@@ -32,7 +32,7 @@ var CreateCommand = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "arch",
-			Usage: "Specifies AVS architecture (task-based/hourglass, epoch-based, etc.)",
+			Usage: "Specifies AVS architecture (task-based, epoch-based, etc.)",
 			Value: "task",
 		},
 		&cli.StringFlag{

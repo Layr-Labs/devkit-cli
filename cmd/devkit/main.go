@@ -16,7 +16,7 @@ func main() {
 	printBanner()
 
 	app := &cli.App{
-		Name:                   "DevKit",
+		Name:                   "devkit",
 		Usage:                  "EigenLayer Development Kit",
 		Flags:                  common.GlobalFlags,
 		Commands:               []*cli.Command{commands.AVSCommand},
