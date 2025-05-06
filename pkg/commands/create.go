@@ -140,14 +140,6 @@ var CreateCommand = &cli.Command{
 			log.Printf("Warning: Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
-		// Install Forge dependencies if contracts directory exists
-		contractsDir := filepath.Join(targetDir, common.ContractsDir)
-		if _, err := os.Stat(contractsDir); !os.IsNotExist(err) {
-			if err := installForgeDependencies(contractsDir, cCtx.Bool("verbose")); err != nil {
-				log.Printf("Warning: Failed to install Forge dependencies in %s: %v", contractsDir, err)
-			}
-		}
-
 		log.Printf("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
@@ -231,30 +223,34 @@ func initGitRepo(targetDir string, verbose bool) error {
 	if err != nil {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
+	submodules := []string{
+		"contracts/lib/forge-std",
+		"contracts/lib/hourglass-monorepo",
+	}
+	for _, dir := range submodules {
+		fullPath := filepath.Join(targetDir, dir)
+		if err := os.RemoveAll(fullPath); err != nil && !os.IsNotExist(err) {
+			log.Printf("Warning: Failed to remove %s: %v", fullPath, err)
+		}
+	}
+	cmds := [][]string{
+		{"git", "submodule", "add", "https://github.com/foundry-rs/forge-std", "contracts/lib/forge-std"},
+		{"git", "submodule", "add", "https://github.com/Layr-Labs/hourglass-monorepo", "contracts/lib/hourglass-monorepo"},
+		{"git", "submodule", "update", "--init", "--recursive", "--depth=1"},
+		{"git", "submodule", "foreach", "--recursive", "git submodule update --init --recursive"},
+	}
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = targetDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("cmd %v failed: %w\nOutput: %s", args, err, string(out))
+		}
+	}
 	if verbose {
 		log.Printf("Git repository initialized successfully.")
 		if len(output) > 0 {
 			log.Printf("Git init output:\n%s", string(output))
-		}
-	}
-	return nil
-}
-
-// installForgeDependencies runs 'forge install' in the specified contracts directory.
-func installForgeDependencies(contractsDir string, verbose bool) error {
-	if verbose {
-		log.Printf("Installing Forge dependencies in %s...", contractsDir)
-	}
-	cmd := exec.Command("forge", "install")
-	cmd.Dir = contractsDir
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("forge install failed: %w\nOutput: %s", err, string(output))
-	}
-	if verbose {
-		log.Printf("Forge dependencies installed successfully.")
-		if len(output) > 0 {
-			log.Printf("Forge install output:\n%s", string(output))
 		}
 	}
 	return nil
