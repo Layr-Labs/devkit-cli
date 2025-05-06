@@ -13,6 +13,16 @@ A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Ser
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
 - [make](https://formulae.brew.sh/formula/make)
 
+#### Setup to fetch private go modules
+
+To ensure you can fetch private Go modules hosted on GitHub (needed before the template dependency repos are live):
+
+1.  **Ensure SSH Key is Added to GitHub:** Verify that you have an SSH key associated with your GitHub account. You can find instructions [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
+2.  **Repository Access:** Confirm with EigenLabs that your GitHub account has been granted access to the necessary private repositories (e.g., for preview features or specific AVS components).
+3.  **Configure Git URL Rewrite:** Run the following command in your terminal to instruct Git to use SSH instead of HTTPS for Eigenlabs repositories:
+    ```bash
+    git config --global url."ssh://git@github.com/Layr-Labs/".insteadOf "https://github.com/Layr-Labs/"
+    ```
 
 ```bash
 # Clone and build
