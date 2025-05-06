@@ -237,7 +237,6 @@ func initGitRepo(targetDir string, verbose bool) error {
 		{"git", "submodule", "add", "https://github.com/foundry-rs/forge-std", "contracts/lib/forge-std"},
 		{"git", "submodule", "add", "https://github.com/Layr-Labs/hourglass-monorepo", "contracts/lib/hourglass-monorepo"},
 		{"git", "submodule", "update", "--init", "--recursive", "--depth=1"},
-		{"git", "submodule", "foreach", "--recursive", "git submodule update --init --recursive"},
 	}
 	for _, args := range cmds {
 		cmd := exec.Command(args[0], args[1:]...)
