@@ -22,6 +22,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	port := cCtx.Int("port")
 	chain_image := devnet.GetDevnetChainImageOrDefault(config)
 	chain_args := devnet.GetDevnetChainArgsOrDefault(config)
+	fork_url := devnet.GetDevnetForkUrlDefault(config)
 
 	startTime := time.Now() // <-- start timing
 	// if user gives , say, log = "DEBUG" Or "Debug", we normalize it to lowercase
@@ -49,15 +50,30 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		"FOUNDRY_IMAGE="+chain_image,
 		"ANVIL_ARGS="+chain_args,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
+		"MAINNET_RPC_URL="+fork_url,
 		"STATE_PATH="+statePath,
 	)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+		return fmt.Errorf(":x: Failed to start devnet: %w", err)
 	}
 	rpc_url := fmt.Sprintf("http://localhost:%d", port)
 
+	// Sleep for 1 second to ensure the devnet is fully started
+	time.Sleep(1 * time.Second)
+
 	devnet.FundWalletsDevnet(config, rpc_url)
 	elapsed := time.Since(startTime).Round(time.Second)
+
+	// Sleep for 1 second to make sure wallets are funded
+	time.Sleep(1 * time.Second)
+
+	make := exec.Command("make", "-f", common.DevkitMakefile, "deploy")
+	make.Stdout = os.Stdout
+	make.Stderr = os.Stderr
+	if err := make.Run(); err != nil {
+		return err
+	}
+
 	log.Printf("Devnet started successfully in %s", elapsed)
 
 	return nil
