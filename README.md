@@ -12,6 +12,7 @@ A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Ser
 - [Go](https://go.dev/doc/install)
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
 - [make](https://formulae.brew.sh/formula/make)
+- [yq](https://github.com/mikefarah/yq/#install)
 
 #### Setup to fetch private go modules
 
