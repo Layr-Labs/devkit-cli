@@ -68,18 +68,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 	rpc_url := fmt.Sprintf("http://localhost:%d", port)
 
+	time.Sleep(5 * time.Second)
 	devnet.FundWalletsDevnet(config, rpc_url)
 	elapsed := time.Since(startTime).Round(time.Second)
 	log.Printf("Devnet started successfully in %s", elapsed)
 
-	// Execute make run with Makefile.Devkit
-	// hourglass_cmd := exec.Command("make", "-f", common.DevkitMakefile, "setup-submodules")
-	// hourglass_cmd.Stdout = os.Stdout
-	// hourglass_cmd.Stderr = os.Stderr
-	// if err := hourglass_cmd.Run(); err != nil {
-	// 	return err
-	// }
-	// log.Printf("Hourglass contracts submodules setup successful")
+
 
 	hourglass_cmd := exec.Command("make", "-f", common.DevkitMakefile, "deploy-taskmailbox")
 	hourglass_cmd.Stdout = os.Stdout
@@ -194,24 +188,24 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	log.Printf("✅ Registered operator to AVS")
 
 
-	hourglassCmd = exec.Command("make", "-f", common.DevkitMakefile, "deposit-into-strategies")
-	hourglassCmd.Stdout = os.Stdout
-	hourglassCmd.Stderr = os.Stderr
+	// hourglassCmd = exec.Command("make", "-f", common.DevkitMakefile, "deposit-into-strategies")
+	// hourglassCmd.Stdout = os.Stdout
+	// hourglassCmd.Stderr = os.Stderr
 
-	if err := hourglassCmd.Run(); err != nil {
-		return err
-	}
-	log.Printf("✅ Deposited into strategies")
+	// if err := hourglassCmd.Run(); err != nil {
+	// 	return err
+	// }
+	// log.Printf("✅ Deposited into strategies")
 
 
-	hourglassCmd = exec.Command("make", "-f", common.DevkitMakefile, "modify-allocations")
-	hourglassCmd.Stdout = os.Stdout
-	hourglassCmd.Stderr = os.Stderr
+	// hourglassCmd = exec.Command("make", "-f", common.DevkitMakefile, "modify-allocations")
+	// hourglassCmd.Stdout = os.Stdout
+	// hourglassCmd.Stderr = os.Stderr
 
-	if err := hourglassCmd.Run(); err != nil {
-		return err
-	}
-	log.Printf("✅ Modify allocations")
+	// if err := hourglassCmd.Run(); err != nil {
+	// 	return err
+	// }
+	// log.Printf("✅ Modify allocations")
 	
 	return nil
 }

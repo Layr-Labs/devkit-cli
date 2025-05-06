@@ -5,6 +5,6 @@ services:
     volumes:
       - "${STATE_PATH}:/anvil/state.json"
     entrypoint: anvil
-    command: "--host 0.0.0.0 --load-state /anvil/state.json ${ANVIL_ARGS}"
+    command: "--host 0.0.0.0  ${ANVIL_ARGS}"
     ports:
       - "${DEVNET_PORT}:8545"

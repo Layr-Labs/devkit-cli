@@ -6,7 +6,7 @@ description = "Default Hourglass AVS with minimal settings."
 [env.devnet]
 nemesis_contract_address = "0x123..." # TODO(supernova): Fill post-deployment
 chain_image = "ghcr.io/foundry-rs/foundry:latest"
-chain_args = ["--chain-id", "31337", "--block-time", "3", "--gas-price", "0", "--base-fee", "0"]
+chain_args = ["--fork-url","https://eth.llamarpc.com","--fork-block-number","22425818","--chain-id", "31337", "--block-time", "3", "--gas-price", "0", "--base-fee", "0"]
 
 [release]
 avs_logic_image_tag = "some-org/avs-logic:v0.1"
