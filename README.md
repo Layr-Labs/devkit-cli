@@ -39,6 +39,9 @@ make install
 # Or build manually
 go build -o devkit ./cmd/devkit
 
+# add the binary to your path
+export PATH=$PATH:~/bin
+
 # Get started
 devkit --help
 ```
