@@ -239,11 +239,17 @@ func initGitRepo(targetDir string, verbose bool) error {
 		{"git", "submodule", "update", "--init", "--recursive", "--depth=1"},
 	}
 	for _, args := range cmds {
+		if verbose {
+			log.Printf("Running: %s", strings.Join(args, " "))
+		}
 		cmd := exec.Command(args[0], args[1:]...)
 		cmd.Dir = targetDir
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("cmd %v failed: %w\nOutput: %s", args, err, string(out))
+		if verbose {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		}
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("cmd %v failed: %w", args, err)
 		}
 	}
 	if verbose {
