@@ -24,6 +24,9 @@ To ensure you can fetch private Go modules hosted on GitHub (needed before the t
     git config --global url."ssh://git@github.com/Layr-Labs/".insteadOf "https://github.com/Layr-Labs/"
     ```
 
+If you are on OSX, ensure that your `~/.ssh/config` file does not contain the line `UseKeychain yes`, as it can interfere with SSH agent forwarding or other SSH functionalities needed for fetching private modules. If it exists, you may need to comment it out or remove it.
+
+
 ```bash
 # Clone and build
 git clone https://github.com/Layr-Labs/devkit-cli
