@@ -192,6 +192,26 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return err
 	}
 	log.Printf("✅ Registered operator to AVS")
+
+
+	hourglassCmd = exec.Command("make", "-f", common.DevkitMakefile, "deposit-into-strategies")
+	hourglassCmd.Stdout = os.Stdout
+	hourglassCmd.Stderr = os.Stderr
+
+	if err := hourglassCmd.Run(); err != nil {
+		return err
+	}
+	log.Printf("✅ Deposited into strategies")
+
+
+	hourglassCmd = exec.Command("make", "-f", common.DevkitMakefile, "modify-allocations")
+	hourglassCmd.Stdout = os.Stdout
+	hourglassCmd.Stderr = os.Stderr
+
+	if err := hourglassCmd.Run(); err != nil {
+		return err
+	}
+	log.Printf("✅ Modify allocations")
 	
 	return nil
 }

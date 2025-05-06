@@ -22,10 +22,11 @@ contract WriteToContractsRegistry is Script,Test {
         uint deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address allocationManager = stdJson.readAddress(output_data, ".addresses.allocationManager");
         address delegationManager = stdJson.readAddress(output_data, ".addresses.delegationManager");
+        address strategyManager = stdJson.readAddress(output_data, ".addresses.strategyManager");
         vm.startBroadcast(deployerPrivateKey);
         registry.registerContract("allocationManager",allocationManager);
         registry.registerContract("delegationManager",delegationManager);
-       
+        registry.registerContract("strategyManager",strategyManager);
         vm.stopBroadcast();
     }
 }
