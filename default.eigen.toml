@@ -1,5 +1,5 @@
 [project]
-name = "my-avs"
+name = "hourglass-3"
 version = "0.1.0"
 description = "Default Hourglass AVS with minimal settings."
 
@@ -33,7 +33,7 @@ password = "testpass"
 # ⚠️ Order matters: strategies[i] aligns with task-executors[i], aggregators[i], etc.
 # For example:
 # strategies[0] => task-executors[0] = 30%, aggregators[0] = 25%
-strategies = ["0xf951e335afb289353dc249e82926178eac7ded78"] # TODO(supernova): Replace with actual AVS strategy
+strategies = ["0x67d269191c92Caf3cD7723F116c85e6E9bf55933"] # TODO(supernova): Replace with actual AVS strategy
 task-executors = ["300000000000000000"] # 30%
 aggregators    = ["250000000000000000"] # 25%
 
