@@ -22,11 +22,11 @@ total_stake = "1000ETH" # keeping this as constant for all operators in above ke
 
 [[operator.bls.keystores]]
 path = "keystores/operator1.keystore.json"
-password = "password..."
+password = "testpass"
 
 [[operator.bls.keystores]]
 path = "keystores/operator2.keystore.json"
-password = "password..."
+password = "testpass"
 
 [operator.allocations]
 # Each strategy must map to the corresponding operator set allocation
