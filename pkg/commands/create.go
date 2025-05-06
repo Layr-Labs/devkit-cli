@@ -223,6 +223,21 @@ func initGitRepo(targetDir string, verbose bool) error {
 	if err != nil {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
+	// Initialize submodules in the project directory
+	if err := initSubmodules(targetDir, verbose); err != nil {
+		log.Printf("Warning: Failed to initialize Submodules repository in %s: %v", targetDir, err)
+	}
+	if verbose {
+		log.Printf("Git repository initialized successfully.")
+		if len(output) > 0 {
+			log.Printf("Git init output:\n%s", string(output))
+		}
+	}
+	return nil
+}
+
+// initSubmodules initializes a submodules in the target directory.
+func initSubmodules(targetDir string, verbose bool) error {
 	submodules := []string{
 		"contracts/lib/forge-std",
 		"contracts/lib/hourglass-monorepo",
@@ -250,12 +265,6 @@ func initGitRepo(targetDir string, verbose bool) error {
 		}
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("cmd %v failed: %w", args, err)
-		}
-	}
-	if verbose {
-		log.Printf("Git repository initialized successfully.")
-		if len(output) > 0 {
-			log.Printf("Git init output:\n%s", string(output))
 		}
 	}
 	return nil
