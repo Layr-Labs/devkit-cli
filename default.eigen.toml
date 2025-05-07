@@ -7,6 +7,7 @@ description = "Default Hourglass AVS with minimal settings."
 nemesis_contract_address = "0x123..." # TODO(supernova): Fill post-deployment
 chain_image = "ghcr.io/foundry-rs/foundry:latest"
 chain_args = ["--fork-url","https://eth.llamarpc.com","--fork-block-number","22425818","--chain-id", "31337", "--block-time", "3", "--gas-price", "0", "--base-fee", "0"]
+fork_url=""
 
 [release]
 avs_logic_image_tag = "some-org/avs-logic:v0.1"
@@ -29,9 +30,9 @@ password = "testpass"
 # ⚠️ Order matters: strategies[i] aligns with task-executors[i], aggregators[i], etc.
 # For example:
 # strategies[0] => task-executors[0] = 30%, aggregators[0] = 25%
-strategies = ["0x67d269191c92Caf3cD7723F116c85e6E9bf55933"] # WETH strategy
-task-executors = ["300000000000000000"] # 30%
-aggregators    = ["250000000000000000"] # 25%
+strategies = ["0xf951e335afb289353dc249e82926178eac7ded78"] # TODO(supernova): Replace with actual AVS strategy
+task-executors = ["300000000000000000"]   # 30%
+aggregators    = ["250000000000000000"]   # 25%
 
 [operatorset_aliases]
 task_execution = "task-executors"

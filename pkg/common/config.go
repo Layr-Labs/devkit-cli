@@ -3,9 +3,10 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/BurntSushi/toml"
 	"github.com/fatih/color"
-	"strings"
 )
 
 const EigenTomlPath = "eigen.toml"
@@ -37,6 +38,7 @@ type EnvConfig struct {
 	NemesisContractAddress string   `toml:"nemesis_contract_address"`
 	ChainImage             string   `toml:"chain_image"`
 	ChainArgs              []string `toml:"chain_args"`
+	ForkUrl                string   `toml:"fork_url"`
 }
 
 type OperatorSet struct {
