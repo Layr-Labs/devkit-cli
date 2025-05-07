@@ -11,7 +11,7 @@ architectures:
       languages:
         solidity:
           template: "https://github.com/Layr-Labs/hourglass-contracts-template"
-        viper:
+        vyper:
           template: ""
   hello-world-avs:
     languages:

@@ -104,23 +104,19 @@ var CreateCommand = &cli.Command{
 
 		// Fetch main template
 		fetcher := &template.GitFetcher{}
-		if err := fetcher.Fetch(mainURL, targetDir); err != nil {
+		if err := fetcher.Fetch(mainURL, targetDir, cCtx.Bool("verbose")); err != nil {
 			return fmt.Errorf("failed to fetch template from %s: %w", mainURL, err)
 		}
 
-		// Check for contracts template and fetch if available
+		// Check for contracts template and fetch if missing
 		if contractsURL != "" {
 			contractsDir := filepath.Join(targetDir, common.ContractsDir)
 
-			// Remove the contracts directory if it exists
-			if _, err := os.Stat(contractsDir); !os.IsNotExist(err) {
-				if err := os.RemoveAll(contractsDir); err != nil {
-					log.Printf("Warning: Failed to remove existing contracts directory: %v", err)
+			// Fetch the contracts directory if it does not exist in the template
+			if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+				if err := fetcher.Fetch(contractsURL, contractsDir, cCtx.Bool("verbose")); err != nil {
+					log.Printf("Warning: Failed to fetch contracts template: %v", err)
 				}
-			}
-
-			if err := fetcher.Fetch(contractsURL, contractsDir); err != nil {
-				log.Printf("Warning: Failed to fetch contracts template: %v", err)
 			}
 		}
 
@@ -223,48 +219,10 @@ func initGitRepo(targetDir string, verbose bool) error {
 	if err != nil {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
-	// Initialize submodules in the project directory
-	if err := initSubmodules(targetDir, verbose); err != nil {
-		log.Printf("Warning: Failed to initialize Submodules repository in %s: %v", targetDir, err)
-	}
 	if verbose {
 		log.Printf("Git repository initialized successfully.")
 		if len(output) > 0 {
 			log.Printf("Git init output:\n%s", string(output))
-		}
-	}
-	return nil
-}
-
-// initSubmodules initializes a submodules in the target directory.
-func initSubmodules(targetDir string, verbose bool) error {
-	submodules := []string{
-		"contracts/lib/forge-std",
-		"contracts/lib/hourglass-monorepo",
-	}
-	for _, dir := range submodules {
-		fullPath := filepath.Join(targetDir, dir)
-		if err := os.RemoveAll(fullPath); err != nil && !os.IsNotExist(err) {
-			log.Printf("Warning: Failed to remove %s: %v", fullPath, err)
-		}
-	}
-	cmds := [][]string{
-		{"git", "submodule", "add", "https://github.com/foundry-rs/forge-std", "contracts/lib/forge-std"},
-		{"git", "submodule", "add", "https://github.com/Layr-Labs/hourglass-monorepo", "contracts/lib/hourglass-monorepo"},
-		{"git", "submodule", "update", "--init", "--recursive", "--depth=1"},
-	}
-	for _, args := range cmds {
-		if verbose {
-			log.Printf("Running: %s", strings.Join(args, " "))
-		}
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Dir = targetDir
-		if verbose {
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-		}
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("cmd %v failed: %w", args, err)
 		}
 	}
 	return nil

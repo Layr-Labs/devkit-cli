@@ -11,7 +11,7 @@ func TestGitFetcher(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Test with an invalid URL (should fail)
-	err := fetcher.Fetch("invalid-url", tempDir)
+	err := fetcher.Fetch("invalid-url", tempDir, false)
 	if err == nil {
 		t.Error("Expected error for invalid URL")
 	}

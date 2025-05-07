@@ -28,19 +28,29 @@ func parseGitHubURL(url string) (repoURL, branch string) {
 	return url, ""
 }
 
-func (g *GitFetcher) Fetch(templateURL, targetDir string) error {
+func (g *GitFetcher) Fetch(templateURL, targetDir string, verbose bool) error {
 	repoURL, branch := parseGitHubURL(templateURL)
 
-	args := []string{"clone", "--depth=1"}
+	args := []string{"clone", "--recurse-submodules", "-j8", "--depth=1"}
 	if branch != "" {
 		args = append(args, "-b", branch)
 	}
 	args = append(args, repoURL, targetDir)
-
 	cmd := exec.Command("git", args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("failed to clone template: %w\nOutput: %s", err, string(output))
+	cmd.Dir = targetDir
+
+	if verbose {
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err := cmd.Run()
+		if err != nil {
+			return fmt.Errorf("failed to clone template: %w", err)
+		}
+	} else {
+		output, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("failed to clone template: %w\nOutput: %s", err, string(output))
+		}
 	}
 
 	// Cleanup .git directory
