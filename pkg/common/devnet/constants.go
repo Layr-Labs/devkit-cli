@@ -6,5 +6,5 @@ const CHAIN_ARGS = "--block-time 3 --base-fee 0 --gas-price 0"
 const FUND_VALUE = "10000000000000000000"
 const RPC_URL = "http://localhost:8545"
 const DEVNET_ENV_KEY = "devnet"
-const CONTRACTS_REGISTRY="0x787c6666213624D788522d516847978D7F348902"
+const CONTRACTS_REGISTRY = "0x787c6666213624D788522d516847978D7F348902"
 const CONTRACTS_REGISTRY_ABI = `[{"inputs":[{"internalType":"string","name":"","type":"string"}],"name":"nameToAddress","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"}]`

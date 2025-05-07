@@ -85,18 +85,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	log.Printf("Devnet started successfully in %s", elapsed)
 
-
-
-	hourglass_cmd := exec.Command("make", "-f", common.DevkitMakefile, "deploy")
-	hourglass_cmd.Stdout = os.Stdout
-	hourglass_cmd.Stderr = os.Stderr
-	if err := hourglass_cmd.Run(); err != nil {
-		return err
-	}
-	
-
-	
-
 	// contractAddr := gethcommon.HexToAddress(devnet.CONTRACTS_REGISTRY)
 	// client, err := ethclient.Dial(rpc_url)
 	// if err != nil {
@@ -130,8 +118,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// fmt.Printf("TaskAVSRegistrar address: %s\n", result.Hex())
 
-
-	
 	return nil
 }
 
