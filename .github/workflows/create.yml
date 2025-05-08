@@ -38,7 +38,7 @@ jobs:
       
       - name: Configure Git to use GitHub token
         run: |
-          git config --global url."https://${{ secrets.HOURGLASS }}:@github.com/".insteadOf "https://github.com/"
+          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:@github.com/".insteadOf "https://github.com/"
         
       - name: Run devkit avs create
         run: |
