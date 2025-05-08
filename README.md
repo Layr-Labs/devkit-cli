@@ -63,13 +63,8 @@ devkit avs create --verbose --overwrite my-existing-hourglass-project
 # Once you have a project directory, following commands should be run from the project directory you created.
 devkit avs build
 
-# Before running devnet check that your config has an appropriate FORK_URL defined in eigen.toml
-devkit avs config
-
-# Start devnet
 devkit avs devnet start
 
-# Run AVS tasks
 devkit avs run
 ```
 

@@ -16,12 +16,6 @@ func GetDevnetChainArgsOrDefault(cfg *common.EigenConfig) string {
 	return strings.Join(args, " ")
 }
 
-// GetDevnetForkUrlDefault extracts the FORK_URL from env
-func GetDevnetForkUrlDefault(cfg *common.EigenConfig) string {
-	forkUrl := cfg.Env[DEVNET_ENV_KEY].ForkUrl
-	return forkUrl
-}
-
 // GetDevnetChainImageOrDefault returns the devnet chain image,
 // falling back to FOUNDRY_IMAGE if not provided.
 func GetDevnetChainImageOrDefault(cfg *common.EigenConfig) string {

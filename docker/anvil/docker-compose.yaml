@@ -4,6 +4,6 @@ services:
     volumes:
       - "${STATE_PATH}:/anvil/state.json"
     entrypoint: anvil
-    command: "--host 0.0.0.0 --fork-url ${MAINNET_RPC_URL} --fork-block-number 22396947  ${ANVIL_ARGS}"
+    command: "--host 0.0.0.0 --load-state /anvil/state.json ${ANVIL_ARGS}"
     ports:
       - "${DEVNET_PORT}:8545"
