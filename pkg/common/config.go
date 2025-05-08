@@ -1,16 +1,15 @@
 package common
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"encoding/json"
 	"github.com/BurntSushi/toml"
 	"github.com/fatih/color"
 	"strings"
 )
 
 const DEFAULT_CONFIG_FILE = "eigen.toml"
-
 
 type ProjectConfig struct {
 	Name        string `toml:"name"`

@@ -49,7 +49,7 @@ var ConfigCommand = &cli.Command{
 			log.Printf("telemetry enabled: %t", projectSetting.TelemetryEnabled)
 		}
 
-		file, err := os.Open(common.EigenTomlPath)
+		file, err := os.Open(common.DEFAULT_CONFIG_FILE)
 		if err != nil {
 			return fmt.Errorf("failed to open eigen.toml: %w", err)
 		}
