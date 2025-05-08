@@ -1,16 +1,18 @@
 package commands
 
 import (
+	"bytes"
 	"devkit-cli/pkg/common"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/urfave/cli/v2"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli/v2"
 )
 
 // helper to create a temp AVS project dir with eigen.toml copied
@@ -167,4 +169,71 @@ func getFreePort() (string, error) {
 	defer l.Close()
 	port := l.Addr().(*net.TCPAddr).Port
 	return strconv.Itoa(port), nil
+}
+
+func TestListRunningDevnets(t *testing.T) {
+	// Save original working directory
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	// Prepare temp AVS project
+	defaultEigenPath := filepath.Join("..", "..", "default.eigen.toml")
+	projectDir, err := createTempAVSProject(defaultEigenPath)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	// Start devnet
+	startApp := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+		},
+		Action: StartDevnetAction,
+	}
+	err = startApp.Run([]string{"devkit", "--port", port, "--verbose"})
+	assert.NoError(t, err)
+
+	// Capture output of list
+	originalStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	listApp := &cli.App{
+		Name:   "devkit",
+		Action: ListDevnetContainersAction,
+	}
+	err = listApp.Run([]string{"devkit", "avs", "devnet", "list"})
+	assert.NoError(t, err)
+
+	// Restore stdout and capture buffer
+	w.Close()
+	os.Stdout = originalStdout
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, r)
+	assert.NoError(t, err)
+	output := buf.String()
+
+	assert.Contains(t, output, "devkit-devnet-", "Expected container name in output")
+	assert.Contains(t, output, fmt.Sprintf("http://localhost:%s", port), "Expected devnet URL in output")
+
+	// Stop devnet
+	stopApp := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+		},
+		Action: StopDevnetAction,
+	}
+	err = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
+	assert.NoError(t, err)
 }
