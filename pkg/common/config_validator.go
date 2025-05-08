@@ -86,8 +86,8 @@ func ValidateEigenConfig(config *EigenConfig) ValidationResult {
 	return result
 }
 
-func validateOperatorAllocations(allocations *OperatorAllocations, result *ValidationResult) {
-	if len(allocations.Strategies) == 0 {
+func validateOperatorAllocations(allocations *map[string][]string, result *ValidationResult) {
+	if len((*allocations)["strategies"]) == 0 {
 		result.Valid = false
 		result.Errors = append(result.Errors, ValidationError{
 			Field:   "operator.allocations.strategies",
@@ -96,7 +96,7 @@ func validateOperatorAllocations(allocations *OperatorAllocations, result *Valid
 	}
 
 	// Check if any task executor allocation is provided
-	if len(allocations.TaskExecutors) == 0 {
+	if len((*allocations)["task-executors"]) == 0 {
 		result.Valid = false
 		result.Errors = append(result.Errors, ValidationError{
 			Field:   "operator.allocations.task-executors",
@@ -105,7 +105,7 @@ func validateOperatorAllocations(allocations *OperatorAllocations, result *Valid
 	}
 
 	// Check if any aggregator allocation is provided
-	if len(allocations.Aggregators) == 0 {
+	if len((*allocations)["aggregators"]) == 0 {
 		result.Valid = false
 		result.Errors = append(result.Errors, ValidationError{
 			Field:   "operator.allocations.aggregators",
@@ -114,7 +114,7 @@ func validateOperatorAllocations(allocations *OperatorAllocations, result *Valid
 	}
 
 	// Validate allocation percentages
-	for i, allocation := range allocations.TaskExecutors {
+	for i, allocation := range (*allocations)["task-executors"] {
 		if !isValidPercentage(allocation) {
 			result.Valid = false
 			result.Errors = append(result.Errors, ValidationError{
@@ -124,7 +124,7 @@ func validateOperatorAllocations(allocations *OperatorAllocations, result *Valid
 		}
 	}
 
-	for i, allocation := range allocations.Aggregators {
+	for i, allocation := range (*allocations)["aggregators"] {
 		if !isValidPercentage(allocation) {
 			result.Valid = false
 			result.Errors = append(result.Errors, ValidationError{

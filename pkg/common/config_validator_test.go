@@ -16,12 +16,13 @@ func TestValidateEigenConfig(t *testing.T) {
 			Image:      "eigen/ponos-client:v1.0",
 			Keys:       []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"},
 			TotalStake: "1000ETH",
-			Allocations: OperatorAllocations{
-				Strategies:    []string{"0xf951e335afb289353dc249e82926178eac7ded78"},
-				TaskExecutors: []string{"300000000000000000"},
-				Aggregators:   []string{"250000000000000000"},
+			Allocations: map[string][]string{
+				"strategies":     {"0xf951e335afb289353dc249e82926178eac7ded78"},
+				"task-executors": {"300000000000000000"},
+				"aggregators":    {"250000000000000000"},
 			},
 		},
+
 		Env: map[string]EnvConfig{
 			"devnet": {
 				NemesisContractAddress: "0x123...",
@@ -64,10 +65,10 @@ func TestValidateEigenConfig(t *testing.T) {
 			// Image is missing
 			Keys:       []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"},
 			TotalStake: "1000ETH",
-			Allocations: OperatorAllocations{
-				Strategies:    []string{}, // Empty strategies
-				TaskExecutors: []string{}, // Empty task executors
-				Aggregators:   []string{}, // Empty aggregators
+			Allocations: map[string][]string{
+				"strategies":     {}, // Empty strategies
+				"task-executors": {}, // Empty task executors
+				"aggregators":    {}, // Empty aggregators
 			},
 		},
 		Env: map[string]EnvConfig{
@@ -130,10 +131,10 @@ func TestValidateEigenConfig(t *testing.T) {
 			Image:      "eigen/ponos-client:v1.0",
 			Keys:       []string{"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"},
 			TotalStake: "1000ETH",
-			Allocations: OperatorAllocations{
-				Strategies:    []string{"0xf951e335afb289353dc249e82926178eac7ded78"},
-				TaskExecutors: []string{"300000000000000000"},
-				Aggregators:   []string{"250000000000000000"},
+			Allocations: map[string][]string{
+				"strategies":     {"0xf951e335afb289353dc249e82926178eac7ded78"},
+				"task-executors": {"300000000000000000"},
+				"aggregators":    {"250000000000000000"},
 			},
 		},
 		OperatorSets: map[string]OperatorSet{
