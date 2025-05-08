@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
@@ -68,30 +69,58 @@ var CreateCommand = &cli.Command{
 			if cCtx.String("template-path") != "" {
 				log.Printf("Template Path: %s", cCtx.String("template-path"))
 			}
+
+			// Log telemetry status (accounting for client type)
 			if cCtx.Bool("no-telemetry") {
-				log.Printf("Telemetry: disabled")
+				log.Printf("Telemetry: disabled (via flag)")
 			} else {
-				log.Printf("Telemetry: enabled")
+				client, ok := telemetry.FromContext(cCtx.Context)
+				if !ok || telemetry.IsNoopClient(client) {
+					log.Printf("Telemetry: disabled")
+				} else {
+					log.Printf("Telemetry: enabled")
+				}
 			}
 		}
 
-		if err := createProjectDir(targetDir, cCtx.Bool("overwrite"), cCtx.Bool("verbose")); err != nil {
-			return err
-		}
-
-		templateURL, err := getTemplateURL(cCtx)
+		// Get template URLs
+		mainURL, contractsURL, err := getTemplateURLs(cCtx)
 		if err != nil {
 			return err
 		}
 
-		if cCtx.Bool("verbose") {
-			log.Printf("Using template: %s", templateURL)
+		// Create project directories
+		if err := createProjectDir(targetDir, cCtx.Bool("overwrite"), cCtx.Bool("verbose")); err != nil {
+			return err
 		}
 
-		// Fetch template
+		if cCtx.Bool("verbose") {
+			log.Printf("Using template: %s", mainURL)
+			if contractsURL != "" {
+				log.Printf("Using contracts template: %s", contractsURL)
+			}
+		}
+
+		// Fetch main template
 		fetcher := &template.GitFetcher{}
-		if err := fetcher.Fetch(templateURL, targetDir); err != nil {
-			return fmt.Errorf("failed to fetch template from %s: %w", templateURL, err)
+		if err := fetcher.Fetch(mainURL, targetDir); err != nil {
+			return fmt.Errorf("failed to fetch template from %s: %w", mainURL, err)
+		}
+
+		// Check for contracts template and fetch if available
+		if contractsURL != "" {
+			contractsDir := filepath.Join(targetDir, common.ContractsDir)
+
+			// Remove the contracts directory if it exists
+			if _, err := os.Stat(contractsDir); !os.IsNotExist(err) {
+				if err := os.RemoveAll(contractsDir); err != nil {
+					log.Printf("Warning: Failed to remove existing contracts directory: %v", err)
+				}
+			}
+
+			if err := fetcher.Fetch(contractsURL, contractsDir); err != nil {
+				log.Printf("Warning: Failed to fetch contracts template: %v", err)
+			}
 		}
 
 		// Copy default.eigen.toml to the project directory
@@ -110,31 +139,33 @@ var CreateCommand = &cli.Command{
 	},
 }
 
-func getTemplateURL(cCtx *cli.Context) (string, error) {
+func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 	if templatePath := cCtx.String("template-path"); templatePath != "" {
-		return templatePath, nil
+		return templatePath, "", nil
 	}
-
-	arch := cCtx.String("arch")
 
 	config, err := template.LoadConfig()
 	if err != nil {
-		return "", fmt.Errorf("failed to load templates config: %w", err)
+		return "", "", fmt.Errorf("failed to load templates config: %w", err)
 	}
 
-	url, err := template.GetTemplateURL(config, arch, cCtx.String("lang"))
+	arch := cCtx.String("arch")
+	lang := cCtx.String("lang")
+
+	mainURL, contractsURL, err := template.GetTemplateURLs(config, arch, lang)
 	if err != nil {
-		return "", fmt.Errorf("failed to get template URL: %w", err)
+		return "", "", fmt.Errorf("failed to get template URLs: %w", err)
 	}
 
-	if url == "" {
-		return "", fmt.Errorf("no template found for architecture %s and language %s", arch, cCtx.String("lang"))
+	if mainURL == "" {
+		return "", "", fmt.Errorf("no template found for architecture %s and language %s", arch, lang)
 	}
 
-	return url, nil
+	return mainURL, contractsURL, nil
 }
 
 func createProjectDir(targetDir string, overwrite, verbose bool) error {
+	// Check if directory exists and handle overwrite
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
 		if !overwrite {
 			return fmt.Errorf("directory %s already exists. Use --overwrite flag to force overwrite", targetDir)
@@ -146,7 +177,12 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 			log.Printf("Removed existing directory: %s", targetDir)
 		}
 	}
-	return os.MkdirAll(targetDir, 0755)
+
+	// Create main project directory
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create project directory: %w", err)
+	}
+	return nil
 }
 
 // copyDefaultTomlToProject copies default.eigen.toml to the project directory with updated project name

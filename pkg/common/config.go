@@ -3,12 +3,14 @@ package common
 import (
 	"errors"
 	"fmt"
-	"strings"
-
+	"encoding/json"
 	"github.com/BurntSushi/toml"
+	"github.com/fatih/color"
+	"strings"
 )
 
 const DEFAULT_CONFIG_FILE = "eigen.toml"
+
 
 type ProjectConfig struct {
 	Name        string `toml:"name"`
@@ -20,13 +22,7 @@ type OperatorConfig struct {
 	Image       string              `toml:"image"`
 	Keys        []string            `toml:"keys"`
 	TotalStake  string              `toml:"total_stake"`
-	Allocations OperatorAllocations `toml:"allocations"`
-}
-
-type OperatorAllocations struct {
-	Strategies    []string `toml:"strategies"`
-	TaskExecutors []string `toml:"task-executors"`
-	Aggregators   []string `toml:"aggregators"`
+	Allocations map[string][]string `toml:"allocations"`
 }
 
 type EnvConfig struct {
@@ -61,6 +57,10 @@ type ReleaseConfig struct {
 	PushImage        bool   `toml:"push_image"`
 }
 
+type LogConfig struct {
+	Level string `toml:"level"` // Expected values: "debug", "info", "warn", "error"
+}
+
 type EigenConfig struct {
 	Project      ProjectConfig        `toml:"project"`
 	Operator     OperatorConfig       `toml:"operator"`
@@ -68,6 +68,7 @@ type EigenConfig struct {
 	OperatorSets OperatorSetsMap      `toml:"operatorsets"`
 	Aliases      OperatorSetsAliases  `toml:"operatorset_aliases"`
 	Release      ReleaseConfig        `toml:"release"`
+	Log          LogConfig            `toml:"log"`
 }
 
 func LoadEigenConfig() (*EigenConfig, error) {
@@ -89,4 +90,49 @@ func LoadEigenConfig() (*EigenConfig, error) {
 	}
 
 	return &config, nil
+}
+
+func PrintStyledConfig(tomlOutput string) {
+	sectionColor := color.New(color.FgHiBlue).SprintFunc()
+	keyColor := color.New(color.FgHiWhite).SprintFunc()
+	valueColor := color.New(color.FgHiCyan).SprintFunc()
+
+	lines := strings.Split(tomlOutput, "\n")
+	for _, line := range lines {
+		trim := strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(trim, "[") && strings.HasSuffix(trim, "]"):
+			// Section headers
+			fmt.Println(sectionColor(line))
+
+		case strings.Contains(trim, "="):
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				key := keyColor(strings.TrimSpace(parts[0]))
+				value := valueColor(strings.TrimSpace(parts[1]))
+				fmt.Printf("%s = %s\n", key, value)
+			} else {
+				fmt.Println(line)
+			}
+
+		default:
+			fmt.Println(line)
+		}
+	}
+}
+
+// StructToMap converts a struct to a map[string]interface{}
+func StructToMap(cfg interface{}) (map[string]interface{}, error) {
+	var result map[string]interface{}
+
+	tmp, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal struct: %w", err)
+	}
+
+	if err := json.Unmarshal(tmp, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal into map: %w", err)
+	}
+
+	return result, nil
 }

@@ -24,8 +24,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	chain_args := devnet.GetDevnetChainArgsOrDefault(config)
 
 	startTime := time.Now() // <-- start timing
-
-	if cCtx.Bool("verbose") {
+	// if user gives , say, log = "DEBUG" Or "Debug", we normalize it to lowercase
+	if common.IsVerboseEnabled(cCtx, config) {
 		log.Printf("Starting devnet... ")
 
 		if cCtx.Bool("reset") {
@@ -72,7 +72,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 	port := cCtx.Int("port")
 
-	if cCtx.Bool("verbose") {
+	if common.IsVerboseEnabled(cCtx, config) {
 		log.Printf("Attempting to stop devnet containers...")
 	}
 

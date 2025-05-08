@@ -27,7 +27,9 @@ var ReleaseCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		if cCtx.Bool("verbose") {
+		config, _ := common.LoadEigenConfig()
+
+		if common.IsVerboseEnabled(cCtx, config) {
 			log.Printf("Preparing release...")
 			log.Printf("Tag: %s", cCtx.String("tag"))
 			if registry := cCtx.String("registry"); registry != "" {

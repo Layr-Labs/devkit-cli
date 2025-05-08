@@ -1,12 +1,18 @@
 architectures:
-  hourglass:
+  task:
     languages:
       go:
-        template: "https://github.com/Layr-Labs/hourglass-avs-template/tree/sm-templateExample"
+        template: "https://github.com/Layr-Labs/hourglass-avs-template"
       ts:
         template: ""
       rust:
         template: ""
+    contracts:
+      languages:
+        solidity:
+          template: "https://github.com/Layr-Labs/hourglass-contracts-template"
+        viper:
+          template: ""
   hello-world-avs:
     languages:
       go:

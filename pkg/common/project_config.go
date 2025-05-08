@@ -13,6 +13,7 @@ import (
 type ProjectSettings struct {
 	ProjectUUID      string `yaml:"project_uuid"`
 	TelemetryEnabled bool   `yaml:"telemetry_enabled"`
+	PostHogAPIKey    string `yaml:"posthog_api_key,omitempty"`
 }
 
 const (
@@ -21,9 +22,19 @@ const (
 
 // SaveProjectSettings saves project settings to the project directory
 func SaveProjectSettings(projectDir string, telemetryEnabled bool) error {
-	settings := ProjectSettings{
-		ProjectUUID:      uuid.New().String(),
-		TelemetryEnabled: telemetryEnabled,
+	// Try to load existing settings first to preserve UUID if it exists
+	var settings ProjectSettings
+	existingSettings, err := LoadProjectSettings()
+	if err == nil && existingSettings != nil {
+		settings = *existingSettings
+		// Only update telemetry setting
+		settings.TelemetryEnabled = telemetryEnabled
+	} else {
+		// Create new settings with a new UUID
+		settings = ProjectSettings{
+			ProjectUUID:      uuid.New().String(),
+			TelemetryEnabled: telemetryEnabled,
+		}
 	}
 
 	data, err := yaml.Marshal(settings)

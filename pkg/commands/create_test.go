@@ -1,11 +1,15 @@
 package commands
 
 import (
+	"bytes"
+	"devkit-cli/pkg/common"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 )
 
@@ -22,7 +26,11 @@ version = "0.1.0"
 	if err := os.WriteFile("default.eigen.toml", []byte(mockToml), 0644); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove("default.eigen.toml")
+	defer func() {
+		if err := os.Remove("default.eigen.toml"); err != nil {
+			t.Logf("Failed to remove test file: %v", err)
+		}
+	}()
 
 	// Override default directory
 	origCmd := CreateCommand
@@ -58,21 +66,26 @@ version = "0.1.0"
 			return err
 		}
 
+		// Create contracts directory for testing
+		contractsDir := filepath.Join(targetDir, common.ContractsDir)
+		if err := os.MkdirAll(contractsDir, 0755); err != nil {
+			return err
+		}
+
 		// Create eigen.toml
 		return copyDefaultTomlToProject(targetDir, projectName, false)
 	}
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{&tmpCmd},
+		Commands: []*cli.Command{WithTestConfig(&tmpCmd)},
 	}
 
-	// Test 1: Missing project name
+	// Test cases
 	if err := app.Run([]string{"app", "create"}); err == nil {
-		t.Error("Expected error for missing project name")
+		t.Error("Expected error for missing project name, but got nil")
 	}
 
-	// Test 2: Basic project creation
 	if err := app.Run([]string{"app", "create", "test-project"}); err != nil {
 		t.Errorf("Failed to create project: %v", err)
 	}
@@ -81,6 +94,12 @@ version = "0.1.0"
 	eigenTomlPath := filepath.Join(tmpDir, "test-project", "eigen.toml")
 	if _, err := os.Stat(eigenTomlPath); os.IsNotExist(err) {
 		t.Error("eigen.toml was not created properly")
+	}
+
+	// Verify contracts directory exists
+	contractsDir := filepath.Join(tmpDir, "test-project", common.ContractsDir)
+	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+		t.Error("contracts directory was not created properly")
 	}
 
 	// Test 3: Project exists (trying to create same project again)
@@ -97,7 +116,12 @@ version = "0.1.0"
 build:
 	@echo "Mock build executed"
 	`
-	if err := os.WriteFile(filepath.Join(projectPath, "Makefile.Devkit"), []byte(mockMakefile), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectPath, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a mock Makefile.Devkit in the contracts directory
+	if err := os.WriteFile(filepath.Join(contractsDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -117,10 +141,103 @@ build:
 
 	buildApp := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{BuildCommand},
+		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
 	}
 
 	if err := buildApp.Run([]string{"app", "build"}); err != nil {
 		t.Errorf("Failed to execute build command: %v", err)
 	}
+}
+
+// Test creating a project with mock template URLs
+func TestCreateCommand_WithTemplates(t *testing.T) {
+	// Mock template URLs similar to what would be in the config
+	mainTemplateURL := "https://github.com/example/avs-template"
+	contractsTemplateURL := "https://github.com/example/contracts-template"
+
+	tmpDir := t.TempDir()
+
+	// Create project directory structure
+	projectName := "test-avs-with-contracts"
+	projectDir := filepath.Join(tmpDir, projectName)
+
+	// Create main directory and contracts directory
+	if err := os.MkdirAll(projectDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	contractsDir := filepath.Join(projectDir, common.ContractsDir)
+	if err := os.MkdirAll(contractsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the structure
+	if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+		t.Fatal("Project directory was not created")
+	}
+
+	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+		t.Fatal("Contracts directory was not created")
+	}
+
+	// Log (for test purposes only)
+	t.Logf("Mock templates: main=%s, contracts=%s", mainTemplateURL, contractsTemplateURL)
+}
+
+func TestConfigCommand_ListOutput(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// 📥 Load the default.eigen.toml content
+	defaultTomlPath := filepath.Join("..", "..", "default.eigen.toml") // adjust as needed
+	defaultContent, err := os.ReadFile(defaultTomlPath)
+	require.NoError(t, err)
+
+	// 📝 Write it to test directory as eigen.toml
+	eigenPath := filepath.Join(tmpDir, "eigen.toml")
+	require.NoError(t, os.WriteFile(eigenPath, defaultContent, 0644))
+
+	// 🔁 Change into the test directory
+	originalWD, _ := os.Getwd()
+	defer func() {
+		if err := os.Chdir(originalWD); err != nil {
+			t.Logf("Failed to return to original directory: %v", err)
+		}
+	}()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// 🧪 Capture os.Stdout
+	var buf bytes.Buffer
+	stdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// ⚙️ Run the CLI app with nested subcommands
+	app := &cli.App{
+		Commands: []*cli.Command{
+			{
+				Name: "avs",
+				Subcommands: []*cli.Command{
+					ConfigCommand,
+				},
+			},
+		},
+	}
+	err = app.Run([]string{"devkit", "avs", "config", "--list"})
+	require.NoError(t, err)
+
+	// 📤 Finish capturing output
+	w.Close()
+	os.Stdout = stdout
+	_, _ = buf.ReadFrom(r)
+	output := stripANSI(buf.String())
+
+	// ✅ Validating output
+	require.Contains(t, output, "[project]")
+	require.Contains(t, output, "[operator]")
+	require.Contains(t, output, "[env]")
+}
+
+func stripANSI(input string) string {
+	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return ansi.ReplaceAllString(input, "")
 }

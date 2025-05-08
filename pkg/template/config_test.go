@@ -12,7 +12,7 @@ func TestLoadConfig(t *testing.T) {
 	testConfigPath := filepath.Join(tempDir, "templates.yml")
 	configContent := `
 architectures:
-  hourglass:
+  task:
     languages:
       go:
         template: "https://github.com/Layr-Labs/hourglass-avs-template"
@@ -33,7 +33,7 @@ architectures:
 	}
 
 	// Test template URL lookup
-	url, err := GetTemplateURL(config, "hourglass", "go")
+	url, _, err := GetTemplateURLs(config, "task", "go")
 	if err != nil {
 		t.Fatalf("Failed to get template URL: %v", err)
 	}
@@ -42,7 +42,7 @@ architectures:
 	}
 
 	// Test non-existent architecture
-	url, err = GetTemplateURL(config, "nonexistent", "go")
+	url, _, err = GetTemplateURLs(config, "nonexistent", "go")
 	if err != nil {
 		t.Fatalf("Failed to get template URL: %v", err)
 	}

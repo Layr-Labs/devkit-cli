@@ -38,11 +38,13 @@ func (g *GitFetcher) Fetch(templateURL, targetDir string) error {
 	args = append(args, repoURL, targetDir)
 
 	cmd := exec.Command("git", args...)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to clone template: %w", err)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to clone template: %w\nOutput: %s", err, string(output))
 	}
 
 	// Cleanup .git directory
+	// TODO: In future, we might want to do git init after this step based on a flag?
 	gitDir := filepath.Join(targetDir, ".git")
 	if err := os.RemoveAll(gitDir); err != nil {
 		return fmt.Errorf("failed to remove .git directory: %w", err)
