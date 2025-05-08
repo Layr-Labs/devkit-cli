@@ -8,10 +8,11 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
-  GOPRIVATE: github.com/Layr-Labs/*
 
 jobs:
   e2e:
+    strategy:
+      fail-fast: true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -24,11 +25,6 @@ jobs:
         with:
           go-version: "1.24"
 
-      - name: Authenticate Go to GitHub private repos
-        run: |
-          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -40,9 +36,13 @@ jobs:
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
 
+      - name: Configure Git to use GitHub token
+        run: |
+          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:@github.com/".insteadOf "https://github.com/"
+        
       - name: Run devkit avs create
-        run: devkit avs create my-awesome-avs
-
+        run: |
+          devkit avs create my-awesome-avs
       - name: Verify AVS project created
         run: |
           if [ ! -f "$HOME/avs/my-awesome-avs/eigen.toml" ]; then
@@ -54,14 +54,14 @@ jobs:
       - name: Run devkit avs build
         run: |
           cd $HOME/avs/my-awesome-avs/
-          devkit avs build
-
-      - name: Start devnet
+          devkit avs build 
+      
+      - name: Run devkit avs devnet start
         run: |
           devkit avs devnet start
-          sleep 10
-
-      - name: Check devnet RPC is live
+          sleep 10 # wait for devnet to fully start
+     
+      - name: Check devnet is running correctly (with retry)
         run: |
           for i in {1..10}; do
             bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
@@ -69,11 +69,18 @@ jobs:
               echo "Current block number: $bn"
               exit 0
             fi
-            echo "Waiting for devnet... retrying in 2s"
+            echo "Anvil not ready yet, retrying in 2s..."
             sleep 2
           done
-          echo "❌ Devnet failed to start"
-          exit 1
-
-      - name: Run devkit avs run
-        run: devkit avs run
+          echo "Devnet didn't start properly after waiting"
+          exit 1        
+    
+      - name: Check devkit avs run
+        run: |
+            devkit avs run 
+      
+      - name: Devnet Stop
+        run: |
+            devkit avs devnet stop
+          
+    
