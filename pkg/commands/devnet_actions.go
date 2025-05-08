@@ -7,9 +7,18 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/urfave/cli/v2"
+)
+
+const (
+	blue   = "\033[34m"
+	cyan   = "\033[36m"
+	green  = "\033[32m"
+	yellow = "\033[33m"
+	reset  = "\033[0m"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
@@ -115,4 +124,46 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 	log.Printf("Devnet containers stopped and removed successfully.")
 	return nil
+}
+
+func ListDevnetContainersAction(cCtx *cli.Context) error {
+	cmd := exec.Command("docker", "ps", "--filter", "name=devkit-devnet", "--format", "{{.Names}}: {{.Ports}}")
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to list devnet containers: %w", err)
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
+		fmt.Printf("%s🚫 No devnet containers running.%s\n", yellow, reset)
+		return nil
+	}
+
+	fmt.Printf("%s📦 Running Devnet Containers:%s\n\n", blue, reset)
+	for _, line := range lines {
+		parts := strings.Split(line, ": ")
+		if len(parts) != 2 {
+			continue
+		}
+		name := parts[0]
+		port := extractHostPort(parts[1])
+		fmt.Printf("%s  -  %s%-25s%s %s→%s  %shttp://localhost:%s%s\n",
+			cyan, reset,
+			name,
+			reset,
+			green, reset,
+			yellow, port, reset,
+		)
+	}
+
+	return nil
+}
+
+func extractHostPort(portStr string) string {
+	if strings.Contains(portStr, "->") {
+		beforeArrow := strings.Split(portStr, "->")[0]
+		hostPort := strings.Split(beforeArrow, ":")
+		return hostPort[len(hostPort)-1]
+	}
+	return portStr
 }
