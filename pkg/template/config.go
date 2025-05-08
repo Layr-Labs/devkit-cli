@@ -15,6 +15,11 @@ type Config struct {
 
 type Architecture struct {
 	Languages map[string]Language `yaml:"languages"`
+	Contracts *ContractConfig     `yaml:"contracts,omitempty"`
+}
+
+type ContractConfig struct {
+	Languages map[string]Language `yaml:"languages"`
 }
 
 type Language struct {
@@ -35,20 +40,32 @@ func LoadConfig() (*Config, error) {
 	return &config, nil
 }
 
-func GetTemplateURL(config *Config, arch, lang string) (string, error) {
+// GetTemplateURLs retrieves both main and contracts template URLs for the given architecture
+// Returns main template URL, contracts template URL (may be empty), and error
+func GetTemplateURLs(config *Config, arch, lang string) (string, string, error) {
 	archConfig, exists := config.Architectures[arch]
 	if !exists {
-		return "", nil
+		return "", "", nil
 	}
 
+	// Get main template URL
 	langConfig, exists := archConfig.Languages[lang]
 	if !exists {
-		return "", nil
+		return "", "", nil
 	}
 
-	if langConfig.Template == "" {
-		return "", nil
+	mainURL := langConfig.Template
+	if mainURL == "" {
+		return "", "", nil
 	}
 
-	return langConfig.Template, nil
+	// Get contracts template URL (default to solidity, no error if missing)
+	contractsURL := ""
+	if archConfig.Contracts != nil {
+		if contractsLang, exists := archConfig.Contracts.Languages["solidity"]; exists {
+			contractsURL = contractsLang.Template
+		}
+	}
+
+	return mainURL, contractsURL, nil
 }
