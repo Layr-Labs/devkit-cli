@@ -76,11 +76,6 @@ jobs:
           echo "❌ Devnet failed to start"
           exit 1
 
-      - name: Run devkit avs run
-        run: |
-          cd $HOME/avs/my-awesome-avs/
-          devkit avs run
-
       - name: Stop devnet
         run: |
           cd $HOME/avs/my-awesome-avs/
