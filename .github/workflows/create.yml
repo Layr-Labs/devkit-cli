@@ -35,7 +35,11 @@ jobs:
 
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
-
+      
+      - name: Configure Git to use GitHub token
+        run: |
+          git config --global url."https://${{ secrets.HOURGLASS }}:@github.com/".insteadOf "https://github.com/"
+        
       - name: Run devkit avs create
         run: |
           devkit avs create my-awesome-avs
