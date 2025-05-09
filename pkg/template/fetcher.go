@@ -328,6 +328,44 @@ func copyFromCache(mirrorPath, destPath string, updateProgress func(int)) error 
 	return nil
 }
 
+func runClone(repoURL, branch string, args []string, dest string, updateProgress func(int)) error {
+	// clone with --progress to update progress report
+	args = append([]string{"clone", "--progress"}, args...)
+	if branch != "" {
+		args = append(args, "-b", branch)
+	}
+	args = append(args, repoURL, dest)
+
+	// exec the git command to clone the target repo to cache
+	cmd := exec.Command("git", args...)
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("stderr pipe: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("clone start: %w", err)
+	}
+
+	// track progress according to `Receiving Objects`
+	scanner := bufio.NewScanner(stderr)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if match := receivingRegex.FindStringSubmatch(line); match != nil {
+			updateProgress(percentToInt(match[1]))
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("stderr scan error: %w", err)
+	}
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("clone failed: %w", err)
+	}
+
+	// mark progress as 100 before moving on
+	updateProgress(100)
+	return nil
+}
+
 func cloneWithCache(repoURL, branch, cachePath, destPath string, noCache bool, updateProgress func(int)) error {
 	// only pull the repo if cache is missing or noCache is provided
 	if noCache || notExists(cachePath) {
@@ -336,29 +374,8 @@ func cloneWithCache(repoURL, branch, cachePath, destPath string, noCache bool, u
 		}
 
 		// clone with --bare to keep cache tree clean
-		args := []string{"clone", "--bare", "--progress"}
-		if branch != "" {
-			args = append(args, "-b", branch)
-		}
-		args = append(args, repoURL, cachePath)
-
-		cmd := exec.Command("git", args...)
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			return fmt.Errorf("stderr pipe: %w", err)
-		}
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("clone start: %w", err)
-		}
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if match := receivingRegex.FindStringSubmatch(line); match != nil {
-				updateProgress(percentToInt(match[1]))
-			}
-		}
-		if err := cmd.Wait(); err != nil {
-			return fmt.Errorf("clone failed: %s: %w", repoURL, err)
+		if err := runClone(repoURL, branch, []string{"--bare"}, cachePath, updateProgress); err != nil {
+			return err
 		}
 	}
 
@@ -503,28 +520,41 @@ func (g *GitFetcher) Fetch(templateURL, targetDir string, verbose bool, noCache 
 	}
 	renderProgressGrid(grid)
 
-	// create the .git-template-cache dir if missing
-	cacheDir := filepath.Join(".", ".git-template-cache")
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
-		return fmt.Errorf("create template cache dir: %w", err)
-	}
-
-	// get HEAD commit from remote to id the clone we're about to make
+	// get HEAD commit from remote to id the clone we're about to make, fallback to no-cache if we can't get HEAD
+	useCache := true
 	commitHash, err := getRemoteHEADCommit(repoURL, branch)
 	if err != nil {
-		return fmt.Errorf("get remote HEAD commit failed: %w", err)
+		useCache = false
+		printError("⚠️  Warning: couldn't resolve HEAD commit, falling back to direct clone: %v\n", err)
 	}
+	// get name from the repoUrl
 	templateName := filepath.Base(strings.TrimSuffix(repoURL, ".git"))
-	cacheName := fmt.Sprintf("%s-%s.git", templateName, commitHash)
-	cachePath := filepath.Join(cacheDir, cacheName)
 
-	// clone into cache if needed
-	err = cloneWithCache(repoURL, branch, cachePath, targetDir, noCache, func(pct int) {
-		grid.progress[targetDir] = pct
-		renderProgressGrid(grid)
-	})
-	if err != nil {
-		return fmt.Errorf("clone with cache failed: %w", err)
+	if useCache {
+		cacheDir := filepath.Join(".", ".git-template-cache")
+		if err := os.MkdirAll(cacheDir, 0755); err != nil {
+			return fmt.Errorf("create template cache dir: %w", err)
+		}
+
+		// assign cache id as concat of name+commit
+		cacheName := fmt.Sprintf("%s-%s.git", templateName, commitHash)
+		cachePath := filepath.Join(cacheDir, cacheName)
+
+		// clone into cache if requested and copy to targetDir
+		if err := cloneWithCache(repoURL, branch, cachePath, targetDir, noCache, func(pct int) {
+			grid.progress[targetDir] = pct
+			renderProgressGrid(grid)
+		}); err != nil {
+			return fmt.Errorf("clone with cache failed: %w", err)
+		}
+	} else {
+		err = runClone(repoURL, branch, []string{"--depth=1", "--recurse-submodules=0"}, targetDir, func(pct int) {
+			grid.progress[targetDir] = pct
+			renderProgressGrid(grid)
+		})
+		if err != nil {
+			return fmt.Errorf("fallback clone failed: %w", err)
+		}
 	}
 
 	// complete progress in the grid
