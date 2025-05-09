@@ -328,6 +328,11 @@ func copyFromCache(mirrorPath, destPath string, updateProgress func(int)) error 
 }
 
 func runClone(repoURL, branch string, args []string, dest string, updateProgress func(int)) error {
+	// lock whilst this clone takes place
+	lock := lockForRepo(dest)
+	lock.Lock()
+	defer lock.Unlock()
+
 	// clone with --progress to update progress report
 	args = append([]string{"clone", "--progress"}, args...)
 	if branch != "" {
