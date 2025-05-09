@@ -285,6 +285,28 @@ func notExists(path string) bool {
 	return os.IsNotExist(err)
 }
 
+func cloneWithCache(repoURL, branch, cachePath, destPath string, noCache bool, updateProgress func(int)) error {
+	// Lock on the cache path to prevent races
+	lock := lockForRepo(repoURL)
+	lock.Lock()
+	defer lock.Unlock()
+
+	// only pull the repo if cache is missing or noCache is provided
+	if noCache || notExists(cachePath) {
+		if !notExists(cachePath) {
+			_ = os.RemoveAll(cachePath)
+		}
+
+		// clone with --bare to keep cache tree clean
+		if err := runClone(repoURL, branch, []string{"--bare"}, cachePath, updateProgress); err != nil {
+			return err
+		}
+	}
+
+	// copy the cached copy to destPath
+	return copyFromCache(cachePath, destPath, updateProgress)
+}
+
 func copyFromCache(mirrorPath, destPath string, updateProgress func(int)) error {
 	// lock the destination path
 	lock := lockForRepo(destPath)
@@ -292,10 +314,12 @@ func copyFromCache(mirrorPath, destPath string, updateProgress func(int)) error 
 	defer lock.Unlock()
 
 	// proactively clean up before cloning
-	_ = os.RemoveAll(destPath)
+	if err := os.RemoveAll(destPath); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to remove destPath %s: %w", destPath, err)
+	}
 
 	// perform a clone from the cache to the workingDir
-	cmd := exec.Command("git", "clone", "--progress", mirrorPath, destPath)
+	cmd := exec.Command("git", "clone", "--dissociate", "--no-hardlinks", "--progress", mirrorPath, destPath)
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -370,23 +394,6 @@ func runClone(repoURL, branch string, args []string, dest string, updateProgress
 	return nil
 }
 
-func cloneWithCache(repoURL, branch, cachePath, destPath string, noCache bool, updateProgress func(int)) error {
-	// only pull the repo if cache is missing or noCache is provided
-	if noCache || notExists(cachePath) {
-		if !notExists(cachePath) {
-			_ = os.RemoveAll(cachePath)
-		}
-
-		// clone with --bare to keep cache tree clean
-		if err := runClone(repoURL, branch, []string{"--bare"}, cachePath, updateProgress); err != nil {
-			return err
-		}
-	}
-
-	// copy the cached copy to destPath
-	return copyFromCache(cachePath, destPath, updateProgress)
-}
-
 func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bool, depth int, maxDepth int) error {
 	// exit early if the maxDepth is exceeded
 	if maxDepth != -1 && depth >= maxDepth {
@@ -437,6 +444,7 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 			// wait for this goroutine to finish
 			defer wg.Done()
 
+			// unpack submodule commit hash from the parent ls-tree
 			commitHash, err := getSubmoduleCommit(repoDir, mod.Path)
 			if err != nil {
 				printLog("failed to get commit for %s: %v\n", mod.Path, err)
@@ -547,7 +555,7 @@ func (g *GitFetcher) Fetch(templateURL, targetDir string, verbose bool, noCache 
 
 		// clone into cache if requested and copy to targetDir
 		if err := cloneWithCache(repoURL, branch, cachePath, targetDir, noCache, func(pct int) {
-			grid.progress[targetDir] = pct
+			updateProgress(grid, targetDir, pct)
 			renderProgressGrid(grid)
 		}); err != nil {
 			return fmt.Errorf("clone with cache failed: %w", err)
@@ -555,7 +563,7 @@ func (g *GitFetcher) Fetch(templateURL, targetDir string, verbose bool, noCache 
 	} else {
 		// clone fresh directly to the targetDir
 		err = runClone(repoURL, branch, []string{"--depth=1", "--recurse-submodules=0"}, targetDir, func(pct int) {
-			grid.progress[targetDir] = pct
+			updateProgress(grid, targetDir, pct)
 			renderProgressGrid(grid)
 		})
 		if err != nil {
