@@ -32,3 +32,11 @@ func StopAndRemoveContainer(containerName string) {
 		log.Printf("✅ Removed container %s", containerName)
 	}
 }
+
+func GetDockerPsDevnetArgs() []string {
+	return []string{
+		"ps",
+		"--filter", "name=devkit-devnet",
+		"--format", "{{.Names}}: {{.Ports}}",
+	}
+}
