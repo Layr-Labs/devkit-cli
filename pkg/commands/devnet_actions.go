@@ -94,9 +94,9 @@ func StopDevnetAction(cCtx *cli.Context) error {
 			if name == "" {
 				continue
 			}
-			parts := strings.Split(name, ": ")
+			containerName := strings.Split(name, ": ")[0]
 
-			devnet.StopAndRemoveContainer(parts[0])
+			devnet.StopAndRemoveContainer(containerName)
 
 		}
 
@@ -131,7 +131,8 @@ func StopDevnetAction(cCtx *cli.Context) error {
 					continue
 				}
 				containerName := parts[0]
-				hostPort := extractHostPort(parts[1])
+				port := parts[1]
+				hostPort := extractHostPort(port)
 
 				if hostPort == fmt.Sprintf("%d", projectPort) {
 					// Derive project name from container name
