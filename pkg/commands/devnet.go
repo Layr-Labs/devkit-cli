@@ -57,6 +57,5 @@ var DevnetCommand = &cli.Command{
 			Usage:  "Lists all running devkit devnet containers with their ports",
 			Action: ListDevnetContainersAction,
 		},
-		{},
 	},
 }

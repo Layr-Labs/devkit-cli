@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -134,6 +135,11 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
+		// Initialize git repository in the project directory
+		if err := initGitRepo(targetDir, cCtx.Bool("verbose")); err != nil {
+			log.Printf("Warning: Failed to initialize Git repository in %s: %v", targetDir, err)
+		}
+
 		log.Printf("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
@@ -202,6 +208,64 @@ func copyDefaultTomlToProject(targetDir, projectName string, verbose bool) error
 
 	if verbose {
 		log.Printf("Created eigen.toml in project directory")
+	}
+	return nil
+}
+
+// initGitRepo initializes a new Git repository in the target directory.
+func initGitRepo(targetDir string, verbose bool) error {
+	if verbose {
+		log.Printf("Initializing Git repository in %s...", targetDir)
+	}
+	cmd := exec.Command("git", "init")
+	cmd.Dir = targetDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
+	}
+	// Initialize submodules in the project directory
+	if err := initSubmodules(targetDir, verbose); err != nil {
+		log.Printf("Warning: Failed to initialize Submodules repository in %s: %v", targetDir, err)
+	}
+	if verbose {
+		log.Printf("Git repository initialized successfully.")
+		if len(output) > 0 {
+			log.Printf("Git init output:\n%s", string(output))
+		}
+	}
+	return nil
+}
+
+// initSubmodules initializes a submodules in the target directory.
+func initSubmodules(targetDir string, verbose bool) error {
+	submodules := []string{
+		"contracts/lib/forge-std",
+		"contracts/lib/hourglass-monorepo",
+	}
+	for _, dir := range submodules {
+		fullPath := filepath.Join(targetDir, dir)
+		if err := os.RemoveAll(fullPath); err != nil && !os.IsNotExist(err) {
+			log.Printf("Warning: Failed to remove %s: %v", fullPath, err)
+		}
+	}
+	cmds := [][]string{
+		{"git", "submodule", "add", "https://github.com/foundry-rs/forge-std", "contracts/lib/forge-std"},
+		{"git", "submodule", "add", "https://github.com/Layr-Labs/hourglass-monorepo", "contracts/lib/hourglass-monorepo"},
+		{"git", "submodule", "update", "--init", "--recursive", "--depth=1"},
+	}
+	for _, args := range cmds {
+		if verbose {
+			log.Printf("Running: %s", strings.Join(args, " "))
+		}
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = targetDir
+		if verbose {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+		}
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("cmd %v failed: %w", args, err)
+		}
 	}
 	return nil
 }

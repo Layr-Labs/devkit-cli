@@ -13,6 +13,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const (
+	blue   = "\033[34m"
+	cyan   = "\033[36m"
+	green  = "\033[32m"
+	yellow = "\033[33m"
+	reset  = "\033[0m"
+)
+
 func StartDevnetAction(cCtx *cli.Context) error {
 	// Load config
 	config, err := common.LoadEigenConfig()
@@ -62,8 +70,14 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 	rpc_url := fmt.Sprintf("http://localhost:%d", port)
 
+	// Sleep for 1 second to ensure the devnet is fully started
+	time.Sleep(1 * time.Second)
+
 	devnet.FundWalletsDevnet(config, rpc_url)
 	elapsed := time.Since(startTime).Round(time.Second)
+
+	// Sleep for 1 second to make sure wallets are funded
+	time.Sleep(1 * time.Second)
 	log.Printf("Devnet started successfully in %s", elapsed)
 
 	return nil

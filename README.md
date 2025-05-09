@@ -12,6 +12,20 @@ A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Ser
 - [Go](https://go.dev/doc/install)
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
 - [make](https://formulae.brew.sh/formula/make)
+- [yq](https://github.com/mikefarah/yq/#install)
+
+#### Setup to fetch private go modules
+
+To ensure you can fetch private Go modules hosted on GitHub (needed before the template dependency repos are live):
+
+1.  **Ensure SSH Key is Added to GitHub:** Verify that you have an SSH key associated with your GitHub account. You can find instructions [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
+2.  **Repository Access:** Confirm with EigenLabs that your GitHub account has been granted access to the necessary private repositories (e.g., for preview features or specific AVS components).
+3.  **Configure Git URL Rewrite:** Run the following command in your terminal to instruct Git to use SSH instead of HTTPS for Eigenlabs repositories:
+    ```bash
+    git config --global url."ssh://git@github.com/Layr-Labs/".insteadOf "https://github.com/Layr-Labs/"
+    ```
+
+If you are on OSX, ensure that your `~/.ssh/config` file does not contain the line `UseKeychain yes`, as it can interfere with SSH agent forwarding or other SSH functionalities needed for fetching private modules. If it exists, you may need to comment it out or remove it.
 
 
 ```bash
@@ -24,6 +38,9 @@ make install
 
 # Or build manually
 go build -o devkit ./cmd/devkit
+
+# add the binary to your path
+export PATH=$PATH:~/bin
 
 # Get started
 devkit --help
@@ -39,9 +56,9 @@ cd devkit-cli
 git pull origin main
 
 # Note that you have to run the create command from repository directory
-devkit avs create my-hourglass-project  # by default pick task arch and go lang
+devkit avs create --verbose my-hourglass-project  # by default pick task arch and go lang
 OR
-devkit avs create --overwrite my-existing-hourglass-project
+devkit avs create --verbose --overwrite my-existing-hourglass-project
 
 # Once you have a project directory, following commands should be run from the project directory you created.
 devkit avs build
