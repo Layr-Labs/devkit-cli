@@ -179,9 +179,9 @@ func getRemoteHEADCommit(repoURL, branch string) (string, error) {
 	} else {
 		args = append(args, "HEAD")
 	}
-	out, err := exec.Command("git", args...).Output()
+	out, err := exec.Command("git", args...).CombinedOutput()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("git ls-remote failed: %w\nOutput:\n%s", err, out)
 	}
 	fields := strings.Fields(string(out))
 	if len(fields) < 1 {
