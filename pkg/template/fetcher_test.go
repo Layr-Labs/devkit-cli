@@ -27,7 +27,7 @@ func TestGitFetcher_ValidRepo(t *testing.T) {
 	fetcher := &GitFetcher{}
 	tempDir := t.TempDir()
 
-	repo := "https://github.com/Layr-Labs/hourglass-avs-template"
+	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
 
 	err := fetcher.Fetch(repo, tempDir, false, true)
 	if err != nil {
@@ -47,7 +47,7 @@ func TestGitFetcher_Submodules(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Includes submodules: simple example with known submodule
-	repo := "https://github.com/Layr-Labs/hourglass-avs-template"
+	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
 
 	err := fetcher.Fetch(repo, tempDir, false, true)
 	if err != nil {
@@ -55,7 +55,7 @@ func TestGitFetcher_Submodules(t *testing.T) {
 	}
 
 	// Example path — verify at least one known submodule folder exists
-	expectedSubmodule := filepath.Join(tempDir, "contracts")
+	expectedSubmodule := filepath.Join(tempDir, "lib", "forge-std")
 	if _, err := os.Stat(expectedSubmodule); os.IsNotExist(err) {
 		t.Log("submodule not found — this may vary based on repo")
 	}
@@ -65,20 +65,20 @@ func TestGitFetcher_MaxDepth(t *testing.T) {
 	fetcher := &GitFetcher{MaxDepth: 0}
 	tempDir := t.TempDir()
 
-	repo := "https://github.com/Layr-Labs/hourglass-avs-template"
+	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
 
 	err := fetcher.Fetch(repo, tempDir, false, true)
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo with depth: %v", err)
 	}
-	visited := filepath.Join(tempDir, "contracts")
+	visited := filepath.Join(tempDir, "lib", "forge-std")
 	if _, err := os.Stat(visited); err != nil {
 		t.Fatalf("expected top-level submodule not found")
 	}
 
-	contractsGitmodules := filepath.Join(tempDir, "contracts/.gitmodules")
+	contractsGitmodules := filepath.Join(tempDir, "lib", "forge-std", ".gitmodules")
 	if _, err := os.Stat(contractsGitmodules); err == nil {
-		t.Errorf("contracts/.gitmodules parsed despite MaxDepth=1")
+		t.Errorf("lib/forge-std/.gitmodules parsed despite MaxDepth=1")
 	}
 }
 
@@ -86,7 +86,7 @@ func TestGitFetcher_NonexistentBranch(t *testing.T) {
 	fetcher := &GitFetcher{}
 	tempDir := t.TempDir()
 
-	repo := "https://github.com/Layr-Labs/hourglass-avs-template/tree/missing-branch"
+	repo := "https://github.com/Layr-labs/eigenlayer-contracts/tree/missing-branch"
 
 	err := fetcher.Fetch(repo, tempDir, false, true)
 	if err == nil {
