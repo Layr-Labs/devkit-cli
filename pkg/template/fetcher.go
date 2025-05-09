@@ -314,16 +314,15 @@ func copyFromCache(mirrorPath, destPath string, updateProgress func(int)) error 
 			updateProgress(pct)
 		}
 	}
-
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("stderr scan error: %w", err)
 	}
-
 	if err := cmd.Wait(); err != nil {
 		_ = os.RemoveAll(destPath)
 		return err
 	}
 
+	// mark progress as 100 before moving on
 	updateProgress(100)
 	return nil
 }
@@ -530,6 +529,7 @@ func (g *GitFetcher) Fetch(templateURL, targetDir string, verbose bool, noCache 
 	// get name from the repoUrl
 	templateName := filepath.Base(strings.TrimSuffix(repoURL, ".git"))
 
+	// if we can useCache then cloneWithCache
 	if useCache {
 		cacheDir := filepath.Join(".", ".git-template-cache")
 		if err := os.MkdirAll(cacheDir, 0755); err != nil {
@@ -548,6 +548,7 @@ func (g *GitFetcher) Fetch(templateURL, targetDir string, verbose bool, noCache 
 			return fmt.Errorf("clone with cache failed: %w", err)
 		}
 	} else {
+		// clone fresh directly to the targetDir
 		err = runClone(repoURL, branch, []string{"--depth=1", "--recurse-submodules=0"}, targetDir, func(pct int) {
 			grid.progress[targetDir] = pct
 			renderProgressGrid(grid)
