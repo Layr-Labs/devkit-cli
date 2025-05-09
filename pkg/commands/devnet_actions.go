@@ -79,50 +79,122 @@ func StartDevnetAction(cCtx *cli.Context) error {
 }
 
 func StopDevnetAction(cCtx *cli.Context) error {
-	// Load config
-	config, err := common.LoadEigenConfig()
-	if err != nil {
-		return err
-	}
 
-	port := cCtx.Int("port")
+	stopAllContainers := cCtx.Bool("all")
+	if stopAllContainers {
 
-	if common.IsVerboseEnabled(cCtx, config) {
-		log.Printf("Attempting to stop devnet containers...")
-	}
+		cmd := exec.Command("docker", "ps", "--filter", "name=devkit-devnet", "--format", "{{.Names}}: {{.Ports}}")
+		output, err := cmd.Output()
+		if err != nil {
+			return fmt.Errorf("failed to list devnet containers: %w", err)
+		}
+		containerNames := strings.Split(strings.TrimSpace(string(output)), "\n")
 
-	// Check if any devnet containers are running
-	checkCmd := exec.Command("docker", "ps", "--filter", "name=devkit-devnet", "--format", "{{.Names}}")
-	output, err := checkCmd.Output()
-	if err != nil {
-		log.Fatalf("Failed to check running containers: %v", err)
-	}
+		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+		if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
+			fmt.Printf("%s🚫 No devnet containers running.%s\n", yellow, reset)
+			return nil
+		}
 
-	if len(output) == 0 {
-		log.Printf("No running devkit devnet containers found. Nothing to stop.")
+		log.Printf("Stopping all devnet containers...")
+
+		for _, name := range containerNames {
+			log.Printf("containerName : %s", name)
+			name = strings.TrimSpace(name)
+			if name == "" {
+				continue
+			}
+			// docker-compose for anvil devnet and anvil state.json
+			parts := strings.Split(name, ": ")
+
+			log.Printf("project name to stop : %s", parts[0])
+
+			exec.Command("docker", "stop", parts[0]).Run()
+			exec.Command("docker", "rm", parts[0]).Run()
+
+			log.Printf("Devnet containers stopped and removed successfully.")
+
+		}
+
 		return nil
 	}
 
-	// docker-compose for anvil devnet and anvil state.json
-	composePath, statePath := devnet.WriteEmbeddedArtifacts()
-	containerName := fmt.Sprintf("devkit-devnet-%s", config.Project.Name)
+	projectName := cCtx.String("project.name")
+	projectPort := cCtx.Int("port")
 
-	// Run docker compose down for anvil devnet
-	stopCmd := exec.Command("docker", "compose", "-p", config.Project.Name, "-f", composePath, "down")
+	// Check if any of the args are provided
+	if !(projectName == "") || !(projectPort == 0) {
 
-	stopCmd.Env = append(os.Environ(), // required for ${} to resolve in compose
-		"FOUNDRY_IMAGE="+devnet.GetDevnetChainImageOrDefault(config),
-		"ANVIL_ARGS="+devnet.GetDevnetChainArgsOrDefault(config),
-		fmt.Sprintf("DEVNET_PORT=%d", port),
-		"STATE_PATH="+statePath,
-		"AVS_CONTAINER_NAME="+containerName,
-	)
+		if projectName != "" {
+			container := fmt.Sprintf("devkit-devnet-%s", projectName)
+			if err := exec.Command("docker", "stop", container).Run(); err != nil {
+				log.Printf("⚠️ Failed to stop container %s: %v", container, err)
+			} else {
+				log.Printf("✅ Stopped container %s", container)
+			}
+			if err := exec.Command("docker", "rm", container).Run(); err != nil {
+				log.Printf("⚠️ Failed to remove container %s: %v", container, err)
+			} else {
+				log.Printf("✅ Removed container %s", container)
+			}
 
-	if err := stopCmd.Run(); err != nil {
-		log.Fatalf("Failed to stop devnet containers: %v", err)
+		} else {
+			// project.name is empty, but port is provided
+			// Find which container is running on that port
+			cmd := exec.Command("docker", "ps", "--filter", "name=devkit-devnet", "--format", "{{.Names}}: {{.Ports}}")
+			output, err := cmd.Output()
+			if err != nil {
+				log.Fatalf("Failed to list running devnet containers: %v", err)
+			}
+
+			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+			for _, line := range lines {
+				parts := strings.Split(line, ": ")
+				if len(parts) != 2 {
+					continue
+				}
+				containerName := parts[0]
+				hostPort := extractHostPort(parts[1])
+
+				if hostPort == fmt.Sprintf("%d", projectPort) {
+					// Derive project name from container name
+					projectNameFromContainer := strings.TrimPrefix(containerName, "devkit-devnet-")
+
+					exec.Command("docker", "stop", projectNameFromContainer).Run()
+					exec.Command("docker", "rm", projectNameFromContainer).Run()
+
+					log.Printf("Stopped devnet container running on port %d (%s)", projectPort, containerName)
+					break
+				}
+			}
+		}
+		return nil
 	}
 
-	log.Printf("Devnet containers stopped and removed successfully.")
+	if devnet.FileExistsInRoot("eigen.toml") {
+		// Load config
+		config, err := common.LoadEigenConfig()
+		if err != nil {
+			return err
+		}
+
+		container := fmt.Sprintf("devkit-devnet-%s", config.Project.Name)
+
+		if err := exec.Command("docker", "stop", container).Run(); err != nil {
+			log.Printf("⚠️ Failed to stop container %s: %v", container, err)
+		} else {
+			log.Printf("✅ Stopped container %s", container)
+		}
+		if err := exec.Command("docker", "rm", container).Run(); err != nil {
+			log.Printf("⚠️ Failed to remove container %s: %v", container, err)
+		} else {
+			log.Printf("✅ Removed container %s", container)
+		}
+
+	} else {
+		log.Printf("Run this command from the avs directory  or run devkit avs devnet stop --help for available commands")
+	}
+
 	return nil
 }
 
