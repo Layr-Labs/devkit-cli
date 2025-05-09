@@ -53,6 +53,16 @@ var CreateCommand = &cli.Command{
 			Name:  "overwrite",
 			Usage: "Force overwrite if project directory already exists",
 		},
+		&cli.BoolFlag{
+			Name:  "no-cache",
+			Usage: "Disable the use of caching mechanisms",
+			Value: false,
+		},
+		&cli.IntFlag{
+			Name:  "depth",
+			Usage: "Max submodule recursion depth",
+			Value: -1,
+		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		if cCtx.NArg() == 0 {
@@ -103,8 +113,10 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Fetch main template
-		fetcher := &template.GitFetcher{}
-		if err := fetcher.Fetch(mainURL, targetDir, cCtx.Bool("verbose")); err != nil {
+		fetcher := &template.GitFetcher{
+			MaxDepth: cCtx.Int("depth"),
+		}
+		if err := fetcher.Fetch(mainURL, targetDir, cCtx.Bool("verbose"), cCtx.Bool("no-cache")); err != nil {
 			return fmt.Errorf("failed to fetch template from %s: %w", mainURL, err)
 		}
 
@@ -114,7 +126,7 @@ var CreateCommand = &cli.Command{
 
 			// Fetch the contracts directory if it does not exist in the template
 			if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
-				if err := fetcher.Fetch(contractsURL, contractsDir, cCtx.Bool("verbose")); err != nil {
+				if err := fetcher.Fetch(contractsURL, contractsDir, cCtx.Bool("verbose"), cCtx.Bool("no-cache")); err != nil {
 					log.Printf("Warning: Failed to fetch contracts template: %v", err)
 				}
 			}

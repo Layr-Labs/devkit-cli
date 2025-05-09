@@ -26,3 +26,6 @@ Thumbs.db
 .idea/
 *.swp
 
+# DevKit level git cache
+.git-template-cache
+.git-submodule-cache
