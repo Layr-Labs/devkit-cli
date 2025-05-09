@@ -247,13 +247,11 @@ func TestStopDevnetAll(t *testing.T) {
 
 	// Prepare and start multiple devnets
 	defaultEigenPath, _ := filepath.Abs(filepath.Join("..", "..", "default.eigen.toml"))
-	projectDirs := []string{}
 
 	for i := 0; i < 2; i++ {
 		projectDir, err := createTempAVSProject(defaultEigenPath)
 		assert.NoError(t, err)
 		defer os.RemoveAll(projectDir)
-		projectDirs = append(projectDirs, projectDir)
 
 		err = os.Chdir(projectDir)
 		assert.NoError(t, err)
