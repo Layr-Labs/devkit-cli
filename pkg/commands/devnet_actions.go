@@ -87,7 +87,9 @@ func StopDevnetAction(cCtx *cli.Context) error {
 			return nil
 		}
 
-		log.Printf("Stopping all devnet containers...")
+		if cCtx.Bool("verbose") {
+			log.Printf("Attempting to stop devnet containers...")
+		}
 
 		for _, name := range containerNames {
 			name = strings.TrimSpace(name)
