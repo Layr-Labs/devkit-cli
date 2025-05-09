@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -236,4 +237,66 @@ func TestListRunningDevnets(t *testing.T) {
 	}
 	err = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
 	assert.NoError(t, err)
+}
+
+func TestStopDevnetAll(t *testing.T) {
+	// Save working directory
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	// Prepare and start multiple devnets
+	defaultEigenPath, _ := filepath.Abs(filepath.Join("..", "..", "default.eigen.toml"))
+	projectDirs := []string{}
+
+	for i := 0; i < 2; i++ {
+		projectDir, err := createTempAVSProject(defaultEigenPath)
+		assert.NoError(t, err)
+		defer os.RemoveAll(projectDir)
+		projectDirs = append(projectDirs, projectDir)
+
+		err = os.Chdir(projectDir)
+		assert.NoError(t, err)
+
+		port, err := getFreePort()
+		assert.NoError(t, err)
+
+		startApp := &cli.App{
+			Name: "devkit",
+			Flags: []cli.Flag{
+				&cli.IntFlag{Name: "port"},
+				&cli.BoolFlag{Name: "verbose"},
+			},
+			Action: StartDevnetAction,
+		}
+
+		err = startApp.Run([]string{"devkit", "--port", port, "--verbose"})
+		assert.NoError(t, err)
+	}
+
+	// Top-level CLI app simulating full command: devkit avs devnet stop --all
+	devkitApp := &cli.App{
+		Name: "devkit",
+		Commands: []*cli.Command{
+			{
+				Name: "avs",
+				Subcommands: []*cli.Command{
+					{
+						Name:        "devnet",
+						Subcommands: []*cli.Command{DevnetCommand.Subcommands[1]}, // stop
+					},
+				},
+			},
+		},
+	}
+
+	err = devkitApp.Run([]string{"devkit", "avs", "devnet", "stop", "--all"})
+	assert.NoError(t, err)
+
+	// Verify no devnet containers are running
+	cmd := exec.Command("docker", "ps", "--filter", "name=devkit-devnet", "--format", "{{.Names}}")
+	output, err := cmd.Output()
+	assert.NoError(t, err)
+
+	assert.NotContains(t, string(output), "devkit-devnet-", "All devnet containers should be stopped")
 }
