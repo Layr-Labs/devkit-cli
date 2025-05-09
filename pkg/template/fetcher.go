@@ -450,7 +450,8 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 				printLog("failed to get commit for %s: %v\n", mod.Path, err)
 				return
 			}
-			cacheName := fmt.Sprintf("%s-%s.git", mod.Name, commitHash)
+			baseName := filepath.Base(mod.Name)
+			cacheName := fmt.Sprintf("%s-%s.git", baseName, commitHash)
 			cachePath := filepath.Join(cacheDir, cacheName)
 			workingCopyPath := filepath.Join(repoDir, mod.Path)
 
