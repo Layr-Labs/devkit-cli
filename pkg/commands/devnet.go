@@ -38,5 +38,10 @@ var DevnetCommand = &cli.Command{
 			Usage:  "Stops and removes all containers and resources",
 			Action: StopDevnetAction,
 		},
+		{
+			Name:   "list",
+			Usage:  "Lists all running devkit devnet containers with their ports",
+			Action: ListDevnetContainersAction,
+		},
 	},
 }

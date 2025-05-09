@@ -1,0 +1,82 @@
+name: Devkit AVS Create Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+env:
+  FOUNDRY_PROFILE: ci
+  GOPRIVATE: github.com/Layr-Labs/*
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Authenticate Go to GitHub private repos
+        run: |
+          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
+
+      - name: Install devkit CLI
+        run: make install
+
+      - name: Add ~/bin to PATH
+        run: echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Run devkit avs create
+        run: devkit avs create my-awesome-avs
+
+      - name: Verify AVS project created
+        run: |
+          if [ ! -f "$HOME/avs/my-awesome-avs/eigen.toml" ]; then
+            echo "❌ AVS project eigen.toml not found!"
+            exit 1
+          fi
+          echo "✅ AVS project created successfully at $HOME/avs/my-awesome-avs/"
+
+      - name: Run devkit avs build
+        run: |
+          cd $HOME/avs/my-awesome-avs/
+          devkit avs build
+
+      - name: Start devnet
+        run: |
+          cd $HOME/avs/my-awesome-avs/
+          devkit avs devnet start
+          sleep 10
+
+      - name: Check devnet RPC is live
+        run: |
+          for i in {1..10}; do
+            bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
+            if [ "$bn" != "error" ]; then
+              echo "Current block number: $bn"
+              exit 0
+            fi
+            echo "Waiting for devnet... retrying in 2s"
+            sleep 2
+          done
+          echo "❌ Devnet failed to start"
+          exit 1
+
+      - name: Stop devnet
+        run: |
+          cd $HOME/avs/my-awesome-avs/
+          devkit avs devnet stop

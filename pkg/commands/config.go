@@ -19,10 +19,6 @@ var ConfigCommand = &cli.Command{
 			Name:  "list",
 			Usage: "Display all current project configuration settings",
 		},
-		&cli.StringFlag{
-			Name:  "set",
-			Usage: "Set or update a specific configuration key in eigen.toml",
-		},
 		&cli.BoolFlag{
 			Name:  "edit",
 			Usage: "Open eigen.toml in a text editor for manual editing",

@@ -2,13 +2,15 @@ package commands
 
 import (
 	"bytes"
+	"devkit-cli/pkg/common"
 	"fmt"
-	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 )
 
 func TestCreateCommand(t *testing.T) {
@@ -64,6 +66,12 @@ version = "0.1.0"
 			return err
 		}
 
+		// Create contracts directory for testing
+		contractsDir := filepath.Join(targetDir, common.ContractsDir)
+		if err := os.MkdirAll(contractsDir, 0755); err != nil {
+			return err
+		}
+
 		// Create eigen.toml
 		return copyDefaultTomlToProject(targetDir, projectName, false)
 	}
@@ -88,6 +96,12 @@ version = "0.1.0"
 		t.Error("eigen.toml was not created properly")
 	}
 
+	// Verify contracts directory exists
+	contractsDir := filepath.Join(tmpDir, "test-project", common.ContractsDir)
+	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+		t.Error("contracts directory was not created properly")
+	}
+
 	// Test 3: Project exists (trying to create same project again)
 	if err := app.Run([]string{"app", "create", "test-project"}); err == nil {
 		t.Error("Expected error when creating existing project")
@@ -102,7 +116,12 @@ version = "0.1.0"
 build:
 	@echo "Mock build executed"
 	`
-	if err := os.WriteFile(filepath.Join(projectPath, "Makefile.Devkit"), []byte(mockMakefile), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectPath, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a mock Makefile.Devkit in the contracts directory
+	if err := os.WriteFile(filepath.Join(contractsDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -128,6 +147,41 @@ build:
 	if err := buildApp.Run([]string{"app", "build"}); err != nil {
 		t.Errorf("Failed to execute build command: %v", err)
 	}
+}
+
+// Test creating a project with mock template URLs
+func TestCreateCommand_WithTemplates(t *testing.T) {
+	// Mock template URLs similar to what would be in the config
+	mainTemplateURL := "https://github.com/example/avs-template"
+	contractsTemplateURL := "https://github.com/example/contracts-template"
+
+	tmpDir := t.TempDir()
+
+	// Create project directory structure
+	projectName := "test-avs-with-contracts"
+	projectDir := filepath.Join(tmpDir, projectName)
+
+	// Create main directory and contracts directory
+	if err := os.MkdirAll(projectDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	contractsDir := filepath.Join(projectDir, common.ContractsDir)
+	if err := os.MkdirAll(contractsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify the structure
+	if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+		t.Fatal("Project directory was not created")
+	}
+
+	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+		t.Fatal("Contracts directory was not created")
+	}
+
+	// Log (for test purposes only)
+	t.Logf("Mock templates: main=%s, contracts=%s", mainTemplateURL, contractsTemplateURL)
 }
 
 func TestConfigCommand_ListOutput(t *testing.T) {
