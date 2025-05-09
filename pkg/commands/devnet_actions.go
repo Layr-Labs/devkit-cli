@@ -13,14 +13,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	blue   = "\033[34m"
-	cyan   = "\033[36m"
-	green  = "\033[32m"
-	yellow = "\033[33m"
-	reset  = "\033[0m"
-)
-
 func StartDevnetAction(cCtx *cli.Context) error {
 	// Load config
 	config, err := common.LoadEigenConfig()
