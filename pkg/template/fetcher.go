@@ -100,7 +100,9 @@ func printGitError(grid *ProgressGrid, mu *sync.Mutex, modPath, reason string, e
 
 func percentToInt(s string) int {
 	var i int
-	fmt.Sscanf(s, "%d", &i)
+	if _, err := fmt.Sscanf(s, "%d", &i); err != nil {
+		return 0
+	}
 	return i
 }
 
