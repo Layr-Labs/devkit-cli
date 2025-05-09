@@ -1,18 +1,17 @@
 package commands
 
 import (
+	"bytes"
 	"devkit-cli/pkg/common"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
-	"bytes"
 	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
-
 )
 
 // helper to create a temp AVS project dir with eigen.toml copied
@@ -170,7 +169,6 @@ func getFreePort() (string, error) {
 	port := l.Addr().(*net.TCPAddr).Port
 	return strconv.Itoa(port), nil
 }
-
 
 func TestListRunningDevnets(t *testing.T) {
 	// Save original working directory
