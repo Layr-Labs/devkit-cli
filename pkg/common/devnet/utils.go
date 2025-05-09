@@ -2,7 +2,9 @@ package devnet
 
 import (
 	"fmt"
+	"log"
 	"net"
+	"os/exec"
 	"time"
 )
 
@@ -16,4 +18,17 @@ func IsPortAvailable(port int) bool {
 	}
 	_ = conn.Close()
 	return false
+}
+
+func StopAndRemoveContainer(containerName string) {
+	if err := exec.Command("docker", "stop", containerName).Run(); err != nil {
+		log.Printf("⚠️ Failed to stop container %s: %v", containerName, err)
+	} else {
+		log.Printf("✅ Stopped container %s", containerName)
+	}
+	if err := exec.Command("docker", "rm", containerName).Run(); err != nil {
+		log.Printf("⚠️ Failed to remove container %s: %v", containerName, err)
+	} else {
+		log.Printf("✅ Removed container %s", containerName)
+	}
 }
