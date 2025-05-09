@@ -56,9 +56,9 @@ cd devkit-cli
 git pull origin main
 
 # Note that you have to run the create command from repository directory
-devkit avs create --verbose my-hourglass-project  # by default pick task arch and go lang
+devkit avs create my-hourglass-project  # by default pick task arch and go lang
 OR
-devkit avs create --verbose --overwrite my-existing-hourglass-project
+devkit avs create --overwrite my-existing-hourglass-project
 
 # Once you have a project directory, following commands should be run from the project directory you created.
 devkit avs build
