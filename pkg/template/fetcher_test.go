@@ -24,7 +24,11 @@ func TestGitFetcher_InvalidURL(t *testing.T) {
 }
 
 func TestGitFetcher_ValidRepo(t *testing.T) {
-	fetcher := &GitFetcher{}
+	fetcher := &GitFetcher{
+		MaxDepth:       1,
+		MaxRetries:     3,
+		MaxConcurrency: 8,
+	}
 	tempDir := t.TempDir()
 
 	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
@@ -43,7 +47,11 @@ func TestGitFetcher_ValidRepo(t *testing.T) {
 }
 
 func TestGitFetcher_Submodules(t *testing.T) {
-	fetcher := &GitFetcher{MaxDepth: 1}
+	fetcher := &GitFetcher{
+		MaxDepth:       1,
+		MaxRetries:     3,
+		MaxConcurrency: 8,
+	}
 	tempDir := t.TempDir()
 
 	// Includes submodules: simple example with known submodule
@@ -62,7 +70,11 @@ func TestGitFetcher_Submodules(t *testing.T) {
 }
 
 func TestGitFetcher_MaxDepth(t *testing.T) {
-	fetcher := &GitFetcher{MaxDepth: 0}
+	fetcher := &GitFetcher{
+		MaxDepth:       0,
+		MaxRetries:     3,
+		MaxConcurrency: 8,
+	}
 	tempDir := t.TempDir()
 
 	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
@@ -83,7 +95,11 @@ func TestGitFetcher_MaxDepth(t *testing.T) {
 }
 
 func TestGitFetcher_NonexistentBranch(t *testing.T) {
-	fetcher := &GitFetcher{}
+	fetcher := &GitFetcher{
+		MaxDepth:       0,
+		MaxRetries:     3,
+		MaxConcurrency: 8,
+	}
 	tempDir := t.TempDir()
 
 	repo := "https://github.com/Layr-labs/eigenlayer-contracts/tree/missing-branch"
