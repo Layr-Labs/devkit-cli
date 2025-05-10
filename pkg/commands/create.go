@@ -60,8 +60,18 @@ var CreateCommand = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:  "depth",
-			Usage: "Max submodule recursion depth",
+			Usage: "Maximum submodule recursion depth",
 			Value: -1,
+		},
+		&cli.IntFlag{
+			Name:  "retries",
+			Usage: "Maximum number of retries on submodule clone failure",
+			Value: 3,
+		},
+		&cli.IntFlag{
+			Name:  "concurrency",
+			Usage: "Maximum number of concurrent submodule clones",
+			Value: 8,
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
@@ -114,7 +124,9 @@ var CreateCommand = &cli.Command{
 
 		// Fetch main template
 		fetcher := &template.GitFetcher{
-			MaxDepth: cCtx.Int("depth"),
+			MaxDepth:       cCtx.Int("depth"),
+			MaxRetries:     cCtx.Int("retries"),
+			MaxConcurrency: cCtx.Int("concurrency"),
 		}
 		if err := fetcher.Fetch(mainURL, targetDir, cCtx.Bool("verbose"), cCtx.Bool("no-cache")); err != nil {
 			return fmt.Errorf("failed to fetch template from %s: %w", mainURL, err)
