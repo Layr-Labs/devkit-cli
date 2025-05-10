@@ -28,6 +28,7 @@ Before you begin, ensure you have:
 
 * [Docker](https://docs.docker.com/engine/install/)
 * [Go](https://go.dev/doc/install)
+* [make](https://formulae.brew.sh/formula/make)
 * [Foundry](https://book.getfoundry.sh/getting-started/installation)
 * [yq](https://github.com/mikefarah/yq/#install)
 
