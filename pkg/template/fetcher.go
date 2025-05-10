@@ -518,7 +518,9 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 			grid.order = append(grid.order, f.mod.Path)
 			retrySubs = append(retrySubs, f.mod)
 		}
-		failures = attemptSubmoduleSetups(retrySubs, grid, repoDir, cacheDir, noCache)
+
+		// on subsequent attempts, skip cache and attempt full clone
+		failures = attemptSubmoduleSetups(retrySubs, grid, repoDir, cacheDir, true)
 	}
 
 	// maxRetries exceeded, report final failure
