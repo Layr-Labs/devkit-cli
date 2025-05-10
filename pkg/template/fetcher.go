@@ -493,7 +493,7 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 	}
 	printLog("")
 
-	// print initial progresss
+	// print initial progress
 	renderProgressGrid(grid)
 
 	// initial run
