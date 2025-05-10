@@ -30,6 +30,7 @@ type SubmoduleFailure struct {
 	mod Submodule
 	err error
 }
+
 type ProgressGrid struct {
 	order    []string
 	progress map[string]int
@@ -366,7 +367,7 @@ func runClone(repoURL, branch string, args []string, dest string, updateProgress
 	return nil
 }
 
-func runSubmoduleTasks(submodules []Submodule, grid *ProgressGrid, repoDir string, cacheDir string, noCache bool) []SubmoduleFailure {
+func attemptSubmoduleSetups(submodules []Submodule, grid *ProgressGrid, repoDir string, cacheDir string, noCache bool) []SubmoduleFailure {
 	// set up a waitGroup to perform a concurrent fanout and join
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -376,7 +377,7 @@ func runSubmoduleTasks(submodules []Submodule, grid *ProgressGrid, repoDir strin
 
 	// for each submodule, perform cloneWithCache and copy to workingCopyPath
 	for _, mod := range submodules {
-		// shadow to avoid race
+		// shadow mod to capture correct value in goroutine
 		mod := mod
 		// mark that we're waiting on this routine
 		wg.Add(1)
@@ -401,10 +402,10 @@ func runSubmoduleTasks(submodules []Submodule, grid *ProgressGrid, repoDir strin
 			cloneLock.Lock()
 			defer cloneLock.Unlock()
 
-			// check for errors in the cloning procedure
+			// clone, checkout, stage, and register submodule locally
 			err = func() error {
-				// we do not clone from Branch because we immediately checkout the commit ref'd in parents submodule
-				// passing in the Branch could move us to a tree without the commit we want, we can safely ignore it
+				// intentionally omit branch; we checkout a specific commit immediately after
+				// passing in the Branch could move us to a tree without the commit we want
 				if err := cloneWithCache(mod.URL, "", cachePath, workingCopyPath, noCache, func(pct int) {
 					if pct < 90 {
 						updateProgress(grid, mod.Path, pct)
@@ -443,7 +444,7 @@ func runSubmoduleTasks(submodules []Submodule, grid *ProgressGrid, repoDir strin
 				return nil
 			}()
 
-			// if we encountered an error then record into failures
+			// record failure if error occurred
 			if err != nil {
 				mu.Lock()
 				defer mu.Unlock()
@@ -464,7 +465,7 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 		return nil
 	}
 
-	// pull the submodules for this repo
+	// read submodules from .gitmodules
 	submodules, err := listSubmodules(repoDir)
 	if err != nil {
 		return fmt.Errorf("list submodules: %w", err)
@@ -479,7 +480,7 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 		return fmt.Errorf("create cache dir: %w", err)
 	}
 
-	// set up a new grid to hold progress
+	// initialize progress grid
 	grid := &ProgressGrid{
 		order:    []string{},
 		progress: map[string]int{},
@@ -497,7 +498,7 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 	renderProgressGrid(grid)
 
 	// initial run
-	failures := runSubmoduleTasks(submodules, grid, repoDir, cacheDir, noCache)
+	failures := attemptSubmoduleSetups(submodules, grid, repoDir, cacheDir, noCache)
 
 	// retry loop
 	const maxRetries = 3
@@ -508,14 +509,16 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 			progress: map[string]int{},
 		}
 		var retrySubs []Submodule
-		// detail the failures
+
+		// prepare retry list and progress grid
 		printLog("\nRetrying %d failed submodule clones (%d/%d)...\n\n", len(failures), attempt, maxRetries)
+
 		// set up grid and submodules for next attempt
 		for _, f := range failures {
 			grid.order = append(grid.order, f.mod.Path)
 			retrySubs = append(retrySubs, f.mod)
 		}
-		failures = runSubmoduleTasks(retrySubs, grid, repoDir, cacheDir, noCache)
+		failures = attemptSubmoduleSetups(retrySubs, grid, repoDir, cacheDir, noCache)
 	}
 
 	// maxRetries exceeded, report final failure
@@ -534,7 +537,7 @@ func cloneSubmodules(repoURL string, repoName string, repoDir string, noCache bo
 		}
 	}
 
-	// none-halting so that we continue to cache remainder
+	// don't halt on error; continue cloning remaining submodules
 	return nil
 }
 
