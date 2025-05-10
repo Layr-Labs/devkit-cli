@@ -369,22 +369,7 @@ func runClone(repoURL, branch string, args []string, dest string, updateProgress
 	return nil
 }
 
-func attemptSubmoduleSetup(mod Submodule, grid *ProgressGrid, repoDir string, cacheDir string, noCache bool) error {
-	// unpack submodule commit hash from the parent ls-tree
-	commitHash, err := getSubmoduleCommit(repoDir, mod.Path)
-	if err != nil {
-		return fmt.Errorf("failed to get commit for %s: %v\n", mod.Path, err)
-	}
-	baseName := filepath.Base(mod.Name)
-	cacheName := fmt.Sprintf("%s-%s.git", baseName, commitHash)
-	cachePath := filepath.Join(cacheDir, cacheName)
-	workingCopyPath := filepath.Join(repoDir, mod.Path)
-
-	// lock against workingCopyPath to guard against modules with same path in same parent
-	cloneLock := lockForRepo(workingCopyPath)
-	cloneLock.Lock()
-	defer cloneLock.Unlock()
-
+func attemptSubmoduleSetup(mod Submodule, grid *ProgressGrid, repoDir string, cachePath string, workingCopyPath string, commitHash string, noCache bool) error {
 	// intentionally omit branch; we checkout a specific commit immediately after
 	// passing in the Branch could move us to a tree without the commit we want
 	if err := cloneWithCache(mod.URL, "", cachePath, workingCopyPath, noCache, func(pct int) {
@@ -448,8 +433,24 @@ func attemptSubmoduleSetups(submodules []Submodule, grid *ProgressGrid, repoDir 
 			// defer release
 			defer func() { <-sem }()
 
+			// unpack submodule commit hash from the parent ls-tree
+			commitHash, commitErr := getSubmoduleCommit(repoDir, mod.Path)
+			if commitErr != nil {
+				printLog("failed to get commit for %s: %v\n", mod.Path, commitErr)
+				return
+			}
+			baseName := filepath.Base(mod.Name)
+			cacheName := fmt.Sprintf("%s-%s.git", baseName, commitHash)
+			cachePath := filepath.Join(cacheDir, cacheName)
+			workingCopyPath := filepath.Join(repoDir, mod.Path)
+
+			// lock against workingCopyPath to guard against modules with same path in same parent
+			cloneLock := lockForRepo(workingCopyPath)
+			cloneLock.Lock()
+			defer cloneLock.Unlock()
+
 			// clone, checkout, stage, and register submodule locally
-			err := attemptSubmoduleSetup(mod, grid, repoDir, cacheDir, noCache)
+			err := attemptSubmoduleSetup(mod, grid, repoDir, cachePath, workingCopyPath, commitHash, noCache)
 
 			// record failure if error occurred
 			if err != nil {
