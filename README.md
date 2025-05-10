@@ -122,7 +122,7 @@ devkit avs build
 
 Start a local Ethereum-based development network to simulate your AVS environment:
 
-* Uses `eigenlayer-contracts-1.3.0` on a fresh Anvil chain.
+* Uses [eigenlayer-contracts-1.3.0] (https://github.com/Layr-Labs/eigenlayer-contracts/tree/v1.3.0) on a fresh Anvil chain.
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
 * Deploys required AVS and EigenLayer core contracts.
 * Initializes aggregator and executor processes.
@@ -181,11 +181,26 @@ devkit --verbose avs build
 
 ## 🌍 Environment Variables
 
-DevKit automatically loads environment variables from a `.env` file in your project directory:
+The DevKit CLI automatically loads environment variables from a `.env` file in your project directory:
 
+- If a `.env` file exists in your project directory, its variables will be loaded for all commands except `create`
+- Template repositories should include a `.env.example` file that you can copy to `.env` and modify
+- This is useful for storing configuration that shouldn't be committed to version control (API keys, private endpoints, etc.)
+
+Example workflow:
 ```bash
+# After creating a project from a template
+cd my-avs-project
+
+# Copy the example env file (if provided by the template)
 cp .env.example .env
+
+# Edit with your specific values
 nano .env
+
+# Run commands - the .env file will be automatically loaded
+devkit avs build
+devkit avs run
 ```
 
 ---
