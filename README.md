@@ -4,7 +4,7 @@
 
 EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold projects, compile contracts, run local networks, and simulate tasks with ease.
 
-*(Graphic placeholder: Insert visual flow diagram here.)*
+![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
 
 ---
 
