@@ -1,0 +1,26 @@
+version: 0.0.1
+config:
+  project:
+    name: "my-avs"
+    version: "0.1.0"
+    context: "devnet"
+
+  # DevKit integration points: where to find template scripts & where they output state
+  devkit:
+    contexts: ["devnet","testnet","mainnet"]
+    output_dir: "contract/scripts/out"         # template deployment scripts write <context>.json here (latest run state)
+    # {
+		#   "avs": "<avs identifier address>",
+		#   "avsregistrar": "<AVS registrar>",
+		#   "taskmailbox": "<deployed mailbox>",
+		#   "operator_registration_payloads": [
+		#     {
+		#       "operator": "<addr>",
+		#       "extra_data": "<RLP-encoded bytes>"
+		#     }
+		#   ]
+		# }
+
+  release:
+    avs_logic_image_tag: "some-org/avs-logic:v0.1"
+    push_image: false

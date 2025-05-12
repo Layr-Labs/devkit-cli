@@ -1,0 +1,32 @@
+version: 0.0.1
+context:
+	name: "devnet"
+  chain_id: 31337
+  rpc_url: "http://localhost:8545"
+
+  fork:
+    block: 17400000
+    url: "http://localhost:8545"
+    
+  operators:
+    - address: "0x0..."
+      keystore-path: "..."
+      stake: "1000 ETH"
+    - address: "0x0..."
+      keystore-path: "..."
+      stake: "1000 ETH"
+    - address: "0x0..."
+      keystore-path: "..."
+      stake: "1000 ETH"
+    
+  # AVS core protocol settings (metadata URL, registrar, operator-set definitions)
+  avs:
+    metadata_url: "https://my-org.com/avs/metadata.json"
+    registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"
+    operator_sets:
+      - id: 0
+        strategies: [0x000...,]
+      - id: 1
+        strategy: [0x000...,]
+    # Note: public keys / sockets for each operator live in DevNet context only
+    operators: []    # filled at deploy/run time via DevKit + template scripts
