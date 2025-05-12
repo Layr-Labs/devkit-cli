@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"sync"
 )
 
 type BasicLogger struct {
-	mu sync.Mutex
 }
 
 func NewLogger() *BasicLogger {
@@ -16,9 +14,6 @@ func NewLogger() *BasicLogger {
 }
 
 func (l *BasicLogger) Info(msg string, args ...any) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	// format the message once
 	formatted := fmt.Sprintf(msg, args...)
 
@@ -32,9 +27,6 @@ func (l *BasicLogger) Info(msg string, args ...any) {
 }
 
 func (l *BasicLogger) Warn(msg string, args ...any) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	// format the message once
 	formatted := fmt.Sprintf(msg, args...)
 
@@ -48,9 +40,6 @@ func (l *BasicLogger) Warn(msg string, args ...any) {
 }
 
 func (l *BasicLogger) Error(msg string, args ...any) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
 	// format the message once
 	formatted := fmt.Sprintf(msg, args...)
 
