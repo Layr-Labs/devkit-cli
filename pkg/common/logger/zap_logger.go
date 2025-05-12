@@ -2,14 +2,12 @@ package logger
 
 import (
 	"strings"
-	"sync"
 
 	"go.uber.org/zap"
 )
 
 type ZapLogger struct {
 	log *zap.SugaredLogger
-	mu  sync.Mutex
 }
 
 func NewZapLogger() *ZapLogger {
@@ -18,8 +16,6 @@ func NewZapLogger() *ZapLogger {
 }
 
 func (l *ZapLogger) Info(msg string, args ...any) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	msg = strings.Trim(msg, "\n")
 	if msg == "" {
 		return
@@ -28,8 +24,6 @@ func (l *ZapLogger) Info(msg string, args ...any) {
 }
 
 func (l *ZapLogger) Warn(msg string, args ...any) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	msg = strings.Trim(msg, "\n")
 	if msg == "" {
 		return
@@ -38,8 +32,6 @@ func (l *ZapLogger) Warn(msg string, args ...any) {
 }
 
 func (l *ZapLogger) Error(msg string, args ...any) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	msg = strings.Trim(msg, "\n")
 	if msg == "" {
 		return
