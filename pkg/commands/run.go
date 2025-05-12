@@ -2,6 +2,7 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"fmt"
 	"log"
 
 	"github.com/urfave/cli/v2"
@@ -17,7 +18,10 @@ var RunCommand = &cli.Command{
 			log.Printf("Running AVS tasks...")
 		}
 
-		common.MakefileDevkitRun()
+		err := common.MakefileDevkitRun()
+		if err != nil {
+			return fmt.Errorf("failed to call make run in Makefile.Devkit %w", err)
+		}
 
 		log.Printf("Task execution completed successfully")
 		return nil
