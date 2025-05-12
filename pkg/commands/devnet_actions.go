@@ -78,7 +78,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// common.MakefileDevkitDeploy()
 
 	// call make run in the template's Makefile.Devkit
-	common.MakefileDevkitRun()
+	// This is commented out , till we support passing dynamic values to the template.
+	// common.MakefileDevkitRun()
 
 	return nil
 }
