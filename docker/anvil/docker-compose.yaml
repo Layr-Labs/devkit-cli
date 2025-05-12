@@ -1,6 +1,7 @@
 services:
   devkit-devnet:
     image: ${FOUNDRY_IMAGE}
+    container_name: ${AVS_CONTAINER_NAME} 
     volumes:
       - "${STATE_PATH}:/anvil/state.json"
     entrypoint: anvil

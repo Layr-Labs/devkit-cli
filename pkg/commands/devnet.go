@@ -34,9 +34,28 @@ var DevnetCommand = &cli.Command{
 			Action: StartDevnetAction,
 		},
 		{
-			Name:   "stop",
-			Usage:  "Stops and removes all containers and resources",
+			Name:  "stop",
+			Usage: "Stops and removes all containers and resources",
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:  "all",
+					Usage: "Stop all running devnet containers",
+				},
+				&cli.StringFlag{
+					Name:  "project.name",
+					Usage: "Stop containers associated with the given project name",
+				},
+				&cli.IntFlag{
+					Name:  "port",
+					Usage: "Stop container running on the specified port",
+				},
+			},
 			Action: StopDevnetAction,
+		},
+		{
+			Name:   "list",
+			Usage:  "Lists all running devkit devnet containers with their ports",
+			Action: ListDevnetContainersAction,
 		},
 	},
 }

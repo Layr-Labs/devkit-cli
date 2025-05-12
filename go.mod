@@ -7,6 +7,7 @@ toolchain go1.24.2
 require (
 	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250430200448-e0f09ac951eb
 	github.com/google/uuid v1.6.0
+	github.com/joho/godotenv v1.5.1
 	github.com/posthog/posthog-go v1.4.10
 	github.com/urfave/cli/v2 v2.27.6
 	golang.org/x/text v0.22.0

@@ -1,0 +1,53 @@
+name: Devkit AVS Create Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+env:
+  FOUNDRY_PROFILE: ci
+
+jobs:
+  create-avs:
+    strategy:
+      fail-fast: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+        
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
+
+      - name: Install devkit CLI
+        run: make install
+
+      - name: Add ~/bin to PATH
+        run: echo "$HOME/bin" >> $GITHUB_PATH
+      
+      - name: Configure Git to use GitHub token
+        run: |
+          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:@github.com/".insteadOf "https://github.com/"
+        
+      - name: Run devkit avs create
+        run: |
+          devkit avs create my-awesome-avs
+
+      - name: Verify AVS project created
+        run: |
+          if [ ! -f "$HOME/avs/my-awesome-avs/eigen.toml" ]; then
+            echo "❌ AVS project eigen.toml not found!"
+            exit 1
+          fi
+          echo "✅ AVS project created successfully at $HOME/avs/my-awesome-avs/"

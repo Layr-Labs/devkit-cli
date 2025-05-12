@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"devkit-cli/pkg/common"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +18,7 @@ func TestRunCommand(t *testing.T) {
 run:
 	@echo "Mock run executed"
 	`
-	if err := os.WriteFile(filepath.Join(tmpDir, "Makefile.Devkit"), []byte(mockMakefile), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 

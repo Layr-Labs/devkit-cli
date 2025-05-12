@@ -21,8 +21,8 @@ func main() {
 		UseShortOptionHandling: true,
 	}
 
-	// Apply telemetry middleware to all commands
-	hooks.ApplyTelemetryToCommands(app.Commands)
+	// Apply both middleware functions to all commands
+	hooks.ApplyMiddleware(app.Commands, hooks.WithEnvLoader, hooks.WithTelemetry)
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)

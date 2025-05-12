@@ -12,6 +12,20 @@ A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Ser
 - [Go](https://go.dev/doc/install)
 - [Foundry](https://book.getfoundry.sh/getting-started/installation)
 - [make](https://formulae.brew.sh/formula/make)
+- [yq](https://github.com/mikefarah/yq/#install)
+
+#### Setup to fetch private go modules
+
+To ensure you can fetch private Go modules hosted on GitHub (needed before the template dependency repos are live):
+
+1.  **Ensure SSH Key is Added to GitHub:** Verify that you have an SSH key associated with your GitHub account. You can find instructions [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
+2.  **Repository Access:** Confirm with EigenLabs that your GitHub account has been granted access to the necessary private repositories (e.g., for preview features or specific AVS components).
+3.  **Configure Git URL Rewrite:** Run the following command in your terminal to instruct Git to use SSH instead of HTTPS for Eigenlabs repositories:
+    ```bash
+    git config --global url."ssh://git@github.com/Layr-Labs/".insteadOf "https://github.com/Layr-Labs/"
+    ```
+
+If you are on OSX, ensure that your `~/.ssh/config` file does not contain the line `UseKeychain yes`, as it can interfere with SSH agent forwarding or other SSH functionalities needed for fetching private modules. If it exists, you may need to comment it out or remove it.
 
 
 ```bash
@@ -24,6 +38,9 @@ make install
 
 # Or build manually
 go build -o devkit ./cmd/devkit
+
+# add the binary to your path
+export PATH=$PATH:~/bin
 
 # Get started
 devkit --help
@@ -149,6 +166,30 @@ level = "debug" # valid options: "info", "debug", "warn", "error"
 - You can also use `--verbose` flag with the respective command, example:
 ```bash
 devkit --verbose avs build
+```
+
+## Environment Variables
+
+The DevKit CLI automatically loads environment variables from a `.env` file in your project directory:
+
+- If a `.env` file exists in your project directory, its variables will be loaded for all commands except `create`
+- Template repositories should include a `.env.example` file that you can copy to `.env` and modify
+- This is useful for storing configuration that shouldn't be committed to version control (API keys, private endpoints, etc.)
+
+Example workflow:
+```bash
+# After creating a project from a template
+cd my-avs-project
+
+# Copy the example env file (if provided by the template)
+cp .env.example .env
+
+# Edit with your specific values
+nano .env
+
+# Run commands - the .env file will be automatically loaded
+devkit avs build
+devkit avs run
 ```
 
 ## Telemetry

@@ -27,3 +27,7 @@ Thumbs.db
 *.swp
 
 temp_external
+
+# DevKit level git cache
+.git-template-cache
+.git-submodule-cache

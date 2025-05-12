@@ -1,6 +1,7 @@
 package devnet
 
 import (
+	"os"
 	"strings"
 
 	"devkit-cli/pkg/common"
@@ -24,4 +25,10 @@ func GetDevnetChainImageOrDefault(cfg *common.EigenConfig) string {
 		return FOUNDRY_IMAGE
 	}
 	return image
+}
+
+func FileExistsInRoot(filename string) bool {
+	// Assumes current working directory is the root of the project
+	_, err := os.Stat(filename)
+	return err == nil || !os.IsNotExist(err)
 }

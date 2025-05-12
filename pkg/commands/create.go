@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -53,6 +54,26 @@ var CreateCommand = &cli.Command{
 			Name:  "overwrite",
 			Usage: "Force overwrite if project directory already exists",
 		},
+		&cli.BoolFlag{
+			Name:  "no-cache",
+			Usage: "Disable the use of caching mechanisms",
+			Value: false,
+		},
+		&cli.IntFlag{
+			Name:  "depth",
+			Usage: "Maximum submodule recursion depth",
+			Value: -1,
+		},
+		&cli.IntFlag{
+			Name:  "retries",
+			Usage: "Maximum number of retries on submodule clone failure",
+			Value: 3,
+		},
+		&cli.IntFlag{
+			Name:  "concurrency",
+			Usage: "Maximum number of concurrent submodule clones",
+			Value: 8,
+		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		if cCtx.NArg() == 0 {
@@ -84,23 +105,44 @@ var CreateCommand = &cli.Command{
 			}
 		}
 
-		if err := createProjectDir(targetDir, cCtx.Bool("overwrite"), cCtx.Bool("verbose")); err != nil {
-			return err
-		}
-
-		templateURL, err := getTemplateURL(cCtx)
+		// Get template URLs
+		mainURL, contractsURL, err := getTemplateURLs(cCtx)
 		if err != nil {
 			return err
 		}
 
-		if cCtx.Bool("verbose") {
-			log.Printf("Using template: %s", templateURL)
+		// Create project directories
+		if err := createProjectDir(targetDir, cCtx.Bool("overwrite"), cCtx.Bool("verbose")); err != nil {
+			return err
 		}
 
-		// Fetch template
-		fetcher := &template.GitFetcher{}
-		if err := fetcher.Fetch(templateURL, targetDir); err != nil {
-			return fmt.Errorf("failed to fetch template from %s: %w", templateURL, err)
+		if cCtx.Bool("verbose") {
+			log.Printf("Using template: %s", mainURL)
+			if contractsURL != "" {
+				log.Printf("Using contracts template: %s", contractsURL)
+			}
+		}
+
+		// Fetch main template
+		fetcher := &template.GitFetcher{
+			MaxDepth:       cCtx.Int("depth"),
+			MaxRetries:     cCtx.Int("retries"),
+			MaxConcurrency: cCtx.Int("concurrency"),
+		}
+		if err := fetcher.Fetch(mainURL, targetDir, cCtx.Bool("verbose"), cCtx.Bool("no-cache")); err != nil {
+			return fmt.Errorf("failed to fetch template from %s: %w", mainURL, err)
+		}
+
+		// Check for contracts template and fetch if missing
+		if contractsURL != "" {
+			contractsDir := filepath.Join(targetDir, common.ContractsDir)
+
+			// Fetch the contracts directory if it does not exist in the template
+			if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+				if err := fetcher.Fetch(contractsURL, contractsDir, cCtx.Bool("verbose"), cCtx.Bool("no-cache")); err != nil {
+					log.Printf("Warning: Failed to fetch contracts template: %v", err)
+				}
+			}
 		}
 
 		// Copy default.eigen.toml to the project directory
@@ -119,36 +161,43 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
+		// Initialize git repository in the project directory
+		if err := initGitRepo(targetDir, cCtx.Bool("verbose")); err != nil {
+			log.Printf("Warning: Failed to initialize Git repository in %s: %v", targetDir, err)
+		}
+
 		log.Printf("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
 }
 
-func getTemplateURL(cCtx *cli.Context) (string, error) {
+func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 	if templatePath := cCtx.String("template-path"); templatePath != "" {
-		return templatePath, nil
+		return templatePath, "", nil
 	}
-
-	arch := cCtx.String("arch")
 
 	config, err := template.LoadConfig()
 	if err != nil {
-		return "", fmt.Errorf("failed to load templates config: %w", err)
+		return "", "", fmt.Errorf("failed to load templates config: %w", err)
 	}
 
-	url, err := template.GetTemplateURL(config, arch, cCtx.String("lang"))
+	arch := cCtx.String("arch")
+	lang := cCtx.String("lang")
+
+	mainURL, contractsURL, err := template.GetTemplateURLs(config, arch, lang)
 	if err != nil {
-		return "", fmt.Errorf("failed to get template URL: %w", err)
+		return "", "", fmt.Errorf("failed to get template URLs: %w", err)
 	}
 
-	if url == "" {
-		return "", fmt.Errorf("no template found for architecture %s and language %s", arch, cCtx.String("lang"))
+	if mainURL == "" {
+		return "", "", fmt.Errorf("no template found for architecture %s and language %s", arch, lang)
 	}
 
-	return url, nil
+	return mainURL, contractsURL, nil
 }
 
 func createProjectDir(targetDir string, overwrite, verbose bool) error {
+	// Check if directory exists and handle overwrite
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
 		if !overwrite {
 			return fmt.Errorf("directory %s already exists. Use --overwrite flag to force overwrite", targetDir)
@@ -160,7 +209,12 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 			log.Printf("Removed existing directory: %s", targetDir)
 		}
 	}
-	return os.MkdirAll(targetDir, 0755)
+
+	// Create main project directory
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create project directory: %w", err)
+	}
+	return nil
 }
 
 // copyDefaultTomlToProject copies default.eigen.toml to the project directory with updated project name
@@ -232,5 +286,22 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 		}
 	}
 
+// initGitRepo initializes a new Git repository in the target directory.
+func initGitRepo(targetDir string, verbose bool) error {
+	if verbose {
+		log.Printf("Initializing Git repository in %s...", targetDir)
+	}
+	cmd := exec.Command("git", "init")
+	cmd.Dir = targetDir
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
+	}
+	if verbose {
+		log.Printf("Git repository initialized successfully.")
+		if len(output) > 0 {
+			log.Printf("Git init output:\n%s", string(output))
+		}
+	}
 	return nil
 }

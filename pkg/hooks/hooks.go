@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -11,8 +12,12 @@ import (
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/telemetry"
 
+	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"
 )
+
+// EnvFile is the name of the environment file
+const EnvFile = ".env"
 
 // CommandMetrics holds timing and metadata for command execution
 type CommandMetrics struct {
@@ -194,21 +199,66 @@ func WithTelemetry(action cli.ActionFunc) cli.ActionFunc {
 	}
 }
 
-// ApplyTelemetryToCommands applies the WithTelemetry middleware to all commands in a list
-func ApplyTelemetryToCommands(commands []*cli.Command) {
+// ApplyMiddleware applies a list of middleware functions to commands
+func ApplyMiddleware(commands []*cli.Command, middlewares ...func(cli.ActionFunc) cli.ActionFunc) {
 	for _, cmd := range commands {
-		// Apply to this command's action if it exists
+		// Apply middleware to this command's action if it exists
 		if cmd.Action != nil {
-			// Store original action before replacing it
+			// Store original action
 			originalAction := cmd.Action
-			cmd.Action = WithTelemetry(func(ctx *cli.Context) error {
-				return originalAction(ctx)
-			})
+
+			// Apply all middlewares in order
+			wrappedAction := originalAction
+			for _, middleware := range middlewares {
+				wrappedAction = middleware(wrappedAction)
+			}
+
+			// Set the final wrapped action
+			cmd.Action = wrappedAction
 		}
 
 		// Recursively apply to subcommands
 		if len(cmd.Subcommands) > 0 {
-			ApplyTelemetryToCommands(cmd.Subcommands)
+			ApplyMiddleware(cmd.Subcommands, middlewares...)
 		}
 	}
+}
+
+// ApplyTelemetryToCommands applies the telemetry middleware to all commands
+func ApplyTelemetryToCommands(commands []*cli.Command) {
+	ApplyMiddleware(commands, WithTelemetry)
+}
+
+// ApplyEnvLoaderToCommands applies the env loader middleware to all commands
+func ApplyEnvLoaderToCommands(commands []*cli.Command) {
+	ApplyMiddleware(commands, WithEnvLoader)
+}
+
+// WithEnvLoader wraps a command action to load .env file before execution
+// except for the create command
+func WithEnvLoader(action cli.ActionFunc) cli.ActionFunc {
+	return func(ctx *cli.Context) error {
+		command := ctx.Command.Name
+
+		// Skip loading .env for the create command
+		if command != "create" {
+			if err := loadEnvFile(); err != nil {
+				return err
+			}
+		}
+
+		return action(ctx)
+	}
+}
+
+// loadEnvFile loads environment variables from .env file if it exists
+// Silently succeeds if no .env file is found
+func loadEnvFile() error {
+	// Check if .env file exists in current directory
+	if _, err := os.Stat(EnvFile); os.IsNotExist(err) {
+		return nil // .env doesn't exist, just return without error
+	}
+
+	// Load .env file
+	return godotenv.Load(EnvFile)
 }
