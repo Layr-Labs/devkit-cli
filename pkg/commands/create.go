@@ -286,6 +286,9 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 		}
 	}
 
+	return nil
+}
+
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(targetDir string, verbose bool) error {
 	if verbose {
