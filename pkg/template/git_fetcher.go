@@ -131,9 +131,7 @@ func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoU
 	// list submodules defined in .gitmodules
 	submodules, err := g.Git.SubmoduleList(ctx, repoDir)
 	if err != nil {
-		if g.Config.Verbose {
-			g.Logger.Warn("Failed to list submodules", "repo", repoDir, "error", err)
-		}
+		g.Logger.Warn("Failed to list submodules", "repo", repoDir, "error", err)
 		return nil
 	}
 
@@ -153,19 +151,79 @@ func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoU
 	// define cache paths
 	cacheDir := g.Config.CacheDir
 
+	// attempt to clone all submodules and collect failures
+	failures := g.cloneSubmodules(ctx, submodules, repoDir, cacheDir)
+
+	// retry loop upto a max of g.Config.MaxRetries, stop when no failures occur
+	for attempt := 1; attempt <= g.Config.MaxRetries && len(failures) > 0; attempt++ {
+		// construct new submodules to retry
+		var retrySubs []Submodule
+
+		// prepare retry list and progress grid
+		g.Logger.Info("Retrying %d failed submodule clones (%d/%d)...\n\n", len(failures), attempt, g.Config.MaxRetries)
+
+		// set up grid and submodules for next attempt
+		for _, f := range failures {
+			g.Logger.SetProgress(f.mod.Path, 0, f.mod.Path)
+			retrySubs = append(retrySubs, f.mod)
+		}
+
+		// on subsequent attempts, skip cache and attempt full clone
+		failures = g.cloneSubmodules(ctx, retrySubs, repoDir, cacheDir)
+	}
+
+	// maxRetries exceeded, report final failure
+	if len(failures) > 0 {
+		for _, f := range failures {
+			g.Logger.Error("❌ submodule setup failed for %s: %v\n", f.mod.Path, f.err)
+		}
+	}
+
+	// recurse into nested submodules
+	for _, mod := range submodules {
+		subdir := filepath.Join(repoDir, mod.Path)
+		_ = g.fetchSubmodules(ctx, mod.Name, mod.URL, subdir, depth+1)
+	}
+
+	return nil
+}
+
+func (g *GitFetcher) cloneSubmodules(
+	ctx context.Context,
+	submodules []Submodule,
+	repoDir string,
+	cacheDir string,
+) []SubmoduleFailure {
+	// record any failures
+	var failures []SubmoduleFailure
+
+	// use buffered channel to bound concurrency
+	sem := make(chan struct{}, g.Config.MaxConcurrency)
+
 	// foreach submodule, clone and register
+	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, mod := range submodules {
-		mod := mod
+		// mark that we're waiting on this routine
 		wg.Add(1)
+		// define the routine
 		go func(mod Submodule) {
+			// wait for this goroutine to finish
 			defer wg.Done()
+			// acquire
+			sem <- struct{}{}
+			// defer release
+			defer func() { <-sem }()
+
+			// ref location we're pointing to in template dir
 			targetDir := filepath.Join(repoDir, mod.Path)
 
 			// start submodule cloning and tracking progress
 			if g.Metrics != nil {
 				g.Metrics.SubmoduleCloneStarted(mod.Path)
 			}
+
+			// fetch the commit from parent repos .gitmodules
 			commit, err := g.Git.SubmoduleCommit(ctx, repoDir, mod.Path)
 			if err != nil {
 				g.Logger.Warn("Failed to get submodule commit", "path", mod.Path, "error", err)
@@ -181,12 +239,12 @@ func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoU
 				},
 			}
 
-			// get from cache if enabled...
-			if g.Config.UseCache {
-				// get cache location
-				cacheKey := g.Cache.CacheKey(submoduleUrl, commit)
-				cachePath := filepath.Join(cacheDir, cacheKey)
+			// get cache location
+			cacheKey := g.Cache.CacheKey(submoduleUrl, commit)
+			cachePath := filepath.Join(cacheDir, cacheKey)
 
+			// set/get from cache if enabled...
+			if g.Config.UseCache {
 				// call RetryClone with progress tracking
 				if _, ok := g.Cache.Get(submoduleUrl, commit); !ok {
 					err = g.Git.RetryClone(ctx, submoduleUrl, cachePath, CloneOptions{
@@ -209,7 +267,27 @@ func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoU
 			}
 
 			// clone from cache/submoduleUrl to target with retries
-			err = g.Git.RetrySubmoduleClone(ctx, mod, commit, submoduleUrl, targetDir, repoDir, cloneOpts, g.Config.MaxRetries, &g.Logger)
+			err = g.Git.SubmoduleClone(ctx, mod, commit, submoduleUrl, targetDir, repoDir, cloneOpts)
+
+			// record failures
+			if err != nil {
+				mu.Lock()
+				// append original failure
+				failures = append(failures, SubmoduleFailure{mod: mod, err: err})
+				// if err is for a clone failure, we should reattempt the original clone
+				if strings.Contains(err.Error(), "clone failed") {
+					// clean up cache target
+					_ = os.RemoveAll(cachePath)
+					// clone to cache location as bare
+					if err := g.Git.RetryClone(ctx, mod.URL, cachePath, CloneOptions{
+						Bare:       true,
+						ProgressCB: cloneOpts.ProgressCB,
+					}, g.Config.MaxRetries); err != nil {
+						failures = append(failures, SubmoduleFailure{mod: mod, err: err})
+					}
+				}
+				mu.Unlock()
+			}
 
 			// report in metrics
 			if g.Metrics != nil {
@@ -219,7 +297,6 @@ func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoU
 			// set progress to complete in logger
 			g.Logger.SetProgress(mod.Path, 100, mod.Path)
 			g.Logger.PrintProgress()
-
 		}(mod)
 	}
 	wg.Wait()
@@ -227,11 +304,5 @@ func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoU
 	// clear progress reporting
 	g.Logger.ClearProgress()
 
-	// recurse into nested submodules
-	for _, mod := range submodules {
-		subdir := filepath.Join(repoDir, mod.Path)
-		_ = g.fetchSubmodules(ctx, mod.Name, mod.URL, subdir, depth+1)
-	}
-
-	return nil
+	return failures
 }

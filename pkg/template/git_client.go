@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"devkit-cli/pkg/common/iface"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,27 +22,20 @@ type GitClient interface {
 	SubmoduleCommit(ctx context.Context, repoDir, path string) (string, error)
 	ResolveRemoteCommit(ctx context.Context, repoURL, branch string) (string, error)
 	RetryClone(ctx context.Context, repoURL, dest string, opts CloneOptions, maxRetries int) error
-	RetrySubmoduleClone(
+	SubmoduleClone(
 		ctx context.Context,
 		submodule Submodule,
 		commit string,
-		cachePath string,
+		repoUrl string,
 		targetDir string,
 		repoDir string,
 		opts CloneOptions,
-		maxRetries int,
-		logger iface.Logger,
 	) error
 	CheckoutCommit(ctx context.Context, repoDir, commitHash string) error
 	StageSubmodule(ctx context.Context, repoDir, path, sha string) error
 	SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error
 	ActivateSubmodule(ctx context.Context, repoDir, name string) error
 }
-
-var (
-	repoLocksMu sync.Mutex
-	repoLocks   = map[string]*sync.Mutex{}
-)
 
 type CloneOptions struct {
 	Branch      string
@@ -61,14 +53,22 @@ type Submodule struct {
 	Branch string
 }
 
-type execGitClient struct{}
+type SubmoduleFailure struct {
+	mod Submodule
+	err error
+}
 
-var (
-	receivingRegex = regexp.MustCompile(`Receiving objects:\s+(\d+)%`)
-)
+type execGitClient struct {
+	repoLocksMu    sync.Mutex
+	repoLocks      map[string]*sync.Mutex
+	receivingRegex *regexp.Regexp
+}
 
 func NewGitClient() GitClient {
-	return &execGitClient{}
+	return &execGitClient{
+		repoLocks:      make(map[string]*sync.Mutex),
+		receivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
+	}
 }
 
 func (g *execGitClient) ParseGitHubURL(url string) (repoURL, branch string) {
@@ -114,7 +114,7 @@ func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, 
 		line := scanner.Text()
 
 		// look for progress line with percentage (e.g., receiving objects: 100%)
-		if match := receivingRegex.FindStringSubmatch(line); match != nil {
+		if match := g.receivingRegex.FindStringSubmatch(line); match != nil {
 			pct := percentToInt(match[1])
 			// only report progress if the percentage has changed
 			if pct != lastReportedProgress {
@@ -177,7 +177,7 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 
 func (g *execGitClient) RetryClone(ctx context.Context, repoURL, dest string, opts CloneOptions, maxRetries int) error {
 	var err error
-	for attempt := 0; attempt <= maxRetries; attempt++ {
+	for attempt := 0; attempt+1 <= maxRetries; attempt++ {
 		err = g.Clone(ctx, repoURL, dest, opts)
 		if err == nil {
 			return nil
@@ -187,7 +187,7 @@ func (g *execGitClient) RetryClone(ctx context.Context, repoURL, dest string, op
 	return fmt.Errorf("failed after %d retries: %w", maxRetries, err)
 }
 
-func (g *execGitClient) RetrySubmoduleClone(
+func (g *execGitClient) SubmoduleClone(
 	ctx context.Context,
 	submodule Submodule,
 	commit string,
@@ -195,60 +195,41 @@ func (g *execGitClient) RetrySubmoduleClone(
 	targetDir string,
 	repoDir string,
 	opts CloneOptions,
-	maxRetries int,
-	logger iface.Logger,
 ) error {
-	var err error
+	// clean up target
+	_ = os.RemoveAll(targetDir)
 
-	for attempt := 0; attempt <= maxRetries; attempt++ {
-		err = func() error {
-			// clean up target
-			_ = os.RemoveAll(targetDir)
-
-			// clone from provided repoUrl (cachePath or URL)
-			if err := g.Clone(ctx, repoUrl, targetDir, opts); err != nil {
-				return fmt.Errorf("clone failed: %w", err)
-			}
-
-			// checkout to commit
-			if err := g.Checkout(ctx, targetDir, commit); err != nil {
-				return fmt.Errorf("checkout failed: %w", err)
-			}
-
-			// lock against repoDir to guard global state
-			repoLock := lockForRepo(repoDir)
-			repoLock.Lock()
-			defer repoLock.Unlock()
-
-			// stage submodule in parent
-			if err := g.StageSubmodule(ctx, repoDir, submodule.Path, commit); err != nil {
-				return fmt.Errorf("stage failed: %w", err)
-			}
-
-			// set submodule URL
-			if err := g.SetSubmoduleURL(ctx, repoDir, submodule.Name, submodule.URL); err != nil {
-				return fmt.Errorf("set-url failed: %w", err)
-			}
-
-			// activate submodule
-			if err := g.ActivateSubmodule(ctx, repoDir, submodule.Name); err != nil {
-				return fmt.Errorf("activate failed: %w", err)
-			}
-
-			return nil
-		}()
-
-		if err == nil {
-			return nil
-		}
-
-		logger.Warn("Submodule setup failed", "path", submodule.Path, "attempt", attempt, "error", err)
-
-		// linear backoff
-		time.Sleep(time.Duration(attempt+1) * 300 * time.Millisecond)
+	// clone from provided repoUrl (cachePath or URL)
+	if err := g.Clone(ctx, repoUrl, targetDir, opts); err != nil {
+		return fmt.Errorf("clone failed: %w", err)
 	}
 
-	return fmt.Errorf("failed to set up submodule %s after %d retries: %w", submodule.Path, maxRetries, err)
+	// checkout to commit
+	if err := g.Checkout(ctx, targetDir, commit); err != nil {
+		return fmt.Errorf("checkout failed: %w", err)
+	}
+
+	// lock against repoDir to guard global state
+	repoLock := g.lockForRepo(repoDir)
+	repoLock.Lock()
+	defer repoLock.Unlock()
+
+	// stage submodule in parent
+	if err := g.StageSubmodule(ctx, repoDir, submodule.Path, commit); err != nil {
+		return fmt.Errorf("stage failed: %w", err)
+	}
+
+	// set submodule URL
+	if err := g.SetSubmoduleURL(ctx, repoDir, submodule.Name, submodule.URL); err != nil {
+		return fmt.Errorf("set-url failed: %w", err)
+	}
+
+	// activate submodule
+	if err := g.ActivateSubmodule(ctx, repoDir, submodule.Name); err != nil {
+		return fmt.Errorf("activate failed: %w", err)
+	}
+
+	return nil
 }
 
 func (g *execGitClient) Checkout(ctx context.Context, repoDir, commit string) error {
@@ -345,6 +326,18 @@ func (g *execGitClient) ActivateSubmodule(ctx context.Context, repoDir, name str
 	return err
 }
 
+// Helper to return a per-repo mutex to synchronise operations on the same repo
+func (g *execGitClient) lockForRepo(repo string) *sync.Mutex {
+	g.repoLocksMu.Lock()
+	defer g.repoLocksMu.Unlock()
+	mu, ok := g.repoLocks[repo]
+	if !ok {
+		mu = &sync.Mutex{}
+		g.repoLocks[repo] = mu
+	}
+	return mu
+}
+
 // Helper function to convert the percentage from string to int
 func percentToInt(s string) int {
 	var i int
@@ -352,16 +345,4 @@ func percentToInt(s string) int {
 		return 0
 	}
 	return i
-}
-
-// Helper to return a per-repo mutex to synchronise operations on the same repo
-func lockForRepo(repo string) *sync.Mutex {
-	repoLocksMu.Lock()
-	defer repoLocksMu.Unlock()
-	mu, ok := repoLocks[repo]
-	if !ok {
-		mu = &sync.Mutex{}
-		repoLocks[repo] = mu
-	}
-	return mu
 }

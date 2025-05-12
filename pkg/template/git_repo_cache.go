@@ -11,7 +11,7 @@ import (
 type GitRepoCache interface {
 	CacheKey(repoURL, commit string) string
 	Get(repoURL, commit string) (path string, ok bool)
-	Store(repoURL, commit, sourcePath string) error
+	Set(repoURL, commit, sourcePath string) error
 }
 
 type execGitRepoCache struct {
@@ -37,7 +37,7 @@ func (c *execGitRepoCache) Get(repoURL, commit string) (string, bool) {
 	return "", false
 }
 
-func (c *execGitRepoCache) Store(repoURL, commit, sourcePath string) error {
+func (c *execGitRepoCache) Set(repoURL, commit, sourcePath string) error {
 	key := c.CacheKey(repoURL, commit)
 	target := filepath.Join(c.basePath, key)
 	_ = os.RemoveAll(target)
