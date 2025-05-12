@@ -21,27 +21,34 @@ var BuildCommand = &cli.Command{
 			Name:  "release",
 			Usage: "Produce production-optimized artifacts",
 		},*/
+		&cli.StringFlag{
+			Name:  "context",
+			Usage: "Context : devnet , testnet or mainnet",
+			Value: "devnet",
+		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		var cfg *common.EigenConfig
+		var cfg *common.BaseConfig
 
 		// First check if config is in context (for testing)
 		if cfgValue := cCtx.Context.Value(ConfigContextKey); cfgValue != nil {
-			cfg = cfgValue.(*common.EigenConfig)
+			cfg = cfgValue.(*common.BaseConfig)
 		} else {
+
+			context := cCtx.String("context")
 			// Load from file if not in context
 			var err error
-			cfg, err = common.LoadEigenConfig()
+			cfg, err = common.LoadBaseConfig(context)
 			if err != nil {
 				return err
 			}
 		}
 
 		if common.IsVerboseEnabled(cCtx, cfg) {
-			log.Printf("Project Name: %s", cfg.Project.Name)
+			log.Printf("Project Name: %s", cfg.Config.Project.Name)
 			log.Printf("Building AVS components...")
 			if cCtx.Bool("release") {
-				log.Printf("Building in release mode with image tag: %s", cfg.Release.AVSLogicImageTag)
+				// log.Printf("Building in release mode with image tag: %s", cfg.Release.AVSLogicImageTag)
 			}
 		}
 
