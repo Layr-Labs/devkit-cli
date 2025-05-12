@@ -1,73 +1,77 @@
 package commands
 
 import (
+	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/devnet"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/urfave/cli/v2"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
-	// Load config
-	// config, err := common.BaseConfig()
-	// if err != nil {
-	// 	return err
-	// }
+	// Load config for devnet
+	config, err := common.LoadBaseConfig(devnet.CONTEXT)
+	if err != nil {
+		return err
+	}
 
-	// port := cCtx.Int("port")
-	// if !devnet.IsPortAvailable(port) {
-	// 	return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --port", port)
-	// }
-	// chain_image := devnet.GetDevnetChainImageOrDefault(config)
-	// chain_args := devnet.GetDevnetChainArgsOrDefault(config)
+	port := cCtx.Int("port")
+	if !devnet.IsPortAvailable(port) {
+		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --port", port)
+	}
+	chain_image := devnet.GetDevnetChainImageOrDefault(config)
+	chain_args := devnet.GetDevnetChainArgsOrDefault(config)
 
-	// startTime := time.Now() // <-- start timing
-	// // if user gives , say, log = "DEBUG" Or "Debug", we normalize it to lowercase
-	// if common.IsVerboseEnabled(cCtx, config) {
-	// 	log.Printf("Starting devnet... ")
+	startTime := time.Now() // <-- start timing
+	// if user gives , say, log = "DEBUG" Or "Debug", we normalize it to lowercase
+	if common.IsVerboseEnabled(cCtx, config) {
+		log.Printf("Starting devnet... ")
 
-	// 	if cCtx.Bool("reset") {
-	// 		log.Printf("Resetting devnet...")
-	// 	}
-	// 	if fork := cCtx.String("fork"); fork != "" {
-	// 		log.Printf("Forking from chain: %s", fork)
-	// 	}
-	// 	if cCtx.Bool("headless") {
-	// 		log.Printf("Running in headless mode")
-	// 	}
-	// 	devnet.LogDevnetEnv(config, cCtx.Int("port"))
-	// }
-	// // docker-compose for anvil devnet and anvil state.json
-	// composePath, statePath := devnet.WriteEmbeddedArtifacts()
+		if cCtx.Bool("reset") {
+			log.Printf("Resetting devnet...")
+		}
+		if fork := cCtx.String("fork"); fork != "" {
+			log.Printf("Forking from chain: %s", fork)
+		}
+		if cCtx.Bool("headless") {
+			log.Printf("Running in headless mode")
+		}
+		devnet.LogDevnetEnv(config, cCtx.Int("port"))
+	}
+	// docker-compose for anvil devnet and anvil state.json
+	composePath, statePath := devnet.WriteEmbeddedArtifacts()
 
-	// // Run docker compose up for anvil devnet
-	// cmd := exec.Command("docker", "compose", "-p", config.Project.Name, "-f", composePath, "up", "-d")
+	// Run docker compose up for anvil devnet
+	cmd := exec.Command("docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
 
-	// containerName := fmt.Sprintf("devkit-devnet-%s", config.Project.Name)
-	// cmd.Env = append(os.Environ(),
-	// 	"FOUNDRY_IMAGE="+chain_image,
-	// 	"ANVIL_ARGS="+chain_args,
-	// 	fmt.Sprintf("DEVNET_PORT=%d", port),
-	// 	"STATE_PATH="+statePath,
-	// 	"AVS_CONTAINER_NAME="+containerName,
-	// )
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("❌ Failed to start devnet: %w", err)
-	// }
-	// rpc_url := fmt.Sprintf("http://localhost:%d", port)
+	containerName := fmt.Sprintf("devkit-devnet-%s", config.Config.Project.Name)
+	cmd.Env = append(os.Environ(),
+		"FOUNDRY_IMAGE="+chain_image,
+		"ANVIL_ARGS="+chain_args,
+		fmt.Sprintf("DEVNET_PORT=%d", port),
+		"STATE_PATH="+statePath,
+		"AVS_CONTAINER_NAME="+containerName,
+	)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+	}
+	rpc_url := fmt.Sprintf("http://localhost:%d", port)
 
-	// // Sleep for 1 second to ensure the devnet is fully started
-	// time.Sleep(1 * time.Second)
+	// Sleep for 1 second to ensure the devnet is fully started
+	time.Sleep(1 * time.Second)
 
-	// devnet.FundWalletsDevnet(config, rpc_url)
-	// elapsed := time.Since(startTime).Round(time.Second)
+	devnet.FundWalletsDevnet(config, rpc_url)
+	elapsed := time.Since(startTime).Round(time.Second)
 
-	// // Sleep for 1 second to make sure wallets are funded
-	// time.Sleep(1 * time.Second)
-	// log.Printf("Devnet started successfully in %s", elapsed)
+	// Sleep for 1 second to make sure wallets are funded
+	time.Sleep(1 * time.Second)
+	log.Printf("Devnet started successfully in %s", elapsed)
 
 	return nil
 }
@@ -157,20 +161,20 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		return nil
 	}
 
-	// if devnet.FileExistsInRoot(common.EigenTomlPath) {
-	// 	// Load config
-	// 	config, err := common.LoadEigenConfig()
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	if devnet.FileExistsInRoot(filepath.Join(common.DefaultBaseConfigPath, "config.yaml")) {
+		// Load config
+		config, err := common.LoadBaseConfig(devnet.CONTEXT)
+		if err != nil {
+			return err
+		}
 
-	// 	container := fmt.Sprintf("devkit-devnet-%s", config.Project.Name)
+		container := fmt.Sprintf("devkit-devnet-%s", config.Config.Project.Name)
 
-	// 	devnet.StopAndRemoveContainer(container)
+		devnet.StopAndRemoveContainer(container)
 
-	// } else {
-	// 	log.Printf("Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
-	// }
+	} else {
+		log.Printf("Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
+	}
 
 	return nil
 }

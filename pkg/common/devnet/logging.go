@@ -2,17 +2,17 @@ package devnet
 
 import (
 	"devkit-cli/pkg/common"
+	"log"
 )
 
 func LogDevnetEnv(config *common.BaseConfig, port int) {
-	// log.Printf("Port: %d", port)
-
+	chainImage := ""
 	// chainImage := config.Env[DEVNET_ENV_KEY].ChainImage
-	// if chainImage == "" {
-	// 	log.Printf("⚠️  Chain image not provided in eigen.toml under [env.devnet]")
-	// } else {
-	// 	log.Printf("Chain Image: %s", chainImage)
-	// }
+	if chainImage == "" {
+		log.Printf("⚠️  Chain image not provided in eigen.toml under [env.devnet]")
+	} else {
+		log.Printf("Chain Image: %s", chainImage)
+	}
 }
 
 const (

@@ -3,7 +3,6 @@ package common_test
 import (
 	"devkit-cli/pkg/common"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,7 +18,7 @@ func TestLoadBaseConfig_FromCopiedTempFile(t *testing.T) {
 
 	// Copy config/config.yaml to tempDir
 	srcConfigPath := filepath.Join("..", "..", "config", "config.yaml")
-	copyFile(t, srcConfigPath, tmpYamlPath)
+	common.CopyFile(t, srcConfigPath, tmpYamlPath)
 
 	// Copy config/contexts/devnet.yaml to tempDir/config/contexts
 	tmpContextDir := filepath.Join(tmpDir, "config", "contexts")
@@ -27,7 +26,7 @@ func TestLoadBaseConfig_FromCopiedTempFile(t *testing.T) {
 
 	srcDevnetPath := filepath.Join("..", "..", "config", "contexts", "devnet.yaml")
 	tmpDevnetPath := filepath.Join(tmpContextDir, "devnet.yaml")
-	copyFile(t, srcDevnetPath, tmpDevnetPath)
+	common.CopyFile(t, srcDevnetPath, tmpDevnetPath)
 
 	// Run loader with the new base path
 	cfg, err := LoadBaseConfigFromPath("devnet", tmpDir)
@@ -69,18 +68,4 @@ func LoadBaseConfigFromPath(contextName string, config_directory_path string) (*
 	}
 
 	return &cfg, nil
-}
-
-func copyFile(t *testing.T, src, dst string) {
-	srcFile, err := os.Open(src)
-	assert.NoError(t, err)
-	defer srcFile.Close()
-
-	dstFile, err := os.Create(dst)
-	assert.NoError(t, err)
-	defer dstFile.Close()
-
-	_, err = io.Copy(dstFile, srcFile)
-	assert.NoError(t, err)
-	assert.NoError(t, dstFile.Sync())
 }

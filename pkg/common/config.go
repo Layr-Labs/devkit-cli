@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const DefaultBaseConfigPath = "config/config.yaml"
+const DefaultBaseConfigPath = "config"
 
 type ConfigBlock struct {
 	Project ProjectConfig `yaml:"project"`
@@ -36,7 +36,7 @@ type BaseConfig struct {
 
 func LoadBaseConfig(contextName string) (*BaseConfig, error) {
 	// Load base config
-	data, err := os.ReadFile(DefaultBaseConfigPath)
+	data, err := os.ReadFile(filepath.Join(DefaultBaseConfigPath, "config.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read base config: %w", err)
 	}
