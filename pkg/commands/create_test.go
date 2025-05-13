@@ -253,11 +253,8 @@ version = "0.1.0"
 
 	origCmd := CreateCommand
 	origCmd.Action = func(cCtx *cli.Context) error {
-
-		select {
-		case <-cCtx.Context.Done():
-			return cCtx.Context.Err()
-		}
+		<-cCtx.Context.Done()
+		return cCtx.Context.Err()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
