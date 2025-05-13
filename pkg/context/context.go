@@ -18,7 +18,6 @@ func WithShutdown(ctx context.Context) context.Context {
 	go func() {
 		<-sigChan
 		fmt.Printf("caught interrupt, shutting down gracefully after %d second(s)\n", 1*time.Second)
-		time.Sleep(1 * time.Second)
 		cancel()
 	}()
 

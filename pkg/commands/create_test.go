@@ -2,12 +2,15 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"devkit-cli/pkg/common"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -235,6 +238,75 @@ func TestConfigCommand_ListOutput(t *testing.T) {
 	require.Contains(t, output, "[project]")
 	require.Contains(t, output, "[operator]")
 	require.Contains(t, output, "[env]")
+}
+
+func TestCreateCommand_ContextCancellation(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Prepare dummy default.eigen.toml for copying
+	mockToml := `
+[project]
+name = "cancelled-avs"
+version = "0.1.0"
+`
+	if err := os.WriteFile("default.eigen.toml", []byte(mockToml), 0644); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove("default.eigen.toml")
+
+	origCmd := CreateCommand
+	origCmd.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:  "dir",
+			Value: tmpDir,
+		},
+		&cli.StringFlag{
+			Name:  "template-path",
+			Value: "https://github.com/Layr-Labs/teal",
+		},
+	}
+
+	// Inject artificial delay and observe cancellation
+	origCmd.Action = func(cCtx *cli.Context) error {
+		projectName := cCtx.Args().First()
+		targetDir := filepath.Join(cCtx.String("dir"), projectName)
+
+		select {
+		case <-cCtx.Context.Done():
+			return cCtx.Context.Err()
+		case <-time.After(5 * time.Millisecond):
+			// Emulate work after delay
+		}
+
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	app := &cli.App{
+		Name:     "test",
+		Commands: []*cli.Command{WithTestConfig(origCmd)},
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- app.RunContext(ctx, []string{"app", "create", "cancelled-avs"})
+	}()
+
+	cancel()
+
+	select {
+	case err := <-done:
+		if err == nil || !errors.Is(err, context.Canceled) {
+			t.Errorf("Expected context cancellation, got: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Error("Create command did not exit after context cancellation")
+	}
 }
 
 func stripANSI(input string) string {

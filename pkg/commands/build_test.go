@@ -1,10 +1,13 @@
 package commands
 
 import (
+	"context"
 	"devkit-cli/pkg/common"
+	devcontext "devkit-cli/pkg/context"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/urfave/cli/v2"
 )
@@ -138,5 +141,55 @@ build:
 	// This should fail because contracts dir exists but has no Makefile
 	if err := app.Run([]string{"app", "build"}); err == nil {
 		t.Errorf("Expected build to fail due to missing contracts Makefile, but it succeeded")
+	}
+}
+
+func TestBuildCommand_ContextCancellation(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Set up a Makefile.Devkit
+	mockMakefile := `
+.PHONY: build
+build:
+	@sleep 2
+	@echo "Mock build executed"
+	`
+	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(tmpDir); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(oldWd) }()
+
+	parentCtx, cancel := context.WithCancel(context.Background())
+	ctx := devcontext.WithShutdown(parentCtx)
+
+	app := &cli.App{
+		Name:     "test",
+		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- app.RunContext(ctx, []string{"app", "build"})
+	}()
+
+	cancel()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Logf("Build command exited with error (expected due to context cancel): %v", err)
+		} else {
+			t.Log("Build command exited cleanly after context cancel")
+		}
+	case <-time.After(1 * time.Second):
+		t.Error("Build command did not exit after context cancellation")
 	}
 }
