@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 // WithShutdown creates a new context that will be cancelled on SIGTERM/SIGINT
@@ -17,7 +16,7 @@ func WithShutdown(ctx context.Context) context.Context {
 
 	go func() {
 		<-sigChan
-		fmt.Printf("caught interrupt, shutting down gracefully after %d second(s)\n", 1*time.Second)
+		fmt.Printf("caught interrupt, shutting down gracefully.")
 		cancel()
 	}()
 
