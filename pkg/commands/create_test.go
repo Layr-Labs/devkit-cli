@@ -280,7 +280,7 @@ version = "0.1.0"
 		if err == nil || !errors.Is(err, context.Canceled) {
 			t.Errorf("Expected context cancellation, got: %v", err)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(5 * time.Millisecond):
 		t.Error("Create command did not exit after context cancellation")
 	}
 }
