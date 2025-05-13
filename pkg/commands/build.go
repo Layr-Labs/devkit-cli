@@ -23,7 +23,7 @@ var BuildCommand = &cli.Command{
 		},*/
 		&cli.StringFlag{
 			Name:  "context",
-			Usage: "Context : devnet , testnet or mainnet",
+			Usage: "devnet ,testnet or mainnet",
 			Value: "devnet",
 		},
 	}, common.GlobalFlags...),
@@ -47,9 +47,7 @@ var BuildCommand = &cli.Command{
 		if common.IsVerboseEnabled(cCtx, cfg) {
 			log.Printf("Project Name: %s", cfg.Config.Project.Name)
 			log.Printf("Building AVS components...")
-			if cCtx.Bool("release") {
-				// log.Printf("Building in release mode with image tag: %s", cfg.Release.AVSLogicImageTag)
-			}
+
 		}
 
 		// Execute make build with Makefile.Devkit

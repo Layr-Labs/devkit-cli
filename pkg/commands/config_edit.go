@@ -290,47 +290,47 @@ func getFieldChangesDetailed(prefix string, old, new interface{}) []ConfigChange
 }
 
 // compareArraysDetailed compares two string arrays and returns detailed changes
-func compareArraysDetailed(prefix string, oldArr, newArr []string) []ConfigChange {
-	changes := []ConfigChange{}
+// func compareArraysDetailed(prefix string, oldArr, newArr []string) []ConfigChange {
+// 	changes := []ConfigChange{}
 
-	// Find items that were removed
-	for _, oldItem := range oldArr {
-		found := false
-		for _, newItem := range newArr {
-			if oldItem == newItem {
-				found = true
-				break
-			}
-		}
-		if !found {
-			changes = append(changes, ConfigChange{
-				Path:     prefix,
-				OldValue: oldItem,
-				NewValue: "removed",
-			})
-		}
-	}
+// 	// Find items that were removed
+// 	for _, oldItem := range oldArr {
+// 		found := false
+// 		for _, newItem := range newArr {
+// 			if oldItem == newItem {
+// 				found = true
+// 				break
+// 			}
+// 		}
+// 		if !found {
+// 			changes = append(changes, ConfigChange{
+// 				Path:     prefix,
+// 				OldValue: oldItem,
+// 				NewValue: "removed",
+// 			})
+// 		}
+// 	}
 
-	// Find items that were added
-	for _, newItem := range newArr {
-		found := false
-		for _, oldItem := range oldArr {
-			if newItem == oldItem {
-				found = true
-				break
-			}
-		}
-		if !found {
-			changes = append(changes, ConfigChange{
-				Path:     prefix,
-				OldValue: "not_exists",
-				NewValue: newItem,
-			})
-		}
-	}
+// 	// Find items that were added
+// 	for _, newItem := range newArr {
+// 		found := false
+// 		for _, oldItem := range oldArr {
+// 			if newItem == oldItem {
+// 				found = true
+// 				break
+// 			}
+// 		}
+// 		if !found {
+// 			changes = append(changes, ConfigChange{
+// 				Path:     prefix,
+// 				OldValue: "not_exists",
+// 				NewValue: newItem,
+// 			})
+// 		}
+// 	}
 
-	return changes
-}
+// 	return changes
+// }
 
 // logConfigChanges logs the configuration changes
 func logConfigChanges(changes []ConfigChange) {
