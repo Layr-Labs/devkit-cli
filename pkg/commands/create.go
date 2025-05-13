@@ -20,7 +20,7 @@ import (
 var CreateCommand = &cli.Command{
 	Name:      "create",
 	Usage:     "Initializes a new AVS project scaffold (Hourglass model)",
-	ArgsUsage: "<project-name>",
+	ArgsUsage: "<project-name> [target-dir]",
 	Flags: append([]cli.Flag{
 		&cli.StringFlag{
 			Name:  "dir",
@@ -76,14 +76,32 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
+		// get logger
+		log, tracker := getLogger()
+
+		// exit early if no project name is provided
 		if cCtx.NArg() == 0 {
 			return fmt.Errorf("project name is required\nUsage: avs create <project-name> [flags]")
 		}
 		projectName := cCtx.Args().First()
-		targetDir := filepath.Join(cCtx.String("dir"), projectName)
+		dest := cCtx.Args().Get(1)
 
 		// get logger
 		log, tracker := common.GetLogger()
+
+		// use dest from dir flag or positional
+		var targetDir string
+		if dest != "" {
+			targetDir = dest
+		} else {
+			targetDir = cCtx.String("dir")
+		}
+
+		// ensure provided dir is absolute
+		targetDir, err := filepath.Abs(filepath.Join(targetDir, projectName))
+		if err != nil {
+			return fmt.Errorf("failed to resolve absolute path for target directory: %w", err)
+		}
 
 		// in verbose mode, detail the situation
 		if cCtx.Bool("verbose") {

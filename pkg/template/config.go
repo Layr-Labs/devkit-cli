@@ -1,13 +1,10 @@
 package template
 
 import (
-	"os"
-	"path/filepath"
+	"devkit-cli/config"
 
 	"gopkg.in/yaml.v3"
 )
-
-var configPath = filepath.Join("config", "templates.yml")
 
 type Config struct {
 	Architectures map[string]Architecture `yaml:"architectures"`
@@ -27,10 +24,8 @@ type Language struct {
 }
 
 func LoadConfig() (*Config, error) {
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, err
-	}
+	// pull from embedded string
+	data := []byte(config.TemplatesYml)
 
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
