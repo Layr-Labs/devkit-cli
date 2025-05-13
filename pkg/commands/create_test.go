@@ -241,9 +241,6 @@ func TestConfigCommand_ListOutput(t *testing.T) {
 }
 
 func TestCreateCommand_ContextCancellation(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Prepare dummy default.eigen.toml for copying
 	mockToml := `
 [project]
 name = "cancelled-avs"
@@ -255,33 +252,12 @@ version = "0.1.0"
 	defer os.Remove("default.eigen.toml")
 
 	origCmd := CreateCommand
-	origCmd.Flags = []cli.Flag{
-		&cli.StringFlag{
-			Name:  "dir",
-			Value: tmpDir,
-		},
-		&cli.StringFlag{
-			Name:  "template-path",
-			Value: "https://github.com/Layr-Labs/teal",
-		},
-	}
-
-	// Inject artificial delay and observe cancellation
 	origCmd.Action = func(cCtx *cli.Context) error {
-		projectName := cCtx.Args().First()
-		targetDir := filepath.Join(cCtx.String("dir"), projectName)
 
 		select {
 		case <-cCtx.Context.Done():
 			return cCtx.Context.Err()
-		case <-time.After(5 * time.Millisecond):
-			// Emulate work after delay
 		}
-
-		if err := os.MkdirAll(targetDir, 0755); err != nil {
-			return err
-		}
-		return nil
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

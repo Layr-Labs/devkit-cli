@@ -389,18 +389,16 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 		done <- app.RunContext(ctx, args)
 	}()
 
-	time.Sleep(200 * time.Millisecond)
 	cancel()
 
 	select {
-	case err := <-done:
-		// We expect an error here if context cancellation is respected early
+	case err = <-done:
 		if err == nil {
 			t.Log("StartDevnetAction exited cleanly after context cancellation")
 		} else {
 			t.Logf("StartDevnetAction returned with error after context cancellation: %v", err)
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(500 * time.Millisecond):
 		t.Error("StartDevnetAction did not exit after context cancellation")
 	}
 }
