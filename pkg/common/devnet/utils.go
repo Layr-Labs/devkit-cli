@@ -6,6 +6,8 @@ import (
 	"net"
 	"os/exec"
 	"time"
+
+	"github.com/urfave/cli/v2"
 )
 
 // IsPortAvailable checks if a TCP port is not already bound by another service.
@@ -21,13 +23,13 @@ func IsPortAvailable(port int) bool {
 }
 
 // / Stops the container and removes it
-func StopAndRemoveContainer(containerName string) {
-	if err := exec.Command("docker", "stop", containerName).Run(); err != nil {
+func StopAndRemoveContainer(ctx *cli.Context, containerName string) {
+	if err := exec.CommandContext(ctx.Context, "docker", "stop", containerName).Run(); err != nil {
 		log.Printf("⚠️ Failed to stop container %s: %v", containerName, err)
 	} else {
 		log.Printf("✅ Stopped container %s", containerName)
 	}
-	if err := exec.Command("docker", "rm", containerName).Run(); err != nil {
+	if err := exec.CommandContext(ctx.Context, "docker", "rm", containerName).Run(); err != nil {
 		log.Printf("⚠️ Failed to remove container %s: %v", containerName, err)
 	} else {
 		log.Printf("✅ Removed container %s", containerName)
