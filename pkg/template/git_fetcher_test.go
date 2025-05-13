@@ -1,17 +1,23 @@
 package template
 
 import (
+	"context"
+	"devkit-cli/pkg/common/logger"
+	"devkit-cli/pkg/common/progress"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func TestGitFetcher_InvalidURL(t *testing.T) {
-	fetcher := &GitFetcher{}
+	fetcher := getFetcher(1)
 	tempDir := t.TempDir()
 
+	cmdCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Test with an invalid URL (should fail)
-	err := fetcher.Fetch("invalid-url", tempDir, false, true)
+	err := fetcher.Fetch(cmdCtx, "invalid-url", tempDir)
 	if err == nil {
 		t.Error("expected error for invalid URL")
 	}
@@ -23,17 +29,40 @@ func TestGitFetcher_InvalidURL(t *testing.T) {
 	}
 }
 
-func TestGitFetcher_ValidRepo(t *testing.T) {
+func getFetcher(maxDepth int) *GitFetcher {
+	// Set Cache location as ~/.devkit
+	basePath := filepath.Join(os.Getenv("HOME"), ".devkit")
+	// Set logger
+	log := logger.NewZapLogger()
+	// Set fetcher
 	fetcher := &GitFetcher{
-		MaxDepth:       1,
-		MaxRetries:     3,
-		MaxConcurrency: 8,
+		Git:   NewGitClient(),
+		Cache: NewGitRepoCache(basePath),
+		Logger: *logger.NewProgressLogger(
+			log,
+			progress.NewLogProgressTracker(10, log),
+		),
+		Config: GitFetcherConfig{
+			CacheDir:       basePath,
+			MaxDepth:       maxDepth,
+			MaxRetries:     3,
+			MaxConcurrency: 8,
+		},
 	}
+	return fetcher
+}
+
+func TestGitFetcher_ValidRepo(t *testing.T) {
+	// Set fetcher
+	fetcher := getFetcher(1)
 	tempDir := t.TempDir()
 
 	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
 
-	err := fetcher.Fetch(repo, tempDir, false, true)
+	cmdCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := fetcher.Fetch(cmdCtx, repo, tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo: %v", err)
 	}
@@ -47,17 +76,16 @@ func TestGitFetcher_ValidRepo(t *testing.T) {
 }
 
 func TestGitFetcher_Submodules(t *testing.T) {
-	fetcher := &GitFetcher{
-		MaxDepth:       1,
-		MaxRetries:     3,
-		MaxConcurrency: 8,
-	}
+	fetcher := getFetcher(1)
 	tempDir := t.TempDir()
 
 	// Includes submodules: simple example with known submodule
 	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
 
-	err := fetcher.Fetch(repo, tempDir, false, true)
+	cmdCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := fetcher.Fetch(cmdCtx, repo, tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error cloning repo with submodules: %v", err)
 	}
@@ -70,16 +98,15 @@ func TestGitFetcher_Submodules(t *testing.T) {
 }
 
 func TestGitFetcher_MaxDepth(t *testing.T) {
-	fetcher := &GitFetcher{
-		MaxDepth:       0,
-		MaxRetries:     3,
-		MaxConcurrency: 8,
-	}
+	fetcher := getFetcher(0)
 	tempDir := t.TempDir()
 
 	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
 
-	err := fetcher.Fetch(repo, tempDir, false, true)
+	cmdCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := fetcher.Fetch(cmdCtx, repo, tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo with depth: %v", err)
 	}
@@ -95,16 +122,15 @@ func TestGitFetcher_MaxDepth(t *testing.T) {
 }
 
 func TestGitFetcher_NonexistentBranch(t *testing.T) {
-	fetcher := &GitFetcher{
-		MaxDepth:       0,
-		MaxRetries:     3,
-		MaxConcurrency: 8,
-	}
+	fetcher := getFetcher(0)
 	tempDir := t.TempDir()
 
 	repo := "https://github.com/Layr-labs/eigenlayer-contracts/tree/missing-branch"
 
-	err := fetcher.Fetch(repo, tempDir, false, true)
+	cmdCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := fetcher.Fetch(cmdCtx, repo, tempDir)
 	if err == nil {
 		t.Error("expected error for nonexistent branch")
 	}

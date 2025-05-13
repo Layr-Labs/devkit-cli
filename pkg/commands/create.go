@@ -2,13 +2,15 @@ package commands
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/iface"
+	"devkit-cli/pkg/common/logger"
+	"devkit-cli/pkg/common/progress"
 	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
@@ -81,25 +83,29 @@ var CreateCommand = &cli.Command{
 		projectName := cCtx.Args().First()
 		targetDir := filepath.Join(cCtx.String("dir"), projectName)
 
+		// get logger
+		log, tracker := getLogger()
+
+		// in verbose mode, detail the situation
 		if cCtx.Bool("verbose") {
-			log.Printf("Creating new AVS project: %s", projectName)
-			log.Printf("Directory: %s", cCtx.String("dir"))
-			log.Printf("Language: %s", cCtx.String("lang"))
-			log.Printf("Architecture: %s", cCtx.String("arch"))
-			log.Printf("Environment: %s", cCtx.String("env"))
+			log.Info("Creating new AVS project: %s", projectName)
+			log.Info("Directory: %s", cCtx.String("dir"))
+			log.Info("Language: %s", cCtx.String("lang"))
+			log.Info("Architecture: %s", cCtx.String("arch"))
+			log.Info("Environment: %s", cCtx.String("env"))
 			if cCtx.String("template-path") != "" {
-				log.Printf("Template Path: %s", cCtx.String("template-path"))
+				log.Info("Template Path: %s", cCtx.String("template-path"))
 			}
 
 			// Log telemetry status (accounting for client type)
 			if cCtx.Bool("no-telemetry") {
-				log.Printf("Telemetry: disabled (via flag)")
+				log.Info("Telemetry: disabled (via flag)")
 			} else {
 				client, ok := telemetry.FromContext(cCtx.Context)
 				if !ok || telemetry.IsNoopClient(client) {
-					log.Printf("Telemetry: disabled")
+					log.Info("Telemetry: disabled")
 				} else {
-					log.Printf("Telemetry: enabled")
+					log.Info("Telemetry: enabled")
 				}
 			}
 		}
@@ -116,30 +122,45 @@ var CreateCommand = &cli.Command{
 		}
 
 		if cCtx.Bool("verbose") {
-			log.Printf("Using template: %s", mainURL)
+			log.Info("Using template: %s", mainURL)
 			if contractsURL != "" {
-				log.Printf("Using contracts template: %s", contractsURL)
+				log.Info("Using contracts template: %s", contractsURL)
 			}
 		}
 
+		// Set Cache location as ~/.devkit
+		basePath := filepath.Join(os.Getenv("HOME"), ".devkit")
+
 		// Fetch main template
 		fetcher := &template.GitFetcher{
-			MaxDepth:       cCtx.Int("depth"),
-			MaxRetries:     cCtx.Int("retries"),
-			MaxConcurrency: cCtx.Int("concurrency"),
+			Git:   template.NewGitClient(),
+			Cache: template.NewGitRepoCache(basePath),
+			Logger: *logger.NewProgressLogger(
+				log,
+				tracker,
+			),
+			Config: template.GitFetcherConfig{
+				CacheDir:       basePath,
+				MaxDepth:       cCtx.Int("depth"),
+				MaxRetries:     cCtx.Int("retries"),
+				MaxConcurrency: cCtx.Int("concurrency"),
+				UseCache:       !cCtx.Bool("no-cache"),
+				Verbose:        cCtx.Bool("verbose"),
+			},
 		}
-		if err := fetcher.Fetch(mainURL, targetDir, cCtx.Bool("verbose"), cCtx.Bool("no-cache")); err != nil {
+		if err := fetcher.Fetch(cCtx.Context, mainURL, targetDir); err != nil {
 			return fmt.Errorf("failed to fetch template from %s: %w", mainURL, err)
 		}
 
 		// Check for contracts template and fetch if missing
 		if contractsURL != "" {
 			contractsDir := filepath.Join(targetDir, common.ContractsDir)
+			contractsDirReadme := filepath.Join(contractsDir, "README.md")
 
 			// Fetch the contracts directory if it does not exist in the template
-			if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
-				if err := fetcher.Fetch(contractsURL, contractsDir, cCtx.Bool("verbose"), cCtx.Bool("no-cache")); err != nil {
-					log.Printf("Warning: Failed to fetch contracts template: %v", err)
+			if _, err := os.Stat(contractsDirReadme); os.IsNotExist(err) {
+				if err := fetcher.Fetch(cCtx.Context, contractsURL, contractsDir); err != nil {
+					log.Warn("Failed to fetch contracts template: %v", err)
 				}
 			}
 		}
@@ -157,12 +178,27 @@ var CreateCommand = &cli.Command{
 
 		// Initialize git repository in the project directory
 		if err := initGitRepo(targetDir, cCtx.Bool("verbose")); err != nil {
-			log.Printf("Warning: Failed to initialize Git repository in %s: %v", targetDir, err)
+			log.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
-		log.Printf("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
+		log.Info("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
+}
+
+// Get logger for the env we're in
+func getLogger() (iface.Logger, iface.ProgressTracker) {
+	var log iface.Logger
+	var tracker iface.ProgressTracker
+	if progress.IsTTY() {
+		log = logger.NewLogger()
+		tracker = progress.NewTTYProgressTracker(10, os.Stdout)
+	} else {
+		log = logger.NewZapLogger()
+		tracker = progress.NewLogProgressTracker(10, log)
+	}
+
+	return log, tracker
 }
 
 func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
@@ -191,8 +227,12 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 }
 
 func createProjectDir(targetDir string, overwrite, verbose bool) error {
+	// get logger
+	log, _ := getLogger()
+
 	// Check if directory exists and handle overwrite
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
+
 		if !overwrite {
 			return fmt.Errorf("directory %s already exists. Use --overwrite flag to force overwrite", targetDir)
 		}
@@ -200,7 +240,7 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 			return fmt.Errorf("failed to remove existing directory: %w", err)
 		}
 		if verbose {
-			log.Printf("Removed existing directory: %s", targetDir)
+			log.Info("Removed existing directory: %s", targetDir)
 		}
 	}
 
@@ -273,8 +313,11 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(targetDir string, verbose bool) error {
+	// get logger
+	log, _ := getLogger()
+
 	if verbose {
-		log.Printf("Initializing Git repository in %s...", targetDir)
+		log.Info("Initializing Git repository in %s...", targetDir)
 	}
 	cmd := exec.Command("git", "init")
 	cmd.Dir = targetDir
@@ -283,9 +326,9 @@ func initGitRepo(targetDir string, verbose bool) error {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
 	if verbose {
-		log.Printf("Git repository initialized successfully.")
+		log.Info("Git repository initialized successfully.")
 		if len(output) > 0 {
-			log.Printf("Git init output:\n%s", string(output))
+			log.Info("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
 		}
 	}
 	return nil
