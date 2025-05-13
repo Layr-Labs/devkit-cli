@@ -23,7 +23,7 @@ func IsVerboseEnabled(cCtx *cli.Context, cfg *BaseConfig) bool {
 	return true
 }
 
-func CopyFile(t *testing.T, src, dst string) {
+func CopyFileTesting(t *testing.T, src, dst string) {
 	srcFile, err := os.Open(src)
 	assert.NoError(t, err)
 	defer srcFile.Close()
@@ -35,4 +35,25 @@ func CopyFile(t *testing.T, src, dst string) {
 	_, err = io.Copy(dstFile, srcFile)
 	assert.NoError(t, err)
 	assert.NoError(t, dstFile.Sync())
+}
+
+func CopyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+
+	return dstFile.Sync()
 }

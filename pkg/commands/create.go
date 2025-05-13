@@ -145,7 +145,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Copy default.eigen.toml to the project directory
-		if err := copyDefaultTomlToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {
+		if err := copyDefaultConfigToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {
 			return fmt.Errorf("failed to initialize eigen.toml: %w", err)
 		}
 
@@ -211,24 +211,63 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 	return nil
 }
 
-// copyDefaultTomlToProject copies default.eigen.toml to the project directory with updated project name
-func copyDefaultTomlToProject(targetDir, projectName string, verbose bool) error {
-	// Read default.eigen.toml from current directory
-	content, err := os.ReadFile("default.eigen.toml")
+// copyDefaultConfigToProject copies config to the project directory with updated project name
+func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) error {
+	// Step 1: Copy and modify config.yaml
+	configDir := filepath.Join("config")
+	contextsDir := filepath.Join(configDir, "contexts")
+
+	content, err := os.ReadFile(filepath.Join(configDir, "config.yaml"))
 	if err != nil {
-		return fmt.Errorf("default.eigen.toml not found: %w", err)
+		return fmt.Errorf("config/config.yaml not found: %w", err)
 	}
 
-	// Replace project name and write to target
-	newContent := strings.Replace(string(content), `name = "my-avs"`, fmt.Sprintf(`name = "%s"`, projectName), 1)
-	err = os.WriteFile(filepath.Join(targetDir, "eigen.toml"), []byte(newContent), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write eigen.toml: %w", err)
+	// Replace project name
+	newContent := strings.Replace(string(content), `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
+
+	// Ensure target config directory exists
+	destConfigDir := filepath.Join(targetDir, "config")
+	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
+		return fmt.Errorf("failed to create target config directory: %w", err)
+	}
+
+	// Write modified config.yaml
+	destConfigPath := filepath.Join(destConfigDir, "config.yaml")
+	if err := os.WriteFile(destConfigPath, []byte(newContent), 0644); err != nil {
+		return fmt.Errorf("failed to write config/config.yaml: %w", err)
 	}
 
 	if verbose {
-		log.Printf("Created eigen.toml in project directory")
+		log.Printf("Created config/config.yaml in project directory")
 	}
+
+	// Step 2: Copy all context files
+	destContextsDir := filepath.Join(destConfigDir, "contexts")
+	if err := os.MkdirAll(destContextsDir, 0755); err != nil {
+		return fmt.Errorf("failed to create target contexts directory: %w", err)
+	}
+
+	entries, err := os.ReadDir(contextsDir)
+	if err != nil {
+		return fmt.Errorf("failed to read contexts directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue // skip subdirectories
+		}
+		srcPath := filepath.Join(contextsDir, entry.Name())
+		destPath := filepath.Join(destContextsDir, entry.Name())
+
+		if err := common.CopyFile(srcPath, destPath); err != nil {
+			return fmt.Errorf("failed to copy %s: %w", entry.Name(), err)
+		}
+
+		if verbose {
+			log.Printf("Copied context file: %s", entry.Name())
+		}
+	}
+
 	return nil
 }
 

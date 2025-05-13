@@ -1,234 +1,265 @@
 package commands
 
 import (
-	"regexp"
+	"bytes"
+	"devkit-cli/pkg/common"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 )
 
-// func TestCreateCommand(t *testing.T) {
-// 	tmpDir := t.TempDir()
+func TestCreateCommand(t *testing.T) {
+	tmpDir := t.TempDir()
 
-// 	// Create minimal default.eigen.toml
-// 	mockToml := `
-// [project]
-// name = "my-avs"
-// version = "0.1.0"
-// `
-// 	// Create default.eigen.toml in current directory
-// 	if err := os.WriteFile("default.eigen.toml", []byte(mockToml), 0644); err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer func() {
-// 		if err := os.Remove("default.eigen.toml"); err != nil {
-// 			t.Logf("Failed to remove test file: %v", err)
-// 		}
-// 	}()
+	mockConfigYaml := `
+version: 0.0.1
+config:
+  project:
+    name: "my-avs"
+    version: "0.1.0"
+    context: "devnet"
+`
+	configDir := filepath.Join("config")
+	err := os.MkdirAll(configDir, 0755)
+	assert.NoError(t, err)
 
-// 	// Override default directory
-// 	origCmd := CreateCommand
-// 	tmpCmd := *CreateCommand
-// 	tmpCmd.Flags = []cli.Flag{
-// 		&cli.StringFlag{
-// 			Name:  "dir",
-// 			Value: tmpDir,
-// 		},
-// 		&cli.StringFlag{
-// 			Name:  "template-path",
-// 			Value: "https://github.com/Layr-Labs/teal",
-// 		},
-// 	}
-// 	CreateCommand = &tmpCmd
-// 	defer func() { CreateCommand = origCmd }()
+	// Create config/config.yaml in current directory
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(mockConfigYaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Remove(filepath.Join("config", "config.yaml")); err != nil {
+			t.Logf("Failed to remove test file: %v", err)
+		}
+	}()
 
-// 	// Override Action for testing
-// 	tmpCmd.Action = func(cCtx *cli.Context) error {
-// 		if cCtx.NArg() == 0 {
-// 			return fmt.Errorf("project name is required")
-// 		}
-// 		projectName := cCtx.Args().First()
-// 		targetDir := filepath.Join(cCtx.String("dir"), projectName)
+	devnetYaml := `
+version: 0.0.1
+config:
+  project:
+    name: "my-avs"
+    version: "0.1.0"
+    context: "devnet"
+`
+	contextsDir := filepath.Join(configDir, "contexts")
+	err = os.MkdirAll(contextsDir, 0755)
+	assert.NoError(t, err)
 
-// 		// Check if directory exists
-// 		if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
-// 			return fmt.Errorf("directory %s already exists", targetDir)
-// 		}
+	// Create config/config.yaml in current directory
+	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(devnetYaml), 0644); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Remove(filepath.Join("config", "contexts", "devnet.yaml")); err != nil {
+			t.Logf("Failed to remove test file: %v", err)
+		}
+	}()
 
-// 		// Create project dir
-// 		if err := os.MkdirAll(targetDir, 0755); err != nil {
-// 			return err
-// 		}
+	// Override default directory
+	origCmd := CreateCommand
+	tmpCmd := *CreateCommand
+	tmpCmd.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:  "dir",
+			Value: tmpDir,
+		},
+		&cli.StringFlag{
+			Name:  "template-path",
+			Value: "https://github.com/Layr-Labs/teal",
+		},
+	}
+	CreateCommand = &tmpCmd
+	defer func() { CreateCommand = origCmd }()
 
-// 		// Create contracts directory for testing
-// 		contractsDir := filepath.Join(targetDir, common.ContractsDir)
-// 		if err := os.MkdirAll(contractsDir, 0755); err != nil {
-// 			return err
-// 		}
+	// Override Action for testing
+	tmpCmd.Action = func(cCtx *cli.Context) error {
+		if cCtx.NArg() == 0 {
+			return fmt.Errorf("project name is required")
+		}
+		projectName := cCtx.Args().First()
+		targetDir := filepath.Join(cCtx.String("dir"), projectName)
 
-// 		// Create eigen.toml
-// 		return copyDefaultTomlToProject(targetDir, projectName, false)
-// 	}
+		// Check if directory exists
+		if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
+			return fmt.Errorf("directory %s already exists", targetDir)
+		}
 
-// 	app := &cli.App{
-// 		Name:     "test",
-// 		Commands: []*cli.Command{WithTestConfig(&tmpCmd)},
-// 	}
+		// Create project dir
+		if err := os.MkdirAll(targetDir, 0755); err != nil {
+			return err
+		}
 
-// 	// Test cases
-// 	if err := app.Run([]string{"app", "create"}); err == nil {
-// 		t.Error("Expected error for missing project name, but got nil")
-// 	}
+		// Create contracts directory for testing
+		contractsDir := filepath.Join(targetDir, common.ContractsDir)
+		if err := os.MkdirAll(contractsDir, 0755); err != nil {
+			return err
+		}
 
-// 	if err := app.Run([]string{"app", "create", "test-project"}); err != nil {
-// 		t.Errorf("Failed to create project: %v", err)
-// 	}
+		// Create eigen.toml
+		return copyDefaultConfigToProject(targetDir, projectName, false)
+	}
 
-// 	// Verify file exists
-// 	eigenTomlPath := filepath.Join(tmpDir, "test-project", "eigen.toml")
-// 	if _, err := os.Stat(eigenTomlPath); os.IsNotExist(err) {
-// 		t.Error("eigen.toml was not created properly")
-// 	}
+	app := &cli.App{
+		Name:     "test",
+		Commands: []*cli.Command{WithTestConfig(&tmpCmd)},
+	}
 
-// 	// Verify contracts directory exists
-// 	contractsDir := filepath.Join(tmpDir, "test-project", common.ContractsDir)
-// 	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
-// 		t.Error("contracts directory was not created properly")
-// 	}
+	// Test cases
+	if err := app.Run([]string{"app", "create"}); err == nil {
+		t.Error("Expected error for missing project name, but got nil")
+	}
 
-// 	// Test 3: Project exists (trying to create same project again)
-// 	if err := app.Run([]string{"app", "create", "test-project"}); err == nil {
-// 		t.Error("Expected error when creating existing project")
-// 	}
+	if err := app.Run([]string{"app", "create", "test-project"}); err != nil {
+		t.Errorf("Failed to create project: %v", err)
+	}
 
-// 	// Test 4: Test build after project creation
-// 	projectPath := filepath.Join(tmpDir, "test-project")
+	// Verify file exists
+	eigenTomlPath := filepath.Join(tmpDir, "test-project", "config", "config.yaml")
+	if _, err := os.Stat(eigenTomlPath); os.IsNotExist(err) {
+		t.Error("config/config.yaml was not created properly")
+	}
 
-// 	// Create a mock Makefile.Devkit in the project directory
-// 	mockMakefile := `
-// .PHONY: build
-// build:
-// 	@echo "Mock build executed"
-// 	`
-// 	if err := os.WriteFile(filepath.Join(projectPath, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
-// 		t.Fatal(err)
-// 	}
+	// Verify contracts directory exists
+	contractsDir := filepath.Join(tmpDir, "test-project", common.ContractsDir)
+	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+		t.Error("contracts directory was not created properly")
+	}
 
-// 	// Create a mock Makefile.Devkit in the contracts directory
-// 	if err := os.WriteFile(filepath.Join(contractsDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
-// 		t.Fatal(err)
-// 	}
+	// Test 3: Project exists (trying to create same project again)
+	if err := app.Run([]string{"app", "create", "test-project"}); err == nil {
+		t.Error("Expected error when creating existing project")
+	}
 
-// 	// Change to project directory to test build
-// 	oldWd, err := os.Getwd()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	if err := os.Chdir(projectPath); err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer func() {
-// 		if err := os.Chdir(oldWd); err != nil {
-// 			t.Logf("Failed to change back to original directory: %v", err)
-// 		}
-// 	}()
+	// Test 4: Test build after project creation
+	projectPath := filepath.Join(tmpDir, "test-project")
 
-// 	buildApp := &cli.App{
-// 		Name:     "test",
-// 		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
-// 	}
+	// Create a mock Makefile.Devkit in the project directory
+	mockMakefile := `
+.PHONY: build
+build:
+	@echo "Mock build executed"
+	`
+	if err := os.WriteFile(filepath.Join(projectPath, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+		t.Fatal(err)
+	}
 
-// 	if err := buildApp.Run([]string{"app", "build"}); err != nil {
-// 		t.Errorf("Failed to execute build command: %v", err)
-// 	}
-// }
+	// Create a mock Makefile.Devkit in the contracts directory
+	if err := os.WriteFile(filepath.Join(contractsDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+		t.Fatal(err)
+	}
 
-// // Test creating a project with mock template URLs
-// func TestCreateCommand_WithTemplates(t *testing.T) {
-// 	// Mock template URLs similar to what would be in the config
-// 	mainTemplateURL := "https://github.com/example/avs-template"
-// 	contractsTemplateURL := "https://github.com/example/contracts-template"
+	// Change to project directory to test build
+	oldWd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(projectPath); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Chdir(oldWd); err != nil {
+			t.Logf("Failed to change back to original directory: %v", err)
+		}
+	}()
 
-// 	tmpDir := t.TempDir()
+	buildApp := &cli.App{
+		Name:     "test",
+		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
+	}
 
-// 	// Create project directory structure
-// 	projectName := "test-avs-with-contracts"
-// 	projectDir := filepath.Join(tmpDir, projectName)
+	if err := buildApp.Run([]string{"app", "build"}); err != nil {
+		t.Errorf("Failed to execute build command: %v", err)
+	}
+}
 
-// 	// Create main directory and contracts directory
-// 	if err := os.MkdirAll(projectDir, 0755); err != nil {
-// 		t.Fatal(err)
-// 	}
+// Test creating a project with mock template URLs
+func TestCreateCommand_WithTemplates(t *testing.T) {
+	// Mock template URLs similar to what would be in the config
+	mainTemplateURL := "https://github.com/example/avs-template"
+	contractsTemplateURL := "https://github.com/example/contracts-template"
 
-// 	contractsDir := filepath.Join(projectDir, common.ContractsDir)
-// 	if err := os.MkdirAll(contractsDir, 0755); err != nil {
-// 		t.Fatal(err)
-// 	}
+	tmpDir := t.TempDir()
 
-// 	// Verify the structure
-// 	if _, err := os.Stat(projectDir); os.IsNotExist(err) {
-// 		t.Fatal("Project directory was not created")
-// 	}
+	// Create project directory structure
+	projectName := "test-avs-with-contracts"
+	projectDir := filepath.Join(tmpDir, projectName)
 
-// 	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
-// 		t.Fatal("Contracts directory was not created")
-// 	}
+	// Create main directory and contracts directory
+	if err := os.MkdirAll(projectDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
-// 	// Log (for test purposes only)
-// 	t.Logf("Mock templates: main=%s, contracts=%s", mainTemplateURL, contractsTemplateURL)
-// }
+	contractsDir := filepath.Join(projectDir, common.ContractsDir)
+	if err := os.MkdirAll(contractsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
-// func TestConfigCommand_ListOutput(t *testing.T) {
-// 	tmpDir := t.TempDir()
+	// Verify the structure
+	if _, err := os.Stat(projectDir); os.IsNotExist(err) {
+		t.Fatal("Project directory was not created")
+	}
 
-// 	// 📥 Load the default.eigen.toml content
-// 	defaultTomlPath := filepath.Join("..", "..", "default.eigen.toml") // adjust as needed
-// 	defaultContent, err := os.ReadFile(defaultTomlPath)
-// 	require.NoError(t, err)
+	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+		t.Fatal("Contracts directory was not created")
+	}
 
-// 	// 📝 Write it to test directory as eigen.toml
-// 	eigenPath := filepath.Join(tmpDir, "eigen.toml")
-// 	require.NoError(t, os.WriteFile(eigenPath, defaultContent, 0644))
+	// Log (for test purposes only)
+	t.Logf("Mock templates: main=%s, contracts=%s", mainTemplateURL, contractsTemplateURL)
+}
 
-// 	// 🔁 Change into the test directory
-// 	originalWD, _ := os.Getwd()
-// 	defer func() {
-// 		if err := os.Chdir(originalWD); err != nil {
-// 			t.Logf("Failed to return to original directory: %v", err)
-// 		}
-// 	}()
-// 	require.NoError(t, os.Chdir(tmpDir))
+func TestConfigCommand_ListOutput(t *testing.T) {
+	tmpDir := t.TempDir()
 
-// 	// 🧪 Capture os.Stdout
-// 	var buf bytes.Buffer
-// 	stdout := os.Stdout
-// 	r, w, _ := os.Pipe()
-// 	os.Stdout = w
+	defaultConfigPath := filepath.Join("..", "..", "config")
+	defaultConfigFile, err := os.ReadFile(filepath.Join(defaultConfigPath, "config.yaml"))
+	require.NoError(t, err)
 
-// 	// ⚙️ Run the CLI app with nested subcommands
-// 	app := &cli.App{
-// 		Commands: []*cli.Command{
-// 			{
-// 				Name: "avs",
-// 				Subcommands: []*cli.Command{
-// 					ConfigCommand,
-// 				},
-// 			},
-// 		},
-// 	}
-// 	err = app.Run([]string{"devkit", "avs", "config", "--list"})
-// 	require.NoError(t, err)
+	configPath := filepath.Join(tmpDir, "config")
+	require.NoError(t, os.MkdirAll(configPath, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(configPath, "config.yaml"), defaultConfigFile, 0644))
 
-// 	// 📤 Finish capturing output
-// 	w.Close()
-// 	os.Stdout = stdout
-// 	_, _ = buf.ReadFrom(r)
-// 	output := stripANSI(buf.String())
+	// 🔁 Change into the test directory
+	originalWD, _ := os.Getwd()
+	defer func() {
+		if err := os.Chdir(originalWD); err != nil {
+			t.Logf("Failed to return to original directory: %v", err)
+		}
+	}()
+	require.NoError(t, os.Chdir(tmpDir))
 
-// 	// ✅ Validating output
-// 	require.Contains(t, output, "[project]")
-// 	require.Contains(t, output, "[operator]")
-// 	require.Contains(t, output, "[env]")
-// }
+	// 🧪 Capture os.Stdout
+	var buf bytes.Buffer
+	stdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
 
-func stripANSI(input string) string {
-	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	return ansi.ReplaceAllString(input, "")
+	// ⚙️ Run the CLI app with nested subcommands
+	app := &cli.App{
+		Commands: []*cli.Command{
+			{
+				Name: "avs",
+				Subcommands: []*cli.Command{
+					ConfigCommand,
+				},
+			},
+		},
+	}
+	err = app.Run([]string{"devkit", "avs", "config", "--list"})
+	require.NoError(t, err)
+
+	// 📤 Finish capturing output
+	w.Close()
+	os.Stdout = stdout
+	_, _ = buf.ReadFrom(r)
+	// output := stripANSI(buf.String())
+
+	// ✅ Validating output
+	// require.Contains(t, output, "[project]")
+	// require.Contains(t, output, "[operator]")
+	// require.Contains(t, output, "[env]")
 }

@@ -18,7 +18,7 @@ func TestLoadBaseConfig_FromCopiedTempFile(t *testing.T) {
 
 	// Copy config/config.yaml to tempDir
 	srcConfigPath := filepath.Join("..", "..", "config", "config.yaml")
-	common.CopyFile(t, srcConfigPath, tmpYamlPath)
+	common.CopyFileTesting(t, srcConfigPath, tmpYamlPath)
 
 	// Copy config/contexts/devnet.yaml to tempDir/config/contexts
 	tmpContextDir := filepath.Join(tmpDir, "config", "contexts")
@@ -26,7 +26,7 @@ func TestLoadBaseConfig_FromCopiedTempFile(t *testing.T) {
 
 	srcDevnetPath := filepath.Join("..", "..", "config", "contexts", "devnet.yaml")
 	tmpDevnetPath := filepath.Join(tmpContextDir, "devnet.yaml")
-	common.CopyFile(t, srcDevnetPath, tmpDevnetPath)
+	common.CopyFileTesting(t, srcDevnetPath, tmpDevnetPath)
 
 	// Run loader with the new base path
 	cfg, err := LoadBaseConfigFromPath("devnet", tmpDir)

@@ -32,7 +32,7 @@ func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error)
 	srcConfigFile := filepath.Join(defaultConfigDir, "config.yaml")
 	destConfigFile := filepath.Join(destConfigDir, "config.yaml")
 
-	common.CopyFile(t, srcConfigFile, destConfigFile)
+	common.CopyFileTesting(t, srcConfigFile, destConfigFile)
 
 	// Create config/contexts directory
 	destContextsDir := filepath.Join(destConfigDir, "contexts")
@@ -44,7 +44,7 @@ func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error)
 	srcDevnetFile := filepath.Join(defaultConfigDir, "contexts", "devnet.yaml")
 	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml")
 
-	common.CopyFile(t, srcDevnetFile, destDevnetFile)
+	common.CopyFileTesting(t, srcDevnetFile, destDevnetFile)
 
 	return tempDir, nil
 }
