@@ -61,6 +61,9 @@ OR
 devkit avs create --overwrite my-existing-hourglass-project
 
 # Once you have a project directory, following commands should be run from the project directory you created.
+# For example, if you executed `create my-hourglass-project`, you should `cd` into the
+# project directory ~/avs/my-hourglass-project
+
 devkit avs build
 
 devkit avs devnet start
