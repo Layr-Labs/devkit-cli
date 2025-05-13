@@ -24,7 +24,7 @@ func listConfig(config *common.BaseConfig, projectSettings *common.ProjectSettin
 		return fmt.Errorf("failed to read contexts directory: %w", err)
 	}
 
-	fmt.Println("Available Contexts: \n")
+	fmt.Println("Available Contexts: ")
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
 			continue

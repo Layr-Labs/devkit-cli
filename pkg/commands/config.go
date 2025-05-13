@@ -9,23 +9,24 @@ import (
 
 var ConfigCommand = &cli.Command{
 	Name:  "config",
-	Usage: "Views or manages project-specific configuration (stored in eigen.toml)",
+	Usage: "Views or manages project-specific configuration (stored in config directory)",
 	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
 			Name:  "list",
 			Usage: "Display all current project configuration settings",
 		},
-		&cli.BoolFlag{
+		&cli.StringFlag{
 			Name:  "edit",
-			Usage: "Open eigen.toml in a text editor for manual editing",
+			Usage: "Open config file in a text editor for manual editing",
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
+		log, _ := getLogger()
 
-		// if cCtx.Bool("edit") {
-		// 	log.Printf("Opening config file for editing...")
-		// 	return editConfig(cCtx)
-		// }
+		if path := cCtx.String("edit"); path != "" {
+			log.Info("Opening config file for editing...")
+			return editConfig(cCtx, path)
+		}
 
 		// list by default, if no flags are provided
 		projectSetting, err := common.LoadProjectSettings()

@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 // TestEditorDetection tests the logic of detecting available editors
@@ -37,96 +39,68 @@ func TestEditorDetection(t *testing.T) {
 }
 
 // TestBackupAndRestore tests the logic of backing up and restoring files
-func TestBackupAndRestore(t *testing.T) {
-	// Create a temporary file
+func TestBackupAndRestoreYAML(t *testing.T) {
 	tempDir := t.TempDir()
-	testConfigPath := filepath.Join(tempDir, "config.toml")
+	testConfigPath := filepath.Join(tempDir, "config.yaml")
 
-	// Write test content
-	originalContent := "original content"
+	originalContent := `
+version: 0.1.0
+config:
+  project:
+    name: "my-avs"
+    version: "0.1.0"
+    context: "devnet"
+`
 	err := os.WriteFile(testConfigPath, []byte(originalContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
+	require.NoError(t, err)
 
-	// Create backup
+	// Backup
 	backupData, err := os.ReadFile(testConfigPath)
-	if err != nil {
-		t.Fatalf("Failed to read test file: %v", err)
-	}
+	require.NoError(t, err)
 
-	// Modify the file
-	modifiedContent := "modified content"
-	err = os.WriteFile(testConfigPath, []byte(modifiedContent), 0644)
-	if err != nil {
-		t.Fatalf("Failed to modify test file: %v", err)
-	}
+	// Modify
+	modifiedContent := strings.ReplaceAll(originalContent, "my-avs", "updated-avs")
+	require.NoError(t, os.WriteFile(testConfigPath, []byte(modifiedContent), 0644))
 
-	// Restore from backup
-	err = os.WriteFile(testConfigPath, backupData, 0644)
-	if err != nil {
-		t.Fatalf("Failed to restore test file: %v", err)
-	}
+	// Restore
+	require.NoError(t, os.WriteFile(testConfigPath, backupData, 0644))
 
-	// Verify restoration
 	restoredData, err := os.ReadFile(testConfigPath)
-	if err != nil {
-		t.Fatalf("Failed to read restored file: %v", err)
-	}
-
-	if string(restoredData) != originalContent {
-		t.Errorf("Restore failed. Expected: %s, Got: %s", originalContent, string(restoredData))
-	}
+	require.NoError(t, err)
+	require.Contains(t, string(restoredData), "my-avs")
 }
 
-// TestTomlValidation tests the TOML validation logic
-func TestTomlValidation(t *testing.T) {
-	// Valid TOML
-	validToml := `
-[section]
-key = "value"
-`
-	// Invalid TOML
-	invalidToml := `
-[section
-key = "value"
-`
-	// Create test files
+// TestYAMLValidation tests the YAML validation logic
+func TestValidateYAML(t *testing.T) {
 	tempDir := t.TempDir()
-	validPath := filepath.Join(tempDir, "valid.toml")
-	invalidPath := filepath.Join(tempDir, "invalid.toml")
 
-	err := os.WriteFile(validPath, []byte(validToml), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create valid TOML file: %v", err)
-	}
+	validYAML := `
+version: 0.1.0
+config:
+  project:
+    name: "valid-avs"
+    version: "0.1.0"
+    context: "devnet"
+`
+	invalidYAML := `
+config:
+  project:
+    name: "broken-avs
+    version: "0.1.0"
+`
 
-	err = os.WriteFile(invalidPath, []byte(invalidToml), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create invalid TOML file: %v", err)
-	}
+	validPath := filepath.Join(tempDir, "valid.yaml")
+	invalidPath := filepath.Join(tempDir, "invalid.yaml")
 
-	// Test validation with external command
-	cmd := exec.Command("bash", "-c", "type toml &>/dev/null && toml validate "+validPath+" &>/dev/null")
-	err = cmd.Run()
-	if err != nil {
-		// Skip test if toml command is not available
-		t.Logf("Skipping TOML validation test: toml command not available")
-	} else {
-		// Test valid TOML
-		validCmd := exec.Command("toml", "validate", validPath)
-		err = validCmd.Run()
-		if err != nil {
-			t.Errorf("Failed to validate valid TOML: %v", err)
-		}
+	require.NoError(t, os.WriteFile(validPath, []byte(validYAML), 0644))
+	require.NoError(t, os.WriteFile(invalidPath, []byte(invalidYAML), 0644))
 
-		// Test invalid TOML
-		invalidCmd := exec.Command("toml", "validate", invalidPath)
-		err = invalidCmd.Run()
-		if err == nil {
-			t.Errorf("Invalid TOML was incorrectly validated as valid")
-		}
-	}
+	_, err := validateConfig(validPath)
+	require.NoError(t, err)
+
+	_, err = validateConfig(invalidPath)
+	require.Error(t, err)
+	t.Logf("Expected YAML parse error: %v", err)
 }
 
 // TestEditorLaunching tests the logic of launching an editor
