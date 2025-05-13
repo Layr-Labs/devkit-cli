@@ -34,9 +34,6 @@ jobs:
 
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
-      
-      - name: Prepare eigen.toml config
-        run: cp default.eigen.toml eigen.toml
         
       - name: Start devnet
         run: |
