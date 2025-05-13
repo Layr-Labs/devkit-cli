@@ -17,9 +17,14 @@ func TestConfigCommand_ListOutput(t *testing.T) {
 	defaultConfigFile, err := os.ReadFile(filepath.Join(defaultConfigPath, "config.yaml"))
 	require.NoError(t, err)
 
+	defaultDevnetConfigFile, err := os.ReadFile(filepath.Join(defaultConfigPath, "contexts", "devnet.yaml"))
+	require.NoError(t, err)
 	configPath := filepath.Join(tmpDir, "config")
 	require.NoError(t, os.MkdirAll(configPath, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(configPath, "config.yaml"), defaultConfigFile, 0644))
+	contextsPath := filepath.Join(configPath, "contexts")
+	require.NoError(t, os.MkdirAll(contextsPath, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(contextsPath, "devnet.yaml"), defaultDevnetConfigFile, 0644))
 
 	mockTelemteryContent :=
 		`

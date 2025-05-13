@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
@@ -35,17 +36,11 @@ func FundWalletsDevnet(cfg *devkitcommon.BaseConfig, rpcURL string) {
 	defer client.Close()
 
 	// // All operator keys from [operator]
-	// for _, key := range cfg.Operator.Keys {
-	// 	privateKey, _ := crypto.HexToECDSA(key)
-	// 	fundIfNeeded(client, crypto.PubkeyToAddress(privateKey.PublicKey), key, rpcURL)
-	// }
+	for _, key := range cfg.Context[CONTEXT].Operators {
+		privateKey, _ := crypto.HexToECDSA(key.ECDSAKey)
+		fundIfNeeded(client, crypto.PubkeyToAddress(privateKey.PublicKey), key.ECDSAKey, rpcURL)
+	}
 
-	// // All submit wallets from operator sets
-	// for _, set := range cfg.OperatorSets {
-	// 	privateKey, _ := crypto.HexToECDSA(set.SubmitWallet)
-	// 	addr := crypto.PubkeyToAddress(privateKey.PublicKey)
-	// 	fundIfNeeded(client, addr, cfg.Operator.Keys[0], rpcURL) // fund from index 0 key
-	// }
 }
 
 func fundIfNeeded(client *ethclient.Client, to common.Address, fromKey string, rpcURL string) {
