@@ -41,7 +41,10 @@ var ConfigCommand = &cli.Command{
 			return fmt.Errorf("failed to load base config: %w", err)
 		}
 
-		listConfig(config, projectSetting)
+		err = listConfig(config, projectSetting)
+		if err != nil {
+			return fmt.Errorf("failed to list config %w", err)
+		}
 		return nil
 	},
 }
