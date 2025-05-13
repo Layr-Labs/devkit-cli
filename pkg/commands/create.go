@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -254,6 +253,8 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 
 // copyDefaultConfigToProject copies config to the project directory with updated project name
 func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) error {
+	// get logger
+	log, _ := getLogger()
 	// Step 1: Copy and modify config.yaml
 	configDir := filepath.Join("config")
 	contextsDir := filepath.Join(configDir, "contexts")
@@ -279,7 +280,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	}
 
 	if verbose {
-		log.Printf("Created config/config.yaml in project directory")
+		log.Info("Created config/config.yaml in project directory")
 	}
 
 	// Step 2: Copy all context files
@@ -305,7 +306,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 		}
 
 		if verbose {
-			log.Printf("Copied context file: %s", entry.Name())
+			log.Info("Copied context file: %s", entry.Name())
 		}
 	}
 

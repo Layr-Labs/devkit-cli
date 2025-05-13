@@ -22,6 +22,13 @@ var ConfigCommand = &cli.Command{
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 
+
+		// if cCtx.Bool("edit") {
+		// 	log.Printf("Opening config file for editing...")
+		// 	return editConfig(cCtx)
+		// }
+
+		// list by default, if no flags are provided
 		projectSetting, err := common.LoadProjectSettings()
 
 		if err != nil {
@@ -35,18 +42,6 @@ var ConfigCommand = &cli.Command{
 		}
 
 		listConfig(config, projectSetting)
-
-		// if common.IsVerboseEnabled(cCtx, config) {
-		// 	log.Info("Managing project configuration...")
-		// }
-
-		// if cCtx.Bool("edit") {
-		// 	log.Printf("Opening config file for editing...")
-		// 	return editConfig(cCtx)
-		// }
-
-		// list by default, if no flags are provided
-
 		return nil
 	},
 }
