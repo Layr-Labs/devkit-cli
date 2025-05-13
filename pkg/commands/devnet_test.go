@@ -3,11 +3,10 @@ package commands
 import (
 	"bytes"
 	"context"
+	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/urfave/cli/v2"
 	"io"
 	"net"
 	"os"
@@ -16,30 +15,31 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli/v2"
 )
 
-func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error) {
+// helper to create a temp AVS project dir with eigen.toml copied
+func createTempAVSProject() (string, error) {
 	tempDir, err := os.MkdirTemp("", "devkit-test-avs-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 
-	// Create config/ directory
-	destConfigDir := filepath.Join(tempDir, "config")
-	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create config dir: %w", err)
+	destEigen := filepath.Join(tempDir, common.EigenTomlPath)
+
+	// Copy default eigen.toml
+	srcFile := config.DefaultEigenToml
+	destFile, err := os.Create(destEigen)
+	if err != nil {
+		return "", fmt.Errorf("failed to create destination eigen.toml: %w", err)
 	}
+	defer destFile.Close()
 
-	// Copy config.yaml
-	srcConfigFile := filepath.Join(defaultConfigDir, "config.yaml")
-	destConfigFile := filepath.Join(destConfigDir, "config.yaml")
-
-	common.CopyFileTesting(t, srcConfigFile, destConfigFile)
-
-	// Create config/contexts directory
-	destContextsDir := filepath.Join(destConfigDir, "contexts")
-	if err := os.MkdirAll(destContextsDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create config/contexts dir: %w", err)
+	err = os.WriteFile(destEigen, []byte(srcFile), 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to copy eigen.toml: %w", err)
 	}
 
 	// Copy devnet.yaml context file
@@ -58,9 +58,7 @@ func TestStartAndStopDevnet(t *testing.T) {
 	t.Cleanup(func() {
 		_ = os.Chdir(originalCwd)
 	})
-	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
-
-	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir, err := createTempAVSProject()
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -105,13 +103,11 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 		_ = os.Chdir(originalCwd) // Restore cwd after test
 	})
 
-	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
-
-	projectDir1, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir1, err := createTempAVSProject()
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir1)
 
-	projectDir2, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir2, err := createTempAVSProject()
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir2)
 
@@ -182,8 +178,7 @@ func TestListRunningDevnets(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare temp AVS project
-	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
-	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir, err := createTempAVSProject()
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -249,10 +244,8 @@ func TestStopDevnetAll(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare and start multiple devnets
-	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
-
 	for i := 0; i < 2; i++ {
-		projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+		projectDir, err := createTempAVSProject()
 		assert.NoError(t, err)
 		defer os.RemoveAll(projectDir)
 
@@ -309,9 +302,7 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare and start multiple devnets
-	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
-
-	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir, err := createTempAVSProject()
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 

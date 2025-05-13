@@ -24,6 +24,11 @@ jobs:
         with:
           go-version: '1.24'
 
+      - name: Authenticate Go to GitHub private repos
+        run: |
+          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+          echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -39,9 +44,13 @@ jobs:
 
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
-        
+
+      - name: Create AVS project
+        run: devkit avs create my-avs
+
       - name: Start devnet
         run: |
+          cd $HOME/avs/my-avs/
           devkit avs devnet start &
           sleep 10 # wait for devnet to fully start
 
@@ -59,6 +68,7 @@ jobs:
           echo "Devnet didn't start properly after waiting"
           exit 1
 
-
       - name: Stop devnet
-        run: devkit avs devnet stop
+        run: |
+          cd $HOME/avs/my-avs/
+          devkit avs devnet stop

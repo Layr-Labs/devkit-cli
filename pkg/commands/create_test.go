@@ -6,12 +6,13 @@ import (
 	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli/v2"
 )
 
 func TestCreateCommand(t *testing.T) {
