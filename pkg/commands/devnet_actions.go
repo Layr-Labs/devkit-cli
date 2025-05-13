@@ -4,7 +4,6 @@ import (
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/devnet"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,12 +14,13 @@ import (
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
+
+	log, _ := getLogger()
 	// Load config for devnet
 	config, err := common.LoadBaseConfig(devnet.CONTEXT)
 	if err != nil {
 		return err
 	}
-
 	port := cCtx.Int("port")
 	if !devnet.IsPortAvailable(port) {
 		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --port", port)
@@ -31,22 +31,21 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	startTime := time.Now() // <-- start timing
 	// if user gives , say, log = "DEBUG" Or "Debug", we normalize it to lowercase
 	if common.IsVerboseEnabled(cCtx, config) {
-		log.Printf("Starting devnet... ")
+		log.Info("Starting devnet... ")
 
 		if cCtx.Bool("reset") {
-			log.Printf("Resetting devnet...")
+			log.Info("Resetting devnet...")
 		}
 		if fork := cCtx.String("fork"); fork != "" {
-			log.Printf("Forking from chain: %s", fork)
+			log.Info("Forking from chain: %s", fork)
 		}
 		if cCtx.Bool("headless") {
-			log.Printf("Running in headless mode")
+			log.Info("Running in headless mode")
 		}
-		devnet.LogDevnetEnv(config, cCtx.Int("port"))
 	}
 	// docker-compose for anvil devnet and anvil state.json
 	composePath, statePath := devnet.WriteEmbeddedArtifacts()
-
+	fork_url := devnet.GetDevnetForkUrlDefault(config)
 	// Run docker compose up for anvil devnet
 	cmd := exec.Command("docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
 
@@ -55,6 +54,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		"FOUNDRY_IMAGE="+chain_image,
 		"ANVIL_ARGS="+chain_args,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
+		"FORK_RPC_URL="+fork_url,
+		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", config.Context[devnet.CONTEXT].Fork.Block),
 		"STATE_PATH="+statePath,
 		"AVS_CONTAINER_NAME="+containerName,
 	)
@@ -71,12 +72,14 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 1 second to make sure wallets are funded
 	time.Sleep(1 * time.Second)
-	log.Printf("Devnet started successfully in %s", elapsed)
+	log.Info("Devnet started successfully in %s", elapsed)
 
 	return nil
 }
 
 func StopDevnetAction(cCtx *cli.Context) error {
+
+	log, _ := getLogger()
 
 	stopAllContainers := cCtx.Bool("all")
 	if stopAllContainers {
@@ -95,7 +98,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		}
 
 		if cCtx.Bool("verbose") {
-			log.Printf("Attempting to stop devnet containers...")
+			log.Info("Attempting to stop devnet containers...")
 		}
 
 		for _, name := range containerNames {
@@ -129,7 +132,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 			output, err := cmd.Output()
 			if err != nil {
-				log.Fatalf("Failed to list running devnet containers: %v", err)
+				log.Warn("Failed to list running devnet containers: %v", err)
 			}
 
 			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -148,13 +151,13 @@ func StopDevnetAction(cCtx *cli.Context) error {
 					projectName := strings.TrimPrefix(containerName, "devkit-devnet-")
 					devnet.StopAndRemoveContainer(containerName)
 
-					log.Printf("Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
+					log.Info("Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
 					containerFoundUsingthePort = true
 					break
 				}
 			}
 			if !containerFoundUsingthePort {
-				log.Printf("No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers", projectPort, devnet.Cyan, devnet.Reset)
+				log.Info("No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers", projectPort, devnet.Cyan, devnet.Reset)
 			}
 
 		}
@@ -173,7 +176,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		devnet.StopAndRemoveContainer(container)
 
 	} else {
-		log.Printf("Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
+		log.Info("Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
 	}
 
 	return nil

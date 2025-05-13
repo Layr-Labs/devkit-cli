@@ -22,7 +22,6 @@ var ConfigCommand = &cli.Command{
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 
-
 		// if cCtx.Bool("edit") {
 		// 	log.Printf("Opening config file for editing...")
 		// 	return editConfig(cCtx)

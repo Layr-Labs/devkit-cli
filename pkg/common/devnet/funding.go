@@ -2,35 +2,37 @@ package devnet
 
 import (
 	devkitcommon "devkit-cli/pkg/common"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"log"
 	"math/big"
 	"os"
 	"os/exec"
+	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // FundWallets sends ETH to a list of addresses using `cast send`
 // Only funds wallets with balance < 10 ether.
 func FundWalletsDevnet(cfg *devkitcommon.BaseConfig, rpcURL string) {
-	// var client *ethclient.Client
-	// var err error
+	var client *ethclient.Client
+	var err error
 
-	// // Retry with exponential backoff up to 5 times
-	// for retries := 0; retries < 5; retries++ {
-	// 	client, err = ethclient.Dial(rpcURL)
-	// 	if err == nil {
-	// 		break
-	// 	}
-	// 	log.Printf("⚠️  Waiting for devnet to be ready (%d/5)...", retries+1)
-	// 	time.Sleep(time.Duration(1<<retries) * time.Second) // 1s, 2s, 4s, 8s, 16s
-	// }
+	// Retry with exponential backoff up to 5 times
+	for retries := 0; retries < 5; retries++ {
+		client, err = ethclient.Dial(rpcURL)
+		if err == nil {
+			break
+		}
+		log.Printf("⚠️  Waiting for devnet to be ready (%d/5)...", retries+1)
+		time.Sleep(time.Duration(1<<retries) * time.Second) // 1s, 2s, 4s, 8s, 16s
+	}
 
-	// if err != nil {
-	// 	log.Printf("❌ Could not connect to devnet RPC after retries: %v", err)
-	// 	return
-	// }
-	// defer client.Close()
+	if err != nil {
+		log.Printf("❌ Could not connect to devnet RPC after retries: %v", err)
+		return
+	}
+	defer client.Close()
 
 	// // All operator keys from [operator]
 	// for _, key := range cfg.Operator.Keys {

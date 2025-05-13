@@ -20,11 +20,16 @@ type ProjectConfig struct {
 	Context string `yaml:"context"`
 }
 
+type ForkConfig struct {
+	Block int    `yaml:"block"`
+	Url   string `yaml:"url"`
+}
+
 type ChainContextConfig struct {
-	Name    string `yaml:"name"`
-	ChainID int    `yaml:"chain_id"`
-	RPCURL  string `yaml:"rpc_url"`
-	// Fork      *ForkConfig      `yaml:"fork,omitempty"`
+	Name    string      `yaml:"name"`
+	ChainID int         `yaml:"chain_id"`
+	RPCURL  string      `yaml:"rpc_url"`
+	Fork    *ForkConfig `yaml:"fork"`
 	// Operators []OperatorSpec   `yaml:"operators"`
 	// AVS       AVSConfig        `yaml:"avs"`
 }

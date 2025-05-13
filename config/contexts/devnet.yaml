@@ -3,3 +3,7 @@ context:
   name: "devnet"
   chain_id: 31337
   rpc_url: "http://localhost:8545"
+
+  fork:
+    block: 22475020
+    url: "https://eth.llamarpc.com"

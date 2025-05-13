@@ -1,6 +1,7 @@
 package devnet
 
 import (
+	"log"
 	"os"
 
 	"devkit-cli/pkg/common"
@@ -32,4 +33,10 @@ func FileExistsInRoot(filename string) bool {
 	// Assumes current working directory is the root of the project
 	_, err := os.Stat(filename)
 	return err == nil || !os.IsNotExist(err)
+}
+
+func GetDevnetForkUrlDefault(cfg *common.BaseConfig) string {
+	forkUrl := cfg.Context[CONTEXT].Fork.Url
+	log.Printf("fork_url %s", cfg.Context[CONTEXT].Fork.Url)
+	return forkUrl
 }
