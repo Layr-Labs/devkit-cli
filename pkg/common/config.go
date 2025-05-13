@@ -66,3 +66,17 @@ func LoadBaseConfig(contextName string) (*BaseConfig, error) {
 
 	return &cfg, nil
 }
+
+func LoadBaseConfigWithoutContext() (*BaseConfig, error) {
+	// Load base config
+	data, err := os.ReadFile(filepath.Join(DefaultBaseConfigPath, "config.yaml"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read base config: %w", err)
+	}
+	var cfg BaseConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse base config: %w", err)
+	}
+
+	return &cfg, nil
+}

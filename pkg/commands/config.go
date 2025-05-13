@@ -2,6 +2,7 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"fmt"
 
 	"github.com/urfave/cli/v2"
 )
@@ -20,14 +21,23 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
+
+		projectSetting, err := common.LoadProjectSettings()
+
+		if err != nil {
+			return fmt.Errorf("failed to load project settings to get telemetry status: %v", err)
+		}
+
 		// Load config
-		// config, err := common.LoadBaseConfig()
-		// if err != nil {
-		// 	return err
-		// }
+		config, err := common.LoadBaseConfigWithoutContext()
+		if err != nil {
+			return fmt.Errorf("failed to load base config: %w", err)
+		}
+
+		listConfig(config, projectSetting)
 
 		// if common.IsVerboseEnabled(cCtx, config) {
-		// 	log.Printf("Managing project configuration...")
+		// 	log.Info("Managing project configuration...")
 		// }
 
 		// if cCtx.Bool("edit") {
@@ -35,28 +45,8 @@ var ConfigCommand = &cli.Command{
 		// 	return editConfig(cCtx)
 		// }
 
-		// // list by default, if no flags are provided
-		// log.Println("Displaying current configuration...")
-		// projectSetting, err := common.LoadProjectSettings()
-		// if err != nil {
-		// 	log.Printf("failed to load project settings to get telemetry status: %v", err)
-		// } else {
-		// 	log.Printf("telemetry enabled: %t", projectSetting.TelemetryEnabled)
-		// }
+		// list by default, if no flags are provided
 
-		// file, err := os.Open(common.EigenTomlPath)
-		// if err != nil {
-		// 	return fmt.Errorf("failed to open eigen.toml: %w", err)
-		// }
-		// defer file.Close()
-
-		// var data map[string]interface{}
-		// err = toml.NewDecoder(file).Decode(&data)
-		// if err != nil {
-		// 	return fmt.Errorf("failed to decode eigen.toml: %w", err)
-		// }
-
-		// printTOMLMap(data, 0)
 		return nil
 	},
 }
