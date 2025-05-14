@@ -1,6 +1,8 @@
 package hooks
 
 import (
+	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/logger"
 	"fmt"
 	"log"
 	"os"
@@ -8,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"devkit-cli/pkg/common"
+	devcontext "devkit-cli/pkg/context"
 	"devkit-cli/pkg/telemetry"
 
 	"github.com/joho/godotenv"
@@ -17,9 +19,6 @@ import (
 
 // EnvFile is the name of the environment file
 const EnvFile = ".env"
-
-// contextKey is used to store command metrics in context
-type contextKey struct{}
 
 // CommandPrefix is the prefix to apply to all command names
 const CommandPrefix = "avs_"
@@ -67,19 +66,17 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 }
 
 func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
-	if command != "create" && !common.IsTelemetryEnabled() {
+	if command == "create" && ctx.Bool("disable-telemetry") {
 		return telemetry.NewNoopClient()
 	}
 
-	// Try to create active client
-	props := telemetry.NewProperties(
-		ctx.App.Version,
-		runtime.GOOS,
-		runtime.GOARCH,
-		common.GetProjectUUID(),
-	)
+	appEnv, ok := devcontext.AppEnvironmentFromContext(ctx.Context)
+	if !ok {
+		return telemetry.NewNoopClient()
+	}
 
-	phClient, _ := telemetry.NewPostHogClient(props)
+	logger.NewLogger().Info("Creating posthog client.")
+	phClient, _ := telemetry.NewPostHogClient(appEnv)
 	if phClient != nil {
 		return phClient
 	}
@@ -97,166 +94,136 @@ func FormatMetricName(command, action string) string {
 
 // CommandMiddleware wraps a command with pre-processing and post-processing steps
 type CommandMiddleware struct {
-	PreProcessors  []cli.ActionFunc
-	PostProcessors []cli.ActionFunc
+	PreProcessors  []func(action cli.ActionFunc) cli.ActionFunc
+	PostProcessors []func(action cli.ActionFunc) cli.ActionFunc
 }
 
-// NewCommandMiddleware creates a new command middleware
-func NewCommandMiddleware() *CommandMiddleware {
-	return &CommandMiddleware{
-		PreProcessors:  make([]cli.ActionFunc, 0),
-		PostProcessors: make([]cli.ActionFunc, 0),
+type ActionChain struct {
+	Processors []func(action cli.ActionFunc) cli.ActionFunc
+}
+
+// NewActionChain creates a new action chain
+func NewActionChain() *ActionChain {
+	return &ActionChain{
+		Processors: make([]func(action cli.ActionFunc) cli.ActionFunc, 0),
 	}
 }
 
-// AddPreProcessor adds a pre-processing step
-func (m *CommandMiddleware) AddPreProcessor(processor cli.ActionFunc) {
-	m.PreProcessors = append(m.PreProcessors, processor)
+// Use appends a new processor to the chain
+func (ac *ActionChain) Use(processor func(action cli.ActionFunc) cli.ActionFunc) {
+	ac.Processors = append(ac.Processors, processor)
 }
 
-// AddPostProcessor adds a post-processing step
-func (m *CommandMiddleware) AddPostProcessor(processor cli.ActionFunc) {
-	m.PostProcessors = append(m.PostProcessors, processor)
+// Wrap applies all processors in the correct order
+func (ac *ActionChain) Wrap(action cli.ActionFunc) cli.ActionFunc {
+	for i := len(ac.Processors) - 1; i >= 0; i-- {
+		action = ac.Processors[i](action)
+	}
+	return action
 }
 
-// Wrap wraps a command action with all pre-processors and post-processors
-func (m *CommandMiddleware) Wrap(action cli.ActionFunc) cli.ActionFunc {
-	return func(ctx *cli.Context) error {
-		// Run all pre-processors in order
-		for _, pre := range m.PreProcessors {
-			if err := pre(ctx); err != nil {
-				return err
-			}
+// ApplyMiddleware applies a list of middleware functions to commands
+func ApplyMiddleware(commands []*cli.Command, chain *ActionChain) {
+	for _, cmd := range commands {
+		if cmd.Action != nil {
+			cmd.Action = chain.Wrap(cmd.Action)
 		}
+		if len(cmd.Subcommands) > 0 {
+			ApplyMiddleware(cmd.Subcommands, chain)
+		}
+	}
+}
 
-		// Run the main action
+func WithTelemetry(action cli.ActionFunc) cli.ActionFunc {
+	return func(ctx *cli.Context) error {
+		command := ctx.Command.Name
+
+		// Pre-processing to set up telemetry context and metrics
+		setupTelemetryContext(ctx, command)
+
+		// Run requested cli action
 		err := action(ctx)
 
-		// Run all post-processors in order
-		for _, post := range m.PostProcessors {
-			// We don't want to stop post-processing if one fails
-			_ = post(ctx)
-		}
+		// Post-processing to emit result metrics
+		emitTelemetryMetrics(ctx, command, err)
 
 		return err
 	}
 }
 
-// ApplyMiddleware applies a list of middleware functions to commands
-func ApplyMiddleware(commands []*cli.Command, middleware *CommandMiddleware) {
-	for _, cmd := range commands {
-		// Apply middleware to this command's action if it exists
-		if cmd.Action != nil {
-			// Store original action
-			originalAction := cmd.Action
+func setupTelemetryContext(ctx *cli.Context, command string) {
+	client := setupTelemetry(ctx, command)
+	ctx.Context = telemetry.WithContext(ctx.Context, client)
 
-			// Wrap with middleware
-			cmd.Action = middleware.Wrap(originalAction)
-		}
+	metrics := telemetry.NewMetricsContext(ctx.App.Name, command)
+	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
-		// Recursively apply to subcommands
-		if len(cmd.Subcommands) > 0 {
-			ApplyMiddleware(cmd.Subcommands, middleware)
-		}
+	if appEnv, ok := devcontext.AppEnvironmentFromContext(ctx.Context); ok {
+		metrics.Properties["cli_version"] = appEnv.CLIVersion
+		metrics.Properties["os"] = appEnv.OS
+		metrics.Properties["arch"] = appEnv.Arch
+		metrics.Properties["project_uuid"] = appEnv.ProjectUUID
+	}
+
+	for k, v := range collectFlagValues(ctx) {
+		metrics.Properties[k] = fmt.Sprintf("%v", v)
+	}
+
+	metrics.AddMetric(FormatMetricName(command, "Count"), 1)
+
+	// Handle no-telemetry override
+	if command == "create" && ctx.Bool("no-telemetry") {
+		log.Printf("DEBUG: Detected --no-telemetry flag in create command, switching to NoopClient after invoked event")
+		ctx.Context = telemetry.WithContext(ctx.Context, telemetry.NewNoopClient())
 	}
 }
 
-// WithTelemetryPreProcessor creates a pre-processor that sets up telemetry
-func WithTelemetryPreProcessor() cli.ActionFunc {
-	return func(ctx *cli.Context) error {
-		command := ctx.Command.Name
-
-		// Get telemetry client
-		client := setupTelemetry(ctx, command)
-		ctx.Context = telemetry.WithContext(ctx.Context, client)
-
-		// Create metrics context
-		metrics := telemetry.NewMetricsContext(ctx.App.Name, command)
-		ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
-
-		// Add base properties
-		metrics.Properties["cli_version"] = ctx.App.Version
-		metrics.Properties["os"] = runtime.GOOS
-		metrics.Properties["arch"] = runtime.GOARCH
-		metrics.Properties["project_uuid"] = common.GetProjectUUID()
-
-		// Add command flags as properties
-		flags := collectFlagValues(ctx)
-		for k, v := range flags {
-			// TODO: (brandon c) verify this is adequate
-			metrics.Properties[k] = fmt.Sprintf("%v", v)
-		}
-
-		// Add command invocation metric
-		metrics.AddMetric(FormatMetricName(command, "Count"), 1)
-
-		// If this is the create command with --no-telemetry, switch to NoopClient after tracking "invoked"
-		if command == "create" && ctx.Bool("no-telemetry") {
-			log.Printf("DEBUG: Detected --no-telemetry flag in create command, switching to NoopClient after invoked event")
-			ctx.Context = telemetry.WithContext(ctx.Context, telemetry.NewNoopClient())
-		}
-
-		return nil
+func emitTelemetryMetrics(ctx *cli.Context, command string, actionError error) {
+	metrics, mErr := telemetry.MetricsFromContext(ctx.Context)
+	if mErr != nil {
+		return
 	}
-}
 
-// WithTelemetryPostProcessor creates a post-processor that emits metrics
-func WithTelemetryPostProcessor() cli.ActionFunc {
-	return func(ctx *cli.Context) error {
-		// Get metrics context
-		metrics, err := telemetry.MetricsFromContext(ctx.Context)
-		if err != nil {
-			log.Printf("Unable to get metrics from context: %v", err)
-			return nil
+	result := "Success"
+	if actionError != nil {
+		result = "Failure"
+		metrics.Properties["error"] = actionError.Error()
+	}
+
+	metrics.AddMetric(FormatMetricName(command, result), 1)
+	duration := time.Since(metrics.StartTime).Milliseconds()
+	metrics.AddMetric(FormatMetricName(command, "DurationMilliseconds"), float64(duration))
+
+	client, ok := telemetry.ClientFromContext(ctx.Context)
+	if !ok {
+		return
+	}
+
+	for _, metric := range metrics.Metrics {
+		props := make(map[string]interface{})
+		for k, v := range metrics.Properties {
+			props[k] = v
 		}
-		command := ctx.Command.Name
-
-		// Add command result as a metric
-		result := "Success"
-		if ctx.Err() != nil {
-			result = "Failure"
-			metrics.Properties[result] = ctx.Err().Error()
+		for k, v := range metric.Dimensions {
+			props[k] = v
 		}
-		metrics.AddMetric(FormatMetricName(command, result), 1)
+		props["metric_value"] = metric.Value
 
-		// Add duration metric
-		duration := time.Since(metrics.StartTime).Milliseconds()
-		metrics.AddMetric(FormatMetricName(command, "DurationMilliseconds"), float64(duration))
-
-		// Emit all collected metrics
-		client, ok := telemetry.ClientFromContext(ctx.Context)
-		if !ok {
-			return nil
-		}
-
-		// For each metric, combine context properties with metric dimensions
-		for _, metric := range metrics.Metrics {
-			// Create properties map starting with context properties
-			props := make(map[string]interface{})
-			for k, v := range metrics.Properties {
-				props[k] = v
-			}
-
-			// Add metric value
-			props["metric_value"] = metric.Value
-
-			// Add metric-specific dimensions
-			for k, v := range metric.Dimensions {
-				props[k] = v
-			}
-
-			// Track the metric event
-			_ = client.AddMetric(ctx.Context, metric)
-		}
-
-		return nil
+		_ = client.AddMetric(ctx.Context, metric)
 	}
 }
 
 // WithEnvLoader creates a pre-processor that loads environment variables
-func WithEnvLoader() cli.ActionFunc {
+func WithEnvLoader(action cli.ActionFunc) cli.ActionFunc {
 	return func(ctx *cli.Context) error {
 		command := ctx.Command.Name
+
+		ctx.Context = devcontext.WithAppEnvironment(ctx.Context, devcontext.NewAppEnvironment(
+			ctx.App.Version,
+			runtime.GOOS,
+			runtime.GOARCH,
+			common.GetProjectUUID(),
+		))
 
 		// Skip loading .env for the create command
 		if command != "create" {
@@ -265,7 +232,7 @@ func WithEnvLoader() cli.ActionFunc {
 			}
 		}
 
-		return nil
+		return action(ctx)
 	}
 }
 

@@ -2,39 +2,30 @@ package telemetry
 
 import (
 	"context"
-	"os"
-	"time"
-
+	devcontext "devkit-cli/pkg/context"
 	"github.com/posthog/posthog-go"
 	"gopkg.in/yaml.v3"
+	"os"
 )
 
 // PostHogClient implements the Client interface using PostHog
 type PostHogClient struct {
-	client posthog.Client
-	props  Properties
+	client         posthog.Client
+	appEnvironment *devcontext.AppEnvironment
 }
 
 // NewPostHogClient creates a new PostHog client
-func NewPostHogClient(props Properties) (*PostHogClient, error) {
+func NewPostHogClient(environment *devcontext.AppEnvironment) (*PostHogClient, error) {
 	apiKey := getPostHogAPIKey()
 	if apiKey == "" {
 		// No API key available, return noop client without error
 		return nil, nil
 	}
-
-	client, err := posthog.NewWithConfig(apiKey, posthog.Config{
-		Endpoint: getPostHogEndpoint(),
-		Interval: 30 * time.Second,
-	})
-	if err != nil {
-		// Error creating client - return nil without error to allow fallback
-		return nil, nil
-	}
+	client := posthog.New(apiKey)
 
 	return &PostHogClient{
-		client: client,
-		props:  props,
+		client:         client,
+		appEnvironment: environment,
 	}, nil
 }
 
@@ -46,10 +37,10 @@ func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
 
 	// Create properties map starting with base properties
 	props := make(map[string]interface{})
-	props["cli_version"] = c.props.CLIVersion
-	props["os"] = c.props.OS
-	props["arch"] = c.props.Arch
-	props["project_uuid"] = c.props.ProjectUUID
+	props["cli_version"] = c.appEnvironment.CLIVersion
+	props["os"] = c.appEnvironment.OS
+	props["arch"] = c.appEnvironment.Arch
+	props["project_uuid"] = c.appEnvironment.ProjectUUID
 
 	// Add metric value
 	props["metric_value"] = metric.Value
@@ -61,7 +52,7 @@ func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
 
 	// Never return errors from telemetry operations
 	_ = c.client.Enqueue(posthog.Capture{
-		DistinctId: c.props.ProjectUUID,
+		DistinctId: c.appEnvironment.ProjectUUID,
 		Event:      metric.Name,
 		Properties: props,
 	})

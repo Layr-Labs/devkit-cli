@@ -43,7 +43,7 @@ var CreateCommand = &cli.Command{
 			Usage: "Direct GitHub URL to use as template (overrides templates.yml)",
 		},
 		&cli.BoolFlag{
-			Name:  "no-telemetry",
+			Name:  "disable-telemetry",
 			Usage: "Opt out of anonymous telemetry collection",
 		},
 		&cli.StringFlag{
@@ -113,7 +113,7 @@ var CreateCommand = &cli.Command{
 			}
 
 			// Log telemetry status (accounting for client type)
-			if cCtx.Bool("no-telemetry") {
+			if cCtx.Bool("disable-telemetry") {
 				log.Info("Telemetry: disabled (via flag)")
 			} else {
 				client, ok := telemetry.ClientFromContext(cCtx.Context)
@@ -191,7 +191,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Save project settings with telemetry preference
-		telemetryEnabled := !cCtx.Bool("no-telemetry")
+		telemetryEnabled := !cCtx.Bool("disable-telemetry")
 		if err := common.SaveProjectSettings(targetDir, telemetryEnabled); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}

@@ -2,6 +2,8 @@ package telemetry
 
 import (
 	"context"
+	devcontext "devkit-cli/pkg/context"
+	"github.com/google/uuid"
 	"testing"
 )
 
@@ -34,13 +36,21 @@ func TestPostHogClient(t *testing.T) {
 		t.Skip("Skipping PostHog test in short mode")
 	}
 
-	client := NewPostHogClient("test-key", "test-host")
+	client, err := NewPostHogClient(devcontext.NewAppEnvironment(
+		"version",
+		"linux",
+		"Testx86",
+		uuid.New().String(),
+	))
+	if err != nil {
+		t.Errorf("NewPostHogClient returned error: %v", err)
+	}
 	if client == nil {
 		t.Fatal("Expected non-nil client")
 	}
 
 	// Test AddMetric
-	err := client.AddMetric(context.Background(), Metric{
+	err = client.AddMetric(context.Background(), Metric{
 		Name:       "test.metric",
 		Value:      42,
 		Dimensions: map[string]string{"test": "value"},
@@ -75,7 +85,7 @@ func TestContext(t *testing.T) {
 }
 
 func TestProperties(t *testing.T) {
-	props := NewProperties("1.0.0", "darwin", "amd64", "test-uuid")
+	props := devcontext.NewAppEnvironment("1.0.0", "darwin", "amd64", "test-uuid")
 	if props.CLIVersion != "1.0.0" {
 		t.Error("CLIVersion mismatch")
 	}

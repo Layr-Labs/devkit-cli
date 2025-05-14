@@ -25,14 +25,11 @@ func main() {
 		UseShortOptionHandling: true,
 	}
 
-	middleware := hooks.NewCommandMiddleware()
+	actionChain := hooks.NewActionChain()
+	actionChain.Use(hooks.WithEnvLoader)
+	actionChain.Use(hooks.WithTelemetry)
 
-	middleware.AddPreProcessor(hooks.WithEnvLoader())
-	middleware.AddPreProcessor(hooks.WithTelemetryPreProcessor())
-
-	middleware.AddPostProcessor(hooks.WithTelemetryPostProcessor())
-
-	hooks.ApplyMiddleware(app.Commands, middleware)
+	hooks.ApplyMiddleware(app.Commands, actionChain)
 
 	if err := app.RunContext(ctx, os.Args); err != nil {
 		log.Fatal(err)

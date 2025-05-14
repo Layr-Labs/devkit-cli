@@ -46,6 +46,7 @@ func NewMetricsContext(rootCommand, subcommand string) *MetricsContext {
 		RootCommand: rootCommand,
 		Subcommand:  subcommand,
 		Metrics:     make([]Metric, 0),
+		Properties:  make(map[string]string),
 	}
 }
 
