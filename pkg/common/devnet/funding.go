@@ -45,7 +45,7 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 }
 
 func fundIfNeeded(client *ethclient.Client, to common.Address, fromKey string, rpcURL string) {
-	log.Printf("rpc_devnet %s",rpcURL)
+	log.Printf("rpc_devnet %s", rpcURL)
 	balanceCmd := exec.Command("cast", "balance",
 		to.String(),
 		"--rpc-url", rpcURL,
