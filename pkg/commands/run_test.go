@@ -2,14 +2,13 @@ package commands
 
 import (
 	"context"
+	"devkit-cli/internal/testutils"
 	"devkit-cli/pkg/common"
 	"errors"
+	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
-
-	"github.com/urfave/cli/v2"
 )
 
 func TestRunCommand(t *testing.T) {
@@ -95,7 +94,7 @@ run:
 		} else {
 			t.Errorf("Run returned with error after context cancellation: %v", err)
 		}
-	case <-time.After(500 * time.Millisecond):
+	case <-testutils.CancellationTimeout:
 		t.Error("Run did not exit after context cancellation")
 	}
 }

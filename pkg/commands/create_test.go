@@ -3,17 +3,16 @@ package commands
 import (
 	"bytes"
 	"context"
+	"devkit-cli/internal/testutils"
 	"devkit-cli/pkg/common"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
-	"time"
-
-	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
 )
 
 func TestCreateCommand(t *testing.T) {
@@ -279,7 +278,7 @@ version = "0.1.0"
 		} else {
 			t.Errorf("Expected context cancellation but received: %v", err)
 		}
-	case <-time.After(5 * time.Millisecond):
+	case <-testutils.CancellationTimeout:
 		t.Error("Create command did not exit after context cancellation")
 	}
 }

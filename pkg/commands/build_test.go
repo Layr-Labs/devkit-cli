@@ -2,15 +2,14 @@ package commands
 
 import (
 	"context"
+	"devkit-cli/internal/testutils"
 	"devkit-cli/pkg/common"
 	devcontext "devkit-cli/pkg/context"
 	"errors"
+	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
-
-	"github.com/urfave/cli/v2"
 )
 
 func TestBuildCommand(t *testing.T) {
@@ -190,7 +189,7 @@ build:
 		} else {
 			t.Errorf("Expected context cancellation but received: %v", err)
 		}
-	case <-time.After(1 * time.Second):
+	case <-testutils.CancellationTimeout:
 		t.Error("Build command did not exit after context cancellation")
 	}
 }
