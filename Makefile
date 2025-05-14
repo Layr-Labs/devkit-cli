@@ -1,6 +1,6 @@
 .PHONY: help build test fmt lint install clean test-telemetry setup-hourglass
 
-GIT_HOURGLASS_REPO=git@github.com:Layr-Labs/hourglass-monorepo.git
+GIT_HOURGLASS_REPO=https://github.com/Layr-Labs/hourglass-monorepo.git
 HOURGLASS_DIR=./temp_external/hourglass-monorepo
 APP_NAME=devkit
 GO_PACKAGES=./pkg/... ./cmd/...
