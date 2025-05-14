@@ -25,7 +25,7 @@ var CreateCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "dir",
 			Usage: "Set output directory for the new project",
-			Value: filepath.Join(os.Getenv("HOME"), "avs"),
+			Value: ".",
 		},
 		&cli.StringFlag{
 			Name:  "lang",

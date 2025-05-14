@@ -50,7 +50,7 @@ jobs:
 
       - name: Start devnet
         run: |
-          cd $HOME/avs/my-avs/
+          cd ./my-avs/
           devkit avs devnet start &
           sleep 10 # wait for devnet to fully start
 
@@ -70,5 +70,5 @@ jobs:
 
       - name: Stop devnet
         run: |
-          cd $HOME/avs/my-avs/
+          cd ./my-avs/
           devkit avs devnet stop

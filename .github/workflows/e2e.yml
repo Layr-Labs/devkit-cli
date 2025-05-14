@@ -49,16 +49,16 @@ jobs:
             echo "❌ AVS project config/config.yaml not found!"
             exit 1
           fi
-          echo "✅ AVS project created successfully at $HOME/avs/my-awesome-avs/"
+          echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
 
       - name: Run devkit avs build
         run: |
-          cd $HOME/avs/my-awesome-avs/
+          cd ./my-awesome-avs/
           devkit avs build
 
       - name: Start devnet
         run: |
-          cd $HOME/avs/my-awesome-avs/
+          cd ./my-awesome-avs/
           devkit avs devnet start
           sleep 10
 
@@ -78,5 +78,5 @@ jobs:
 
       - name: Stop devnet
         run: |
-          cd $HOME/avs/my-awesome-avs/
+          cd ./my-awesome-avs/
           devkit avs devnet stop

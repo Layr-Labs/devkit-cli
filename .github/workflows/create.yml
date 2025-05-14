@@ -55,4 +55,4 @@ jobs:
             echo "❌ AVS project config/config.yaml not found!"
             exit 1
           fi
-          echo "✅ AVS project created successfully at $HOME/avs/my-awesome-avs/"
+          echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
