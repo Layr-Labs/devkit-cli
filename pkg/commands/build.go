@@ -1,8 +1,8 @@
 package commands
 
 import (
-	"devkit-cli/internal/testutils"
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/testutils"
 	"fmt"
 	"log"
 	"os"

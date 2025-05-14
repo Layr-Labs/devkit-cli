@@ -3,8 +3,8 @@ package commands
 import (
 	"bytes"
 	"context"
-	"devkit-cli/internal/testutils"
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
 	"github.com/stretchr/testify/require"

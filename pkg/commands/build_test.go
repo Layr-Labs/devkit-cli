@@ -2,9 +2,9 @@ package commands
 
 import (
 	"context"
-	"devkit-cli/internal/testutils"
 	"devkit-cli/pkg/common"
 	devcontext "devkit-cli/pkg/context"
+	"devkit-cli/pkg/testutils"
 	"errors"
 	"github.com/urfave/cli/v2"
 	"os"
