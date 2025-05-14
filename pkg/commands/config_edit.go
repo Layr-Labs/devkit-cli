@@ -58,11 +58,7 @@ func editConfig(cCtx *cli.Context, configPath string) error {
 	logConfigChanges(changes)
 
 	// Send telemetry
-	err = sendConfigChangeTelemetry(cCtx.Context, changes)
-	if err != nil {
-		logger, _ := getLogger()
-		logger.Warn("Error while sending config change telemetry", zap.Error(err))
-	}
+	sendConfigChangeTelemetry(cCtx.Context, changes)
 
 	log.Printf("Config file updated successfully.")
 	return nil
@@ -313,9 +309,9 @@ func formatAndLogChange(change ConfigChange) {
 }
 
 // sendConfigChangeTelemetry sends telemetry data for config changes
-func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) error {
+func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 	if len(changes) == 0 {
-		return nil
+		return
 	}
 
 	// Get metrics context
@@ -367,5 +363,4 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) erro
 	for section, count := range sectionCounts {
 		metrics.Properties[section+"_changes"] = fmt.Sprintf("%d", count)
 	}
-	return nil
 }

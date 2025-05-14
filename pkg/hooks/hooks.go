@@ -132,9 +132,8 @@ func (m *CommandMiddleware) Wrap(action cli.ActionFunc) cli.ActionFunc {
 		// Run the main action
 		err := action(ctx)
 
-		// Run all post-processors in reverse order
-		for i := len(m.PostProcessors) - 1; i >= 0; i-- {
-			post := m.PostProcessors[i]
+		// Run all post-processors in order
+		for _, post := range m.PostProcessors {
 			// We don't want to stop post-processing if one fails
 			_ = post(ctx)
 		}
