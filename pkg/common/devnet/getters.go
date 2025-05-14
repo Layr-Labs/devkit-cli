@@ -9,8 +9,7 @@ import (
 // GetDevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
 // Falls back to CHAIN_ARGS constant if value is empty.
 func GetDevnetChainArgsOrDefault(cfg *common.ConfigWithContextConfig) string {
-	args := []string{}
-	// args := cfg.Env[DEVNET_ENV_KEY].ChainArgs  // TODO(nova) : Get chain args from config.yaml ?  For now using default
+	args := []string{} // TODO(nova) : Get chain args from config.yaml ?  For now using default
 	if len(args) == 0 {
 		return CHAIN_ARGS
 	}
