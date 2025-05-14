@@ -72,15 +72,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(1 * time.Second)
 	log.Printf("Devnet started successfully in %s", elapsed)
 
-	// TODO(supernova) : add an if check , such that only call deploy if --skip-deploy flag is not provided
-	// call make deploy in the template's Makefile.Devkit
-	// This is commented out , till we support passing dynamic values to the template.
-	// common.MakefileDevkitDeploy()
-
-	// call make run in the template's Makefile.Devkit
-	// This is commented out , till we support passing dynamic values to the template.
-	// common.MakefileDevkitRun()
-
 	return nil
 }
 

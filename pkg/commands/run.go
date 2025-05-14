@@ -18,7 +18,7 @@ var RunCommand = &cli.Command{
 			log.Printf("Running AVS tasks...")
 		}
 
-		err := common.MakefileDevkitRun()
+		err := common.CallDevkitMakeTarget(cCtx.Context, "run")
 		if err != nil {
 			return fmt.Errorf("failed to call make run in Makefile.Devkit %w", err)
 		}
