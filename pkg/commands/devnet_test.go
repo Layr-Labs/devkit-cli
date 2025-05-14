@@ -363,8 +363,10 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
-	defaultEigenPath := filepath.Join("..", "..", "default.eigen.toml")
-	projectDir, err := createTempAVSProject(defaultEigenPath)
+	// Prepare and start multiple devnets
+	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
+
+	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 

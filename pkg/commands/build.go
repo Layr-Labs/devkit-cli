@@ -2,6 +2,7 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/testutils"
 	"fmt"
 	"log"
 	"os"
@@ -31,7 +32,7 @@ var BuildCommand = &cli.Command{
 		var cfg *common.ConfigWithContextConfig
 
 		// First check if config is in context (for testing)
-		if cfgValue := cCtx.Context.Value(ConfigContextKey); cfgValue != nil {
+		if cfgValue := cCtx.Context.Value(testutils.ConfigContextKey); cfgValue != nil {
 			cfg = cfgValue.(*common.ConfigWithContextConfig)
 		} else {
 

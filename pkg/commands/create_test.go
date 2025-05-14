@@ -1,13 +1,11 @@
 package commands
 
 import (
-	"bytes"
 	"context"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
@@ -257,9 +255,4 @@ version = "0.1.0"
 	case <-time.After(1 * time.Second):
 		t.Error("Create command did not exit after context cancellation")
 	}
-}
-
-func stripANSI(input string) string {
-	ansi := regexp.MustCompile(`\x1b\[[0-9;]*m`)
-	return ansi.ReplaceAllString(input, "")
 }
