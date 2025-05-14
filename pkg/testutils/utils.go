@@ -1,9 +1,8 @@
-package commands
+package testutils
 
 import (
 	"context"
 	"devkit-cli/pkg/common"
-
 	"github.com/urfave/cli/v2"
 )
 

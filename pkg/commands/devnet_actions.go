@@ -25,8 +25,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if !devnet.IsPortAvailable(port) {
 		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --port", port)
 	}
-	chain_image := devnet.GetDevnetChainImageOrDefault(config)
-	chain_args := devnet.GetDevnetChainArgsOrDefault(config)
+	chainImage := devnet.GetDevnetChainImageOrDefault(config)
+	chainArgs := devnet.GetDevnetChainArgsOrDefault(config)
 
 	startTime := time.Now() // <-- start timing
 	// if user gives , say, log = "DEBUG" Or "Debug", we normalize it to lowercase
@@ -47,12 +47,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	composePath, statePath := devnet.WriteEmbeddedArtifacts()
 	fork_url := devnet.GetDevnetForkUrlDefault(config)
 	// Run docker compose up for anvil devnet
-	cmd := exec.Command("docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
+
+	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
 
 	containerName := fmt.Sprintf("devkit-devnet-%s", config.Config.Project.Name)
 	cmd.Env = append(os.Environ(),
-		"FOUNDRY_IMAGE="+chain_image,
-		"ANVIL_ARGS="+chain_args,
+		"FOUNDRY_IMAGE="+chainImage,
+		"ANVIL_ARGS="+chainArgs,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
 		"FORK_RPC_URL="+fork_url,
 		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", config.Context[devnet.CONTEXT].Fork.Block),
@@ -62,12 +63,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
-	rpc_url := fmt.Sprintf("http://localhost:%d", port)
+	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
 
 	// Sleep for 2 second to ensure the devnet is fully started
 	time.Sleep(2 * time.Second)
 
-	devnet.FundWalletsDevnet(config, rpc_url)
+	devnet.FundWalletsDevnet(config, rpcUrl)
 	elapsed := time.Since(startTime).Round(time.Second)
 
 	// Sleep for 1 second to make sure wallets are funded
@@ -84,7 +85,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 	stopAllContainers := cCtx.Bool("all")
 	if stopAllContainers {
 
-		cmd := exec.Command("docker", devnet.GetDockerPsDevnetArgs()...)
+		cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
 		output, err := cmd.Output()
 		if err != nil {
 			return fmt.Errorf("failed to list devnet containers: %w", err)
@@ -108,7 +109,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 			}
 			containerName := strings.Split(name, ": ")[0]
 
-			devnet.StopAndRemoveContainer(containerName)
+			devnet.StopAndRemoveContainer(cCtx, containerName)
 
 		}
 
@@ -123,12 +124,12 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 		if projectName != "" {
 			container := fmt.Sprintf("devkit-devnet-%s", projectName)
-			devnet.StopAndRemoveContainer(container)
+			devnet.StopAndRemoveContainer(cCtx, container)
 		} else {
 			// project.name is empty, but port is provided
 			// List all running Docker containers whose names include "devkit-devnet",
 			// and format the output to show each container's name and its exposed ports.
-			cmd := exec.Command("docker", devnet.GetDockerPsDevnetArgs()...)
+			cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
 
 			output, err := cmd.Output()
 			if err != nil {
@@ -149,7 +150,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 				if hostPort == fmt.Sprintf("%d", projectPort) {
 					// Derive project name from container name
 					projectName := strings.TrimPrefix(containerName, "devkit-devnet-")
-					devnet.StopAndRemoveContainer(containerName)
+					devnet.StopAndRemoveContainer(cCtx, containerName)
 
 					log.Info("Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
 					containerFoundUsingthePort = true
@@ -173,7 +174,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 		container := fmt.Sprintf("devkit-devnet-%s", config.Config.Project.Name)
 
-		devnet.StopAndRemoveContainer(container)
+		devnet.StopAndRemoveContainer(cCtx, container)
 
 	} else {
 		log.Info("Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
@@ -183,7 +184,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 }
 
 func ListDevnetContainersAction(cCtx *cli.Context) error {
-	cmd := exec.Command("docker", devnet.GetDockerPsDevnetArgs()...)
+	cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
 	output, err := cmd.Output()
 	if err != nil {
 		return fmt.Errorf("failed to list devnet containers: %w", err)

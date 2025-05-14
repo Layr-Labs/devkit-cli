@@ -2,7 +2,9 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"devkit-cli/pkg/common"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -11,9 +13,9 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
+	"time"
 )
 
 func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error) {
@@ -354,4 +356,51 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 	output, err := cmd.Output()
 	assert.NoError(t, err)
 	assert.NotContains(t, string(output), "devkit-devnet-", "The devnet container should be stopped")
+}
+
+func TestStartDevnet_ContextCancellation(t *testing.T) {
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	defaultEigenPath := filepath.Join("..", "..", "default.eigen.toml")
+	projectDir, err := createTempAVSProject(defaultEigenPath)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	app := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+		},
+		Action: StartDevnetAction,
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		args := []string{"devkit", "--port", port, "--verbose"}
+		done <- app.RunContext(ctx, args)
+	}()
+
+	cancel()
+
+	select {
+	case err = <-done:
+		if err != nil && errors.Is(err, context.Canceled) {
+			t.Log("StartDevnetAction exited cleanly after context cancellation")
+		} else {
+			t.Errorf("StartDevnetAction returned with error after context cancellation: %v", err)
+		}
+	case <-time.After(1 * time.Second):
+		t.Error("StartDevnetAction did not exit after context cancellation")
+	}
 }

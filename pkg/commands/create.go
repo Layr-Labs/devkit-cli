@@ -177,7 +177,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Initialize git repository in the project directory
-		if err := initGitRepo(targetDir, cCtx.Bool("verbose")); err != nil {
+		if err := initGitRepo(cCtx, targetDir, cCtx.Bool("verbose")); err != nil {
 			log.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
@@ -315,14 +315,14 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 }
 
 // initGitRepo initializes a new Git repository in the target directory.
-func initGitRepo(targetDir string, verbose bool) error {
+func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	// get logger
 	log, _ := getLogger()
 
 	if verbose {
 		log.Info("Initializing Git repository in %s...", targetDir)
 	}
-	cmd := exec.Command("git", "init")
+	cmd := exec.CommandContext(ctx.Context, "git", "init")
 	cmd.Dir = targetDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {

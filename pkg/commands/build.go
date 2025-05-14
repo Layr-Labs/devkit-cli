@@ -51,7 +51,7 @@ var BuildCommand = &cli.Command{
 		}
 
 		// Execute make build with Makefile.Devkit
-		cmd := exec.Command("make", "-f", common.DevkitMakefile, "build")
+		cmd := exec.CommandContext(cCtx.Context, "make", "-f", common.DevkitMakefile, "build")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -59,7 +59,7 @@ var BuildCommand = &cli.Command{
 		}
 
 		// Build contracts if available
-		if err := buildContractsIfAvailable(); err != nil {
+		if err := buildContractsIfAvailable(cCtx); err != nil {
 			return err
 		}
 
@@ -69,7 +69,7 @@ var BuildCommand = &cli.Command{
 }
 
 // buildContractsIfAvailable builds the contracts if the contracts directory exists
-func buildContractsIfAvailable() error {
+func buildContractsIfAvailable(cCtx *cli.Context) error {
 	contractsDir := common.ContractsDir
 	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
 		return nil
@@ -80,7 +80,7 @@ func buildContractsIfAvailable() error {
 		return fmt.Errorf("contracts directory exists but no %s found", common.DevkitMakefile)
 	}
 
-	cmd := exec.Command("make", "-f", common.DevkitMakefile, "build")
+	cmd := exec.CommandContext(cCtx.Context, "make", "-f", common.DevkitMakefile, "build")
 	cmd.Dir = contractsDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
