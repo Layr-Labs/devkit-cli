@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"devkit-cli/pkg/common"
+	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
@@ -393,10 +394,10 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 
 	select {
 	case err = <-done:
-		if err == nil {
+		if err != nil && errors.Is(err, context.Canceled) {
 			t.Log("StartDevnetAction exited cleanly after context cancellation")
 		} else {
-			t.Logf("StartDevnetAction returned with error after context cancellation: %v", err)
+			t.Errorf("StartDevnetAction returned with error after context cancellation: %v", err)
 		}
 	case <-time.After(500 * time.Millisecond):
 		t.Error("StartDevnetAction did not exit after context cancellation")

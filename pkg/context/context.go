@@ -16,8 +16,9 @@ func WithShutdown(ctx context.Context) context.Context {
 
 	go func() {
 		<-sigChan
-		_, _ = fmt.Fprintln(os.Stderr, "caught interrupt, shutting down gracefully.")
+		signal.Stop(sigChan)
 		cancel()
+		_, _ = fmt.Fprintln(os.Stderr, "caught interrupt, shutting down gracefully.")
 	}()
 
 	return ctx

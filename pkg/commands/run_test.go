@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"devkit-cli/pkg/common"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -89,10 +90,10 @@ run:
 
 	select {
 	case err = <-result:
-		if err == nil {
+		if err != nil && errors.Is(err, context.Canceled) {
 			t.Log("Run exited cleanly after context cancellation")
 		} else {
-			t.Logf("Run returned with error after context cancellation: %v", err)
+			t.Errorf("Run returned with error after context cancellation: %v", err)
 		}
 	case <-time.After(500 * time.Millisecond):
 		t.Error("Run did not exit after context cancellation")

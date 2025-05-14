@@ -4,6 +4,7 @@ import (
 	"context"
 	"devkit-cli/pkg/common"
 	devcontext "devkit-cli/pkg/context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -183,11 +184,11 @@ build:
 	cancel()
 
 	select {
-	case err := <-done:
-		if err != nil {
+	case err = <-done:
+		if err != nil && errors.Is(err, context.Canceled) {
 			t.Logf("Build command exited with error (expected due to context cancel): %v", err)
 		} else {
-			t.Log("Build command exited cleanly after context cancel")
+			t.Errorf("Expected context cancellation but received: %v", err)
 		}
 	case <-time.After(1 * time.Second):
 		t.Error("Build command did not exit after context cancellation")

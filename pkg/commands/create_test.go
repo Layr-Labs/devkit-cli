@@ -274,8 +274,10 @@ version = "0.1.0"
 
 	select {
 	case err := <-done:
-		if err == nil || !errors.Is(err, context.Canceled) {
-			t.Errorf("Expected context cancellation, got: %v", err)
+		if err != nil && errors.Is(err, context.Canceled) {
+			t.Logf("Expected context cancellation received: %v", err)
+		} else {
+			t.Errorf("Expected context cancellation but received: %v", err)
 		}
 	case <-time.After(5 * time.Millisecond):
 		t.Error("Create command did not exit after context cancellation")
