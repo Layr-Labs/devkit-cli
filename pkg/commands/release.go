@@ -27,18 +27,17 @@ var ReleaseCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		// config, _ := common.LoadEigenConfig()
 
-		// if common.IsVerboseEnabled(cCtx, config) {
-		// 	log.Printf("Preparing release...")
-		// 	log.Printf("Tag: %s", cCtx.String("tag"))
-		// 	if registry := cCtx.String("registry"); registry != "" {
-		// 		log.Printf("Registry: %s", registry)
-		// 	}
-		// 	if cCtx.Bool("sign") {
-		// 		log.Printf("Signing release artifacts...")
-		// 	}
-		// }
+		if cCtx.Bool("verbose") {
+			log.Printf("Preparing release...")
+			log.Printf("Tag: %s", cCtx.String("tag"))
+			if registry := cCtx.String("registry"); registry != "" {
+				log.Printf("Registry: %s", registry)
+			}
+			if cCtx.Bool("sign") {
+				log.Printf("Signing release artifacts...")
+			}
+		}
 
 		// Placeholder for future implementation
 		log.Printf("Release completed successfully")
