@@ -118,16 +118,28 @@ func openEditor(editorPath, filePath string) error {
 }
 
 // validateConfig checks if the edited config file is valid
-func validateConfig(configPath string) (*common.ConfigWithContextConfig, error) {
+func validateConfig(configPath string) (interface{}, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config path to validate config %w ", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	var config common.ConfigWithContextConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("invalid TOML syntax: %w", err)
+
+	// Try unmarshalling as BaseConfig (config.yaml)
+	var base common.ConfigWithContextConfig
+	if err := yaml.Unmarshal(data, &base); err == nil && base.Config.Project.Name != "" {
+		return &base, nil
 	}
-	return &config, nil
+
+	// Try unmarshalling as ChainContextConfig (devnet.yaml, sepolia.yaml)
+	var ctxWrapper struct {
+		Version string                    `yaml:"version"`
+		Context common.ChainContextConfig `yaml:"context"`
+	}
+	if err := yaml.Unmarshal(data, &ctxWrapper); err == nil && ctxWrapper.Context.Name != "" {
+		return &ctxWrapper, nil
+	}
+
+	return nil, fmt.Errorf("invalid YAML config: unrecognized structure")
 }
 
 // restoreBackup restores the original file content
@@ -143,90 +155,31 @@ type ConfigChange struct {
 }
 
 // collectConfigChanges collects all changes between two configs
-func collectConfigChanges(originalConfig, newConfig *common.ConfigWithContextConfig) []ConfigChange {
-	changes := []ConfigChange{}
+func collectConfigChanges(original, updated interface{}) []ConfigChange {
+	var changes []ConfigChange
 
-	// Collect all changes from different sections
-	changes = append(changes, getFieldChangesDetailed("project", originalConfig.Config.Project, newConfig.Config.Project)...)
+	switch oldCfg := original.(type) {
+	case *common.ConfigWithContextConfig:
+		newCfg, ok := updated.(*common.ConfigWithContextConfig)
+		if !ok {
+			log.Println("Mismatched types for config.yaml comparison")
+			return nil
+		}
+		// Compare project block
+		changes = append(changes, getFieldChangesDetailed("project", oldCfg.Config.Project, newCfg.Config.Project)...)
 
-	// Operator basic fields
-	// changes = append(changes, getFieldChangesDetailed("operator", originalConfig.Operator, newConfig.Operator)...)
+	case *common.ChainContextConfig:
+		newCfg, ok := updated.(*common.ChainContextConfig)
+		if !ok {
+			log.Println("Mismatched types for context.yaml comparison")
+			return nil
+		}
+		// Compare context fields
+		changes = append(changes, getFieldChangesDetailed("context", *oldCfg, *newCfg)...)
 
-	// Handle nested operator allocations separately
-	// if !reflect.DeepEqual(originalConfig.Operator.Allocations, newConfig.Operator.Allocations) {
-	// 	// Add allocation changes
-	// 	changes = append(changes, compareArraysDetailed("operator.allocations.strategies",
-	// 		originalConfig.Operator.Allocations["strategies"],
-	// 		newConfig.Operator.Allocations["strategies"])...)
-
-	// 	changes = append(changes, compareArraysDetailed("operator.allocations.task-executors",
-	// 		originalConfig.Operator.Allocations["task-executors"],
-	// 		newConfig.Operator.Allocations["task-executors"])...)
-
-	// 	changes = append(changes, compareArraysDetailed("operator.allocations.aggregators",
-	// 		originalConfig.Operator.Allocations["aggregators"],
-	// 		newConfig.Operator.Allocations["aggregators"])...)
-	// }
-
-	// Environment changes
-	// for envName := range originalConfig.Env {
-	// 	if _, exists := newConfig.Env[envName]; !exists {
-	// 		changes = append(changes, ConfigChange{
-	// 			Path:     fmt.Sprintf("env.%s", envName),
-	// 			OldValue: "exists",
-	// 			NewValue: "removed",
-	// 		})
-	// 	}
-	// }
-
-	// for envName, newEnv := range newConfig.Env {
-	// 	if oldEnv, exists := originalConfig.Env[envName]; exists {
-	// 		if !reflect.DeepEqual(oldEnv, newEnv) {
-	// 			changes = append(changes, getFieldChangesDetailed(fmt.Sprintf("env.%s", envName), oldEnv, newEnv)...)
-	// 		}
-	// 	} else {
-	// 		changes = append(changes, ConfigChange{
-	// 			Path:     fmt.Sprintf("env.%s", envName),
-	// 			OldValue: "not_exists",
-	// 			NewValue: "added",
-	// 		})
-	// 	}
-	// }
-
-	// Operator sets changes
-	// for setName := range originalConfig.OperatorSets {
-	// 	if _, exists := newConfig.OperatorSets[setName]; !exists {
-	// 		changes = append(changes, ConfigChange{
-	// 			Path:     fmt.Sprintf("operatorsets.%s", setName),
-	// 			OldValue: "exists",
-	// 			NewValue: "removed",
-	// 		})
-	// 	}
-	// }
-
-	// for setName, newSet := range newConfig.OperatorSets {
-	// 	if oldSet, exists := originalConfig.OperatorSets[setName]; exists {
-	// 		if !reflect.DeepEqual(oldSet, newSet) {
-	// 			changes = append(changes, ConfigChange{
-	// 				Path:     fmt.Sprintf("operatorsets.%s", setName),
-	// 				OldValue: "unchanged",
-	// 				NewValue: "modified",
-	// 			})
-	// 		}
-	// 	} else {
-	// 		changes = append(changes, ConfigChange{
-	// 			Path:     fmt.Sprintf("operatorsets.%s", setName),
-	// 			OldValue: "not_exists",
-	// 			NewValue: "added",
-	// 		})
-	// 	}
-	// }
-
-	// Aliases changes
-	// changes = append(changes, getFieldChangesDetailed("aliases", originalConfig.Aliases, newConfig.Aliases)...)
-
-	// Release changes
-	// changes = append(changes, getFieldChangesDetailed("release", originalConfig.Release, newConfig.Release)...)
+	default:
+		log.Println("Unsupported config type for change tracking")
+	}
 
 	return changes
 }

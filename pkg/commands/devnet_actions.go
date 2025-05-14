@@ -64,8 +64,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 	rpc_url := fmt.Sprintf("http://localhost:%d", port)
 
-	// Sleep for 1 second to ensure the devnet is fully started
-	time.Sleep(1 * time.Second)
+	// Sleep for 2 second to ensure the devnet is fully started
+	time.Sleep(2 * time.Second)
 
 	devnet.FundWalletsDevnet(config, rpc_url)
 	elapsed := time.Since(startTime).Round(time.Second)
