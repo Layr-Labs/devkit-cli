@@ -25,8 +25,14 @@ func main() {
 		UseShortOptionHandling: true,
 	}
 
-	// Apply both middleware functions to all commands
-	hooks.ApplyMiddleware(app.Commands, hooks.WithEnvLoader, hooks.WithTelemetry)
+	middleware := hooks.NewCommandMiddleware()
+
+	middleware.AddPreProcessor(hooks.WithEnvLoader())
+	middleware.AddPreProcessor(hooks.WithTelemetryPreProcessor())
+
+	middleware.AddPostProcessor(hooks.WithTelemetryPostProcessor())
+
+	hooks.ApplyMiddleware(app.Commands, middleware)
 
 	if err := app.RunContext(ctx, os.Args); err != nil {
 		log.Fatal(err)

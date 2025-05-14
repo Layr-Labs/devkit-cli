@@ -38,27 +38,32 @@ func NewPostHogClient(props Properties) (*PostHogClient, error) {
 	}, nil
 }
 
-// Track implements the Client interface
-func (c *PostHogClient) Track(ctx context.Context, event string, props map[string]interface{}) error {
+// AddMetric implements the Client interface
+func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
 	if c == nil || c.client == nil {
 		return nil
 	}
 
-	mergedProps := make(map[string]interface{})
-	mergedProps["cli_version"] = c.props.CLIVersion
-	mergedProps["os"] = c.props.OS
-	mergedProps["arch"] = c.props.Arch
-	mergedProps["project_uuid"] = c.props.ProjectUUID
+	// Create properties map starting with base properties
+	props := make(map[string]interface{})
+	props["cli_version"] = c.props.CLIVersion
+	props["os"] = c.props.OS
+	props["arch"] = c.props.Arch
+	props["project_uuid"] = c.props.ProjectUUID
 
-	for k, v := range props {
-		mergedProps[k] = v
+	// Add metric value
+	props["metric_value"] = metric.Value
+
+	// Add metric dimensions
+	for k, v := range metric.Dimensions {
+		props[k] = v
 	}
 
 	// Never return errors from telemetry operations
 	_ = c.client.Enqueue(posthog.Capture{
 		DistinctId: c.props.ProjectUUID,
-		Event:      event,
-		Properties: mergedProps,
+		Event:      metric.Name,
+		Properties: props,
 	})
 	return nil
 }

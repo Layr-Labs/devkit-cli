@@ -6,8 +6,8 @@ import (
 
 // Client defines the interface for telemetry operations
 type Client interface {
-	// Track sends a single event with properties
-	Track(ctx context.Context, event string, props map[string]interface{}) error
+	// AddMetric emits a single metric
+	AddMetric(ctx context.Context, metric Metric) error
 	// Close cleans up any resources
 	Close() error
 }
@@ -35,8 +35,8 @@ func WithContext(ctx context.Context, client Client) context.Context {
 	return context.WithValue(ctx, contextKey{}, client)
 }
 
-// FromContext retrieves the telemetry client from context
-func FromContext(ctx context.Context) (Client, bool) {
+// ClientFromContext retrieves the telemetry client from context
+func ClientFromContext(ctx context.Context) (Client, bool) {
 	client, ok := ctx.Value(contextKey{}).(Client)
 	return client, ok
 }

@@ -116,7 +116,7 @@ var CreateCommand = &cli.Command{
 			if cCtx.Bool("no-telemetry") {
 				log.Info("Telemetry: disabled (via flag)")
 			} else {
-				client, ok := telemetry.FromContext(cCtx.Context)
+				client, ok := telemetry.ClientFromContext(cCtx.Context)
 				if !ok || telemetry.IsNoopClient(client) {
 					log.Info("Telemetry: disabled")
 				} else {
