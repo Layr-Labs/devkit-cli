@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func listConfig(config *common.BaseConfig, projectSettings *common.ProjectSettings) error {
+func listConfig(config *common.ConfigWithContextConfig, projectSettings *common.ProjectSettings) error {
 	fmt.Printf("Displaying current configuration... \n\n")
 	fmt.Printf("telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
 

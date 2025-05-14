@@ -17,7 +17,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	log, _ := getLogger()
 	// Load config for devnet
-	config, err := common.LoadBaseConfig(devnet.CONTEXT)
+	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return err
 	}
@@ -164,9 +164,9 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		return nil
 	}
 
-	if devnet.FileExistsInRoot(filepath.Join(common.DefaultBaseConfigPath, "config.yaml")) {
+	if devnet.FileExistsInRoot(filepath.Join(common.DefaultConfigWithContextConfigPath, "config.yaml")) {
 		// Load config
-		config, err := common.LoadBaseConfig(devnet.CONTEXT)
+		config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 		if err != nil {
 			return err
 		}

@@ -1,7 +1,6 @@
 package devnet
 
 import (
-	"log"
 	"os"
 
 	"devkit-cli/pkg/common"
@@ -9,9 +8,9 @@ import (
 
 // GetDevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
 // Falls back to CHAIN_ARGS constant if value is empty.
-func GetDevnetChainArgsOrDefault(cfg *common.BaseConfig) string {
+func GetDevnetChainArgsOrDefault(cfg *common.ConfigWithContextConfig) string {
 	args := []string{}
-	// args := cfg.Env[DEVNET_ENV_KEY].ChainArgs
+	// args := cfg.Env[DEVNET_ENV_KEY].ChainArgs  // TODO(nova) : Get chain args from config.yaml ?  For now using default
 	if len(args) == 0 {
 		return CHAIN_ARGS
 	}
@@ -20,8 +19,8 @@ func GetDevnetChainArgsOrDefault(cfg *common.BaseConfig) string {
 
 // GetDevnetChainImageOrDefault returns the devnet chain image,
 // falling back to FOUNDRY_IMAGE if not provided.
-func GetDevnetChainImageOrDefault(cfg *common.BaseConfig) string {
-	image := ""
+func GetDevnetChainImageOrDefault(cfg *common.ConfigWithContextConfig) string {
+	image := "" // TODO(nova): Get Foundry image from config.yaml ? For now using default
 	if image == "" {
 		return FOUNDRY_IMAGE
 	}
@@ -35,8 +34,7 @@ func FileExistsInRoot(filename string) bool {
 	return err == nil || !os.IsNotExist(err)
 }
 
-func GetDevnetForkUrlDefault(cfg *common.BaseConfig) string {
+func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig) string {
 	forkUrl := cfg.Context[CONTEXT].Fork.Url
-	log.Printf("fork_url %s", cfg.Context[CONTEXT].Fork.Url)
 	return forkUrl
 }

@@ -8,7 +8,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const DefaultBaseConfigPath = "config"
+const DefaultConfigWithContextConfigPath = "config"
 
 type ConfigBlock struct {
 	Project ProjectConfig `yaml:"project"`
@@ -37,26 +37,26 @@ type ChainContextConfig struct {
 	Operators []OperatorSpec `yaml:"operators"`
 }
 
-type BaseConfig struct {
+type ConfigWithContextConfig struct {
 	Config  ConfigBlock                   `yaml:"config"`
 	Context map[string]ChainContextConfig `yaml:"contexts"`
 }
 
-func LoadBaseConfig(contextName string) (*BaseConfig, error) {
+func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {
 	// Load base config
-	configPath := filepath.Join(DefaultBaseConfigPath, "config.yaml")
+	configPath := filepath.Join(DefaultConfigWithContextConfigPath, BaseConfig)
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read base config: %w", err)
 	}
 
-	var cfg BaseConfig
+	var cfg ConfigWithContextConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse base config: %w", err)
 	}
 
 	// Load requested context file
-	contextFile := filepath.Join(DefaultBaseConfigPath, "contexts", contextName+".yaml")
+	contextFile := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", contextName+".yaml")
 	ctxData, err := os.ReadFile(contextFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read context %q file: %w", contextName, err)
@@ -78,13 +78,13 @@ func LoadBaseConfig(contextName string) (*BaseConfig, error) {
 	return &cfg, nil
 }
 
-func LoadBaseConfigWithoutContext() (*BaseConfig, error) {
-	configPath := filepath.Join(DefaultBaseConfigPath, "config.yaml")
+func LoadConfigWithContextConfigWithoutContext() (*ConfigWithContextConfig, error) {
+	configPath := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read base config: %w", err)
 	}
-	var cfg BaseConfig
+	var cfg ConfigWithContextConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse base config: %w", err)
 	}

@@ -15,7 +15,7 @@ import (
 
 // FundWallets sends ETH to a list of addresses using `cast send`
 // Only funds wallets with balance < 10 ether.
-func FundWalletsDevnet(cfg *devkitcommon.BaseConfig, rpcURL string) {
+func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) {
 	var client *ethclient.Client
 	var err error
 
@@ -35,7 +35,8 @@ func FundWalletsDevnet(cfg *devkitcommon.BaseConfig, rpcURL string) {
 	}
 	defer client.Close()
 
-	// // All operator keys from [operator]
+	// All operator keys from [operator]
+	// We only intend to fund for devnet, so hardcoding to `CONTEXT` is fine
 	for _, key := range cfg.Context[CONTEXT].Operators {
 		privateKey, _ := crypto.HexToECDSA(key.ECDSAKey)
 		fundIfNeeded(client, crypto.PubkeyToAddress(privateKey.PublicKey), key.ECDSAKey, rpcURL)

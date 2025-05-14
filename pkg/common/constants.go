@@ -7,4 +7,6 @@ const (
 
 	// DevkitMakefile is the name of the makefile used for devkit operations
 	DevkitMakefile = "Makefile.Devkit"
+
+	BaseConfig = "config.yaml"
 )

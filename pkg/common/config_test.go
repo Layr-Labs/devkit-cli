@@ -11,7 +11,7 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func TestLoadBaseConfig_FromCopiedTempFile(t *testing.T) {
+func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	// Setup temp directory
 	tmpDir := t.TempDir()
 	tmpYamlPath := filepath.Join(tmpDir, "config.yaml")
@@ -29,7 +29,7 @@ func TestLoadBaseConfig_FromCopiedTempFile(t *testing.T) {
 	common.CopyFileTesting(t, srcDevnetPath, tmpDevnetPath)
 
 	// Run loader with the new base path
-	cfg, err := LoadBaseConfigFromPath("devnet", tmpDir)
+	cfg, err := LoadConfigWithContextConfigFromPath("devnet", tmpDir)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "my-avs", cfg.Config.Project.Name)
@@ -37,13 +37,13 @@ func TestLoadBaseConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "devnet", cfg.Config.Project.Context)
 }
 
-func LoadBaseConfigFromPath(contextName string, config_directory_path string) (*common.BaseConfig, error) {
+func LoadConfigWithContextConfigFromPath(contextName string, config_directory_path string) (*common.ConfigWithContextConfig, error) {
 	// Load base config
 	data, err := os.ReadFile(filepath.Join(config_directory_path, "config.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read base config: %w", err)
 	}
-	var cfg common.BaseConfig
+	var cfg common.ConfigWithContextConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse base config: %w", err)
 	}

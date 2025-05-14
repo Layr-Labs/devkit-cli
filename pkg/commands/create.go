@@ -255,7 +255,8 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) error {
 	// get logger
 	log, _ := getLogger()
-	// Step 1: Copy and modify config.yaml
+
+	// get directories
 	configDir := filepath.Join("config")
 	contextsDir := filepath.Join(configDir, "contexts")
 
@@ -267,7 +268,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	// Replace project name
 	newContent := strings.Replace(string(content), `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
 
-	// Ensure target config directory exists
+	// Create and ensure target config directory exists
 	destConfigDir := filepath.Join(targetDir, "config")
 	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target config directory: %w", err)

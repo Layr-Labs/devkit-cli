@@ -10,8 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
-	"sigs.k8s.io/yaml"
 	"strings"
+
+	"sigs.k8s.io/yaml"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/text/cases"
@@ -81,9 +82,9 @@ func findEditor() (string, error) {
 }
 
 // backupConfig creates a backup of the current config
-func backupConfig(configPath string) (*common.BaseConfig, []byte, error) {
+func backupConfig(configPath string) (*common.ConfigWithContextConfig, []byte, error) {
 	// 	// Load the current config to compare later
-	currentConfig, err := common.LoadBaseConfig("devnet") // TODO hardcode for now. figure out how exactly we will pass context
+	currentConfig, err := common.LoadConfigWithContextConfig("devnet") // TODO hardcode for now. figure out how exactly we will pass context
 	if err != nil {
 		return nil, nil, fmt.Errorf("error loading current config: %w", err)
 	}
@@ -117,12 +118,12 @@ func openEditor(editorPath, filePath string) error {
 }
 
 // validateConfig checks if the edited config file is valid
-func validateConfig(configPath string) (*common.BaseConfig, error) {
+func validateConfig(configPath string) (*common.ConfigWithContextConfig, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config path to validate config %w ", err)
 	}
-	var config common.BaseConfig
+	var config common.ConfigWithContextConfig
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("invalid TOML syntax: %w", err)
 	}
@@ -142,7 +143,7 @@ type ConfigChange struct {
 }
 
 // collectConfigChanges collects all changes between two configs
-func collectConfigChanges(originalConfig, newConfig *common.BaseConfig) []ConfigChange {
+func collectConfigChanges(originalConfig, newConfig *common.ConfigWithContextConfig) []ConfigChange {
 	changes := []ConfigChange{}
 
 	// Collect all changes from different sections

@@ -36,9 +36,9 @@ var ConfigCommand = &cli.Command{
 		}
 
 		// Load config
-		config, err := common.LoadBaseConfigWithoutContext()
+		config, err := common.LoadConfigWithContextConfigWithoutContext()
 		if err != nil {
-			return fmt.Errorf("failed to load base config: %w", err)
+			return fmt.Errorf("failed to load config and context config: %w", err)
 		}
 
 		err = listConfig(config, projectSetting)

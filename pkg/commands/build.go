@@ -28,17 +28,17 @@ var BuildCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		var cfg *common.BaseConfig
+		var cfg *common.ConfigWithContextConfig
 
 		// First check if config is in context (for testing)
 		if cfgValue := cCtx.Context.Value(ConfigContextKey); cfgValue != nil {
-			cfg = cfgValue.(*common.BaseConfig)
+			cfg = cfgValue.(*common.ConfigWithContextConfig)
 		} else {
 
 			context := cCtx.String("context")
 			// Load from file if not in context
 			var err error
-			cfg, err = common.LoadBaseConfig(context)
+			cfg, err = common.LoadConfigWithContextConfig(context)
 			if err != nil {
 				return err
 			}
