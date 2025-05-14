@@ -283,6 +283,8 @@ func copyDefaultTomlToProject(targetDir, projectName string, verbose bool) error
 
 // / Creates a keystores directory with default keystore json files
 func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
+	log, _ := getLogger()
+
 	srcKeystoreDir := "keystores"
 	destKeystoreDir := filepath.Join(targetDir, "keystores")
 
@@ -291,7 +293,7 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 		return fmt.Errorf("failed to create keystores directory: %w", err)
 	}
 	if verbose {
-		log.Printf("Created directory: %s", destKeystoreDir)
+		log.Info("Created directory: %s", destKeystoreDir)
 	}
 
 	// Read files from the source keystores directory
@@ -325,7 +327,7 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 		}
 
 		if verbose {
-			log.Printf("Copied keystore: %s", file.Name())
+			log.Info("Copied keystore: %s", file.Name())
 		}
 	}
 

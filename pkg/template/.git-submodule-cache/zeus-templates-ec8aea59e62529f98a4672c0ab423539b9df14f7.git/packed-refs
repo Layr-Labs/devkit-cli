@@ -1,0 +1,14 @@
+# pack-refs with: peeled fully-peeled sorted 
+2bd8e09dd327ce31e66b05d25fe6e374aff3bf53 refs/heads/alex/multisig-cleanup
+aae574136fb8115e9e392ac119ef2f13c3148f87 refs/heads/alex/refactor-encoding
+f5ef7d5c171eb82c9a7f8eba63509ebb822a7a9b refs/heads/alex/refactor-state
+a484bd7201fbc1898a415cda1d7bbfbe3420f903 refs/heads/alex/reset-hasPranked
+e19bdea43538019177810399de87c5ba7189ea6a refs/heads/alex/slashing-tweaks
+66889b0208b784fdc2448bcbe6c5860ab4a5f6a6 refs/heads/alex/support-beacon-suffix
+bd8f8855a7e96cdca23d35b6e13b4dc1fd02e2ac refs/heads/jb/1.3.1
+aeaa9aa7ded880858d116f8b2244580d8291d7cb refs/heads/jb/change-multisig
+e24438e352d7cb70fcfdfd3ea12c8f73688a2b92 refs/heads/jb/environment
+400bd5f36f92c8fc19ed7338bb6f8ce8de246d3c refs/heads/jb/fix
+e9ade402e1dce0d3fdf15d436f96b7710740ce14 refs/heads/jb/fix-state
+9faf4fd2a8ad0a458b75fe4de636e8453c05b355 refs/heads/jb/zassert
+5a9709a597cbc1fa4ec2233cba40b9c6545cdcd2 refs/heads/master
