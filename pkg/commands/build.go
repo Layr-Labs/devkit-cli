@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"devkit-cli/internal/testutils"
 	"devkit-cli/pkg/common"
 	"fmt"
 	"log"
@@ -26,7 +27,7 @@ var BuildCommand = &cli.Command{
 		var cfg *common.EigenConfig
 
 		// First check if config is in context (for testing)
-		if cfgValue := cCtx.Context.Value(ConfigContextKey); cfgValue != nil {
+		if cfgValue := cCtx.Context.Value(testutils.ConfigContextKey); cfgValue != nil {
 			cfg = cfgValue.(*common.EigenConfig)
 		} else {
 			// Load from file if not in context

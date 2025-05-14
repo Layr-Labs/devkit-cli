@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestBuildCommand(t *testing.T) {
@@ -55,7 +56,7 @@ build:
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
 	}
 
 	if err := app.Run([]string{"app", "build"}); err != nil {
@@ -92,7 +93,7 @@ build:
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
 	}
 
 	if err := app.Run([]string{"app", "build"}); err != nil {
@@ -135,7 +136,7 @@ build:
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
 	}
 
 	// This should fail because contracts dir exists but has no Makefile
@@ -172,7 +173,7 @@ build:
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
 	}
 
 	done := make(chan error, 1)
@@ -189,7 +190,7 @@ build:
 		} else {
 			t.Errorf("Expected context cancellation but received: %v", err)
 		}
-	case <-testutils.CancellationTimeout:
+	case <-time.After(1 * time.Second):
 		t.Error("Build command did not exit after context cancellation")
 	}
 }

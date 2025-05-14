@@ -3,7 +3,6 @@ package commands
 import (
 	"bytes"
 	"context"
-	"devkit-cli/internal/testutils"
 	"devkit-cli/pkg/common"
 	"errors"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // helper to create a temp AVS project dir with eigen.toml copied
@@ -399,7 +399,7 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 		} else {
 			t.Errorf("StartDevnetAction returned with error after context cancellation: %v", err)
 		}
-	case <-testutils.CancellationTimeout:
+	case <-time.After(1 * time.Second):
 		t.Error("StartDevnetAction did not exit after context cancellation")
 	}
 }

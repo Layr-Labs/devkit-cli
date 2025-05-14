@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 )
 
 func TestCreateCommand(t *testing.T) {
@@ -80,7 +81,7 @@ version = "0.1.0"
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{WithTestConfig(&tmpCmd)},
+		Commands: []*cli.Command{testutils.WithTestConfig(&tmpCmd)},
 	}
 
 	// Test cases
@@ -143,7 +144,7 @@ build:
 
 	buildApp := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
 	}
 
 	if err := buildApp.Run([]string{"app", "build"}); err != nil {
@@ -261,7 +262,7 @@ version = "0.1.0"
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{WithTestConfig(origCmd)},
+		Commands: []*cli.Command{testutils.WithTestConfig(origCmd)},
 	}
 
 	done := make(chan error, 1)
@@ -278,7 +279,7 @@ version = "0.1.0"
 		} else {
 			t.Errorf("Expected context cancellation but received: %v", err)
 		}
-	case <-testutils.CancellationTimeout:
+	case <-time.After(1 * time.Second):
 		t.Error("Create command did not exit after context cancellation")
 	}
 }
