@@ -123,11 +123,15 @@ devkit avs devnet start
 
 DevNet management commands:
 
-| Command | Description                                 |
-| ------- | ------------------------------------------- |
-| `start` | Start local Docker containers and contracts |
-| `stop`  | Stop and remove containers and resources    |
-| `list`  | List active containers and their ports      |
+| Command | Description                                                             |
+| ------- | -------------------------------------------                             |
+| `start` | Start local Docker containers and contracts                             |
+| `stop`  | Stop and remove container from the avs project this command is called   |
+| `list`  | List active containers and their ports                                  |
+| `stop --all`  | Stops all devkit devnet containers that are currently currening                                  |
+| `stop --project.name`  | Stops the specific project's devnet                                  |
+| `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
+
 
 ### 5️⃣ Simulate Task Execution (`avs run`)
 
@@ -161,7 +165,7 @@ log:
 To enable detailed logging during commands:
 
 ```bash
-devkit --verbose avs build
+devkit  avs build --verbose
 ```
 
 ---
