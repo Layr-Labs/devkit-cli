@@ -25,7 +25,7 @@ func (m *mockTelemetryClient) Close() error {
 	return nil
 }
 
-// MockWithTelemetry is a test version of WithTelemetry that uses a provided client
+// MockWithTelemetry is a test version of WithMetricEmission that uses a provided client
 func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.ActionFunc {
 	return func(ctx *cli.Context) error {
 		// Use the mock client directly instead of setupTelemetry
@@ -36,7 +36,6 @@ func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.A
 		ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
 		// Add base properties
-		metrics.Properties["namespace"] = "DevKit"
 		metrics.Properties["cli_version"] = ctx.App.Version
 		metrics.Properties["os"] = runtime.GOOS
 		metrics.Properties["arch"] = runtime.GOARCH
@@ -49,7 +48,7 @@ func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.A
 		}
 
 		// Track command invocation
-		metrics.AddMetric("Invoked", 1)
+		metrics.AddMetric("Count", 1)
 
 		// Execute the wrapped action and capture result
 		err := action(ctx)
@@ -119,7 +118,7 @@ func TestWithTelemetry(t *testing.T) {
 		return nil
 	}
 
-	// Use our mock version instead of the real WithTelemetry
+	// Use our mock version instead of the real WithMetricEmission
 	wrappedAction := MockWithTelemetry(originalAction, mockClient)
 
 	// Run the wrapped action
@@ -134,8 +133,8 @@ func TestWithTelemetry(t *testing.T) {
 	}
 
 	// Check invoked event
-	if mockClient.metrics[0].Name != "Invoked" {
-		t.Errorf("Expected invoked metric, got '%s'", mockClient.metrics[0].Name)
+	if mockClient.metrics[0].Name != "Count" {
+		t.Errorf("Expected Count metric, got '%s'", mockClient.metrics[0].Name)
 	}
 
 	// Check success event
@@ -186,8 +185,8 @@ func TestWithTelemetryError(t *testing.T) {
 	}
 
 	// Check invoked event
-	if mockClient.metrics[0].Name != "Invoked" {
-		t.Errorf("Expected invoked metric, got '%s'", mockClient.metrics[0].Name)
+	if mockClient.metrics[0].Name != "Count" {
+		t.Errorf("Expected Count metric, got '%s'", mockClient.metrics[0].Name)
 	}
 
 	// Check fail event

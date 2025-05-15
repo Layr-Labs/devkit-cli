@@ -33,6 +33,11 @@ func main() {
 		UseShortOptionHandling: true,
 	}
 
+	actionChain := hooks.NewActionChain()
+	actionChain.Use(hooks.WithMetricEmission)
+
+	hooks.ApplyMiddleware(app.Commands, actionChain)
+
 	if err := app.RunContext(ctx, os.Args); err != nil {
 		log.Fatal(err)
 	}

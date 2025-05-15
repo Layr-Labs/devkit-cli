@@ -2,7 +2,6 @@ package hooks
 
 import (
 	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/logger"
 	"fmt"
 	"os"
 	"runtime"
@@ -17,6 +16,40 @@ import (
 
 // EnvFile is the name of the environment file
 const EnvFile = ".env"
+
+type ActionChain struct {
+	Processors []func(action cli.ActionFunc) cli.ActionFunc
+}
+
+// NewActionChain creates a new action chain
+func NewActionChain() *ActionChain {
+	return &ActionChain{
+		Processors: make([]func(action cli.ActionFunc) cli.ActionFunc, 0),
+	}
+}
+
+// Use appends a new processor to the chain
+func (ac *ActionChain) Use(processor func(action cli.ActionFunc) cli.ActionFunc) {
+	ac.Processors = append(ac.Processors, processor)
+}
+
+func (ac *ActionChain) Wrap(action cli.ActionFunc) cli.ActionFunc {
+	for i := len(ac.Processors) - 1; i >= 0; i-- {
+		action = ac.Processors[i](action)
+	}
+	return action
+}
+
+func ApplyMiddleware(commands []*cli.Command, chain *ActionChain) {
+	for _, cmd := range commands {
+		if cmd.Action != nil {
+			cmd.Action = chain.Wrap(cmd.Action)
+		}
+		if len(cmd.Subcommands) > 0 {
+			ApplyMiddleware(cmd.Subcommands, chain)
+		}
+	}
+}
 
 func getFlagValue(ctx *cli.Context, name string) interface{} {
 	if !ctx.IsSet(name) {
@@ -62,7 +95,7 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 
 func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
 	// TODO: future-proof for other "create" commands.
-	if command == "create" && ctx.Bool("disable-telemetry") {
+	if command == "devkit avs create" && ctx.Bool("disable-telemetry") {
 		return telemetry.NewNoopClient()
 	}
 
@@ -75,7 +108,6 @@ func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
 		return telemetry.NewNoopClient()
 	}
 
-	logger.NewLogger().Info("Creating posthog client.")
 	phClient, err := telemetry.NewPostHogClient(appEnv, "DevKit")
 	if err != nil {
 		return telemetry.NewNoopClient()
@@ -93,9 +125,18 @@ func WithAppEnvironment(ctx *cli.Context) {
 	))
 }
 
-func setupTelemetryClient(ctx *cli.Context) {
-	client := setupTelemetry(ctx, ctx.Command.Name)
-	ctx.Context = telemetry.ContextWithClient(ctx.Context, client)
+func WithMetricEmission(action cli.ActionFunc) cli.ActionFunc {
+	return func(ctx *cli.Context) error {
+		// Run command action
+		err := action(ctx)
+
+		client := setupTelemetry(ctx, ctx.Command.HelpName)
+		ctx.Context = telemetry.ContextWithClient(ctx.Context, client)
+		// emit result metrics
+		emitTelemetryMetrics(ctx, err)
+
+		return err
+	}
 }
 
 func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
@@ -104,7 +145,6 @@ func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
 		return
 	}
 	metrics.Properties["command"] = ctx.Command.HelpName
-	logger.NewLogger().Info("command help name: %s", metrics.Properties["command"])
 	result := "Success"
 	dimensions := map[string]string{}
 	if actionError != nil {
@@ -165,7 +205,6 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 		metrics.Properties["arch"] = appEnv.Arch
 		metrics.Properties["project_uuid"] = appEnv.ProjectUUID
 	}
-	metrics.Properties["namespace"] = "DevKit"
 
 	for k, v := range collectFlagValues(ctx) {
 		metrics.Properties[k] = fmt.Sprintf("%v", v)
