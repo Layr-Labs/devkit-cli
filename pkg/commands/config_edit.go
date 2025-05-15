@@ -323,7 +323,7 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 	// Add change count as a metric
 	metrics.AddMetric(hooks.FormatMetricName("config", "edit_changes"), float64(len(changes)))
 
-	// Add section change counts as dimensions
+	// Add section change counts
 	sectionCounts := make(map[string]int)
 	for _, change := range changes {
 		section := strings.Split(change.Path, ".")[0]

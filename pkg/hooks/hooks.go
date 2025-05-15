@@ -76,13 +76,12 @@ func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
 	}
 
 	logger.NewLogger().Info("Creating posthog client.")
-	phClient, _ := telemetry.NewPostHogClient(appEnv)
-	if phClient != nil {
-		return phClient
+	phClient, err := telemetry.NewPostHogClient(appEnv)
+	if err != nil {
+		return telemetry.NewNoopClient()
 	}
 
-	// no client available, return noop client which means telemetry is disabled
-	return telemetry.NewNoopClient()
+	return phClient
 }
 
 func FormatMetricName(command, action string) string {
@@ -198,6 +197,7 @@ func emitTelemetryMetrics(ctx *cli.Context, command string, actionError error) {
 	if !ok {
 		return
 	}
+	defer client.Close()
 
 	for _, metric := range metrics.Metrics {
 		props := make(map[string]interface{})

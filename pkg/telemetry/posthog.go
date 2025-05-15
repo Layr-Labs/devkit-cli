@@ -21,7 +21,10 @@ func NewPostHogClient(environment *devcontext.AppEnvironment) (*PostHogClient, e
 		// No API key available, return noop client without error
 		return nil, nil
 	}
-	client := posthog.New(apiKey)
+	client, err := posthog.NewWithConfig(apiKey, posthog.Config{Endpoint: getPostHogEndpoint()})
+	if err != nil {
+		return nil, err
+	}
 
 	return &PostHogClient{
 		client:         client,
@@ -105,5 +108,5 @@ func getPostHogEndpoint() string {
 	if endpoint := os.Getenv("DEVKIT_POSTHOG_ENDPOINT"); endpoint != "" {
 		return endpoint
 	}
-	return "https://app.posthog.com"
+	return "https://us.i.posthog.com"
 }
