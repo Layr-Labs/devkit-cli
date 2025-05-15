@@ -6,11 +6,11 @@ import (
 	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"testing"
-	"github.com/stretchr/testify/assert"
 	"time"
 )
 
