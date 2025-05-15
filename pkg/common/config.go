@@ -43,7 +43,7 @@ type ChainContextConfig struct {
 type ChainConfig struct {
 	Name    string      `yaml:"name"`
 	ChainID int         `yaml:"chain_id"`
-	RPCURL  string      `yaml:"rpc_url"`
+	RPCURL  string      `json:"rpc_url"`
 	Fork    *ForkConfig `yaml:"fork"`
 }
 

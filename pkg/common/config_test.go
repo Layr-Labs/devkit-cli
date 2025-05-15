@@ -46,6 +46,13 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "1000ETH", cfg.Context["devnet"].Operators[0].Stake)
 	assert.Equal(t, "1000ETH", cfg.Context["devnet"].Operators[1].Stake)
 
+	assert.Equal(t, "devnet", cfg.Context["devnet"].Name)
+	assert.Equal(t, "l1", cfg.Context["devnet"].Chains[0].Name)
+	assert.Equal(t, "l2", cfg.Context["devnet"].Chains[1].Name)
+	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[0].RPCURL)
+	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[1].RPCURL)
+	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
+	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
 }
 
 func LoadConfigWithContextConfigFromPath(contextName string, config_directory_path string) (*common.ConfigWithContextConfig, error) {
