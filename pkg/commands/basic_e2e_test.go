@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"devkit-cli/config"
 	"devkit-cli/pkg/hooks"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
 )
 
@@ -51,13 +53,15 @@ func setupBasicProject(t *testing.T, dir string) {
 		t.Fatalf("Failed to create project dir: %v", err)
 	}
 
-	// Create eigen.toml (needed to identify project root)
-	eigenContent := `[project]
-name = "test-avs"
-version = "0.1.0"
-`
-	if err := os.WriteFile(filepath.Join(dir, "eigen.toml"), []byte(eigenContent), 0644); err != nil {
-		t.Fatalf("Failed to write eigen.toml: %v", err)
+	// Create config directory
+	configDir := filepath.Join(dir, "config")
+	err := os.MkdirAll(configDir, 0755)
+	assert.NoError(t, err)
+
+	// Create config.yaml (needed to identify project root)
+	eigenContent := config.DefaultConfigYaml
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(eigenContent), 0644); err != nil {
+		t.Fatalf("Failed to write config.yaml: %v", err)
 	}
 
 	// Create .env file

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/testutils"
 	"errors"
@@ -18,14 +19,7 @@ import (
 func TestCreateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	mockConfigYaml := `
-version: 0.0.1
-config:
-  project:
-    name: "my-avs"
-    version: "0.1.0"
-    context: "devnet"
-`
+	mockConfigYaml := config.DefaultConfigYaml
 	configDir := filepath.Join("config")
 	err := os.MkdirAll(configDir, 0755)
 	assert.NoError(t, err)
@@ -40,24 +34,17 @@ config:
 		}
 	}()
 
-	devnetYaml := `
-version: 0.0.1
-config:
-  project:
-    name: "my-avs"
-    version: "0.1.0"
-    context: "devnet"
-`
+	devnetYaml := config.ContextYamls["devnet"]
 	contextsDir := filepath.Join(configDir, "contexts")
 	err = os.MkdirAll(contextsDir, 0755)
 	assert.NoError(t, err)
 
-	// Create config/config.yaml in current directory
+	// Create config/context/devnet.yaml in current directory
 	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(devnetYaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Remove(filepath.Join("config", "contexts", "devnet.yaml")); err != nil {
+		if err := os.Remove(filepath.Join(contextsDir, "devnet.yaml")); err != nil {
 			t.Logf("Failed to remove test file: %v", err)
 		}
 	}()
@@ -102,7 +89,7 @@ config:
 			return err
 		}
 
-		// Create eigen.toml
+		// Create config.yaml
 		return copyDefaultConfigToProject(targetDir, projectName, false)
 	}
 
@@ -215,15 +202,11 @@ func TestCreateCommand_WithTemplates(t *testing.T) {
 }
 
 func TestCreateCommand_ContextCancellation(t *testing.T) {
-	mockToml := `
-[project]
-name = "cancelled-avs"
-version = "0.1.0"
-`
-	if err := os.WriteFile("default.eigen.toml", []byte(mockToml), 0644); err != nil {
+	mockYaml := config.DefaultConfigYaml
+	if err := os.WriteFile("config.yaml", []byte(mockYaml), 0644); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove("default.eigen.toml")
+	defer os.Remove("config.yaml")
 
 	origCmd := CreateCommand
 	origCmd.Action = func(cCtx *cli.Context) error {

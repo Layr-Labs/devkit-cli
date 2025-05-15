@@ -10,14 +10,14 @@ import (
 )
 
 // IsVerboseEnabled checks if either the CLI --verbose flag is set,
-// or eigen.toml has [log] level = "debug"
+// or config.yaml has [log] level = "debug"
 func IsVerboseEnabled(cCtx *cli.Context, cfg *ConfigWithContextConfig) bool {
 	// Check CLI flag
 	if cCtx.Bool("verbose") {
 		return true
 	}
 
-	// Check eigen.toml config
+	// Check config.yaml config
 	// level := strings.ToLower(strings.TrimSpace(cfg.Log.Level))  // TODO(nova): Get log level debug from config.yaml also . For now only using the cli flag
 	// return level == "debug"
 	return true

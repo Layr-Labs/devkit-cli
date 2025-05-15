@@ -20,7 +20,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// helper to create a temp AVS project dir with eigen.toml copied
+// helper to create a temp AVS project dir with config.yaml copied
 func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error) {
 	tempDir, err := os.MkdirTemp("", "devkit-test-avs-*")
 	if err != nil {
@@ -37,7 +37,7 @@ func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error)
 	destConfigFile := filepath.Join(destConfigDir, common.BaseConfig)
 	err = os.WriteFile(destConfigFile, []byte(config.DefaultConfigYaml), 0644)
 	if err != nil {
-		return "", fmt.Errorf("failed to copy eigen.toml: %w", err)
+		return "", fmt.Errorf("failed to copy %s: %w", common.BaseConfig, err)
 	}
 
 	// Create config/contexts directory
