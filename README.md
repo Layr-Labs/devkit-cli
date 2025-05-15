@@ -13,7 +13,7 @@ EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold 
 | Command      | Description                              |
 | ------------ | ---------------------------------------- |
 | `avs create` | Scaffold a new AVS project               |
-| `avs config` | Configure your AVS (`eigen.toml`)        |
+| `avs config` | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...)        |
 | `avs build`  | Compile AVS smart contracts and binaries |
 | `avs devnet` | Manage local development network         |
 | `avs run`    | Simulate AVS task execution locally      |
@@ -49,20 +49,6 @@ Verify your installation:
 devkit --help
 ```
 
-### 🔑 Setup for Private Go Modules
-
-During this Private Preview (closed beta), you'll need access to private Go modules hosted on GitHub:
-
-1. **Add SSH Key to GitHub:** Ensure your SSH key is associated with your GitHub account ([instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
-2. **Verify Repository Access:** Confirm with EigenLabs support that your account has access to necessary private repositories.
-3. **Configure Git for SSH Access:**
-
-```bash
-git config --global url."ssh://git@github.com/Layr-Labs/".insteadOf "https://github.com/Layr-Labs/"
-```
-
-If you're on MacOS, ensure your `~/.ssh/config` does not contain `UseKeychain yes`, as it can interfere with SSH operations.
-
 ---
 
 ## 🚧 Step-by-Step Guide
@@ -74,20 +60,19 @@ Quickly scaffold your new AVS project:
 * Initializes a new project based on the default task-based architecture in Go.
 * Generates boilerplate code and default configuration.
 
-Projects are created by default in `/Users/[current-user]/avs/`:
+Projects are created by default in the current directory from where the below command is called.
 
 ```bash
 devkit avs create my-avs-project
-cd /Users/[current-user]/avs/my-avs-project
+cd my-avs-project
 ```
 
 > \[!IMPORTANT]
-> All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the `eigen.toml` file. If `eigen.toml` is missing or located elsewhere, the CLI will fail to load the configuration.
+> All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder . The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files , example `devnet.yaml`.
 
-### 2️⃣ Configure Your AVS (`eigen.toml`)
+### 2️⃣ Configure Your AVS (`config.yaml`,`devnet.yaml`)
 
-Customize project settings to define operators, network configurations, and more. You can configure this file either through the CLI or by manually editing the `eigen.toml` file.
-
+Customize project settings to define operators, network configurations, and more. You can configure this file either through the CLI or by manually editing the `config.yaml` and `contexts/devnet.yaml` files.
 View current settings via CLI:
 
 ```bash
@@ -97,10 +82,10 @@ devkit avs config
 Edit settings directly via CLI:
 
 ```bash
-devkit avs config --edit
+devkit avs config --edit --path <path to the config.yaml or contexts/devnet.yaml file>
 ```
 
-Alternatively, manually edit `eigen.toml` in a text editor of your choice.
+Alternatively, manually edit `` in a text editor of your choice.
 
 > \[!IMPORTANT]
 > These commands must be run from your AVS project's root directory.
@@ -122,9 +107,9 @@ devkit avs build
 
 Start a local Ethereum-based development network to simulate your AVS environment:
 
-* Uses [eigenlayer-contracts-1.3.0] (https://github.com/Layr-Labs/eigenlayer-contracts/tree/v1.3.0) on a fresh Anvil chain.
+* Forks ethereum mainnet using a fork url which the user passes along with the block number.
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
-* Deploys required AVS and EigenLayer core contracts.
+* Setup required AVS contracts.
 * Initializes aggregator and executor processes.
 
 > \[!IMPORTANT]
