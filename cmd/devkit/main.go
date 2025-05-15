@@ -8,14 +8,14 @@ import (
 	"devkit-cli/pkg/commands"
 	"devkit-cli/pkg/commands/keystore"
 	"devkit-cli/pkg/common"
-	devcontext "devkit-cli/pkg/context"
+	kitcontext "devkit-cli/pkg/context"
 	"devkit-cli/pkg/hooks"
 
 	"github.com/urfave/cli/v2"
 )
 
 func main() {
-	ctx := devcontext.WithShutdown(context.Background())
+	ctx := kitcontext.WithShutdown(context.Background())
 
 	app := &cli.App{
 		Name:                   "devkit",

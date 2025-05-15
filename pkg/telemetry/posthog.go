@@ -2,7 +2,7 @@ package telemetry
 
 import (
 	"context"
-	devcontext "devkit-cli/pkg/context"
+	kitcontext "devkit-cli/pkg/context"
 	"github.com/posthog/posthog-go"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -11,11 +11,11 @@ import (
 // PostHogClient implements the Client interface using PostHog
 type PostHogClient struct {
 	client         posthog.Client
-	appEnvironment *devcontext.AppEnvironment
+	appEnvironment *kitcontext.AppEnvironment
 }
 
 // NewPostHogClient creates a new PostHog client
-func NewPostHogClient(environment *devcontext.AppEnvironment) (*PostHogClient, error) {
+func NewPostHogClient(environment *kitcontext.AppEnvironment) (*PostHogClient, error) {
 	apiKey := getPostHogAPIKey()
 	if apiKey == "" {
 		// No API key available, return noop client without error

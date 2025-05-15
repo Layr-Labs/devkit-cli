@@ -3,7 +3,7 @@ package commands
 import (
 	"context"
 	"devkit-cli/pkg/common"
-	devcontext "devkit-cli/pkg/context"
+	kitcontext "devkit-cli/pkg/context"
 	"devkit-cli/pkg/testutils"
 	"errors"
 	"github.com/urfave/cli/v2"
@@ -169,7 +169,7 @@ build:
 	defer func() { _ = os.Chdir(oldWd) }()
 
 	parentCtx, cancel := context.WithCancel(context.Background())
-	ctx := devcontext.WithShutdown(parentCtx)
+	ctx := kitcontext.WithShutdown(parentCtx)
 
 	app := &cli.App{
 		Name:     "test",

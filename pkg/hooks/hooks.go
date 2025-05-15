@@ -4,13 +4,12 @@ import (
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/logger"
 	"fmt"
-	"log"
 	"os"
 	"runtime"
 	"strconv"
 	"time"
 
-	devcontext "devkit-cli/pkg/context"
+	kitcontext "devkit-cli/pkg/context"
 	"devkit-cli/pkg/telemetry"
 
 	"github.com/joho/godotenv"
@@ -67,7 +66,11 @@ func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
 		return telemetry.NewNoopClient()
 	}
 
-	appEnv, ok := devcontext.AppEnvironmentFromContext(ctx.Context)
+	if !common.IsTelemetryEnabled() {
+		return telemetry.NewNoopClient()
+	}
+
+	appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context)
 	if !ok {
 		return telemetry.NewNoopClient()
 	}
@@ -79,12 +82,6 @@ func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
 	}
 
 	return phClient
-}
-
-// CommandMiddleware wraps a command with pre-processing and post-processing steps
-type CommandMiddleware struct {
-	PreProcessors  []func(action cli.ActionFunc) cli.ActionFunc
-	PostProcessors []func(action cli.ActionFunc) cli.ActionFunc
 }
 
 type ActionChain struct {
@@ -103,7 +100,7 @@ func (ac *ActionChain) Use(processor func(action cli.ActionFunc) cli.ActionFunc)
 	ac.Processors = append(ac.Processors, processor)
 }
 
-// Wrap applies all processors in the correct order
+// Wrap applies all actions in the correct order
 func (ac *ActionChain) Wrap(action cli.ActionFunc) cli.ActionFunc {
 	for i := len(ac.Processors) - 1; i >= 0; i-- {
 		action = ac.Processors[i](action)
@@ -147,7 +144,7 @@ func setupTelemetryContext(ctx *cli.Context, command string) {
 	metrics := telemetry.NewMetricsContext(ctx.App.Name, command)
 	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
-	if appEnv, ok := devcontext.AppEnvironmentFromContext(ctx.Context); ok {
+	if appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context); ok {
 		metrics.Properties["cli_version"] = appEnv.CLIVersion
 		metrics.Properties["os"] = appEnv.OS
 		metrics.Properties["arch"] = appEnv.Arch
@@ -159,12 +156,6 @@ func setupTelemetryContext(ctx *cli.Context, command string) {
 	}
 
 	metrics.AddMetric("Count", 1)
-
-	// Handle no-telemetry override
-	if command == "create" && ctx.Bool("no-telemetry") {
-		log.Printf("DEBUG: Detected --no-telemetry flag in create command, switching to NoopClient after invoked event")
-		ctx.Context = telemetry.WithContext(ctx.Context, telemetry.NewNoopClient())
-	}
 }
 
 func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
@@ -216,7 +207,7 @@ func WithEnvLoader(action cli.ActionFunc) cli.ActionFunc {
 	return func(ctx *cli.Context) error {
 		command := ctx.Command.Name
 
-		ctx.Context = devcontext.WithAppEnvironment(ctx.Context, devcontext.NewAppEnvironment(
+		ctx.Context = kitcontext.WithAppEnvironment(ctx.Context, kitcontext.NewAppEnvironment(
 			ctx.App.Version,
 			runtime.GOOS,
 			runtime.GOARCH,
