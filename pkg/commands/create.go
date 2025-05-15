@@ -2,13 +2,13 @@ package commands
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"devkit-cli/config"
+	"devkit-cli/pkg/commands/keystore"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/logger"
 	"devkit-cli/pkg/telemetry"
@@ -304,7 +304,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 	log, _ := common.GetLogger()
 
-	srcKeystoreDir := "keystores"
+	// Construct keystore dest
 	destKeystoreDir := filepath.Join(targetDir, "keystores")
 
 	// Create the destination keystore directory
@@ -315,38 +315,24 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 		log.Info("Created directory: %s", destKeystoreDir)
 	}
 
-	// Read files from the source keystores directory
-	files, err := os.ReadDir(srcKeystoreDir)
-	if err != nil {
-		return fmt.Errorf("failed to read keystores directory: %w", err)
-	}
+	// Read files embedded keystore
+	files := keystore.KeystoreEmbeds
 
-	for _, file := range files {
-		if file.IsDir() {
-			continue // skip subdirectories
-		}
-
-		srcPath := filepath.Join(srcKeystoreDir, file.Name())
-		destPath := filepath.Join(destKeystoreDir, file.Name())
-
-		srcFile, err := os.Open(srcPath)
-		if err != nil {
-			return fmt.Errorf("failed to open source keystore file %s: %w", srcPath, err)
-		}
-		defer srcFile.Close()
-
+	// Write files to destKeystoreDir
+	for fileName, file := range files {
+		destPath := filepath.Join(destKeystoreDir, fileName)
 		destFile, err := os.Create(destPath)
 		if err != nil {
 			return fmt.Errorf("failed to create destination keystore file %s: %w", destPath, err)
 		}
 		defer destFile.Close()
 
-		if _, err := io.Copy(destFile, srcFile); err != nil {
-			return fmt.Errorf("failed to copy file %s: %w", file.Name(), err)
+		if err := os.WriteFile(destPath, []byte(file), 0644); err != nil {
+			return fmt.Errorf("failed to write file %s: %w", fileName, err)
 		}
 
 		if verbose {
-			log.Info("Copied keystore: %s", file.Name())
+			log.Info("Copied keystore: %s", fileName)
 		}
 	}
 
