@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 	"runtime"
-	"strings"
+	"strconv"
 	"time"
 
 	devcontext "devkit-cli/pkg/context"
@@ -19,9 +19,6 @@ import (
 
 // EnvFile is the name of the environment file
 const EnvFile = ".env"
-
-// CommandPrefix is the prefix to apply to all command names
-const CommandPrefix = "avs_"
 
 func getFlagValue(ctx *cli.Context, name string) interface{} {
 	if !ctx.IsSet(name) {
@@ -84,13 +81,6 @@ func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
 	return phClient
 }
 
-func FormatMetricName(command, action string) string {
-	if strings.Contains(action, ".") {
-		return fmt.Sprintf("cli.%s%s.%s", CommandPrefix, command, action)
-	}
-	return fmt.Sprintf("cli.%s%s.%s", CommandPrefix, command, action)
-}
-
 // CommandMiddleware wraps a command with pre-processing and post-processing steps
 type CommandMiddleware struct {
 	PreProcessors  []func(action cli.ActionFunc) cli.ActionFunc
@@ -144,7 +134,7 @@ func WithTelemetry(action cli.ActionFunc) cli.ActionFunc {
 		err := action(ctx)
 
 		// Post-processing to emit result metrics
-		emitTelemetryMetrics(ctx, command, err)
+		emitTelemetryMetrics(ctx, err)
 
 		return err
 	}
@@ -168,7 +158,7 @@ func setupTelemetryContext(ctx *cli.Context, command string) {
 		metrics.Properties[k] = fmt.Sprintf("%v", v)
 	}
 
-	metrics.AddMetric(FormatMetricName(command, "Count"), 1)
+	metrics.AddMetric("Count", 1)
 
 	// Handle no-telemetry override
 	if command == "create" && ctx.Bool("no-telemetry") {
@@ -177,21 +167,22 @@ func setupTelemetryContext(ctx *cli.Context, command string) {
 	}
 }
 
-func emitTelemetryMetrics(ctx *cli.Context, command string, actionError error) {
-	metrics, mErr := telemetry.MetricsFromContext(ctx.Context)
-	if mErr != nil {
+func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
+	metrics, err := telemetry.MetricsFromContext(ctx.Context)
+	if err != nil {
 		return
 	}
 
 	result := "Success"
+	dimensions := map[string]string{}
 	if actionError != nil {
 		result = "Failure"
-		metrics.Properties["error"] = actionError.Error()
+		dimensions["error"] = actionError.Error()
 	}
+	metrics.AddMetricWithDimensions(result, 1, dimensions)
 
-	metrics.AddMetric(FormatMetricName(command, result), 1)
 	duration := time.Since(metrics.StartTime).Milliseconds()
-	metrics.AddMetric(FormatMetricName(command, "DurationMilliseconds"), float64(duration))
+	metrics.AddMetric("DurationMilliseconds", float64(duration))
 
 	client, ok := telemetry.ClientFromContext(ctx.Context)
 	if !ok {
@@ -207,9 +198,16 @@ func emitTelemetryMetrics(ctx *cli.Context, command string, actionError error) {
 		for k, v := range metric.Dimensions {
 			props[k] = v
 		}
-		props["metric_value"] = metric.Value
-
+		withCommandDimensions(ctx, props)
 		_ = client.AddMetric(ctx.Context, metric)
+	}
+}
+
+func withCommandDimensions(ctx *cli.Context, props map[string]interface{}) {
+	cmdCount := 1
+	lineage := ctx.Lineage()
+	for ancestor := len(lineage) - 1; ancestor >= 0; ancestor -= 1 {
+		props["Command"+strconv.Itoa(cmdCount)] = lineage[ancestor].Command.Name
 	}
 }
 

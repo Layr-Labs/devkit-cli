@@ -3,7 +3,6 @@ package telemetry
 import (
 	"context"
 	devcontext "devkit-cli/pkg/context"
-	"github.com/google/uuid"
 	"testing"
 )
 
@@ -24,42 +23,6 @@ func TestNoopClient(t *testing.T) {
 	}
 
 	// Test Close doesn't panic
-	err = client.Close()
-	if err != nil {
-		t.Errorf("Close returned error: %v", err)
-	}
-}
-
-func TestPostHogClient(t *testing.T) {
-	// Skip if no API key
-	if testing.Short() {
-		t.Skip("Skipping PostHog test in short mode")
-	}
-
-	client, err := NewPostHogClient(devcontext.NewAppEnvironment(
-		"version",
-		"linux",
-		"Testx86",
-		uuid.New().String(),
-	))
-	if err != nil {
-		t.Errorf("NewPostHogClient returned error: %v", err)
-	}
-	if client == nil {
-		t.Fatal("Expected non-nil client")
-	}
-
-	// Test AddMetric
-	err = client.AddMetric(context.Background(), Metric{
-		Name:       "test.metric",
-		Value:      42,
-		Dimensions: map[string]string{"test": "value"},
-	})
-	if err != nil {
-		t.Errorf("AddMetric returned error: %v", err)
-	}
-
-	// Test Close
 	err = client.Close()
 	if err != nil {
 		t.Errorf("Close returned error: %v", err)

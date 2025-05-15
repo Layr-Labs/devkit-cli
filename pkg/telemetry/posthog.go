@@ -40,13 +40,8 @@ func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
 
 	// Create properties map starting with base properties
 	props := make(map[string]interface{})
-	props["cli_version"] = c.appEnvironment.CLIVersion
-	props["os"] = c.appEnvironment.OS
-	props["arch"] = c.appEnvironment.Arch
-	props["project_uuid"] = c.appEnvironment.ProjectUUID
-
 	// Add metric value
-	props["metric_value"] = metric.Value
+	props["value"] = metric.Value
 
 	// Add metric dimensions
 	for k, v := range metric.Dimensions {

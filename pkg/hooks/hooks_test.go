@@ -2,13 +2,11 @@ package hooks
 
 import (
 	"context"
+	"devkit-cli/pkg/telemetry"
 	"errors"
 	"fmt"
 	"runtime"
 	"testing"
-	"time"
-
-	"devkit-cli/pkg/telemetry"
 
 	"github.com/urfave/cli/v2"
 )
@@ -40,6 +38,7 @@ func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.A
 		ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
 		// Add base properties
+		metrics.Properties["namespace"] = "DevKit"
 		metrics.Properties["cli_version"] = ctx.App.Version
 		metrics.Properties["os"] = runtime.GOOS
 		metrics.Properties["arch"] = runtime.GOARCH
@@ -52,22 +51,13 @@ func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.A
 		}
 
 		// Track command invocation
-		metrics.AddMetric(FormatMetricName(command, "invoked"), 1)
+		metrics.AddMetric("Invoked", 1)
 
 		// Execute the wrapped action and capture result
 		err := action(ctx)
-		// Add command result as a metric
-		result := "success"
-		if err != nil {
-			result = "failure"
-			metrics.Properties["error"] = err.Error()
-		}
-		metrics.AddMetric(FormatMetricName(command, result), 1)
 
-		// Add duration metric
-		duration := time.Since(metrics.StartTime).Milliseconds()
-		metrics.AddMetric(FormatMetricName(command, "DurationMilliseconds"), float64(duration))
-
+		// emit metrics
+		emitTelemetryMetrics(ctx, err)
 		return err
 	}
 }
@@ -141,18 +131,23 @@ func TestWithTelemetry(t *testing.T) {
 	}
 
 	// Verify events were tracked (invoked and success)
-	if len(mockClient.metrics) != 2 {
-		t.Fatalf("Expected 2 metrics, got %d", len(mockClient.metrics))
+	if len(mockClient.metrics) != 3 {
+		t.Fatalf("Expected 3 metrics, got %d", len(mockClient.metrics))
 	}
 
 	// Check invoked event
-	if mockClient.metrics[0].Name != FormatMetricName("test-command", "invoked") {
+	if mockClient.metrics[0].Name != "Invoked" {
 		t.Errorf("Expected invoked metric, got '%s'", mockClient.metrics[0].Name)
 	}
 
 	// Check success event
-	if mockClient.metrics[1].Name != FormatMetricName("test-command", "success") {
+	if mockClient.metrics[1].Name != "Success" {
 		t.Errorf("Expected success metric, got '%s'", mockClient.metrics[1].Name)
+	}
+
+	// Check duration event
+	if mockClient.metrics[2].Name != "DurationMilliseconds" {
+		t.Errorf("Expected duration metric, got '%s'", mockClient.metrics[2].Name)
 	}
 }
 
@@ -188,17 +183,17 @@ func TestWithTelemetryError(t *testing.T) {
 	}
 
 	// Verify events were tracked (invoked and fail)
-	if len(mockClient.metrics) != 2 {
+	if len(mockClient.metrics) != 3 {
 		t.Fatalf("Expected 2 metrics, got %d", len(mockClient.metrics))
 	}
 
 	// Check invoked event
-	if mockClient.metrics[0].Name != FormatMetricName("test-command", "invoked") {
+	if mockClient.metrics[0].Name != "Invoked" {
 		t.Errorf("Expected invoked metric, got '%s'", mockClient.metrics[0].Name)
 	}
 
 	// Check fail event
-	if mockClient.metrics[1].Name != FormatMetricName("test-command", "fail") {
+	if mockClient.metrics[1].Name != "Failure" {
 		t.Errorf("Expected fail metric, got '%s'", mockClient.metrics[1].Name)
 	}
 
@@ -206,24 +201,9 @@ func TestWithTelemetryError(t *testing.T) {
 	if val, ok := mockClient.metrics[1].Dimensions["error"]; !ok || val != "test error message" {
 		t.Errorf("Error message not correctly captured: %v", mockClient.metrics[1].Dimensions)
 	}
-}
 
-func TestFormatMetricName(t *testing.T) {
-	tests := []struct {
-		command  string
-		action   string
-		expected string
-	}{
-		{"avs_create", "invoked", "cli.avs_avs_create.invoked"},
-		{"avs_run", "task_completed", "cli.avs_avs_run.task_completed"},
-		{"build", "failed_step", "cli.avs_build.failed_step"},
-	}
-
-	for _, test := range tests {
-		result := FormatMetricName(test.command, test.action)
-		if result != test.expected {
-			t.Errorf("FormatMetricName(%s, %s) = %s, want %s",
-				test.command, test.action, result, test.expected)
-		}
+	// Check duration event
+	if mockClient.metrics[2].Name != "DurationMilliseconds" {
+		t.Errorf("Expected duration metric, got '%s'", mockClient.metrics[2].Name)
 	}
 }

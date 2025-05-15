@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/hooks"
 	"devkit-cli/pkg/telemetry"
 	"fmt"
 	"go.uber.org/zap"
@@ -321,7 +320,7 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 		logger.Warn("Error while getting telemetry client from context.", zap.Error(err))
 	}
 	// Add change count as a metric
-	metrics.AddMetric(hooks.FormatMetricName("config", "edit_changes"), float64(len(changes)))
+	metrics.AddMetric("ConfigChangeCount", float64(len(changes)))
 
 	// Add section change counts
 	sectionCounts := make(map[string]int)
