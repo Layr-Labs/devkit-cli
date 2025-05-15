@@ -26,6 +26,5 @@ Thumbs.db
 .idea/
 *.swp
 
-temp_external
 .git-submodule-cache
 .git-template-cache
