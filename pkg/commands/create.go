@@ -174,7 +174,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Save project settings with telemetry preference
-		if err := common.SaveProjectSettings(targetDir, true); err != nil {
+		if err := common.SaveTelemetrySetting(targetDir, true); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 

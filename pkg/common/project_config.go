@@ -19,8 +19,8 @@ const (
 	configFileName = ".config.devkit.yml"
 )
 
-// SaveProjectSettings saves project settings to the project directory
-func SaveProjectSettings(projectDir string, telemetryEnabled bool) error {
+// SaveTelemetrySetting saves project settings to the project directory
+func SaveTelemetrySetting(projectDir string, telemetryEnabled bool) error {
 	// Try to load existing settings first to preserve UUID if it exists
 	var settings ProjectSettings
 	existingSettings, err := LoadProjectSettings()
