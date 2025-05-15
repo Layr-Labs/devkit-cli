@@ -68,7 +68,7 @@ func LoadProjectSettings() (*ProjectSettings, error) {
 
 // IsTelemetryEnabled returns whether telemetry is enabled for the project
 // Returns false if config file doesn't exist or telemetry is explicitly disabled
-// TODO: use config flag after private preview
+// TODO: (brandon c) currently unused -- update to use after private preview
 func IsTelemetryEnabled() bool {
 	settings, err := LoadProjectSettings()
 	if err != nil {
