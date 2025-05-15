@@ -29,3 +29,8 @@ context:
       bls_keystore_path: "keystores/operator2.keystore.json"
       bls_keystore_password: "testpass"
       stake: "1000ETH"
+
+  avs:
+    address: "0x0123456789abcdef0123456789ABCDEF01234567"
+    metadata_url: "https://my-org.com/avs/metadata.json"
+    registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"

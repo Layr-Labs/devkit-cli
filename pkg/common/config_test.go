@@ -53,6 +53,11 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[1].RPCURL)
 	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
 	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
+
+	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.Address)
+	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
+	assert.Equal(t, "https://my-org.com/avs/metadata.json", cfg.Context["devnet"].Avs.MetadataUri)
+
 }
 
 func LoadConfigWithContextConfigFromPath(contextName string, config_directory_path string) (*common.ConfigWithContextConfig, error) {

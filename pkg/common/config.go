@@ -38,6 +38,13 @@ type ChainContextConfig struct {
 	DeployerPrivateKey    string         `json:"deployer_private_key"`
 	AppDeployerPrivateKey string         `json:"app_private_key"`
 	Operators             []OperatorSpec `yaml:"operators"`
+	Avs                   AvsConfig      `yaml:"avs"`
+}
+
+type AvsConfig struct {
+	Address          string `json:"address"`
+	MetadataUri      string `json:"metadata_url"`
+	RegistrarAddress string `json:"registrar_address"`
 }
 
 type ChainConfig struct {
