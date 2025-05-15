@@ -12,18 +12,15 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/BurntSushi/toml"
+	"sigs.k8s.io/yaml"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
 
-const (
-	defaultConfigPath = "eigen.toml"
-)
-
 // editConfig is the main entry point for the edit config functionality
-func editConfig(cCtx *cli.Context) error {
+func editConfig(cCtx *cli.Context, configPath string) error {
 	// Find an available editor
 	editor, err := findEditor()
 	if err != nil {
@@ -31,22 +28,22 @@ func editConfig(cCtx *cli.Context) error {
 	}
 
 	// Create a backup of the current config
-	originalConfig, backupData, err := backupConfig()
+	originalConfig, backupData, err := backupConfig(configPath)
 	if err != nil {
 		return err
 	}
 
 	// Open the editor and wait for it to close
-	if err := openEditor(editor, defaultConfigPath); err != nil {
+	if err := openEditor(editor, configPath); err != nil {
 		return err
 	}
 
 	// Validate the edited config
-	newConfig, err := validateConfig()
+	newConfig, err := validateConfig(configPath)
 	if err != nil {
 		log.Printf("Error validating config: %v", err)
 		log.Printf("Reverting changes...")
-		if restoreErr := restoreBackup(backupData); restoreErr != nil {
+		if restoreErr := restoreBackup(configPath, backupData); restoreErr != nil {
 			return fmt.Errorf("failed to restore backup after validation error: %w", restoreErr)
 		}
 		return err
@@ -85,15 +82,15 @@ func findEditor() (string, error) {
 }
 
 // backupConfig creates a backup of the current config
-func backupConfig() (*common.EigenConfig, []byte, error) {
-	// Load the current config to compare later
-	currentConfig, err := common.LoadEigenConfig()
+func backupConfig(configPath string) (*common.ConfigWithContextConfig, []byte, error) {
+	// 	// Load the current config to compare later
+	currentConfig, err := common.LoadConfigWithContextConfig("devnet") // TODO hardcode for now. figure out how exactly we will pass context
 	if err != nil {
 		return nil, nil, fmt.Errorf("error loading current config: %w", err)
 	}
 
 	// Read the raw file data
-	file, err := os.Open(defaultConfigPath)
+	file, err := os.Open(configPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error opening config file: %w", err)
 	}
@@ -105,6 +102,7 @@ func backupConfig() (*common.EigenConfig, []byte, error) {
 	}
 
 	return currentConfig, backupData, nil
+
 }
 
 // openEditor launches the editor for the config file
@@ -120,17 +118,33 @@ func openEditor(editorPath, filePath string) error {
 }
 
 // validateConfig checks if the edited config file is valid
-func validateConfig() (*common.EigenConfig, error) {
-	var config common.EigenConfig
-	if _, err := toml.DecodeFile(defaultConfigPath, &config); err != nil {
-		return nil, fmt.Errorf("invalid TOML syntax: %w", err)
+func validateConfig(configPath string) (interface{}, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
-	return &config, nil
+
+	// Try unmarshalling as BaseConfig (config.yaml)
+	var base common.ConfigWithContextConfig
+	if err := yaml.Unmarshal(data, &base); err == nil && base.Config.Project.Name != "" {
+		return &base, nil
+	}
+
+	// Try unmarshalling as ChainContextConfig (devnet.yaml, sepolia.yaml)
+	var ctxWrapper struct {
+		Version string                    `yaml:"version"`
+		Context common.ChainContextConfig `yaml:"context"`
+	}
+	if err := yaml.Unmarshal(data, &ctxWrapper); err == nil && ctxWrapper.Context.Name != "" {
+		return &ctxWrapper, nil
+	}
+
+	return nil, fmt.Errorf("invalid YAML config: unrecognized structure")
 }
 
 // restoreBackup restores the original file content
-func restoreBackup(backupData []byte) error {
-	return os.WriteFile(defaultConfigPath, backupData, 0644)
+func restoreBackup(configPath string, backupData []byte) error {
+	return os.WriteFile(configPath, backupData, 0644)
 }
 
 // ConfigChange represents a change in a configuration field
@@ -141,90 +155,31 @@ type ConfigChange struct {
 }
 
 // collectConfigChanges collects all changes between two configs
-func collectConfigChanges(originalConfig, newConfig *common.EigenConfig) []ConfigChange {
-	changes := []ConfigChange{}
+func collectConfigChanges(original, updated interface{}) []ConfigChange {
+	var changes []ConfigChange
 
-	// Collect all changes from different sections
-	changes = append(changes, getFieldChangesDetailed("project", originalConfig.Project, newConfig.Project)...)
-
-	// Operator basic fields
-	changes = append(changes, getFieldChangesDetailed("operator", originalConfig.Operator, newConfig.Operator)...)
-
-	// Handle nested operator allocations separately
-	if !reflect.DeepEqual(originalConfig.Operator.Allocations, newConfig.Operator.Allocations) {
-		// Add allocation changes
-		changes = append(changes, compareArraysDetailed("operator.allocations.strategies",
-			originalConfig.Operator.Allocations["strategies"],
-			newConfig.Operator.Allocations["strategies"])...)
-
-		changes = append(changes, compareArraysDetailed("operator.allocations.task-executors",
-			originalConfig.Operator.Allocations["task-executors"],
-			newConfig.Operator.Allocations["task-executors"])...)
-
-		changes = append(changes, compareArraysDetailed("operator.allocations.aggregators",
-			originalConfig.Operator.Allocations["aggregators"],
-			newConfig.Operator.Allocations["aggregators"])...)
-	}
-
-	// Environment changes
-	for envName := range originalConfig.Env {
-		if _, exists := newConfig.Env[envName]; !exists {
-			changes = append(changes, ConfigChange{
-				Path:     fmt.Sprintf("env.%s", envName),
-				OldValue: "exists",
-				NewValue: "removed",
-			})
+	switch oldCfg := original.(type) {
+	case *common.ConfigWithContextConfig:
+		newCfg, ok := updated.(*common.ConfigWithContextConfig)
+		if !ok {
+			log.Println("Mismatched types for config.yaml comparison")
+			return nil
 		}
-	}
+		// Compare project block
+		changes = append(changes, getFieldChangesDetailed("project", oldCfg.Config.Project, newCfg.Config.Project)...)
 
-	for envName, newEnv := range newConfig.Env {
-		if oldEnv, exists := originalConfig.Env[envName]; exists {
-			if !reflect.DeepEqual(oldEnv, newEnv) {
-				changes = append(changes, getFieldChangesDetailed(fmt.Sprintf("env.%s", envName), oldEnv, newEnv)...)
-			}
-		} else {
-			changes = append(changes, ConfigChange{
-				Path:     fmt.Sprintf("env.%s", envName),
-				OldValue: "not_exists",
-				NewValue: "added",
-			})
+	case *common.ChainContextConfig:
+		newCfg, ok := updated.(*common.ChainContextConfig)
+		if !ok {
+			log.Println("Mismatched types for context.yaml comparison")
+			return nil
 		}
+		// Compare context fields
+		changes = append(changes, getFieldChangesDetailed("context", *oldCfg, *newCfg)...)
+
+	default:
+		log.Println("Unsupported config type for change tracking")
 	}
-
-	// Operator sets changes
-	for setName := range originalConfig.OperatorSets {
-		if _, exists := newConfig.OperatorSets[setName]; !exists {
-			changes = append(changes, ConfigChange{
-				Path:     fmt.Sprintf("operatorsets.%s", setName),
-				OldValue: "exists",
-				NewValue: "removed",
-			})
-		}
-	}
-
-	for setName, newSet := range newConfig.OperatorSets {
-		if oldSet, exists := originalConfig.OperatorSets[setName]; exists {
-			if !reflect.DeepEqual(oldSet, newSet) {
-				changes = append(changes, ConfigChange{
-					Path:     fmt.Sprintf("operatorsets.%s", setName),
-					OldValue: "unchanged",
-					NewValue: "modified",
-				})
-			}
-		} else {
-			changes = append(changes, ConfigChange{
-				Path:     fmt.Sprintf("operatorsets.%s", setName),
-				OldValue: "not_exists",
-				NewValue: "added",
-			})
-		}
-	}
-
-	// Aliases changes
-	changes = append(changes, getFieldChangesDetailed("aliases", originalConfig.Aliases, newConfig.Aliases)...)
-
-	// Release changes
-	changes = append(changes, getFieldChangesDetailed("release", originalConfig.Release, newConfig.Release)...)
 
 	return changes
 }
@@ -281,49 +236,6 @@ func getFieldChangesDetailed(prefix string, old, new interface{}) []ConfigChange
 				Path:     fieldPath,
 				OldValue: oldField.Interface(),
 				NewValue: newField.Interface(),
-			})
-		}
-	}
-
-	return changes
-}
-
-// compareArraysDetailed compares two string arrays and returns detailed changes
-func compareArraysDetailed(prefix string, oldArr, newArr []string) []ConfigChange {
-	changes := []ConfigChange{}
-
-	// Find items that were removed
-	for _, oldItem := range oldArr {
-		found := false
-		for _, newItem := range newArr {
-			if oldItem == newItem {
-				found = true
-				break
-			}
-		}
-		if !found {
-			changes = append(changes, ConfigChange{
-				Path:     prefix,
-				OldValue: oldItem,
-				NewValue: "removed",
-			})
-		}
-	}
-
-	// Find items that were added
-	for _, newItem := range newArr {
-		found := false
-		for _, oldItem := range oldArr {
-			if newItem == oldItem {
-				found = true
-				break
-			}
-		}
-		if !found {
-			changes = append(changes, ConfigChange{
-				Path:     prefix,
-				OldValue: "not_exists",
-				NewValue: newItem,
 			})
 		}
 	}

@@ -45,8 +45,8 @@ jobs:
 
       - name: Verify AVS project created
         run: |
-          if [ ! -f "$HOME/avs/my-awesome-avs/eigen.toml" ]; then
-            echo "❌ AVS project eigen.toml not found!"
+          if [ ! -f "$HOME/avs/my-awesome-avs/config/config.yaml" ]; then
+            echo "❌ AVS project config/config.yaml not found!"
             exit 1
           fi
           echo "✅ AVS project created successfully at $HOME/avs/my-awesome-avs/"

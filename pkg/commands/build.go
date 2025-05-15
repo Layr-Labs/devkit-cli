@@ -2,6 +2,7 @@ package commands
 
 import (
 	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/testutils"
 	"fmt"
 	"log"
 	"os"
@@ -21,32 +22,37 @@ var BuildCommand = &cli.Command{
 			Name:  "release",
 			Usage: "Produce production-optimized artifacts",
 		},*/
+		&cli.StringFlag{
+			Name:  "context",
+			Usage: "devnet ,testnet or mainnet",
+			Value: "devnet",
+		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		var cfg *common.EigenConfig
+		var cfg *common.ConfigWithContextConfig
 
 		// First check if config is in context (for testing)
-		if cfgValue := cCtx.Context.Value(ConfigContextKey); cfgValue != nil {
-			cfg = cfgValue.(*common.EigenConfig)
+		if cfgValue := cCtx.Context.Value(testutils.ConfigContextKey); cfgValue != nil {
+			cfg = cfgValue.(*common.ConfigWithContextConfig)
 		} else {
+
+			context := cCtx.String("context")
 			// Load from file if not in context
 			var err error
-			cfg, err = common.LoadEigenConfig()
+			cfg, err = common.LoadConfigWithContextConfig(context)
 			if err != nil {
 				return err
 			}
 		}
 
 		if common.IsVerboseEnabled(cCtx, cfg) {
-			log.Printf("Project Name: %s", cfg.Project.Name)
+			log.Printf("Project Name: %s", cfg.Config.Project.Name)
 			log.Printf("Building AVS components...")
-			if cCtx.Bool("release") {
-				log.Printf("Building in release mode with image tag: %s", cfg.Release.AVSLogicImageTag)
-			}
+
 		}
 
 		// Execute make build with Makefile.Devkit
-		cmd := exec.Command("make", "-f", common.DevkitMakefile, "build")
+		cmd := exec.CommandContext(cCtx.Context, "make", "-f", common.DevkitMakefile, "build")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -54,7 +60,7 @@ var BuildCommand = &cli.Command{
 		}
 
 		// Build contracts if available
-		if err := buildContractsIfAvailable(); err != nil {
+		if err := buildContractsIfAvailable(cCtx); err != nil {
 			return err
 		}
 
@@ -64,7 +70,7 @@ var BuildCommand = &cli.Command{
 }
 
 // buildContractsIfAvailable builds the contracts if the contracts directory exists
-func buildContractsIfAvailable() error {
+func buildContractsIfAvailable(cCtx *cli.Context) error {
 	contractsDir := common.ContractsDir
 	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
 		return nil
@@ -75,7 +81,7 @@ func buildContractsIfAvailable() error {
 		return fmt.Errorf("contracts directory exists but no %s found", common.DevkitMakefile)
 	}
 
-	cmd := exec.Command("make", "-f", common.DevkitMakefile, "build")
+	cmd := exec.CommandContext(cCtx.Context, "make", "-f", common.DevkitMakefile, "build")
 	cmd.Dir = contractsDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

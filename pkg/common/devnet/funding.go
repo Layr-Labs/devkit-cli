@@ -2,19 +2,20 @@ package devnet
 
 import (
 	devkitcommon "devkit-cli/pkg/common"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"log"
 	"math/big"
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // FundWallets sends ETH to a list of addresses using `cast send`
 // Only funds wallets with balance < 10 ether.
-func FundWalletsDevnet(cfg *devkitcommon.EigenConfig, rpcURL string) {
+func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) {
 	var client *ethclient.Client
 	var err error
 
@@ -35,20 +36,16 @@ func FundWalletsDevnet(cfg *devkitcommon.EigenConfig, rpcURL string) {
 	defer client.Close()
 
 	// All operator keys from [operator]
-	for _, key := range cfg.Operator.Keys {
-		privateKey, _ := crypto.HexToECDSA(key)
-		fundIfNeeded(client, crypto.PubkeyToAddress(privateKey.PublicKey), key, rpcURL)
+	// We only intend to fund for devnet, so hardcoding to `CONTEXT` is fine
+	for _, key := range cfg.Context[CONTEXT].Operators {
+		privateKey, _ := crypto.HexToECDSA(key.ECDSAKey)
+		fundIfNeeded(client, crypto.PubkeyToAddress(privateKey.PublicKey), key.ECDSAKey, rpcURL)
 	}
 
-	// All submit wallets from operator sets
-	for _, set := range cfg.OperatorSets {
-		privateKey, _ := crypto.HexToECDSA(set.SubmitWallet)
-		addr := crypto.PubkeyToAddress(privateKey.PublicKey)
-		fundIfNeeded(client, addr, cfg.Operator.Keys[0], rpcURL) // fund from index 0 key
-	}
 }
 
 func fundIfNeeded(client *ethclient.Client, to common.Address, fromKey string, rpcURL string) {
+	log.Printf("rpc_devnet %s", rpcURL)
 	balanceCmd := exec.Command("cast", "balance",
 		to.String(),
 		"--rpc-url", rpcURL,

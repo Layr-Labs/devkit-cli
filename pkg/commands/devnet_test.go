@@ -2,7 +2,9 @@ package commands
 
 import (
 	"bytes"
+	"context"
 	"devkit-cli/pkg/common"
+	"errors"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
@@ -13,34 +15,38 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+	"time"
 )
 
-// helper to create a temp AVS project dir with eigen.toml copied
-func createTempAVSProject(defaultEigenPath string) (string, error) {
+func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error) {
 	tempDir, err := os.MkdirTemp("", "devkit-test-avs-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
 	}
 
-	destEigen := filepath.Join(tempDir, common.EigenTomlPath)
-
-	// Copy default eigen.toml
-	srcFile, err := os.Open(defaultEigenPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open default eigen.toml: %w", err)
+	// Create config/ directory
+	destConfigDir := filepath.Join(tempDir, "config")
+	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create config dir: %w", err)
 	}
-	defer srcFile.Close()
 
-	destFile, err := os.Create(destEigen)
-	if err != nil {
-		return "", fmt.Errorf("failed to create destination eigen.toml: %w", err)
-	}
-	defer destFile.Close()
+	// Copy config.yaml
+	srcConfigFile := filepath.Join(defaultConfigDir, "config.yaml")
+	destConfigFile := filepath.Join(destConfigDir, "config.yaml")
 
-	_, err = io.Copy(destFile, srcFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to copy eigen.toml: %w", err)
+	common.CopyFileTesting(t, srcConfigFile, destConfigFile)
+
+	// Create config/contexts directory
+	destContextsDir := filepath.Join(destConfigDir, "contexts")
+	if err := os.MkdirAll(destContextsDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create config/contexts dir: %w", err)
 	}
+
+	// Copy devnet.yaml context file
+	srcDevnetFile := filepath.Join(defaultConfigDir, "contexts", "devnet.yaml")
+	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml")
+
+	common.CopyFileTesting(t, srcDevnetFile, destDevnetFile)
 
 	return tempDir, nil
 }
@@ -50,11 +56,11 @@ func TestStartAndStopDevnet(t *testing.T) {
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
 	t.Cleanup(func() {
-		_ = os.Chdir(originalCwd) // Restore cwd after test
+		_ = os.Chdir(originalCwd)
 	})
-	defaultEigenPath := filepath.Join("..", "..", "default.eigen.toml")
+	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
 
-	projectDir, err := createTempAVSProject(defaultEigenPath)
+	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -99,15 +105,13 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 		_ = os.Chdir(originalCwd) // Restore cwd after test
 	})
 
-	defaultEigenPath, err := filepath.Abs(filepath.Join("..", "..", "default.eigen.toml"))
-	assert.NoError(t, err, "failed to resolve default.eigen.toml path")
-	assert.FileExists(t, defaultEigenPath, "eigen file does not exist at computed path")
+	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
 
-	projectDir1, err := createTempAVSProject(defaultEigenPath)
+	projectDir1, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir1)
 
-	projectDir2, err := createTempAVSProject(defaultEigenPath)
+	projectDir2, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir2)
 
@@ -178,8 +182,8 @@ func TestListRunningDevnets(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare temp AVS project
-	defaultEigenPath := filepath.Join("..", "..", "default.eigen.toml")
-	projectDir, err := createTempAVSProject(defaultEigenPath)
+	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
+	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -245,10 +249,10 @@ func TestStopDevnetAll(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare and start multiple devnets
-	defaultEigenPath, _ := filepath.Abs(filepath.Join("..", "..", "default.eigen.toml"))
+	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
 
 	for i := 0; i < 2; i++ {
-		projectDir, err := createTempAVSProject(defaultEigenPath)
+		projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
 		assert.NoError(t, err)
 		defer os.RemoveAll(projectDir)
 
@@ -305,9 +309,9 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare and start multiple devnets
-	defaultEigenPath, _ := filepath.Abs(filepath.Join("..", "..", "default.eigen.toml"))
+	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
 
-	projectDir, err := createTempAVSProject(defaultEigenPath)
+	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -352,4 +356,53 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 	output, err := cmd.Output()
 	assert.NoError(t, err)
 	assert.NotContains(t, string(output), "devkit-devnet-", "The devnet container should be stopped")
+}
+
+func TestStartDevnet_ContextCancellation(t *testing.T) {
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	// Prepare and start multiple devnets
+	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
+
+	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	app := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+		},
+		Action: StartDevnetAction,
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		args := []string{"devkit", "--port", port, "--verbose"}
+		done <- app.RunContext(ctx, args)
+	}()
+
+	cancel()
+
+	select {
+	case err = <-done:
+		if err != nil && errors.Is(err, context.Canceled) {
+			t.Log("StartDevnetAction exited cleanly after context cancellation")
+		} else {
+			t.Errorf("StartDevnetAction returned with error after context cancellation: %v", err)
+		}
+	case <-time.After(1 * time.Second):
+		t.Error("StartDevnetAction did not exit after context cancellation")
+	}
 }
