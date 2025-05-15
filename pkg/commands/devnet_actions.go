@@ -15,6 +15,12 @@ import (
 
 func StartDevnetAction(cCtx *cli.Context) error {
 
+	// Check if docker is running, else try to start it
+	err := common.EnsureDockerIsRunning()
+	if err != nil {
+		return cli.Exit(err.Error(), 1)
+	}
+
 	log, _ := common.GetLogger()
 	// Load config for devnet
 	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
@@ -88,6 +94,11 @@ func StartDevnetAction(cCtx *cli.Context) error {
 func StopDevnetAction(cCtx *cli.Context) error {
 
 	log, _ := common.GetLogger()
+	// Check if docker is running, else try to start it
+	err := common.EnsureDockerIsRunning()
+	if err != nil {
+		return cli.Exit(err.Error(), 1)
+	}
 
 	stopAllContainers := cCtx.Bool("all")
 	if stopAllContainers {
