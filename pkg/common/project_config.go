@@ -13,7 +13,6 @@ import (
 type ProjectSettings struct {
 	ProjectUUID      string `yaml:"project_uuid"`
 	TelemetryEnabled bool   `yaml:"telemetry_enabled"`
-	PostHogAPIKey    string `yaml:"posthog_api_key,omitempty"`
 }
 
 const (

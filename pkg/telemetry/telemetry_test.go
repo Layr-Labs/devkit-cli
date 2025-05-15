@@ -31,7 +31,7 @@ func TestNoopClient(t *testing.T) {
 
 func TestContext(t *testing.T) {
 	client := NewNoopClient()
-	ctx := WithContext(context.Background(), client)
+	ctx := ContextWithClient(context.Background(), client)
 
 	retrieved, ok := ClientFromContext(ctx)
 	if !ok {

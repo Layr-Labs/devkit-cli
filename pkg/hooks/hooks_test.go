@@ -28,13 +28,11 @@ func (m *mockTelemetryClient) Close() error {
 // MockWithTelemetry is a test version of WithTelemetry that uses a provided client
 func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.ActionFunc {
 	return func(ctx *cli.Context) error {
-		command := ctx.Command.Name
-
 		// Use the mock client directly instead of setupTelemetry
-		ctx.Context = telemetry.WithContext(ctx.Context, mockClient)
+		ctx.Context = telemetry.ContextWithClient(ctx.Context, mockClient)
 
 		// Create metrics context
-		metrics := telemetry.NewMetricsContext(ctx.App.Name, command)
+		metrics := telemetry.NewMetricsContext()
 		ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
 		// Add base properties
@@ -68,7 +66,7 @@ func TestAddMetric(t *testing.T) {
 
 	// Create context with telemetry client
 	ctx := context.Background()
-	ctx = telemetry.WithContext(ctx, mockClient)
+	ctx = telemetry.ContextWithClient(ctx, mockClient)
 
 	// Add a custom metric
 	props := map[string]string{

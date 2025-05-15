@@ -12,8 +12,8 @@ type Client interface {
 	Close() error
 }
 
-// WithContext returns a new context with the telemetry client
-func WithContext(ctx context.Context, client Client) context.Context {
+// ContextWithClient returns a new context with the telemetry client
+func ContextWithClient(ctx context.Context, client Client) context.Context {
 	return context.WithValue(ctx, contextKey{}, client)
 }
 

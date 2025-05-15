@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"runtime"
-	"strconv"
 	"time"
 
 	kitcontext "devkit-cli/pkg/context"
@@ -77,7 +76,7 @@ func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
 	}
 
 	logger.NewLogger().Info("Creating posthog client.")
-	phClient, err := telemetry.NewPostHogClient(appEnv)
+	phClient, err := telemetry.NewPostHogClient(appEnv, "DevKit")
 	if err != nil {
 		return telemetry.NewNoopClient()
 	}
@@ -85,78 +84,18 @@ func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
 	return phClient
 }
 
-type ActionChain struct {
-	Processors []func(action cli.ActionFunc) cli.ActionFunc
+func WithAppEnvironment(ctx *cli.Context) {
+	ctx.Context = kitcontext.WithAppEnvironment(ctx.Context, kitcontext.NewAppEnvironment(
+		ctx.App.Version,
+		runtime.GOOS,
+		runtime.GOARCH,
+		common.GetProjectUUID(),
+	))
 }
 
-// NewActionChain creates a new action chain
-func NewActionChain() *ActionChain {
-	return &ActionChain{
-		Processors: make([]func(action cli.ActionFunc) cli.ActionFunc, 0),
-	}
-}
-
-// Use appends a new processor to the chain
-func (ac *ActionChain) Use(processor func(action cli.ActionFunc) cli.ActionFunc) {
-	ac.Processors = append(ac.Processors, processor)
-}
-
-// Wrap applies all actions in the correct order
-func (ac *ActionChain) Wrap(action cli.ActionFunc) cli.ActionFunc {
-	for i := len(ac.Processors) - 1; i >= 0; i-- {
-		action = ac.Processors[i](action)
-	}
-	return action
-}
-
-// ApplyMiddleware applies a list of middleware functions to commands
-func ApplyMiddleware(commands []*cli.Command, chain *ActionChain) {
-	for _, cmd := range commands {
-		if cmd.Action != nil {
-			cmd.Action = chain.Wrap(cmd.Action)
-		}
-		if len(cmd.Subcommands) > 0 {
-			ApplyMiddleware(cmd.Subcommands, chain)
-		}
-	}
-}
-
-func WithTelemetry(action cli.ActionFunc) cli.ActionFunc {
-	return func(ctx *cli.Context) error {
-		command := ctx.Command.Name
-
-		// Pre-processing to set up telemetry context and metrics
-		setupTelemetryContext(ctx, command)
-
-		// Run requested cli action
-		err := action(ctx)
-
-		// Post-processing to emit result metrics
-		emitTelemetryMetrics(ctx, err)
-
-		return err
-	}
-}
-
-func setupTelemetryContext(ctx *cli.Context, command string) {
-	client := setupTelemetry(ctx, command)
-	ctx.Context = telemetry.WithContext(ctx.Context, client)
-
-	metrics := telemetry.NewMetricsContext(ctx.App.Name, command)
-	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
-
-	if appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context); ok {
-		metrics.Properties["cli_version"] = appEnv.CLIVersion
-		metrics.Properties["os"] = appEnv.OS
-		metrics.Properties["arch"] = appEnv.Arch
-		metrics.Properties["project_uuid"] = appEnv.ProjectUUID
-	}
-
-	for k, v := range collectFlagValues(ctx) {
-		metrics.Properties[k] = fmt.Sprintf("%v", v)
-	}
-
-	metrics.AddMetric("Count", 1)
+func setupTelemetryClient(ctx *cli.Context) {
+	client := setupTelemetry(ctx, ctx.Command.Name)
+	ctx.Context = telemetry.ContextWithClient(ctx.Context, client)
 }
 
 func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
@@ -164,7 +103,8 @@ func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
 	if err != nil {
 		return
 	}
-
+	metrics.Properties["command"] = ctx.Command.HelpName
+	logger.NewLogger().Info("command help name: %s", metrics.Properties["command"])
 	result := "Success"
 	dimensions := map[string]string{}
 	if actionError != nil {
@@ -183,47 +123,24 @@ func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
 	defer client.Close()
 
 	for _, metric := range metrics.Metrics {
-		props := make(map[string]interface{})
+		mDimensions := metric.Dimensions
 		for k, v := range metrics.Properties {
-			props[k] = v
+			mDimensions[k] = v
 		}
-		for k, v := range metric.Dimensions {
-			props[k] = v
-		}
-		withCommandDimensions(ctx, props)
 		_ = client.AddMetric(ctx.Context, metric)
 	}
 }
 
-func withCommandDimensions(ctx *cli.Context, props map[string]interface{}) {
-	cmdCount := 1
-	lineage := ctx.Lineage()
-	for ancestor := len(lineage) - 1; ancestor >= 0; ancestor -= 1 {
-		props["Command"+strconv.Itoa(cmdCount)] = lineage[ancestor].Command.Name
-	}
-}
+func LoadEnvFile(ctx *cli.Context) error {
+	command := ctx.Command.Name
 
-// WithEnvLoader creates a pre-processor that loads environment variables
-func WithEnvLoader(action cli.ActionFunc) cli.ActionFunc {
-	return func(ctx *cli.Context) error {
-		command := ctx.Command.Name
-
-		ctx.Context = kitcontext.WithAppEnvironment(ctx.Context, kitcontext.NewAppEnvironment(
-			ctx.App.Version,
-			runtime.GOOS,
-			runtime.GOARCH,
-			common.GetProjectUUID(),
-		))
-
-		// Skip loading .env for the create command
-		if command != "create" {
-			if err := loadEnvFile(); err != nil {
-				return err
-			}
+	// Skip loading .env for the create command
+	if command != "create" {
+		if err := loadEnvFile(); err != nil {
+			return err
 		}
-
-		return action(ctx)
 	}
+	return nil
 }
 
 // loadEnvFile loads environment variables from .env file if it exists
@@ -236,4 +153,24 @@ func loadEnvFile() error {
 
 	// Load .env file
 	return godotenv.Load(EnvFile)
+}
+
+func WithCommandMetricsContext(ctx *cli.Context) error {
+	metrics := telemetry.NewMetricsContext()
+	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
+
+	if appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context); ok {
+		metrics.Properties["cli_version"] = appEnv.CLIVersion
+		metrics.Properties["os"] = appEnv.OS
+		metrics.Properties["arch"] = appEnv.Arch
+		metrics.Properties["project_uuid"] = appEnv.ProjectUUID
+	}
+	metrics.Properties["namespace"] = "DevKit"
+
+	for k, v := range collectFlagValues(ctx) {
+		metrics.Properties[k] = fmt.Sprintf("%v", v)
+	}
+
+	metrics.AddMetric("Count", 1)
+	return nil
 }

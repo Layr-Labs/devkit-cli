@@ -8,11 +8,9 @@ import (
 
 // MetricsContext holds all metrics collected during command execution
 type MetricsContext struct {
-	StartTime   time.Time         `json:"start_time"`
-	RootCommand string            `json:"root_command"`
-	Subcommand  string            `json:"subcommand"`
-	Metrics     []Metric          `json:"metrics"`
-	Properties  map[string]string `json:"properties"`
+	StartTime  time.Time         `json:"start_time"`
+	Metrics    []Metric          `json:"metrics"`
+	Properties map[string]string `json:"properties"`
 }
 
 // Metric represents a single metric with its value and dimensions
@@ -40,13 +38,11 @@ func MetricsFromContext(ctx context.Context) (*MetricsContext, error) {
 }
 
 // NewMetricsContext creates a new metrics context
-func NewMetricsContext(rootCommand, subcommand string) *MetricsContext {
+func NewMetricsContext() *MetricsContext {
 	return &MetricsContext{
-		StartTime:   time.Now(),
-		RootCommand: rootCommand,
-		Subcommand:  subcommand,
-		Metrics:     make([]Metric, 0),
-		Properties:  make(map[string]string),
+		StartTime:  time.Now(),
+		Metrics:    make([]Metric, 0),
+		Properties: make(map[string]string),
 	}
 }
 

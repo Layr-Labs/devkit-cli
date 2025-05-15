@@ -85,38 +85,46 @@ run:
 }
 
 func testEnvLoading(t *testing.T) {
-	// Clear env var first
+	// Backup and unset the original env var
+	original := os.Getenv("DEVKIT_TEST_ENV")
+	defer os.Setenv("DEVKIT_TEST_ENV", original)
 	os.Unsetenv("DEVKIT_TEST_ENV")
 
-	// 1. Test that the middleware loads .env
-	action := func(c *cli.Context) error { return nil }
-	ctx := cli.NewContext(cli.NewApp(), nil, nil)
-	ctx.Command = &cli.Command{Name: "build"}
-
-	if err := hooks.WithEnvLoader(action)(ctx); err != nil {
-		t.Fatalf("Command failed: %v", err)
+	// 1. Simulate CLI context and run the Before hook
+	app := cli.NewApp()
+	cmd := &cli.Command{
+		Name: "build",
+		Before: func(ctx *cli.Context) error {
+			return hooks.LoadEnvFile(ctx)
+		},
+		Action: func(ctx *cli.Context) error {
+			// Verify that the env var is now set
+			if val := os.Getenv("DEVKIT_TEST_ENV"); val != "test_value" {
+				t.Errorf("Expected DEVKIT_TEST_ENV=test_value, got: %q", val)
+			}
+			return nil
+		},
 	}
+	app.Commands = []*cli.Command{cmd}
 
-	// Verify env var was loaded
-	if val := os.Getenv("DEVKIT_TEST_ENV"); val != "test_value" {
-		t.Errorf("Expected DEVKIT_TEST_ENV=test_value, got: %q", val)
-	}
-
-	// 2. Verify makefile works with loaded env
-	cmd := exec.Command("make", "-f", "Makefile.Devkit", "build")
-	out, err := cmd.CombinedOutput()
+	err := app.Run([]string{"cmd", "build"})
 	if err != nil {
-		t.Fatalf("Failed to run make build: %v", err)
+		t.Fatalf("CLI command failed: %v", err)
 	}
 
-	t.Logf("Make build output: %s", out)
-
-	// 3. Verify makefile works with loaded env
-	cmd = exec.Command("make", "-f", "Makefile.Devkit", "run")
-	out, err = cmd.CombinedOutput()
+	// 2. Run `make build` and verify output
+	cmdOut := exec.Command("make", "-f", "Makefile.Devkit", "build")
+	out, err := cmdOut.CombinedOutput()
 	if err != nil {
-		t.Fatalf("Failed to run make run: %v", err)
+		t.Fatalf("Failed to run 'make build': %v\nOutput:\n%s", err, out)
 	}
+	t.Logf("Make build output:\n%s", out)
 
-	t.Logf("Make run output: %s", out)
+	// 3. Run `make run` and verify output
+	cmdOut = exec.Command("make", "-f", "Makefile.Devkit", "run")
+	out, err = cmdOut.CombinedOutput()
+	if err != nil {
+		t.Fatalf("Failed to run 'make run': %v\nOutput:\n%s", err, out)
+	}
+	t.Logf("Make run output:\n%s", out)
 }

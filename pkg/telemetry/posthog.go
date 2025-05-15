@@ -10,12 +10,13 @@ import (
 
 // PostHogClient implements the Client interface using PostHog
 type PostHogClient struct {
+	namespace      string
 	client         posthog.Client
 	appEnvironment *kitcontext.AppEnvironment
 }
 
 // NewPostHogClient creates a new PostHog client
-func NewPostHogClient(environment *kitcontext.AppEnvironment) (*PostHogClient, error) {
+func NewPostHogClient(environment *kitcontext.AppEnvironment, namespace string) (*PostHogClient, error) {
 	apiKey := getPostHogAPIKey()
 	if apiKey == "" {
 		// No API key available, return noop client without error
@@ -25,8 +26,8 @@ func NewPostHogClient(environment *kitcontext.AppEnvironment) (*PostHogClient, e
 	if err != nil {
 		return nil, err
 	}
-
 	return &PostHogClient{
+		namespace:      namespace,
 		client:         client,
 		appEnvironment: environment,
 	}, nil
@@ -41,6 +42,7 @@ func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
 	// Create properties map starting with base properties
 	props := make(map[string]interface{})
 	// Add metric value
+	props["name"] = metric.Name
 	props["value"] = metric.Value
 
 	// Add metric dimensions
@@ -51,7 +53,7 @@ func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
 	// Never return errors from telemetry operations
 	_ = c.client.Enqueue(posthog.Capture{
 		DistinctId: c.appEnvironment.ProjectUUID,
-		Event:      metric.Name,
+		Event:      c.namespace,
 		Properties: props,
 	})
 	return nil
