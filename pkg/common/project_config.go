@@ -29,7 +29,6 @@ func SaveProjectSettings(projectDir string, telemetryEnabled bool) error {
 		settings = *existingSettings
 		// Only update telemetry setting
 		settings.TelemetryEnabled = telemetryEnabled
-		settings.PostHogAPIKey = existingSettings.PostHogAPIKey
 	} else {
 		// Create new settings with a new UUID
 		settings = ProjectSettings{

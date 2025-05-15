@@ -62,6 +62,7 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 }
 
 func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
+	// TODO: future-proof for other "create" commands.
 	if command == "create" && ctx.Bool("disable-telemetry") {
 		return telemetry.NewNoopClient()
 	}
