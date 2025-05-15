@@ -11,7 +11,6 @@ import (
 	"devkit-cli/pkg/commands/keystore"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
@@ -41,10 +40,6 @@ var CreateCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "template-path",
 			Usage: "Direct GitHub URL to use as template (overrides templates.yml)",
-		},
-		&cli.BoolFlag{
-			Name:  "disable-telemetry",
-			Usage: "Opt out of anonymous telemetry collection",
 		},
 		&cli.StringFlag{
 			Name:  "env",
@@ -110,18 +105,6 @@ var CreateCommand = &cli.Command{
 			log.Info("Environment: %s", cCtx.String("env"))
 			if cCtx.String("template-path") != "" {
 				log.Info("Template Path: %s", cCtx.String("template-path"))
-			}
-
-			// Log telemetry status (accounting for client type)
-			if cCtx.Bool("disable-telemetry") {
-				log.Info("Telemetry: disabled (via flag)")
-			} else {
-				client, ok := telemetry.ClientFromContext(cCtx.Context)
-				if !ok || telemetry.IsNoopClient(client) {
-					log.Info("Telemetry: disabled")
-				} else {
-					log.Info("Telemetry: enabled")
-				}
 			}
 		}
 
@@ -191,8 +174,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Save project settings with telemetry preference
-		telemetryEnabled := !cCtx.Bool("disable-telemetry")
-		if err := common.SaveProjectSettings(targetDir, telemetryEnabled); err != nil {
+		if err := common.SaveProjectSettings(targetDir, true); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
