@@ -35,6 +35,29 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "my-avs", cfg.Config.Project.Name)
 	assert.Equal(t, "0.1.0", cfg.Config.Project.Version)
 	assert.Equal(t, "devnet", cfg.Config.Project.Context)
+
+	assert.Equal(t, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].DeployerPrivateKey)
+	assert.Equal(t, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].AppDeployerPrivateKey)
+
+	assert.Equal(t, "keystores/operator1.keystore.json", cfg.Context["devnet"].Operators[0].BlsKeystorePath)
+	assert.Equal(t, "keystores/operator2.keystore.json", cfg.Context["devnet"].Operators[1].BlsKeystorePath)
+	assert.Equal(t, "testpass", cfg.Context["devnet"].Operators[0].BlsKeystorePassword)
+	assert.Equal(t, "testpass", cfg.Context["devnet"].Operators[0].BlsKeystorePassword)
+	assert.Equal(t, "1000ETH", cfg.Context["devnet"].Operators[0].Stake)
+	assert.Equal(t, "1000ETH", cfg.Context["devnet"].Operators[1].Stake)
+
+	assert.Equal(t, "devnet", cfg.Context["devnet"].Name)
+	assert.Equal(t, "l1", cfg.Context["devnet"].Chains[0].Name)
+	assert.Equal(t, "l2", cfg.Context["devnet"].Chains[1].Name)
+	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[0].RPCURL)
+	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[1].RPCURL)
+	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
+	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
+
+	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.Address)
+	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
+	assert.Equal(t, "https://my-org.com/avs/metadata.json", cfg.Context["devnet"].Avs.MetadataUri)
+
 }
 
 func LoadConfigWithContextConfigFromPath(contextName string, config_directory_path string) (*common.ConfigWithContextConfig, error) {

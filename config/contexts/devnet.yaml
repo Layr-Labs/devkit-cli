@@ -1,13 +1,36 @@
 version: 0.0.1
 context:
   name: "devnet"
-  chain_id: 31337
-  rpc_url: "http://localhost:8545"
 
-  fork:
-    block: 22475020
-    url: "https://eth.llamarpc.com"
+  chains:
+    - name: "l1"
+      chain_id: 31337
+      rpc_url: "http://localhost:8545"
+      fork:
+        block: 22475020
+        url: "https://eth.llamarpc.com"
+
+    - name: "l2"
+      chain_id: 31337
+      rpc_url: "http://localhost:8545"
+      fork:
+        block: 22475020
+        url: "https://eth.llamarpc.com"
+
+  deployer_private_key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+  app_private_key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 
   operators:
     - ecdsa_key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+      bls_keystore_path: "keystores/operator1.keystore.json"
+      bls_keystore_password: "testpass"
+      stake: "1000ETH"
     - ecdsa_key: "59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+      bls_keystore_path: "keystores/operator2.keystore.json"
+      bls_keystore_password: "testpass"
+      stake: "1000ETH"
+
+  avs:
+    address: "0x0123456789abcdef0123456789ABCDEF01234567"
+    metadata_url: "https://my-org.com/avs/metadata.json"
+    registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"

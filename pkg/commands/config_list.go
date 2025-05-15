@@ -49,9 +49,12 @@ func listConfig(config *common.ConfigWithContextConfig, projectSettings *common.
 
 		ctx := wrapper.Context
 		fmt.Printf("  - %s:\n", name)
-		fmt.Printf("      Name: %s\n", ctx.Name)
-		fmt.Printf("      Chain ID: %d\n", ctx.ChainID)
-		fmt.Printf("      RPC URL: %s\n", ctx.RPCURL)
+		fmt.Printf("      Name: %s\n\n", ctx.Name)
+		for _, chain := range ctx.Chains {
+			fmt.Printf("      Chain Name: %s\n", chain.Name)
+			fmt.Printf("      Chain ID: %d\n", chain.ChainID)
+			fmt.Printf("      RPC URL: %s\n\n", chain.RPCURL)
+		}
 	}
 
 	return nil
