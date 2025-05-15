@@ -316,7 +316,7 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 	// Get metrics context
 	metrics, err := telemetry.MetricsFromContext(ctx)
 	if err != nil {
-		logger, _ := getLogger()
+		logger, _ := common.GetLogger()
 		logger.Warn("Error while getting telemetry client from context.", zap.Error(err))
 	}
 	// Add change count as a metric
@@ -333,7 +333,7 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 	maxChangesToInclude := 20 // Avoid sending too much data
 	for i, change := range changes {
 		if i >= maxChangesToInclude {
-			logger, _ := getLogger()
+			logger, _ := common.GetLogger()
 			logger.Warn("Reached max change limit of ", maxChangesToInclude, " for ", change.Path)
 			break
 		}
