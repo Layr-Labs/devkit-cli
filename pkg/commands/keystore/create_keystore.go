@@ -3,12 +3,11 @@ package keystore
 import (
 	"devkit-cli/pkg/common"
 	"fmt"
-	"log"
-	"path/filepath"
-
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
 	"github.com/urfave/cli/v2"
+	printlogger "log"
+	"path/filepath"
 )
 
 var CreateCommand = &cli.Command{
@@ -37,6 +36,8 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
+
+		log, _ := common.GetLogger()
 		privateKey := cCtx.String("key")
 		path := cCtx.String("path")
 		curve := cCtx.String("type")
@@ -48,9 +49,10 @@ var CreateCommand = &cli.Command{
 		}
 
 		if verbose {
-			log.Printf("🔐 Starting Bls keystore creation")
-			log.Printf("• Curve: %s", curve)
-			log.Printf("• Output Path: %s", path)
+			log.Info("🔐 Starting Bls keystore creation")
+			log.Info("🔐 Starting Bls keystore creation")
+			log.Info("• Curve: %s", curve)
+			log.Info("• Output Path: %s", path)
 		}
 
 		scheme := bn254.NewScheme()
@@ -70,11 +72,11 @@ var CreateCommand = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to extract the private key from the keystore file")
 		}
-		log.Println("✅ Keystore generated successfully")
-		log.Println("")
-		log.Println("🔑 Save this BLS private key in a secure location:")
-		log.Printf("    %s\n", privateKeyData.Bytes())
-		log.Println("")
+		printlogger.Println("✅ Keystore generated successfully")
+		printlogger.Println("")
+		printlogger.Println("🔑 Save this BLS private key in a secure location:")
+		printlogger.Printf("    %s\n", privateKeyData.Bytes())
+		printlogger.Println("")
 
 		return nil
 	},

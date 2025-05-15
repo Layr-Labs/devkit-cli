@@ -15,7 +15,7 @@ import (
 
 func StartDevnetAction(cCtx *cli.Context) error {
 
-	log, _ := getLogger()
+	log, _ := common.GetLogger()
 	// Load config for devnet
 	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
@@ -87,7 +87,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 func StopDevnetAction(cCtx *cli.Context) error {
 
-	log, _ := getLogger()
+	log, _ := common.GetLogger()
 
 	stopAllContainers := cCtx.Bool("all")
 	if stopAllContainers {

@@ -9,9 +9,7 @@ import (
 	"strings"
 
 	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/iface"
 	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/common/progress"
 	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
@@ -85,7 +83,7 @@ var CreateCommand = &cli.Command{
 		targetDir := filepath.Join(cCtx.String("dir"), projectName)
 
 		// get logger
-		log, tracker := getLogger()
+		log, tracker := common.GetLogger()
 
 		// in verbose mode, detail the situation
 		if cCtx.Bool("verbose") {
@@ -192,21 +190,6 @@ var CreateCommand = &cli.Command{
 	},
 }
 
-// Get logger for the env we're in
-func getLogger() (iface.Logger, iface.ProgressTracker) {
-	var log iface.Logger
-	var tracker iface.ProgressTracker
-	if progress.IsTTY() {
-		log = logger.NewLogger()
-		tracker = progress.NewTTYProgressTracker(10, os.Stdout)
-	} else {
-		log = logger.NewZapLogger()
-		tracker = progress.NewLogProgressTracker(10, log)
-	}
-
-	return log, tracker
-}
-
 func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 	if templatePath := cCtx.String("template-path"); templatePath != "" {
 		return templatePath, "", nil
@@ -234,7 +217,7 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 
 func createProjectDir(targetDir string, overwrite, verbose bool) error {
 	// get logger
-	log, _ := getLogger()
+	log, _ := common.GetLogger()
 
 	// Check if directory exists and handle overwrite
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
@@ -260,7 +243,7 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 // copyDefaultConfigToProject copies config to the project directory with updated project name
 func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) error {
 	// get logger
-	log, _ := getLogger()
+	log, _ := common.GetLogger()
 
 	// get directories
 	configDir := filepath.Join("config")
@@ -322,7 +305,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 
 // / Creates a keystores directory with default keystore json files
 func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
-	log, _ := getLogger()
+	log, _ := common.GetLogger()
 
 	srcKeystoreDir := "keystores"
 	destKeystoreDir := filepath.Join(targetDir, "keystores")
@@ -376,7 +359,7 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	// get logger
-	log, _ := getLogger()
+	log, _ := common.GetLogger()
 
 	if verbose {
 		log.Info("Initializing Git repository in %s...", targetDir)

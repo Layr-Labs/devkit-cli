@@ -21,7 +21,7 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		log, _ := getLogger()
+		log, _ := common.GetLogger()
 
 		if path := cCtx.String("edit"); path != "" {
 			log.Info("Opening config file for editing...")

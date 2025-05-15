@@ -1,6 +1,9 @@
 package common
 
 import (
+	"devkit-cli/pkg/common/iface"
+	"devkit-cli/pkg/common/logger"
+	"devkit-cli/pkg/common/progress"
 	"io"
 	"os"
 	"testing"
@@ -67,4 +70,19 @@ func GetChainByName(ctx ChainContextConfig, name string) (*ChainConfig, bool) {
 		}
 	}
 	return nil, false
+}
+
+// Get logger for the env we're in
+func GetLogger() (iface.Logger, iface.ProgressTracker) {
+	var log iface.Logger
+	var tracker iface.ProgressTracker
+	if progress.IsTTY() {
+		log = logger.NewLogger()
+		tracker = progress.NewTTYProgressTracker(10, os.Stdout)
+	} else {
+		log = logger.NewZapLogger()
+		tracker = progress.NewLogProgressTracker(10, log)
+	}
+
+	return log, tracker
 }
