@@ -28,6 +28,11 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
+      
+      - name: Authenticate Go to GitHub private repos
+        run: |
+            git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+            echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
 
       - name: Install devkit CLI
         run: make install
