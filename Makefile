@@ -31,3 +31,6 @@ clean: ## Remove binary
 
 dump-state:
 	./contracts/anvil/dump-state.sh
+
+build/test-plugin:
+	@go build -buildmode=plugin -o ./bin/test-plugin.so cmd/test-plugin/main.go

@@ -16,3 +16,11 @@ var AVSCommand = &cli.Command{
 		ReleaseCommand,
 	},
 }
+
+func MergeCommands(cmds ...*cli.Command) []*cli.Command {
+	merged := make([]*cli.Command, 0)
+	for _, cmd := range cmds {
+		merged = append(merged, cmd)
+	}
+	return merged
+}

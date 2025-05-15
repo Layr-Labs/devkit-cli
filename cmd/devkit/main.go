@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"devkit-cli/pkg/plugin"
+	"fmt"
 	"log"
 	"os"
 
@@ -22,6 +24,17 @@ func main() {
 		Flags:                  common.GlobalFlags,
 		Commands:               []*cli.Command{commands.AVSCommand},
 		UseShortOptionHandling: true,
+	}
+
+	plugins, err := plugin.LoadPlugins("~/.devkit/plugins")
+	if err != nil {
+		log.Fatalf("Error loading plugins: %v", err)
+	}
+	fmt.Printf("Plugins loaded: %+v\n", plugins)
+	for _, p := range plugins {
+		if p != nil {
+			app.Commands = append(app.Commands, p.GetCommands()...)
+		}
 	}
 
 	// Apply both middleware functions to all commands
