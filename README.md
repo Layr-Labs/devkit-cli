@@ -49,6 +49,13 @@ Verify your installation:
 devkit --help
 ```
 
+### 🔑 Setup for Private Go Modules
+
+During this Private Preview (closed beta), you'll need access to private Go modules hosted on GitHub:
+
+1. **Add SSH Key to GitHub:** Ensure your SSH key is associated with your GitHub account ([instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
+2. **Verify Repository Access:** Confirm with EigenLabs support that your account has access to necessary private repositories.
+
 ---
 
 ## 🚧 Step-by-Step Guide
@@ -165,7 +172,7 @@ log:
 To enable detailed logging during commands:
 
 ```bash
-devkit  avs build --verbose
+devkit avs build --verbose
 ```
 
 ---
