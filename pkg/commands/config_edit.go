@@ -319,8 +319,6 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 		logger, _ := common.GetLogger()
 		logger.Warn("Error while getting telemetry client from context.", zap.Error(err))
 	}
-	// Add change count as a metric
-	metrics.AddMetric("ConfigChangeCount", float64(len(changes)))
 
 	// Add section change counts
 	sectionCounts := make(map[string]int)
@@ -331,6 +329,7 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 
 	// Add individual changes (up to a reasonable limit)
 	maxChangesToInclude := 20 // Avoid sending too much data
+	changeDimensions := make(map[string]string)
 	for i, change := range changes {
 		if i >= maxChangesToInclude {
 			logger, _ := common.GetLogger()
@@ -339,7 +338,7 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 		}
 
 		fieldPath := fmt.Sprintf("changed_%d_path", i)
-		metrics.Properties[fieldPath] = change.Path
+		changeDimensions[fieldPath] = change.Path
 
 		// Only include primitive values that can be reasonably serialized
 		oldValueStr := fmt.Sprintf("%v", change.OldValue)
@@ -354,12 +353,15 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 			newValueStr = newValueStr[:maxValueLen] + "..."
 		}
 
-		metrics.Properties[fmt.Sprintf("changed_%d_from", i)] = oldValueStr
-		metrics.Properties[fmt.Sprintf("changed_%d_to", i)] = newValueStr
+		changeDimensions[fmt.Sprintf("changed_%d_from", i)] = oldValueStr
+		changeDimensions[fmt.Sprintf("changed_%d_to", i)] = newValueStr
 	}
 
 	// Add section counts as properties
 	for section, count := range sectionCounts {
-		metrics.Properties[section+"_changes"] = fmt.Sprintf("%d", count)
+		changeDimensions[section+"_changes"] = fmt.Sprintf("%d", count)
 	}
+
+	// Add change count as a metric
+	metrics.AddMetricWithDimensions("ConfigChangeCount", float64(len(changes)), changeDimensions)
 }

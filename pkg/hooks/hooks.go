@@ -93,16 +93,8 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 	return flags
 }
 
-func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
-	// TODO: future-proof for other "create" commands.
-	if command == "devkit avs create" && ctx.Bool("disable-telemetry") {
-		return telemetry.NewNoopClient()
-	}
-
-	if !common.IsTelemetryEnabled() {
-		return telemetry.NewNoopClient()
-	}
-
+func setupTelemetry(ctx *cli.Context) telemetry.Client {
+	// TODO: (brandon c) handle disabled telemetry after private preview.
 	appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context)
 	if !ok {
 		return telemetry.NewNoopClient()
@@ -130,7 +122,7 @@ func WithMetricEmission(action cli.ActionFunc) cli.ActionFunc {
 		// Run command action
 		err := action(ctx)
 
-		client := setupTelemetry(ctx, ctx.Command.HelpName)
+		client := setupTelemetry(ctx)
 		ctx.Context = telemetry.ContextWithClient(ctx.Context, client)
 		// emit result metrics
 		emitTelemetryMetrics(ctx, err)
