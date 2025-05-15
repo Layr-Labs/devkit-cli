@@ -45,18 +45,25 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 	// docker-compose for anvil devnet and anvil state.json
 	composePath, statePath := devnet.WriteEmbeddedArtifacts()
-	fork_url := devnet.GetDevnetForkUrlDefault(config)
+	fork_url, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
 	// Run docker compose up for anvil devnet
 
 	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
 
 	containerName := fmt.Sprintf("devkit-devnet-%s", config.Config.Project.Name)
+	l1ChainConfig, found := common.GetChainByName(config.Context[devnet.CONTEXT], "l1")
+	if !found {
+		return fmt.Errorf("failed to find a chain with name : l1 in  devnet,yaml")
+	}
 	cmd.Env = append(os.Environ(),
 		"FOUNDRY_IMAGE="+chainImage,
 		"ANVIL_ARGS="+chainArgs,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
 		"FORK_RPC_URL="+fork_url,
-		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", config.Context[devnet.CONTEXT].Fork.Block),
+		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
 		"STATE_PATH="+statePath,
 		"AVS_CONTAINER_NAME="+containerName,
 	)

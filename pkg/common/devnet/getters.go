@@ -1,6 +1,7 @@
 package devnet
 
 import (
+	"fmt"
 	"os"
 
 	"devkit-cli/pkg/common"
@@ -33,7 +34,14 @@ func FileExistsInRoot(filename string) bool {
 	return err == nil || !os.IsNotExist(err)
 }
 
-func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig) string {
-	forkUrl := cfg.Context[CONTEXT].Fork.Url
-	return forkUrl
+func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName string) (string, error) {
+	chainConfig, found := common.GetChainByName(cfg.Context[CONTEXT], chainName)
+	if !found {
+		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+	}
+	if chainConfig.Fork.Url == "" {
+		return "", fmt.Errorf("no fork URL configured for chain: %s", chainName)
+	}
+	return chainConfig.Fork.Url, nil
+
 }

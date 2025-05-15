@@ -6,6 +6,8 @@ import (
 	"devkit-cli/pkg/common"
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli/v2"
 	"io"
 	"net"
 	"os"
@@ -13,8 +15,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
-	"github.com/stretchr/testify/assert"
-	"github.com/urfave/cli/v2"
 	"time"
 )
 
