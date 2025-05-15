@@ -31,11 +31,11 @@ config:
 	assert.NoError(t, err)
 
 	// Create config/config.yaml in current directory
-	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(mockConfigYaml), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(configDir, common.BaseConfig), []byte(mockConfigYaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Remove(filepath.Join("config", "config.yaml")); err != nil {
+		if err := os.Remove(filepath.Join("config", common.BaseConfig)); err != nil {
 			t.Logf("Failed to remove test file: %v", err)
 		}
 	}()
@@ -121,9 +121,9 @@ config:
 	}
 
 	// Verify file exists
-	eigenTomlPath := filepath.Join(tmpDir, "test-project", "config", "config.yaml")
+	eigenTomlPath := filepath.Join(tmpDir, "test-project", "config", common.BaseConfig)
 	if _, err := os.Stat(eigenTomlPath); os.IsNotExist(err) {
-		t.Error("config/config.yaml was not created properly")
+		t.Errorf("config/%s was not created properly", common.BaseConfig)
 	}
 
 	// Verify contracts directory exists

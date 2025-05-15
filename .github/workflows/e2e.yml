@@ -45,7 +45,7 @@ jobs:
 
       - name: Verify AVS project created
         run: |
-          if [ ! -f "$HOME/avs/my-awesome-avs/config/config.yaml" ]; then
+          if [ ! -f "./my-awesome-avs/config/config.yaml" ]; then
             echo "❌ AVS project config/config.yaml not found!"
             exit 1
           fi

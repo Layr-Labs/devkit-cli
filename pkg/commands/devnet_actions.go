@@ -172,7 +172,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		return nil
 	}
 
-	if devnet.FileExistsInRoot(filepath.Join(common.DefaultConfigWithContextConfigPath, "config.yaml")) {
+	if devnet.FileExistsInRoot(filepath.Join(common.DefaultConfigWithContextConfigPath, common.BaseConfig)) {
 		// Load config
 		config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 		if err != nil {

@@ -162,7 +162,7 @@ func collectConfigChanges(original, updated interface{}) []ConfigChange {
 	case *common.ConfigWithContextConfig:
 		newCfg, ok := updated.(*common.ConfigWithContextConfig)
 		if !ok {
-			log.Println("Mismatched types for config.yaml comparison")
+			log.Printf("Mismatched types for %s comparison", common.BaseConfig)
 			return nil
 		}
 		// Compare project block

@@ -1,6 +1,7 @@
 package common_test
 
 import (
+	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"fmt"
 	"os"
@@ -14,19 +15,17 @@ import (
 func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	// Setup temp directory
 	tmpDir := t.TempDir()
-	tmpYamlPath := filepath.Join(tmpDir, "config.yaml")
+	tmpYamlPath := filepath.Join(tmpDir, common.BaseConfig)
 
 	// Copy config/config.yaml to tempDir
-	srcConfigPath := filepath.Join("..", "..", "config", "config.yaml")
-	common.CopyFileTesting(t, srcConfigPath, tmpYamlPath)
+	assert.NoError(t, os.WriteFile(tmpYamlPath, []byte(config.DefaultConfigYaml), 0644))
 
 	// Copy config/contexts/devnet.yaml to tempDir/config/contexts
 	tmpContextDir := filepath.Join(tmpDir, "config", "contexts")
 	assert.NoError(t, os.MkdirAll(tmpContextDir, 0755))
 
-	srcDevnetPath := filepath.Join("..", "..", "config", "contexts", "devnet.yaml")
 	tmpDevnetPath := filepath.Join(tmpContextDir, "devnet.yaml")
-	common.CopyFileTesting(t, srcDevnetPath, tmpDevnetPath)
+	assert.NoError(t, os.WriteFile(tmpDevnetPath, []byte(config.ContextYamls["devnet"]), 0644))
 
 	// Run loader with the new base path
 	cfg, err := LoadConfigWithContextConfigFromPath("devnet", tmpDir)
@@ -62,7 +61,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 
 func LoadConfigWithContextConfigFromPath(contextName string, config_directory_path string) (*common.ConfigWithContextConfig, error) {
 	// Load base config
-	data, err := os.ReadFile(filepath.Join(config_directory_path, "config.yaml"))
+	data, err := os.ReadFile(filepath.Join(config_directory_path, common.BaseConfig))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read base config: %w", err)
 	}

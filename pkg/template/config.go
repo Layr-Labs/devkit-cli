@@ -25,7 +25,7 @@ type Language struct {
 
 func LoadConfig() (*Config, error) {
 	// pull from embedded string
-	data := []byte(config.TemplatesYml)
+	data := []byte(config.TemplatesYaml)
 
 	var config Config
 	if err := yaml.Unmarshal(data, &config); err != nil {

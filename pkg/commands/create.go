@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/logger"
 	"devkit-cli/pkg/telemetry"
@@ -182,9 +183,9 @@ var CreateCommand = &cli.Command{
 			}
 		}
 
-		// Copy default.eigen.toml to the project directory
+		// Copy config.yaml to the project directory
 		if err := copyDefaultConfigToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {
-			return fmt.Errorf("failed to initialize eigen.toml: %w", err)
+			return fmt.Errorf("failed to initialize %s: %w", common.BaseConfig, err)
 		}
 
 		// Copies the default keystore json files in the keystores/ directory
@@ -263,58 +264,39 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	// get logger
 	log, _ := common.GetLogger()
 
-	// get directories
-	configDir := filepath.Join("config")
-	contextsDir := filepath.Join(configDir, "contexts")
-
-	content, err := os.ReadFile(filepath.Join(configDir, "config.yaml"))
-	if err != nil {
-		return fmt.Errorf("config/config.yaml not found: %w", err)
-	}
-
-	// Replace project name
-	newContent := strings.Replace(string(content), `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
-
 	// Create and ensure target config directory exists
 	destConfigDir := filepath.Join(targetDir, "config")
 	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target config directory: %w", err)
 	}
 
-	// Write modified config.yaml
-	destConfigPath := filepath.Join(destConfigDir, "config.yaml")
-	if err := os.WriteFile(destConfigPath, []byte(newContent), 0644); err != nil {
-		return fmt.Errorf("failed to write config/config.yaml: %w", err)
+	// Read config.yaml from config embed and write to target
+	newContent := strings.Replace(config.DefaultConfigYaml, `name = "my-avs"`, fmt.Sprintf(`name = "%s"`, projectName), 1)
+	err := os.WriteFile(filepath.Join(destConfigDir, common.BaseConfig), []byte(newContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write %s: %w", common.BaseConfig, err)
 	}
 
 	if verbose {
-		log.Info("Created config/config.yaml in project directory")
+		log.Info("Created config/%s in project directory", common.BaseConfig)
 	}
 
-	// Step 2: Copy all context files
+	// Copy all context files
 	destContextsDir := filepath.Join(destConfigDir, "contexts")
 	if err := os.MkdirAll(destContextsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target contexts directory: %w", err)
 	}
+	for name, yaml := range config.ContextYamls {
+		content := yaml
+		entryName := fmt.Sprintf("%s.yaml", name)
 
-	entries, err := os.ReadDir(contextsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read contexts directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue // skip subdirectories
-		}
-		srcPath := filepath.Join(contextsDir, entry.Name())
-		destPath := filepath.Join(destContextsDir, entry.Name())
-
-		if err := common.CopyFile(srcPath, destPath); err != nil {
-			return fmt.Errorf("failed to copy %s: %w", entry.Name(), err)
+		err := os.WriteFile(filepath.Join(destContextsDir, entryName), []byte(content), 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write %s: %w", entryName, err)
 		}
 
 		if verbose {
-			log.Info("Copied context file: %s", entry.Name())
+			log.Info("Copied context file: %s", entryName)
 		}
 	}
 

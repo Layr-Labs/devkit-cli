@@ -2,11 +2,16 @@ package config
 
 import _ "embed"
 
-//go:embed default.eigen.toml
-var DefaultEigenToml string
+//go:embed config.yaml
+var DefaultConfigYaml string
 
-//go:embed default.uam-permissions.toml
-var DefaultUAMPermissionsToml string
+//go:embed templates.yaml
+var TemplatesYaml string
 
-//go:embed templates.yml
-var TemplatesYml string
+//go:embed contexts/devnet.yaml
+var devnetContextYaml string
+
+// Map of context name → content
+var ContextYamls = map[string]string{
+	"devnet": devnetContextYaml,
+}
