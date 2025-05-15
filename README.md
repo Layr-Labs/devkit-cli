@@ -149,12 +149,14 @@ Optionally, submit tasks directly to the on-chain TaskMailBox contract via a fro
 
 ## 📖 Logging and Telemetry
 
-Configure logging levels through `eigen.toml`:
+<!-- 
+@TODO: bring this back when we reintroduce config log levels
+Configure logging levels through `config.yaml`:
 
-```toml
-[log]
-level = "info"  # Options: "info", "debug", "warn", "error"
-```
+```yaml
+log:
+  level: info  # Options: "info", "debug", "warn", "error"
+``` -->
 
 To enable detailed logging during commands:
 
