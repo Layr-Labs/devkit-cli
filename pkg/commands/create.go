@@ -77,9 +77,6 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		// get logger
-		log, tracker := getLogger()
-
 		// exit early if no project name is provided
 		if cCtx.NArg() == 0 {
 			return fmt.Errorf("project name is required\nUsage: avs create <project-name> [flags]")
