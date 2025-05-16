@@ -1,11 +1,8 @@
 package commands
 
 import (
-	"bytes"
-	"context"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/devnet"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +12,7 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
@@ -77,8 +75,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
 
-	// Sleep for 3 second to ensure the devnet is fully started
-	time.Sleep(3 * time.Second)
+	// Sleep for 4 second to ensure the devnet is fully started
+	time.Sleep(4 * time.Second)
 
 	// Fund the wallets defined in config
 	devnet.FundWalletsDevnet(config, rpcUrl)
@@ -95,35 +93,23 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Get logger
 	log, _ := common.GetLogger()
 
-	// Start timing
+	// Start timing execution runtime
 	startTime := time.Now()
 
-	// Set paths for .devkit scripts
+	// Set path for .devkit scripts
 	scriptsDir := filepath.Join(".devkit", "scripts")
 
-	// Set paths for context yaml
+	// Set path for context yaml
 	contextDir := filepath.Join("config", "contexts")
 	yamlPath := path.Join(contextDir, "devnet.yaml") // @TODO: use selected context name
 
-	// Load the yaml
-	fullCfg, err := common.LoadYAML(yamlPath)
+	// Load YAML as *yaml.Node
+	rootNode, err := common.LoadYAML(yamlPath)
 	if err != nil {
 		return err
 	}
 
-	// Select the embedded context
-	ctxRaw, ok := fullCfg["context"]
-	if !ok {
-		return fmt.Errorf("missing 'context' key")
-	}
-
-	// Set as map
-	ctxMap, ok := ctxRaw.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("'context' is not a map")
-	}
-
-	// Run the deployContracts, getOperatorSets and getOperatorRegistrationMetadata scripts passing in the context
+	// List of scripts we want to call and curry context through
 	scriptNames := []string{
 		"deployContracts",
 		"getOperatorSets",
@@ -132,29 +118,47 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Run all of the scripts in sequence passing overloaded context to each
 	for _, name := range scriptNames {
+		// Convert authoritative YAML node to input map
+		var rootMap map[string]interface{}
+		b, _ := yaml.Marshal(rootNode)
+		if err := yaml.Unmarshal(b, &rootMap); err != nil {
+			return fmt.Errorf("yaml to map before %s: %w", name, err)
+		}
+		rootMap = common.CleanYAML(rootMap).(map[string]interface{})
+
+		// Extract context
+		ctxRaw, ok := rootMap["context"]
+		if !ok {
+			return fmt.Errorf("missing 'context' key")
+		}
+		ctxMap, ok := ctxRaw.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("'context' is not a map")
+		}
+
+		// Run script passing in the context
 		scriptPath := filepath.Join(scriptsDir, name)
-		out, err := runTemplateScript(cCtx.Context, scriptPath, ctxMap)
+		outMap, err := common.RunTemplateScript(cCtx.Context, scriptPath, ctxMap)
 		if err != nil {
 			return fmt.Errorf("%s failed: %w", name, err)
 		}
-		ctxMap = common.DeepMerge(ctxMap, out)
+
+		// Convert to node for merge
+		outNode := common.InterfaceToNode(outMap)
+		// Get context node to merge sub-nodes
+		contextNode := common.GetChildByKey(rootNode.Content[0], "context")
+		// Merge output node into authoritative YAML node
+		common.DeepMerge(contextNode, outNode)
 	}
 
-	// Copy the output back to the context
-	// @TODO: perform validations?
-	fullCfg["context"] = ctxMap
-
-	// Write the context back to template
-	if err := common.WriteYAML(yamlPath, fullCfg); err != nil {
+	// Write yaml back to project directory
+	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
 		return err
 	}
 
-	// End timer
+	// Measure how long we ran for
 	elapsed := time.Since(startTime).Round(time.Second)
-
-	// Log success
 	log.Info("\nDevnet contracts deployed successfully in %s", elapsed)
-
 	return nil
 }
 
@@ -296,28 +300,6 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 	}
 
 	return nil
-}
-
-func runTemplateScript(cmdCtx context.Context, scriptPath string, context map[string]interface{}) (map[string]interface{}, error) {
-	inputJSON, err := json.Marshal(map[string]interface{}{"context": context})
-	if err != nil {
-		return nil, fmt.Errorf("marshal context: %w", err)
-	}
-
-	var stdout bytes.Buffer
-	cmd := exec.CommandContext(cmdCtx, scriptPath, string(inputJSON))
-	cmd.Stdout = &stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("deployContracts failed: %w", err)
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		return nil, fmt.Errorf("invalid JSON output: %w", err)
-	}
-	return result, nil
 }
 
 func extractHostPort(portStr string) string {

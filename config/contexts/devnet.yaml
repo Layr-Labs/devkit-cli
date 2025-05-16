@@ -1,7 +1,8 @@
 version: 0.0.1
 context:
+  # Name of the context
   name: "devnet"
-
+  # Chains available to this context
   chains:
     l1: 
       chain_id: 31337
@@ -15,10 +16,10 @@ context:
       fork:
         block: 22475020
         url: "https://eth.llamarpc.com"
-
+  # Available private keys for deploying
   deployer_private_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
   app_private_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-
+  # List of Operators and their private keys / stake details
   operators:
     - address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
       ecdsa_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
@@ -45,7 +46,7 @@ context:
       bls_keystore_path: "keystores/operator5.keystore.json"
       bls_keystore_password: "testpass"
       stake: "1000ETH"
-
+  # AVS configuration
   avs:
     address: "0x0123456789abcdef0123456789ABCDEF01234567"
     avs_private_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"

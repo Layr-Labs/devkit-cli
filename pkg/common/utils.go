@@ -4,7 +4,6 @@ import (
 	"devkit-cli/pkg/common/iface"
 	"devkit-cli/pkg/common/logger"
 	"devkit-cli/pkg/common/progress"
-	"fmt"
 	"os"
 
 	"github.com/urfave/cli/v2"
@@ -37,35 +36,4 @@ func GetLogger() (iface.Logger, iface.ProgressTracker) {
 	}
 
 	return log, tracker
-}
-
-func CleanYAML(v interface{}) interface{} {
-	switch x := v.(type) {
-	case map[interface{}]interface{}:
-		m := make(map[string]interface{})
-		for k, v := range x {
-			m[fmt.Sprint(k)] = CleanYAML(v)
-		}
-		return m
-	case []interface{}:
-		for i, v := range x {
-			x[i] = CleanYAML(v)
-		}
-	}
-	return v
-}
-
-func DeepMerge(dst, src map[string]interface{}) map[string]interface{} {
-	for k, v := range src {
-		if dv, ok := dst[k]; ok {
-			dMap, ok1 := dv.(map[string]interface{})
-			sMap, ok2 := v.(map[string]interface{})
-			if ok1 && ok2 {
-				dst[k] = DeepMerge(dMap, sMap)
-				continue
-			}
-		}
-		dst[k] = v
-	}
-	return dst
 }
