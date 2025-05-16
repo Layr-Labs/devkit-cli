@@ -2,7 +2,6 @@ package telemetry
 
 import (
 	"context"
-	"devkit-cli/pkg/common/logger"
 	kitcontext "devkit-cli/pkg/context"
 	"github.com/posthog/posthog-go"
 	"gopkg.in/yaml.v3"
@@ -20,11 +19,9 @@ type PostHogClient struct {
 func NewPostHogClient(environment *kitcontext.AppEnvironment, namespace string) (*PostHogClient, error) {
 	apiKey := getPostHogAPIKey()
 	if apiKey == "" {
-		logger.NewLogger().Error("PostHog API key is empty.")
 		// No API key available, return noop client without error
 		return nil, nil
 	}
-	logger.NewLogger().Error("PostHog API key: %s.", apiKey)
 	client, err := posthog.NewWithConfig(apiKey, posthog.Config{Endpoint: getPostHogEndpoint()})
 	if err != nil {
 		return nil, err
