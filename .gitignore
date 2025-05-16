@@ -30,4 +30,4 @@ Thumbs.db
 .git-template-cache
 
 # Release outputs
-temp_external
+temp_external/
