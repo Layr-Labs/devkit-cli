@@ -122,7 +122,9 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		"getOperatorRegistrationMetadata",
 	}
 
-	// Check for root content
+	// YAML is parsed into a DocumentNode:
+	//   - rootNode.Content[0] is the top-level MappingNode
+	//   - It contains the 'context' mapping we're interested in
 	if len(rootNode.Content) == 0 {
 		return fmt.Errorf("empty YAML root node")
 	}
