@@ -82,7 +82,6 @@ jobs:
           distribution: goreleaser
           version: latest
           args: release --clean
-          workdir: ./devkit-cli/
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TELEMETRY_TOKEN: ${{ secrets.TELEMETRY_TOKEN }}
