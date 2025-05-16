@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v3"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
