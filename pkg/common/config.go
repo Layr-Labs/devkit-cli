@@ -37,7 +37,7 @@ type ChainContextConfig struct {
 	Chains                []ChainConfig  `json:"chains" yaml:"chains"`
 	DeployerPrivateKey    string         `json:"deployer_private_key" yaml:"deployer_private_key"`
 	AppDeployerPrivateKey string         `json:"app_private_key" yaml:"app_private_key"`
-	Operators             []OperatorSpec `json:operators" yaml:"operators"`
+	Operators             []OperatorSpec `json:"operators" yaml:"operators"`
 	Avs                   AvsConfig      `json:"avs" yaml:"avs"`
 }
 
