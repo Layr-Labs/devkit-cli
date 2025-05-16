@@ -44,7 +44,7 @@ func TestBasicE2E(t *testing.T) {
 	}
 
 	// Test env loading
-	testEnvLoading(t)
+	testEnvLoading(t, projectDir)
 }
 
 func setupBasicProject(t *testing.T, dir string) {
@@ -71,20 +71,19 @@ func setupBasicProject(t *testing.T, dir string) {
 		t.Fatalf("Failed to write .env: %v", err)
 	}
 
-	// Create Makefile.Devkit
-	makefileContent := `
-.PHONY: build run
-build:
-	@echo "Building with env: DEVKIT_TEST_ENV=$${DEVKIT_TEST_ENV:-not_set}"
-run:
-	@echo "Running with env: DEVKIT_TEST_ENV=$${DEVKIT_TEST_ENV:-not_set}"
-`
-	if err := os.WriteFile(filepath.Join(dir, "Makefile.Devkit"), []byte(makefileContent), 0644); err != nil {
-		t.Fatalf("Failed to write Makefile.Devkit: %v", err)
+	// Create build script
+	scriptsDir := filepath.Join(dir, ".devkit", "scripts")
+	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	buildScript := `#!/bin/bash
+echo -e "Mock build executed ${DEVKIT_TEST_ENV}"`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "build"), []byte(buildScript), 0755); err != nil {
+		t.Fatal(err)
 	}
 }
 
-func testEnvLoading(t *testing.T) {
+func testEnvLoading(t *testing.T, dir string) {
 	// Clear env var first
 	os.Unsetenv("DEVKIT_TEST_ENV")
 
@@ -102,21 +101,14 @@ func testEnvLoading(t *testing.T) {
 		t.Errorf("Expected DEVKIT_TEST_ENV=test_value, got: %q", val)
 	}
 
+	scriptsDir := filepath.Join(dir, ".devkit", "scripts")
+
 	// 2. Verify makefile works with loaded env
-	cmd := exec.Command("make", "-f", "Makefile.Devkit", "build")
+	cmd := exec.Command("bash", "-c", filepath.Join(scriptsDir, "build"))
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Failed to run make build: %v", err)
 	}
 
 	t.Logf("Make build output: %s", out)
-
-	// 3. Verify makefile works with loaded env
-	cmd = exec.Command("make", "-f", "Makefile.Devkit", "run")
-	out, err = cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Failed to run make run: %v", err)
-	}
-
-	t.Logf("Make run output: %s", out)
 }

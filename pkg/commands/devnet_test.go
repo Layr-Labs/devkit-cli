@@ -18,6 +18,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
+	"sigs.k8s.io/yaml"
 )
 
 // helper to create a temp AVS project dir with config.yaml copied
@@ -53,7 +54,37 @@ func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error)
 		return "", fmt.Errorf("failed to create config/contexts/devnet.yaml: %w", err)
 	}
 
+	// Create build script
+	scriptsDir := filepath.Join(tempDir, ".devkit", "scripts")
+	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	deployScript := `#!/bin/bash
+echo '{"mock": "deployContracts"}'`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "deployContracts"), []byte(deployScript), 0755); err != nil {
+		t.Fatal(err)
+	}
+	getOperatorSets := `#!/bin/bash
+echo '{"mock": "getOperatorSets"}'`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "getOperatorSets"), []byte(getOperatorSets), 0755); err != nil {
+		t.Fatal(err)
+	}
+	getOperatorRegistrationMetadata := `#!/bin/bash
+echo '{"mock": "getOperatorRegistrationMetadata"}'`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "getOperatorRegistrationMetadata"), []byte(getOperatorRegistrationMetadata), 0755); err != nil {
+		t.Fatal(err)
+	}
+
 	return tempDir, nil
+}
+
+func findSubcommandByName(name string, commands []*cli.Command) *cli.Command {
+	for _, cmd := range commands {
+		if cmd.Name == name {
+			return cmd
+		}
+	}
+	return nil
 }
 
 func TestStartAndStopDevnet(t *testing.T) {
@@ -288,9 +319,10 @@ func TestStopDevnetAll(t *testing.T) {
 				Name: "avs",
 				Subcommands: []*cli.Command{
 					{
-						Name:        "devnet",
-						Subcommands: []*cli.Command{DevnetCommand.Subcommands[1]}, // stop
-					},
+						Name: "devnet",
+						Subcommands: []*cli.Command{
+							findSubcommandByName("stop", DevnetCommand.Subcommands),
+						}},
 				},
 			},
 		},
@@ -345,8 +377,10 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 				Name: "avs",
 				Subcommands: []*cli.Command{
 					{
-						Name:        "devnet",
-						Subcommands: []*cli.Command{DevnetCommand.Subcommands[1]}, // stop
+						Name: "devnet",
+						Subcommands: []*cli.Command{
+							findSubcommandByName("stop", DevnetCommand.Subcommands),
+						},
 					},
 				},
 			},
@@ -361,6 +395,76 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 	output, err := cmd.Output()
 	assert.NoError(t, err)
 	assert.NotContains(t, string(output), "devkit-devnet-", "The devnet container should be stopped")
+}
+
+func TestDeployContracts(t *testing.T) {
+	// Save working dir
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	// Setup temp project
+	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
+	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	// Start devnet first
+	startApp := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+		},
+		Action: StartDevnetAction,
+	}
+	err = startApp.Run([]string{"devkit", "--port", port, "--verbose"})
+	assert.NoError(t, err)
+
+	// Run deploy-contracts
+	deployApp := &cli.App{
+		Name:   "devkit",
+		Action: DeployContractsAction,
+	}
+	err = deployApp.Run([]string{"devkit", "avs", "devnet", "deploy-contracts"})
+	assert.NoError(t, err)
+
+	// Read and verify context output
+	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
+	data, err := os.ReadFile(yamlPath)
+	assert.NoError(t, err)
+	assert.Contains(t, string(data), "context")
+
+	// Unmarshal the context file
+	var parsed map[string]interface{}
+	err = yaml.Unmarshal(data, &parsed)
+	assert.NoError(t, err)
+
+	// Expect the context to be present
+	ctx, ok := parsed["context"].(map[string]interface{})
+	assert.True(t, ok, "expected context map in devnet.yaml")
+
+	// Expect getOperatorRegistrationMetadata to be written to mock
+	mockVal := ctx["mock"]
+	assert.Equal(t, "getOperatorRegistrationMetadata", mockVal)
+
+	// Cleanup
+	stopApp := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+		},
+		Action: StopDevnetAction,
+	}
+	err = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
+	assert.NoError(t, err)
 }
 
 func TestStartDevnet_ContextCancellation(t *testing.T) {
