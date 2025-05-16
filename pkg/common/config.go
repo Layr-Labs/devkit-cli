@@ -1,7 +1,6 @@
 package common
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -117,37 +116,4 @@ func LoadConfigWithContextConfigWithoutContext() (*ConfigWithContextConfig, erro
 		return nil, fmt.Errorf("failed to parse base config: %w", err)
 	}
 	return &cfg, nil
-}
-
-func LoadYAML(path string) (map[string]interface{}, error) {
-	yamlBytes, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
-	}
-	var cfg map[string]interface{}
-	if err := yaml.Unmarshal(yamlBytes, &cfg); err != nil {
-		return nil, fmt.Errorf("unmarshal yaml: %w", err)
-	}
-	return cfg, nil
-}
-
-func WriteYAML(path string, data map[string]interface{}) error {
-	yamlBytes, err := yaml.Marshal(data)
-	if err != nil {
-		return fmt.Errorf("marshal yaml: %w", err)
-	}
-	var node yaml.Node
-	if err := yaml.Unmarshal(yamlBytes, &node); err != nil {
-		return fmt.Errorf("re-parse yaml node: %w", err)
-	}
-
-	buf := &bytes.Buffer{}
-	enc := yaml.NewEncoder(buf)
-	enc.SetIndent(2)
-	if err := enc.Encode(&node); err != nil {
-		return fmt.Errorf("re-encode yaml: %w", err)
-	}
-	enc.Close()
-
-	return os.WriteFile(path, buf.Bytes(), 0644)
 }
