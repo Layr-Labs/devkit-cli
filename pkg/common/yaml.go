@@ -35,6 +35,14 @@ func WriteYAML(path string, node *yaml.Node) error {
 
 // InterfaceToNode converts a Go value (typically map[string]interface{}) into a *yaml.Node
 func InterfaceToNode(v interface{}) (*yaml.Node, error) {
+	if v == nil {
+		return &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!null",
+			Value: "",
+		}, nil
+	}
+
 	var node yaml.Node
 	b, err := yaml.Marshal(v)
 	if err != nil {
@@ -51,16 +59,17 @@ func InterfaceToNode(v interface{}) (*yaml.Node, error) {
 
 // NodeToInterface converts a *yaml.Node back into a Go interface{}
 func NodeToInterface(node *yaml.Node) (interface{}, error) {
+	if node == nil {
+		return nil, nil
+	}
 	b, err := yaml.Marshal(node)
 	if err != nil {
 		return nil, fmt.Errorf("marshal node failed: %w", err)
 	}
-
 	var out interface{}
 	if err := yaml.Unmarshal(b, &out); err != nil {
 		return nil, fmt.Errorf("unmarshal to interface failed: %w", err)
 	}
-
 	return CleanYAML(out), nil
 }
 
@@ -83,7 +92,7 @@ func CleanYAML(v interface{}) interface{} {
 
 // GetChildByKey returns the value node associated with the given key from a MappingNode
 func GetChildByKey(node *yaml.Node, key string) *yaml.Node {
-	if node.Kind != yaml.MappingNode {
+	if node == nil || node.Kind != yaml.MappingNode {
 		return nil
 	}
 	for i := 0; i < len(node.Content); i += 2 {
@@ -122,6 +131,12 @@ func CloneNode(n *yaml.Node) *yaml.Node {
 // - For non-mapping nodes, src replaces dst
 // - All merged values are deep-cloned to avoid shared references
 func DeepMerge(dst, src *yaml.Node) *yaml.Node {
+	if src == nil {
+		return CloneNode(dst)
+	}
+	if dst == nil {
+		return CloneNode(src)
+	}
 	if dst.Kind != yaml.MappingNode || src.Kind != yaml.MappingNode {
 		return CloneNode(src)
 	}
@@ -137,7 +152,7 @@ func DeepMerge(dst, src *yaml.Node) *yaml.Node {
 
 			if dstKey.Value == srcKey.Value {
 				found = true
-				if dstVal.Kind == yaml.MappingNode && srcVal.Kind == yaml.MappingNode {
+				if dstVal != nil && srcVal != nil && dstVal.Kind == yaml.MappingNode && srcVal.Kind == yaml.MappingNode {
 					dst.Content[j+1] = DeepMerge(dstVal, srcVal)
 				} else {
 					dst.Content[j+1] = CloneNode(srcVal)

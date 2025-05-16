@@ -30,6 +30,11 @@ var DevnetCommand = &cli.Command{
 					Usage: "Specify a custom port for local devnet",
 					Value: 8545,
 				},
+				&cli.BoolFlag{
+					Name:  "skip-deploy-contracts",
+					Usage: "Skip deploying contracts and only start local devnet",
+					Value: false,
+				},
 			},
 			Action: StartDevnetAction,
 		},

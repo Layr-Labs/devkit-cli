@@ -86,6 +86,11 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(1 * time.Second)
 	log.Info("\nDevnet started successfully in %s", elapsed)
 
+	// Deploy the contracts after starting next work unless skipped
+	if !cCtx.Bool("skip-deploy-contracts") {
+		DeployContractsAction(cCtx)
+	}
+
 	return nil
 }
 
@@ -116,16 +121,16 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		"getOperatorRegistrationMetadata",
 	}
 
+	// Convert authoritative YAML node to input map
+	var rootMap map[string]interface{}
+	b, _ := yaml.Marshal(rootNode)
+	if err := yaml.Unmarshal(b, &rootMap); err != nil {
+		return fmt.Errorf("yaml to map: %w", err)
+	}
+	rootMap = common.CleanYAML(rootMap).(map[string]interface{})
+
 	// Run all of the scripts in sequence passing overloaded context to each
 	for _, name := range scriptNames {
-		// Convert authoritative YAML node to input map
-		var rootMap map[string]interface{}
-		b, _ := yaml.Marshal(rootNode)
-		if err := yaml.Unmarshal(b, &rootMap); err != nil {
-			return fmt.Errorf("yaml to map before %s: %w", name, err)
-		}
-		rootMap = common.CleanYAML(rootMap).(map[string]interface{})
-
 		// Extract context
 		ctxRaw, ok := rootMap["context"]
 		if !ok {
@@ -152,6 +157,11 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		// Convert to node for merge
 		outNode, err := common.InterfaceToNode(outMap)
 		if err != nil {
+			return fmt.Errorf("%s failed: %w", name, err)
+		}
+
+		// Bound check to make sure content exists
+		if len(rootNode.Content) == 0 {
 			return fmt.Errorf("%s failed: %w", name, err)
 		}
 

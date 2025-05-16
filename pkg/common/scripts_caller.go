@@ -34,7 +34,7 @@ func RunTemplateScript(cmdCtx context.Context, scriptPath string, params []byte)
 	// Collect the result as JSON
 	var result map[string]interface{}
 	if err := json.Unmarshal(raw, &result); err != nil {
-		log.Warn("Invalid or non-JSON script output; returning empty result")
+		log.Warn("Invalid or non-JSON script output: %s; returning empty result: %w", string(raw), err)
 		return map[string]interface{}{}, nil
 	}
 
