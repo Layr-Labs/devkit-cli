@@ -8,7 +8,6 @@ builds:
     flags:
       - -v
     ldflags:
-      - -X 'main.version={{.Version}}'
       - -X 'github.com/Layr-Labs/devkit-cli/pkg/telemetry.embeddedTelemetryApiKey={{ .Env.TELEMETRY_TOKEN }}'
       - -X 'github.com/Layr-Labs/devkit-cli/pkg/context.embeddedDevkitReleaseVersion={{.Version}}'
     # windows is ignored by default, as the `goos` field by default only
