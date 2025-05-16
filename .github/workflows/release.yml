@@ -55,22 +55,19 @@ jobs:
 
       - name: Run Tests
         run: make tests
-  release:
+  Release:
     needs: [Lint, Test]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
-      - name: Git checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          path: devkit-cli
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23.6"
+          go-version: '1.23'
 
-      - name: Configure Git for private repos
+      - name: Clone hourglass-monorepo privately
         env:
           HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
         run: |
