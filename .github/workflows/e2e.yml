@@ -9,6 +9,8 @@ on:
 env:
   FOUNDRY_PROFILE: ci
   GOPRIVATE: github.com/Layr-Labs/*
+  L1_FORK_URL: ${{ vars.L1_FORK_URL }}
+  L2_FORK_URL: ${{ vars.L2_FORK_URL }}
 
 jobs:
   e2e:
