@@ -16,7 +16,7 @@ EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold 
 | `avs config` | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...)        |
 | `avs build`  | Compile AVS smart contracts and binaries |
 | `avs devnet` | Manage local development network         |
-| `avs run`    | Simulate AVS task execution locally      |
+| `avs call`    | Simulate AVS task execution locally      |
 
 ---
 
@@ -140,7 +140,7 @@ DevNet management commands:
 | `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
 
 
-### 5️⃣ Simulate Task Execution (`avs run`)
+### 5️⃣ Simulate Task Execution (`avs call`)
 
 Test your AVS logic locally by simulating task execution:
 
@@ -151,7 +151,7 @@ Test your AVS logic locally by simulating task execution:
 Run this from your project directory:
 
 ```bash
-devkit avs run
+devkit avs call
 ```
 
 Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
@@ -198,7 +198,7 @@ nano .env
 
 # Run commands - the .env file will be automatically loaded
 devkit avs build
-devkit avs run
+devkit avs call
 ```
 
 ---

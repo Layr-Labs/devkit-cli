@@ -2,6 +2,7 @@ package commands
 
 import (
 	"bytes"
+	"devkit-cli/pkg/common"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,7 +42,7 @@ func TestEditorDetection(t *testing.T) {
 // TestBackupAndRestore tests the logic of backing up and restoring files
 func TestBackupAndRestoreYAML(t *testing.T) {
 	tempDir := t.TempDir()
-	testConfigPath := filepath.Join(tempDir, "config.yaml")
+	testConfigPath := filepath.Join(tempDir, common.BaseConfig)
 
 	originalContent := `
 version: 0.1.0

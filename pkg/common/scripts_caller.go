@@ -9,24 +9,34 @@ import (
 	"os/exec"
 )
 
-func RunTemplateScript(cmdCtx context.Context, scriptPath string, context map[string]interface{}) (map[string]interface{}, error) {
-	inputJSON, err := json.Marshal(map[string]interface{}{"context": context})
-	if err != nil {
-		return nil, fmt.Errorf("marshal context: %w", err)
-	}
+func RunTemplateScript(cmdCtx context.Context, scriptPath string, params []byte) (map[string]interface{}, error) {
+	// Get logger
+	log, _ := GetLogger()
 
+	// Prepare the command
 	var stdout bytes.Buffer
-	cmd := exec.CommandContext(cmdCtx, scriptPath, string(inputJSON))
+	cmd := exec.CommandContext(cmdCtx, scriptPath, string(params))
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 
+	// Exec the command
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("deployContracts failed: %w", err)
+		return nil, fmt.Errorf("Call to %s failed: %w", scriptPath, err)
 	}
 
-	var result map[string]interface{}
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		return nil, fmt.Errorf("invalid JSON output: %w", err)
+	// Clean and validate stdout
+	raw := bytes.TrimSpace(stdout.Bytes())
+	if len(raw) == 0 {
+		log.Warn("Empty output from %s; returning empty result", scriptPath)
+		return map[string]interface{}{}, nil
 	}
+
+	// Collect the result as JSON
+	var result map[string]interface{}
+	if err := json.Unmarshal(raw, &result); err != nil {
+		log.Warn("Invalid or non-JSON script output: %s; returning empty result: %w", string(raw), err)
+		return map[string]interface{}{}, nil
+	}
+
 	return result, nil
 }

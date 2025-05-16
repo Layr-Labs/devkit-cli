@@ -50,12 +50,10 @@ func listConfig(config *common.ConfigWithContextConfig, projectSettings *common.
 		ctx := wrapper.Context
 		fmt.Printf("  - %s:\n", name)
 		fmt.Printf("      Name: %s\n\n", ctx.Name)
-		fmt.Printf("      Chains: \n")
-		for _, chain := range ctx.Chains {
-			fmt.Printf("        Chain ID: %d\n", chain.ChainID)
-			fmt.Printf("        Rpc Url: %s\n", chain.RPCURL)
-			fmt.Printf("        Fork Mainnet Url: %s\n", chain.Fork.Url)
-			fmt.Printf("        Fork Block Number: %d\n\n", chain.Fork.Block)
+		for name, chain := range ctx.Chains {
+			fmt.Printf("      Chain Name: %s\n", name)
+			fmt.Printf("      Chain ID: %d\n", chain.ChainID)
+			fmt.Printf("      RPC URL: %s\n\n", chain.RPCURL)
 		}
 		fmt.Printf("        Deployer Private Key: %s\n\n", ctx.DeployerPrivateKey)
 		fmt.Printf("        App Private Key: %s\n\n", ctx.AppDeployerPrivateKey)

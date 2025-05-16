@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -20,8 +21,14 @@ echo '{"status": "ok", "received": '"$input"'}'`
 		t.Fatalf("failed to write test script: %v", err)
 	}
 
-	ctx := map[string]interface{}{"foo": "bar"}
-	out, err := RunTemplateScript(context.Background(), scriptPath, ctx)
+	// Parse the provided params
+	inputJSON, err := json.Marshal(map[string]interface{}{"context": map[string]interface{}{"foo": "bar"}})
+	if err != nil {
+		t.Fatalf("marshal context: %v", err)
+	}
+
+	// Run the template script
+	out, err := RunTemplateScript(context.Background(), scriptPath, inputJSON)
 	if err != nil {
 		t.Fatalf("RunTemplateScript failed: %v", err)
 	}

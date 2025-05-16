@@ -57,7 +57,9 @@ var CreateCommand = &cli.Command{
 }
 
 func CreateBLSKeystore(privateKey, path, password, curve string, verbose bool) error {
-	if path == "" || len(path) < 6 || filepath.Ext(path) != ".json" {
+	log, _ := common.GetLogger()
+
+	if filepath.Ext(path) != ".json" {
 		return errors.New("invalid path: must include full file name ending in .json")
 	}
 
@@ -66,9 +68,9 @@ func CreateBLSKeystore(privateKey, path, password, curve string, verbose bool) e
 	}
 
 	if verbose {
-		fmt.Println("🔐 Starting Bls keystore creation")
-		fmt.Printf("• Curve: %s\n", curve)
-		fmt.Printf("• Output Path: %s\n", path)
+		log.Info("🔐 Starting Bls keystore creation")
+		log.Info("• Curve: %s", curve)
+		log.Info("• Output Path: %s", path)
 	}
 
 	scheme := bn254.NewScheme()
@@ -83,15 +85,19 @@ func CreateBLSKeystore(privateKey, path, password, curve string, verbose bool) e
 		return fmt.Errorf("failed to create keystore: %w", err)
 	}
 
-	keystoreData, _ := keystore.LoadKeystoreFile(path)
+	keystoreData, err := keystore.LoadKeystoreFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to reload keystore: %w", err)
+	}
+
 	privateKeyData, err := keystoreData.GetPrivateKey(password, scheme)
 	if err != nil {
 		return errors.New("failed to extract the private key from the keystore file")
 	}
 
-	fmt.Println("✅ Keystore generated successfully")
-	fmt.Println("🔑 Save this BLS private key in a secure location:")
-	fmt.Printf("    %s\n", privateKeyData.Bytes())
+	log.Info("✅ Keystore generated successfully")
+	log.Info("🔑 Save this BLS private key in a secure location:")
+	log.Info("    %s\n", privateKeyData.Bytes())
 
 	return nil
 }

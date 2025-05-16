@@ -3,8 +3,9 @@ package commands
 import (
 	"context"
 	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/hooks"
+	"devkit-cli/pkg/telemetry"
 	"fmt"
+	"go.uber.org/zap"
 	"io"
 	"log"
 	"os"
@@ -49,7 +50,7 @@ func editConfig(cCtx *cli.Context, configPath string) error {
 		return err
 	}
 
-	// Track changes
+	// Collect changes
 	changes := collectConfigChanges(originalConfig, newConfig)
 
 	// Log changes
@@ -312,11 +313,12 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 		return
 	}
 
-	// Create properties map for telemetry
-	props := make(map[string]interface{})
-
-	// Add change count
-	props["change_count"] = len(changes)
+	// Get metrics context
+	metrics, err := telemetry.MetricsFromContext(ctx)
+	if err != nil {
+		logger, _ := common.GetLogger()
+		logger.Warn("Error while getting telemetry client from context.", zap.Error(err))
+	}
 
 	// Add section change counts
 	sectionCounts := make(map[string]int)
@@ -325,19 +327,18 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 		sectionCounts[section]++
 	}
 
-	for section, count := range sectionCounts {
-		props[fmt.Sprintf("%s_changes", section)] = count
-	}
-
 	// Add individual changes (up to a reasonable limit)
 	maxChangesToInclude := 20 // Avoid sending too much data
+	changeDimensions := make(map[string]string)
 	for i, change := range changes {
 		if i >= maxChangesToInclude {
+			logger, _ := common.GetLogger()
+			logger.Warn("Reached max change limit of ", maxChangesToInclude, " for ", change.Path)
 			break
 		}
 
 		fieldPath := fmt.Sprintf("changed_%d_path", i)
-		props[fieldPath] = change.Path
+		changeDimensions[fieldPath] = change.Path
 
 		// Only include primitive values that can be reasonably serialized
 		oldValueStr := fmt.Sprintf("%v", change.OldValue)
@@ -352,12 +353,15 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 			newValueStr = newValueStr[:maxValueLen] + "..."
 		}
 
-		props[fmt.Sprintf("changed_%d_from", i)] = oldValueStr
-		props[fmt.Sprintf("changed_%d_to", i)] = newValueStr
+		changeDimensions[fmt.Sprintf("changed_%d_from", i)] = oldValueStr
+		changeDimensions[fmt.Sprintf("changed_%d_to", i)] = newValueStr
 	}
 
-	// Send the telemetry event
-	eventName := hooks.FormatCustomMetric(ctx, "config.edit_changes")
-	// Ignore returned error as per other telemetry calls in the codebase
-	_ = hooks.Track(ctx, eventName, props)
+	// Add section counts as properties
+	for section, count := range sectionCounts {
+		changeDimensions[section+"_changes"] = fmt.Sprintf("%d", count)
+	}
+
+	// Add change count as a metric
+	metrics.AddMetricWithDimensions("ConfigChangeCount", float64(len(changes)), changeDimensions)
 }

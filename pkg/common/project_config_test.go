@@ -11,7 +11,7 @@ func TestSaveAndLoadProjectSettings(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Test saving project settings
-	err := SaveProjectSettings(tmpDir, true)
+	err := SaveTelemetrySetting(tmpDir, true)
 	if err != nil {
 		t.Fatalf("Failed to save project settings: %v", err)
 	}

@@ -10,8 +10,8 @@ func NewNoopClient() *NoopClient {
 	return &NoopClient{}
 }
 
-// Track implements the Client interface
-func (c *NoopClient) Track(_ context.Context, _ string, _ map[string]interface{}) error {
+// AddMetric implements the Client interface
+func (c *NoopClient) AddMetric(_ context.Context, _ Metric) error {
 	return nil
 }
 

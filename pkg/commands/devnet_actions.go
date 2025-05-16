@@ -3,6 +3,7 @@ package commands
 import (
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/devnet"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -46,8 +47,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			log.Info("Running in headless mode")
 		}
 	}
-	// docker-compose for anvil devnet and anvil state.json
-	composePath, statePath := devnet.WriteEmbeddedArtifacts()
+	// docker-compose for anvil devnet
+	composePath := devnet.WriteEmbeddedArtifacts()
 	fork_url, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
 	if err != nil {
 		return fmt.Errorf("%w", err)
@@ -67,7 +68,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		fmt.Sprintf("DEVNET_PORT=%d", port),
 		"FORK_RPC_URL="+fork_url,
 		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
-		"STATE_PATH="+statePath,
 		"AVS_CONTAINER_NAME="+containerName,
 	)
 	if err := cmd.Run(); err != nil {
@@ -85,6 +85,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Sleep for 1 second to make sure wallets are funded
 	time.Sleep(1 * time.Second)
 	log.Info("\nDevnet started successfully in %s", elapsed)
+
+	// Deploy the contracts after starting next work unless skipped
+	if !cCtx.Bool("skip-deploy-contracts") {
+		if err := DeployContractsAction(cCtx); err != nil {
+			return fmt.Errorf("deploy-contracts failed: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -116,29 +123,43 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		"getOperatorRegistrationMetadata",
 	}
 
-	// Run all of the scripts in sequence passing overloaded context to each
-	for _, name := range scriptNames {
-		// Convert authoritative YAML node to input map
-		var rootMap map[string]interface{}
-		b, _ := yaml.Marshal(rootNode)
-		if err := yaml.Unmarshal(b, &rootMap); err != nil {
-			return fmt.Errorf("yaml to map before %s: %w", name, err)
-		}
-		rootMap = common.CleanYAML(rootMap).(map[string]interface{})
+	// YAML is parsed into a DocumentNode:
+	//   - rootNode.Content[0] is the top-level MappingNode
+	//   - It contains the 'context' mapping we're interested in
+	if len(rootNode.Content) == 0 {
+		return fmt.Errorf("empty YAML root node")
+	}
 
-		// Extract context
-		ctxRaw, ok := rootMap["context"]
-		if !ok {
-			return fmt.Errorf("missing 'context' key")
+	// Check for context
+	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
+	if contextNode == nil {
+		return fmt.Errorf("missing 'context' key in ./config/contexts/devnet.yaml")
+	}
+
+	// Loop scripts with cloned context
+	for _, name := range scriptNames {
+		// Clone context node and convert to map
+		clonedCtxNode := common.CloneNode(contextNode)
+		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
+		if err != nil {
+			return fmt.Errorf("context decode failed: %w", err)
 		}
-		ctxMap, ok := ctxRaw.(map[string]interface{})
+
+		// Check context is a map
+		ctxMap, ok := ctxInterface.(map[string]interface{})
 		if !ok {
-			return fmt.Errorf("'context' is not a map")
+			return fmt.Errorf("cloned context is not a map")
+		}
+
+		// Parse the provided params
+		inputJSON, err := json.Marshal(map[string]interface{}{"context": ctxMap})
+		if err != nil {
+			return fmt.Errorf("marshal context: %w", err)
 		}
 
 		// Run script passing in the context
 		scriptPath := filepath.Join(scriptsDir, name)
-		outMap, err := common.RunTemplateScript(cCtx.Context, scriptPath, ctxMap)
+		outMap, err := common.RunTemplateScript(cCtx.Context, scriptPath, inputJSON)
 		if err != nil {
 			return fmt.Errorf("%s failed: %w", name, err)
 		}
@@ -146,12 +167,10 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		// Convert to node for merge
 		outNode, err := common.InterfaceToNode(outMap)
 		if err != nil {
-			return fmt.Errorf("%s failed: %w", name, err)
+			return fmt.Errorf("%s output invalid: %w", name, err)
 		}
 
-		// Get context node to merge sub-nodes
-		contextNode := common.GetChildByKey(rootNode.Content[0], "context")
-		// Merge output node into authoritative YAML node
+		// Merge output into original context node
 		common.DeepMerge(contextNode, outNode)
 	}
 

@@ -2,27 +2,38 @@ package telemetry
 
 import (
 	"context"
+	kitcontext "devkit-cli/pkg/context"
 	"testing"
 )
 
 func TestNoopClient(t *testing.T) {
 	client := NewNoopClient()
-	ctx := context.Background()
-
-	if err := client.Track(ctx, "test", nil); err != nil {
-		t.Errorf("Track returned error: %v", err)
+	if !IsNoopClient(client) {
+		t.Error("Expected IsNoopClient to return true for NoopClient")
 	}
 
-	if err := client.Close(); err != nil {
+	// Test AddMetric doesn't panic
+	err := client.AddMetric(context.Background(), Metric{
+		Name:       "test.metric",
+		Value:      42,
+		Dimensions: map[string]string{"test": "value"},
+	})
+	if err != nil {
+		t.Errorf("AddMetric returned error: %v", err)
+	}
+
+	// Test Close doesn't panic
+	err = client.Close()
+	if err != nil {
 		t.Errorf("Close returned error: %v", err)
 	}
 }
 
 func TestContext(t *testing.T) {
 	client := NewNoopClient()
-	ctx := WithContext(context.Background(), client)
+	ctx := ContextWithClient(context.Background(), client)
 
-	retrieved, ok := FromContext(ctx)
+	retrieved, ok := ClientFromContext(ctx)
 	if !ok {
 		t.Error("Failed to retrieve client from context")
 	}
@@ -30,14 +41,14 @@ func TestContext(t *testing.T) {
 		t.Error("Retrieved client does not match original")
 	}
 
-	_, ok = FromContext(context.Background())
+	_, ok = ClientFromContext(context.Background())
 	if ok {
 		t.Error("Should not find client in empty context")
 	}
 }
 
 func TestProperties(t *testing.T) {
-	props := NewProperties("1.0.0", "darwin", "amd64", "test-uuid")
+	props := kitcontext.NewAppEnvironment("1.0.0", "darwin", "amd64", "test-uuid")
 	if props.CLIVersion != "1.0.0" {
 		t.Error("CLIVersion mismatch")
 	}

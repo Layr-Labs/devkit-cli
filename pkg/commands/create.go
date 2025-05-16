@@ -10,7 +10,6 @@ import (
 	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
@@ -40,10 +39,6 @@ var CreateCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "template-path",
 			Usage: "Direct GitHub URL to use as template (overrides templates.yml)",
-		},
-		&cli.BoolFlag{
-			Name:  "no-telemetry",
-			Usage: "Opt out of anonymous telemetry collection",
 		},
 		&cli.StringFlag{
 			Name:  "env",
@@ -109,18 +104,6 @@ var CreateCommand = &cli.Command{
 			log.Info("Environment: %s", cCtx.String("env"))
 			if cCtx.String("template-path") != "" {
 				log.Info("Template Path: %s", cCtx.String("template-path"))
-			}
-
-			// Log telemetry status (accounting for client type)
-			if cCtx.Bool("no-telemetry") {
-				log.Info("Telemetry: disabled (via flag)")
-			} else {
-				client, ok := telemetry.FromContext(cCtx.Context)
-				if !ok || telemetry.IsNoopClient(client) {
-					log.Info("Telemetry: disabled")
-				} else {
-					log.Info("Telemetry: enabled")
-				}
 			}
 		}
 
@@ -190,8 +173,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Save project settings with telemetry preference
-		telemetryEnabled := !cCtx.Bool("no-telemetry")
-		if err := common.SaveProjectSettings(targetDir, telemetryEnabled); err != nil {
+		if err := common.SaveTelemetrySetting(targetDir, true); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
@@ -267,7 +249,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	}
 
 	// Read config.yaml from config embed and write to target
-	newContent := strings.Replace(config.DefaultConfigYaml, `name = "my-avs"`, fmt.Sprintf(`name = "%s"`, projectName), 1)
+	newContent := strings.Replace(config.DefaultConfigYaml, `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
 	err := os.WriteFile(filepath.Join(destConfigDir, common.BaseConfig), []byte(newContent), 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write %s: %w", common.BaseConfig, err)

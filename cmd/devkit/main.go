@@ -8,25 +8,35 @@ import (
 	"devkit-cli/pkg/commands"
 	"devkit-cli/pkg/commands/keystore"
 	"devkit-cli/pkg/common"
-	devcontext "devkit-cli/pkg/context"
+	kitcontext "devkit-cli/pkg/context"
 	"devkit-cli/pkg/hooks"
 
 	"github.com/urfave/cli/v2"
 )
 
 func main() {
-	ctx := devcontext.WithShutdown(context.Background())
+	ctx := kitcontext.WithShutdown(context.Background())
 
 	app := &cli.App{
-		Name:                   "devkit",
-		Usage:                  "EigenLayer Development Kit",
-		Flags:                  common.GlobalFlags,
+		Name:  "devkit",
+		Usage: "EigenLayer Development Kit",
+		Flags: common.GlobalFlags,
+		Before: func(ctx *cli.Context) error {
+			err := hooks.LoadEnvFile(ctx)
+			if err != nil {
+				return err
+			}
+			hooks.WithAppEnvironment(ctx)
+			return hooks.WithCommandMetricsContext(ctx)
+		},
 		Commands:               []*cli.Command{commands.AVSCommand, keystore.KeystoreCommand},
 		UseShortOptionHandling: true,
 	}
 
-	// Apply both middleware functions to all commands
-	hooks.ApplyMiddleware(app.Commands, hooks.WithEnvLoader, hooks.WithTelemetry)
+	actionChain := hooks.NewActionChain()
+	actionChain.Use(hooks.WithMetricEmission)
+
+	hooks.ApplyMiddleware(app.Commands, actionChain)
 
 	if err := app.RunContext(ctx, os.Args); err != nil {
 		log.Fatal(err)
