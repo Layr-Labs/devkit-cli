@@ -3,6 +3,7 @@ package commands
 import (
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/devnet"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -135,9 +136,15 @@ func DeployContractsAction(cCtx *cli.Context) error {
 			return fmt.Errorf("'context' is not a map")
 		}
 
+		// parse the provided params
+		inputJSON, err := json.Marshal(map[string]interface{}{"context": ctxMap})
+		if err != nil {
+			return fmt.Errorf("marshal context: %w", err)
+		}
+
 		// Run script passing in the context
 		scriptPath := filepath.Join(scriptsDir, name)
-		outMap, err := common.RunTemplateScript(cCtx.Context, scriptPath, ctxMap)
+		outMap, err := common.RunTemplateScript(cCtx.Context, scriptPath, inputJSON)
 		if err != nil {
 			return fmt.Errorf("%s failed: %w", name, err)
 		}
