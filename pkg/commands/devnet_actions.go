@@ -143,7 +143,11 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		}
 
 		// Convert to node for merge
-		outNode := common.InterfaceToNode(outMap)
+		outNode, err := common.InterfaceToNode(outMap)
+		if err != nil {
+			return fmt.Errorf("%s failed: %w", name, err)
+		}
+
 		// Get context node to merge sub-nodes
 		contextNode := common.GetChildByKey(rootNode.Content[0], "context")
 		// Merge output node into authoritative YAML node

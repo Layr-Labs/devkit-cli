@@ -13,22 +13,40 @@ func TestInterfaceNodeRoundTrip(t *testing.T) {
 		"arr": []interface{}{"a", "b"},
 	}
 
-	node := InterfaceToNode(orig)
-	out := NodeToInterface(node)
+	node, err := InterfaceToNode(orig)
+	if err != nil {
+		t.Fatalf("InterfaceToNode failed: %v", err)
+	}
+
+	out, err := NodeToInterface(node)
+	if err != nil {
+		t.Fatalf("NodeToInterface failed: %v", err)
+	}
 
 	if !reflect.DeepEqual(orig, out) {
 		t.Errorf("round-trip failed:\norig=%#v\nout=%#v", orig, out)
 	}
 }
-
 func TestCloneNode(t *testing.T) {
-	node := InterfaceToNode(map[string]interface{}{
+	node, err := InterfaceToNode(map[string]interface{}{
 		"foo": "bar",
 	})
+	if err != nil {
+		t.Fatalf("InterfaceToNode failed: %v", err)
+	}
 	node.HeadComment = "header"
 	clone := CloneNode(node)
 
-	if !reflect.DeepEqual(NodeToInterface(node), NodeToInterface(clone)) {
+	origOut, err := NodeToInterface(node)
+	if err != nil {
+		t.Fatalf("NodeToInterface failed: %v", err)
+	}
+	cloneOut, err := NodeToInterface(clone)
+	if err != nil {
+		t.Fatalf("NodeToInterface failed (clone): %v", err)
+	}
+
+	if !reflect.DeepEqual(origOut, cloneOut) {
 		t.Error("CloneNode failed to preserve content")
 	}
 	if clone == node {
@@ -40,31 +58,44 @@ func TestCloneNode(t *testing.T) {
 }
 
 func TestDeepMerge(t *testing.T) {
-	dst := InterfaceToNode(map[string]interface{}{
+	dst, err := InterfaceToNode(map[string]interface{}{
 		"key": "old",
 		"obj": map[string]interface{}{"a": 1},
 	})
-	src := InterfaceToNode(map[string]interface{}{
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := InterfaceToNode(map[string]interface{}{
 		"key": "new",
 		"obj": map[string]interface{}{"b": 2},
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	merged := DeepMerge(dst, src)
-	out := NodeToInterface(merged).(map[string]interface{})
-
-	if out["key"] != "new" {
-		t.Errorf("expected 'new', got %v", out["key"])
+	out, err := NodeToInterface(merged)
+	if err != nil {
+		t.Fatal(err)
 	}
-	obj := out["obj"].(map[string]interface{})
+	result := out.(map[string]interface{})
+
+	if result["key"] != "new" {
+		t.Errorf("expected 'new', got %v", result["key"])
+	}
+	obj := result["obj"].(map[string]interface{})
 	if obj["a"] != 1 || obj["b"] != 2 {
 		t.Errorf("merge failed: obj = %v", obj)
 	}
 }
 
 func TestGetChildByKey(t *testing.T) {
-	node := InterfaceToNode(map[string]interface{}{
+	node, err := InterfaceToNode(map[string]interface{}{
 		"foo": "bar",
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	val := GetChildByKey(node, "foo")
 	if val == nil || val.Value != "bar" {
 		t.Errorf("expected 'bar', got %v", val)
@@ -78,11 +109,14 @@ func TestLoadWriteYAML(t *testing.T) {
 	tmp := "test.yaml"
 	defer os.Remove(tmp)
 
-	node := InterfaceToNode(map[string]interface{}{
+	node, err := InterfaceToNode(map[string]interface{}{
 		"hello": "world",
 	})
-	err := WriteYAML(tmp, node)
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := WriteYAML(tmp, node); err != nil {
 		t.Fatal(err)
 	}
 
@@ -90,7 +124,12 @@ func TestLoadWriteYAML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if NodeToInterface(readNode).(map[string]interface{})["hello"] != "world" {
+
+	out, err := NodeToInterface(readNode)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.(map[string]interface{})["hello"] != "world" {
 		t.Error("LoadYAML failed to preserve data")
 	}
 }
