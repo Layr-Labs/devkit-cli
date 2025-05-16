@@ -28,3 +28,6 @@ Thumbs.db
 
 .git-submodule-cache
 .git-template-cache
+
+# Release outputs
+temp_external
