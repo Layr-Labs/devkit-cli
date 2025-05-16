@@ -1,27 +1,15 @@
 package template
 
 import (
-	"os"
-	"path/filepath"
+	"devkit-cli/config"
 	"testing"
 )
-
-func writeTempConfigFile(t *testing.T, content string) string {
-	t.Helper()
-	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "templates.yml")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		t.Fatalf("Failed to write config file: %v", err)
-	}
-	return path
-}
 
 func TestGetTemplateURLs_Comprehensive(t *testing.T) {
 	tests := []struct {
 		name                string
-		configContent       string
-		arch                string
-		lang                string
+		yamlContent         string
+		arch, lang          string
 		wantMainURL         string
 		wantMainCommit      string
 		wantContractsURL    string
@@ -29,7 +17,7 @@ func TestGetTemplateURLs_Comprehensive(t *testing.T) {
 	}{
 		{
 			name: "with full data including contracts",
-			configContent: `
+			yamlContent: `
 architectures:
   task:
     languages:
@@ -51,7 +39,7 @@ architectures:
 		},
 		{
 			name: "missing contracts block",
-			configContent: `
+			yamlContent: `
 architectures:
   task:
     languages:
@@ -68,7 +56,7 @@ architectures:
 		},
 		{
 			name: "missing commit and contracts",
-			configContent: `
+			yamlContent: `
 architectures:
   task:
     languages:
@@ -84,7 +72,7 @@ architectures:
 		},
 		{
 			name: "nonexistent architecture",
-			configContent: `
+			yamlContent: `
 architectures:
   task:
     languages:
@@ -100,7 +88,7 @@ architectures:
 		},
 		{
 			name: "nonexistent language",
-			configContent: `
+			yamlContent: `
 architectures:
   task:
     languages:
@@ -116,8 +104,8 @@ architectures:
 			wantContractsCommit: "",
 		},
 		{
-			name: "contracts section present, but missing solidity",
-			configContent: `
+			name: "contracts present, but missing solidity",
+			yamlContent: `
 architectures:
   task:
     languages:
@@ -141,17 +129,17 @@ architectures:
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			path := writeTempConfigFile(t, tc.configContent)
-			oldConfigPath := configPath
-			configPath = path
-			defer func() { configPath = oldConfigPath }()
+			// Inject custom YAML content
+			config.TemplatesYaml = tc.yamlContent
 
 			cfg, err := LoadConfig()
 			if err != nil {
 				t.Fatalf("Failed to load config: %v", err)
 			}
 
-			mainURL, mainCommit, contractsURL, contractsCommit := GetTemplateURLs(cfg, tc.arch, tc.lang)
+			mainURL, mainCommit, contractsURL, contractsCommit :=
+				GetTemplateURLs(cfg, tc.arch, tc.lang)
+
 			if mainURL != tc.wantMainURL {
 				t.Errorf("mainURL = %q, want %q", mainURL, tc.wantMainURL)
 			}

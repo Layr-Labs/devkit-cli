@@ -2,7 +2,6 @@ package template
 
 import (
 	"devkit-cli/config"
-
 	"gopkg.in/yaml.v3"
 )
 
