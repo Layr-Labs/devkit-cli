@@ -12,14 +12,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func TestTestCommand(t *testing.T) {
+func TestCallCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create a mock Makefile.Devkit
 	mockMakefile := `
-.PHONY: test
+.PHONY: call
 test:
-	@echo "Mock test executed"
+	@echo "Mock call executed"
 	`
 	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
@@ -40,23 +40,23 @@ test:
 	}()
 
 	app := &cli.App{
-		Name:     "test",
-		Commands: []*cli.Command{TestCommand},
+		Name:     "call",
+		Commands: []*cli.Command{CallCommand},
 	}
 
-	if err := app.Run([]string{"app", "test"}); err != nil {
+	if err := app.Run([]string{"app", "call"}); err != nil {
 		t.Errorf("Failed to execute run command: %v", err)
 	}
 }
 
-func TestCancelledTestCommand(t *testing.T) {
+func TestCancelledCallCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create a mock Makefile.Devkit
 	mockMakefile := `
-.PHONY: test
+.PHONY: call
 run:
-	@echo "Mock test executed"
+	@echo "Mock call executed"
 	`
 	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
@@ -78,24 +78,24 @@ run:
 
 	ctx, cancel := context.WithCancel(context.Background())
 	app := &cli.App{
-		Name:     "test",
-		Commands: []*cli.Command{TestCommand},
+		Name:     "call",
+		Commands: []*cli.Command{CallCommand},
 	}
 
 	result := make(chan error)
 	go func() {
-		result <- app.RunContext(ctx, []string{"app", "test"})
+		result <- app.RunContext(ctx, []string{"app", "call"})
 	}()
 	cancel()
 
 	select {
 	case err = <-result:
 		if err != nil && errors.Is(err, context.Canceled) {
-			t.Log("Test exited cleanly after context cancellation")
+			t.Log("Call exited cleanly after context cancellation")
 		} else {
-			t.Errorf("Test returned with error after context cancellation: %v", err)
+			t.Errorf("Call returned with error after context cancellation: %v", err)
 		}
 	case <-time.After(1 * time.Second):
-		t.Error("Test did not exit after context cancellation")
+		t.Error("Call did not exit after context cancellation")
 	}
 }

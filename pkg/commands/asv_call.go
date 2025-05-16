@@ -8,9 +8,9 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-// TestCommand defines the "test" command
-var TestCommand = &cli.Command{
-	Name:  "test",
+// CallCommand defines the "call" command
+var CallCommand = &cli.Command{
+	Name:  "call",
 	Usage: "Submits tasks to the local devnet, triggers off-chain execution, and aggregates results",
 	Flags: append([]cli.Flag{}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
@@ -18,7 +18,7 @@ var TestCommand = &cli.Command{
 			log.Printf("Testing AVS tasks...")
 		}
 
-		err := common.CallDevkitMakeTarget(cCtx.Context, "test")
+		err := common.CallDevkitMakeTarget(cCtx.Context, "call")
 		if err != nil {
 			return fmt.Errorf("failed to call make run in Makefile.Devkit %w", err)
 		}
