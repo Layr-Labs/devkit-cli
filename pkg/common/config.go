@@ -11,52 +11,52 @@ import (
 const DefaultConfigWithContextConfigPath = "config"
 
 type ConfigBlock struct {
-	Project ProjectConfig `yaml:"project"`
+	Project ProjectConfig `json:"project" yaml:"project"`
 }
 
 type ProjectConfig struct {
-	Name    string `yaml:"name"`
-	Version string `yaml:"version"`
-	Context string `yaml:"context"`
+	Name    string `json:"name" yaml:"name"`
+	Version string `json:"version" yaml:"version"`
+	Context string `json:"context" yaml:"context"`
 }
 
 type ForkConfig struct {
-	Block int    `yaml:"block"`
-	Url   string `yaml:"url"`
+	Block int    `json:"block" yaml:"block"`
+	Url   string `json:"url" yaml:"url"`
 }
 
 type OperatorSpec struct {
-	ECDSAKey            string `json:"ecdsa_key"`
-	BlsKeystorePath     string `json:"bls_keystore_path"`
-	BlsKeystorePassword string `json:"bls_keystore_password"`
-	Stake               string `yaml:"stake"`
+	ECDSAKey            string `json:"ecdsa_key" yaml:"ecdsa_key"`
+	BlsKeystorePath     string `json:"bls_keystore_path" yaml:"bls_keystore_path"`
+	BlsKeystorePassword string `json:"bls_keystore_password" yaml:"bls_keystore_password"`
+	Stake               string `json:"stake" yaml:"stake"`
 }
 
 type ChainContextConfig struct {
-	Name                  string         `yaml:"name"`
-	Chains                []ChainConfig  `yaml:"chains"`
-	DeployerPrivateKey    string         `json:"deployer_private_key"`
-	AppDeployerPrivateKey string         `json:"app_private_key"`
-	Operators             []OperatorSpec `yaml:"operators"`
-	Avs                   AvsConfig      `yaml:"avs"`
+	Name                  string         `json:"name" yaml:"name"`
+	Chains                []ChainConfig  `json:"chains" yaml:"chains"`
+	DeployerPrivateKey    string         `json:"deployer_private_key" yaml:"deployer_private_key"`
+	AppDeployerPrivateKey string         `json:"app_private_key" yaml:"app_private_key"`
+	Operators             []OperatorSpec `json:operators" yaml:"operators"`
+	Avs                   AvsConfig      `json:"avs" yaml:"avs"`
 }
 
 type AvsConfig struct {
-	Address          string `json:"address"`
-	MetadataUri      string `json:"metadata_url"`
-	RegistrarAddress string `json:"registrar_address"`
+	Address          string `json:"address" yaml:"address"`
+	MetadataUri      string `json:"metadata_url" yaml:"metadata_url"`
+	RegistrarAddress string `json:"registrar_address" yaml:"registrar_address"`
 }
 
 type ChainConfig struct {
-	Name    string      `yaml:"name"`
-	ChainID int         `yaml:"chain_id"`
-	RPCURL  string      `json:"rpc_url"`
-	Fork    *ForkConfig `yaml:"fork"`
+	Name    string      `json:"name" yaml:"name"`
+	ChainID int         `json:"chain_id" yaml:"chain_id"`
+	RPCURL  string      `json:"rpc_url" yaml:"rpc_url"`
+	Fork    *ForkConfig `json:"fork" yaml:"fork"`
 }
 
 type ConfigWithContextConfig struct {
-	Config  ConfigBlock                   `yaml:"config"`
-	Context map[string]ChainContextConfig `yaml:"context"`
+	Config  ConfigBlock                   `json:"config" yaml:"config"`
+	Context map[string]ChainContextConfig `json:"context" yaml:"context"`
 }
 
 func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {
