@@ -93,7 +93,7 @@ Edit settings directly via CLI:
 devkit avs config --edit --path <path to the config.yaml or contexts/devnet.yaml file>
 ```
 
-Alternatively, manually edit `` in a text editor of your choice.
+Alternatively, manually edit the config files in a text editor of your choice.
 
 > \[!IMPORTANT]
 > These commands must be run from your AVS project's root directory.
