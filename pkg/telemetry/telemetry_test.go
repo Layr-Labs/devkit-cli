@@ -49,6 +49,9 @@ func TestContext(t *testing.T) {
 
 func TestProperties(t *testing.T) {
 	props := kitcontext.NewAppEnvironment("darwin", "amd64", "test-uuid")
+	if props.CLIVersion == "" {
+		t.Error("Version not using default")
+	}
 	if props.OS != "darwin" {
 		t.Error("OS mismatch")
 	}
