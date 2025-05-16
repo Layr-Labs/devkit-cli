@@ -14,6 +14,7 @@ import (
 
 func TestCallCommand(t *testing.T) {
 	tmpDir := t.TempDir()
+	makefilePath := filepath.Join(tmpDir, "contracts")
 
 	// Create a mock Makefile.Devkit
 	mockMakefile := `
@@ -21,7 +22,13 @@ func TestCallCommand(t *testing.T) {
 test:
 	@echo "Mock call executed"
 	`
-	if err := os.WriteFile(filepath.Join(tmpDir, common.Makefile), []byte(mockMakefile), 0644); err != nil {
+	// Create Makefiles dir
+	if err := os.MkdirAll(makefilePath, 0755); err != nil {
+		t.Fatalf("failed to create directory (%s): %v", makefilePath, err)
+	}
+
+	// Write file to tmpDir
+	if err := os.WriteFile(filepath.Join(makefilePath, common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,6 +58,7 @@ test:
 
 func TestCancelledCallCommand(t *testing.T) {
 	tmpDir := t.TempDir()
+	makefilePath := filepath.Join(tmpDir, "contracts")
 
 	// Create a mock Makefile.Devkit
 	mockMakefile := `
@@ -58,7 +66,14 @@ func TestCancelledCallCommand(t *testing.T) {
 run:
 	@echo "Mock call executed"
 	`
-	if err := os.WriteFile(filepath.Join(tmpDir, common.Makefile), []byte(mockMakefile), 0644); err != nil {
+
+	// Create Makefiles dir
+	if err := os.MkdirAll(makefilePath, 0755); err != nil {
+		t.Fatalf("failed to create directory (%s): %v", makefilePath, err)
+	}
+
+	// Write file to tmpDir
+	if err := os.WriteFile(filepath.Join(makefilePath, common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
