@@ -34,19 +34,34 @@ func WriteYAML(path string, node *yaml.Node) error {
 }
 
 // InterfaceToNode converts a Go value (typically map[string]interface{}) into a *yaml.Node
-func InterfaceToNode(v interface{}) *yaml.Node {
+func InterfaceToNode(v interface{}) (*yaml.Node, error) {
 	var node yaml.Node
-	b, _ := yaml.Marshal(v)
-	yaml.Unmarshal(b, &node)
-	return node.Content[0]
+	b, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("marshal failed: %w", err)
+	}
+	if err := yaml.Unmarshal(b, &node); err != nil {
+		return nil, fmt.Errorf("unmarshal to node failed: %w", err)
+	}
+	if len(node.Content) == 0 {
+		return nil, fmt.Errorf("empty YAML node content")
+	}
+	return node.Content[0], nil
 }
 
 // NodeToInterface converts a *yaml.Node back into a Go interface{}
-func NodeToInterface(node *yaml.Node) interface{} {
+func NodeToInterface(node *yaml.Node) (interface{}, error) {
+	b, err := yaml.Marshal(node)
+	if err != nil {
+		return nil, fmt.Errorf("marshal node failed: %w", err)
+	}
+
 	var out interface{}
-	b, _ := yaml.Marshal(node)
-	yaml.Unmarshal(b, &out)
-	return CleanYAML(out)
+	if err := yaml.Unmarshal(b, &out); err != nil {
+		return nil, fmt.Errorf("unmarshal to interface failed: %w", err)
+	}
+
+	return CleanYAML(out), nil
 }
 
 // Normalizes YAML-parsed structures
