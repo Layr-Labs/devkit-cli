@@ -10,7 +10,7 @@ import (
 )
 
 // Embedded devkit version from release
-var embeddedDevkitReleaseVersion string
+var embeddedDevkitReleaseVersion = "Development"
 
 // WithShutdown creates a new context that will be cancelled on SIGTERM/SIGINT
 func WithShutdown(ctx context.Context) context.Context {
