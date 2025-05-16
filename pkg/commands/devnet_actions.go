@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/urfave/cli/v2"
-	"gopkg.in/yaml.v3"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
@@ -123,27 +122,33 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		"getOperatorRegistrationMetadata",
 	}
 
-	// Convert authoritative YAML node to input map
-	var rootMap map[string]interface{}
-	b, _ := yaml.Marshal(rootNode)
-	if err := yaml.Unmarshal(b, &rootMap); err != nil {
-		return fmt.Errorf("yaml to map: %w", err)
+	// Check for root content
+	if len(rootNode.Content) == 0 {
+		return fmt.Errorf("empty YAML root node")
 	}
-	rootMap = common.CleanYAML(rootMap).(map[string]interface{})
 
-	// Run all of the scripts in sequence passing overloaded context to each
+	// Check for context
+	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
+	if contextNode == nil {
+		return fmt.Errorf("missing 'context' key in ./config/contexts/devnet.yaml")
+	}
+
+	// Loop scripts with cloned context
 	for _, name := range scriptNames {
-		// Extract context
-		ctxRaw, ok := rootMap["context"]
-		if !ok {
-			return fmt.Errorf("missing 'context' key")
-		}
-		ctxMap, ok := ctxRaw.(map[string]interface{})
-		if !ok {
-			return fmt.Errorf("'context' is not a map")
+		// Clone context node and convert to map
+		clonedCtxNode := common.CloneNode(contextNode)
+		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
+		if err != nil {
+			return fmt.Errorf("context decode failed: %w", err)
 		}
 
-		// parse the provided params
+		// Check context is a map
+		ctxMap, ok := ctxInterface.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("cloned context is not a map")
+		}
+
+		// Parse the provided params
 		inputJSON, err := json.Marshal(map[string]interface{}{"context": ctxMap})
 		if err != nil {
 			return fmt.Errorf("marshal context: %w", err)
@@ -159,17 +164,10 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		// Convert to node for merge
 		outNode, err := common.InterfaceToNode(outMap)
 		if err != nil {
-			return fmt.Errorf("%s failed: %w", name, err)
+			return fmt.Errorf("%s output invalid: %w", name, err)
 		}
 
-		// Bound check to make sure content exists
-		if len(rootNode.Content) == 0 {
-			return fmt.Errorf("%s failed: %w", name, err)
-		}
-
-		// Get context node to merge sub-nodes
-		contextNode := common.GetChildByKey(rootNode.Content[0], "context")
-		// Merge output node into authoritative YAML node
+		// Merge output into original context node
 		common.DeepMerge(contextNode, outNode)
 	}
 
