@@ -4,6 +4,9 @@ import (
 	"context"
 )
 
+// Embedded devkit telemetry api key from release
+var embeddedTelemetryApiKey string
+
 // Client defines the interface for telemetry operations
 type Client interface {
 	// AddMetric emits a single metric

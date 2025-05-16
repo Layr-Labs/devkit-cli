@@ -69,9 +69,6 @@ func (c *PostHogClient) Close() error {
 	return nil
 }
 
-// Embedded API key, can be set during build time
-var embeddedPostHogAPIKey string
-
 func getPostHogAPIKey() string {
 	// Priority order:
 	// 1. Environment variable
@@ -97,8 +94,8 @@ func getPostHogAPIKey() string {
 		}
 	}
 
-	// Finally, check embedded key
-	return embeddedPostHogAPIKey
+	// return embedded key if no overrides provided
+	return embeddedTelemetryApiKey
 }
 
 func getPostHogEndpoint() string {

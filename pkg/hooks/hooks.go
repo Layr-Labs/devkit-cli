@@ -110,7 +110,6 @@ func setupTelemetry(ctx *cli.Context) telemetry.Client {
 
 func WithAppEnvironment(ctx *cli.Context) {
 	ctx.Context = kitcontext.WithAppEnvironment(ctx.Context, kitcontext.NewAppEnvironment(
-		ctx.App.Version,
 		runtime.GOOS,
 		runtime.GOARCH,
 		common.GetProjectUUID(),
