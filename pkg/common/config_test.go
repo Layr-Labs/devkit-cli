@@ -34,8 +34,8 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "0.1.0", cfg.Config.Project.Version)
 	assert.Equal(t, "devnet", cfg.Config.Project.Context)
 
-	assert.Equal(t, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].DeployerPrivateKey)
-	assert.Equal(t, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].AppDeployerPrivateKey)
+	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].DeployerPrivateKey)
+	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].AppDeployerPrivateKey)
 
 	assert.Equal(t, "keystores/operator1.keystore.json", cfg.Context["devnet"].Operators[0].BlsKeystorePath)
 	assert.Equal(t, "keystores/operator2.keystore.json", cfg.Context["devnet"].Operators[1].BlsKeystorePath)
@@ -45,12 +45,10 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "1000ETH", cfg.Context["devnet"].Operators[1].Stake)
 
 	assert.Equal(t, "devnet", cfg.Context["devnet"].Name)
-	assert.Equal(t, "l1", cfg.Context["devnet"].Chains[0].Name)
-	assert.Equal(t, "l2", cfg.Context["devnet"].Chains[1].Name)
-	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[0].RPCURL)
-	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[1].RPCURL)
-	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
-	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
+	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l1"].RPCURL)
+	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l2"].RPCURL)
+	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
+	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.Address)
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)

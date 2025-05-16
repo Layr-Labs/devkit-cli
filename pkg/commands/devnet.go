@@ -34,6 +34,12 @@ var DevnetCommand = &cli.Command{
 			Action: StartDevnetAction,
 		},
 		{
+			Name:   "deploy-contracts",
+			Usage:  "Deploy all L1/L2 and AVS contracts to devnet",
+			Flags:  []cli.Flag{},
+			Action: DeployContractsAction,
+		},
+		{
 			Name:  "stop",
 			Usage: "Stops and removes all containers and resources",
 			Flags: []cli.Flag{

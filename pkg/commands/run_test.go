@@ -4,15 +4,17 @@ import (
 	"context"
 	"devkit-cli/pkg/common"
 	"errors"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/urfave/cli/v2"
 )
 
 func TestRunCommand(t *testing.T) {
 	tmpDir := t.TempDir()
+	makefilePath := filepath.Join(tmpDir, "contracts")
 
 	// Create a mock Makefile.Devkit
 	mockMakefile := `
@@ -20,7 +22,13 @@ func TestRunCommand(t *testing.T) {
 run:
 	@echo "Mock run executed"
 	`
-	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+	// Create Makefiles dir
+	if err := os.MkdirAll(makefilePath, 0755); err != nil {
+		t.Fatalf("failed to create directory (%s): %v", makefilePath, err)
+	}
+
+	// Write file to tmpDir
+	if err := os.WriteFile(filepath.Join(makefilePath, common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -50,6 +58,7 @@ run:
 
 func TestCancelledRunCommand(t *testing.T) {
 	tmpDir := t.TempDir()
+	makefilePath := filepath.Join(tmpDir, "contracts")
 
 	// Create a mock Makefile.Devkit
 	mockMakefile := `
@@ -57,7 +66,14 @@ func TestCancelledRunCommand(t *testing.T) {
 run:
 	@echo "Mock run executed"
 	`
-	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+
+	// Create Makefiles dir
+	if err := os.MkdirAll(makefilePath, 0755); err != nil {
+		t.Fatalf("failed to create directory (%s): %v", makefilePath, err)
+	}
+
+	// Write file to tmpDir
+	if err := os.WriteFile(filepath.Join(makefilePath, common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v3"
 )
 
 const DefaultConfigWithContextConfigPath = "config"
@@ -33,30 +33,40 @@ type OperatorSpec struct {
 }
 
 type ChainContextConfig struct {
-	Name                  string         `json:"name" yaml:"name"`
-	Chains                []ChainConfig  `json:"chains" yaml:"chains"`
-	DeployerPrivateKey    string         `json:"deployer_private_key" yaml:"deployer_private_key"`
-	AppDeployerPrivateKey string         `json:"app_private_key" yaml:"app_private_key"`
-	Operators             []OperatorSpec `json:"operators" yaml:"operators"`
-	Avs                   AvsConfig      `json:"avs" yaml:"avs"`
+	Name                  string                 `json:"name" yaml:"name"`
+	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
+	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
+	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`
+	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
+	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
+	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
 }
 
 type AvsConfig struct {
 	Address          string `json:"address" yaml:"address"`
 	MetadataUri      string `json:"metadata_url" yaml:"metadata_url"`
+	AVSPrivateKey    string `json:"avs_private_key" yaml:"avs_private_key"`
 	RegistrarAddress string `json:"registrar_address" yaml:"registrar_address"`
 }
 
 type ChainConfig struct {
-	Name    string      `json:"name" yaml:"name"`
 	ChainID int         `json:"chain_id" yaml:"chain_id"`
 	RPCURL  string      `json:"rpc_url" yaml:"rpc_url"`
 	Fork    *ForkConfig `json:"fork" yaml:"fork"`
 }
 
+type DeployedContract struct {
+	Name    string `json:"name" yaml:"name"`
+	Address string `json:"address" yaml:"address"`
+}
 type ConfigWithContextConfig struct {
 	Config  ConfigBlock                   `json:"config" yaml:"config"`
 	Context map[string]ChainContextConfig `json:"context" yaml:"context"`
+}
+
+type ContextConfig struct {
+	Version string             `json:"version" yaml:"version"`
+	Context ChainContextConfig `json:"context" yaml:"context"`
 }
 
 func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {

@@ -23,17 +23,6 @@ func IsVerboseEnabled(cCtx *cli.Context, cfg *ConfigWithContextConfig) bool {
 	return true
 }
 
-// GetChainByName returns the pointer to a ChainConfig with the specified name,
-// or nil and false if not found.
-func GetChainByName(ctx ChainContextConfig, name string) (*ChainConfig, bool) {
-	for i, chain := range ctx.Chains {
-		if chain.Name == name {
-			return &ctx.Chains[i], true
-		}
-	}
-	return nil, false
-}
-
 // Get logger for the env we're in
 func GetLogger() (iface.Logger, iface.ProgressTracker) {
 	var log iface.Logger

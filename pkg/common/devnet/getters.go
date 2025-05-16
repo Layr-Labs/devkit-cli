@@ -35,7 +35,7 @@ func FileExistsInRoot(filename string) bool {
 }
 
 func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName string) (string, error) {
-	chainConfig, found := common.GetChainByName(cfg.Context[CONTEXT], chainName)
+	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
 	if !found {
 		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
 	}
