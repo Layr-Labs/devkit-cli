@@ -43,8 +43,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			log.Info("Running in headless mode")
 		}
 	}
-	// docker-compose for anvil devnet and anvil state.json
-	composePath, statePath := devnet.WriteEmbeddedArtifacts()
+	// docker-compose for anvil devnet
+	composePath := devnet.WriteEmbeddedArtifacts()
 	fork_url, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
 	if err != nil {
 		return fmt.Errorf("%w", err)
@@ -64,7 +64,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		fmt.Sprintf("DEVNET_PORT=%d", port),
 		"FORK_RPC_URL="+fork_url,
 		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
-		"STATE_PATH="+statePath,
 		"AVS_CONTAINER_NAME="+containerName,
 	)
 	if err := cmd.Run(); err != nil {
