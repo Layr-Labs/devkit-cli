@@ -2,6 +2,7 @@ package context
 
 import (
 	"context"
+	"devkit-cli/pkg/common/logger"
 	"fmt"
 	"os"
 	"os/signal"
@@ -37,6 +38,7 @@ type AppEnvironment struct {
 }
 
 func NewAppEnvironment(os string, arch string, projectUuid string) *AppEnvironment {
+	logger.NewLogger().Info("embedded application release version: %s", embeddedDevkitReleaseVersion)
 	return &AppEnvironment{
 		CLIVersion:  embeddedDevkitReleaseVersion,
 		OS:          os,
