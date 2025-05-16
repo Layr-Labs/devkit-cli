@@ -16,7 +16,6 @@ builds:
     env:
       - CGO_ENABLED=0
     goos:
-      - linux
       - darwin
     goarch:
       - amd64
