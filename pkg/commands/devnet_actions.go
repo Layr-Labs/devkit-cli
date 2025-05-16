@@ -88,7 +88,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Deploy the contracts after starting next work unless skipped
 	if !cCtx.Bool("skip-deploy-contracts") {
-		DeployContractsAction(cCtx)
+		if err := DeployContractsAction(cCtx); err != nil {
+			return fmt.Errorf("deploy-contracts failed: %w", err)
+		}
 	}
 
 	return nil

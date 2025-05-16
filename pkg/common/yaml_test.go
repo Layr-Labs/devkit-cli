@@ -221,7 +221,10 @@ func TestGetChildByKey_NilNode(t *testing.T) {
 func TestLoadYAML_InvalidYAML(t *testing.T) {
 	file := "invalid.yaml"
 	defer os.Remove(file)
-	os.WriteFile(file, []byte(":\n - bad"), 0644)
+
+	if err := os.WriteFile(file, []byte(":\n - bad"), 0644); err != nil {
+		t.Fatalf("failed to write invalid YAML: %v", err)
+	}
 
 	_, err := LoadYAML(file)
 	if err == nil {
