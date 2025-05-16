@@ -3,7 +3,6 @@ package commands
 import (
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/testutils"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -63,38 +62,7 @@ var BuildCommand = &cli.Command{
 			return err
 		}
 
-		// Build contracts if available
-		if err := buildContractsIfAvailable(cCtx); err != nil {
-			return err
-		}
-
 		log.Info("Build completed successfully")
 		return nil
 	},
-}
-
-// buildContractsIfAvailable builds the contracts if the contracts directory exists
-func buildContractsIfAvailable(cCtx *cli.Context) error {
-	log, _ := common.GetLogger()
-	contractsDir := common.ContractsDir
-	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
-		return nil
-	}
-
-	configPath := filepath.Join(contractsDir, common.ContractsMakefile)
-	log.Info(configPath)
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return fmt.Errorf("contracts directory exists but no %s found", common.ContractsMakefile)
-	}
-
-	cmd := exec.CommandContext(cCtx.Context, "make", "-f", common.ContractsMakefile, "build")
-	cmd.Dir = contractsDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if cmdErr := cmd.Run(); cmdErr != nil {
-		return fmt.Errorf("build failed %w", cmdErr)
-	}
-
-	return nil
 }
