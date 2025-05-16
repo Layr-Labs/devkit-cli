@@ -21,7 +21,7 @@ func TestCallCommand(t *testing.T) {
 test:
 	@echo "Mock call executed"
 	`
-	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -58,7 +58,7 @@ func TestCancelledCallCommand(t *testing.T) {
 run:
 	@echo "Mock call executed"
 	`
-	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 

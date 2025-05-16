@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -38,7 +39,11 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 	// All operator keys from [operator]
 	// We only intend to fund for devnet, so hardcoding to `CONTEXT` is fine
 	for _, key := range cfg.Context[CONTEXT].Operators {
-		privateKey, _ := crypto.HexToECDSA(key.ECDSAKey)
+		cleanedKey := strings.TrimPrefix(key.ECDSAKey, "0x")
+		privateKey, err := crypto.HexToECDSA(cleanedKey)
+		if err != nil {
+			log.Fatalf("invalid private key %q: %v", key.ECDSAKey, err)
+		}
 		fundIfNeeded(client, crypto.PubkeyToAddress(privateKey.PublicKey), key.ECDSAKey, rpcURL)
 	}
 

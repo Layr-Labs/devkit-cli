@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"devkit-cli/config"
-	"devkit-cli/pkg/commands/keystore"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/logger"
 	"devkit-cli/pkg/template"
@@ -298,7 +297,7 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 	}
 
 	// Read files embedded keystore
-	files := keystore.KeystoreEmbeds
+	files := config.KeystoreEmbeds
 
 	// Write files to destKeystoreDir
 	for fileName, file := range files {

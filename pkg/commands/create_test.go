@@ -127,18 +127,24 @@ func TestCreateCommand(t *testing.T) {
 	// Test 4: Test build after project creation
 	projectPath := filepath.Join(tmpDir, "test-project")
 
-	// Create a mock Makefile.Devkit in the project directory
+	// Create a mock Devkit in the contracts directory
 	mockMakefile := `
 .PHONY: build
 build:
 	@echo "Mock build executed"
 	`
-	if err := os.WriteFile(filepath.Join(projectPath, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectPath, "contracts", common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	// Create a mock Makefile.Devkit in the contracts directory
-	if err := os.WriteFile(filepath.Join(contractsDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+	// Create build script
+	scriptsDir := filepath.Join(projectPath, ".devkit", "scripts")
+	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	buildScript := `#!/bin/bash
+	echo "Mock create executed"`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "build"), []byte(buildScript), 0755); err != nil {
 		t.Fatal(err)
 	}
 
