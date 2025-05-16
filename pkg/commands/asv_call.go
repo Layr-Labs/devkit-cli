@@ -4,6 +4,7 @@ import (
 	"devkit-cli/pkg/common"
 	"fmt"
 	"log"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 )
@@ -18,7 +19,7 @@ var CallCommand = &cli.Command{
 			log.Printf("Testing AVS tasks...")
 		}
 
-		err := common.CallDevkitMakeTarget(cCtx.Context, "call")
+		err := common.CallMakefileTarget(cCtx.Context, filepath.Join("contracts"), common.Makefile, "call")
 		if err != nil {
 			return fmt.Errorf("failed to call make run in Makefile.Devkit %w", err)
 		}

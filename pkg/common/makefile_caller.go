@@ -7,10 +7,11 @@ import (
 	"os/exec"
 )
 
-// CallDevkitMakeTarget runs a `make <target>` using Makefile.Devkit with context.
-func CallDevkitMakeTarget(ctx context.Context, target string, args ...string) error {
-	cmdArgs := append([]string{"-f", Makefile, target}, args...)
+// CallMakeTarget runs a `make <target>` using Makefile with context.
+func CallMakefileTarget(ctx context.Context, dir string, makefile string, target string, args ...string) error {
+	cmdArgs := append([]string{"-f", makefile, target}, args...)
 	cmd := exec.CommandContext(ctx, "make", cmdArgs...)
+	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
