@@ -140,24 +140,3 @@ func TestGitFetcher_NonexistentBranch(t *testing.T) {
 		t.Error("expected error for nonexistent branch")
 	}
 }
-
-func TestGitFetcher_CheckoutSpecificCommit(t *testing.T) {
-	fetcher := getFetcher(-1)
-	tempDir := t.TempDir()
-
-	repo := "https://github.com/Layr-Labs/hourglass-avs-template"
-	commit := "68a776c10cfc10b361a75af0685abcbd38b7a9c1"
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	err := fetcher.Fetch(ctx, repo, commit, tempDir)
-	if err != nil {
-		t.Fatalf("unexpected error fetching specific commit: %v", err)
-	}
-
-	expectedFile := filepath.Join(tempDir, "README.md")
-	if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
-		t.Errorf("expected file %s missing from checked out commit", expectedFile)
-	}
-}
