@@ -17,7 +17,7 @@ func TestGitFetcher_InvalidURL(t *testing.T) {
 	defer cancel()
 
 	// Test with an invalid URL (should fail)
-	err := fetcher.Fetch(cmdCtx, "invalid-url", tempDir)
+	err := fetcher.Fetch(cmdCtx, "invalid-url", "invalid-commit", tempDir)
 	if err == nil {
 		t.Error("expected error for invalid URL")
 	}
@@ -62,7 +62,7 @@ func TestGitFetcher_ValidRepo(t *testing.T) {
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "", tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo: %v", err)
 	}
@@ -72,6 +72,11 @@ func TestGitFetcher_ValidRepo(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(tempDir, "README.md")); err != nil {
 		t.Log("README file not found — still valid but may have changed")
+	}
+
+	headPath := filepath.Join(tempDir, ".git", "HEAD")
+	if _, err := os.Stat(headPath); err != nil {
+		t.Errorf("expected HEAD file to exist: %v", err)
 	}
 }
 
@@ -85,7 +90,7 @@ func TestGitFetcher_Submodules(t *testing.T) {
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "", tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error cloning repo with submodules: %v", err)
 	}
@@ -106,7 +111,7 @@ func TestGitFetcher_MaxDepth(t *testing.T) {
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "", tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo with depth: %v", err)
 	}
@@ -130,8 +135,29 @@ func TestGitFetcher_NonexistentBranch(t *testing.T) {
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "non-existent", tempDir)
 	if err == nil {
 		t.Error("expected error for nonexistent branch")
+	}
+}
+
+func TestGitFetcher_CheckoutSpecificCommit(t *testing.T) {
+	fetcher := getFetcher(-1)
+	tempDir := t.TempDir()
+
+	repo := "https://github.com/Layr-Labs/hourglass-avs-template"
+	commit := "68a776c10cfc10b361a75af0685abcbd38b7a9c1"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := fetcher.Fetch(ctx, repo, commit, tempDir)
+	if err != nil {
+		t.Fatalf("unexpected error fetching specific commit: %v", err)
+	}
+
+	expectedFile := filepath.Join(tempDir, "README.md")
+	if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
+		t.Errorf("expected file %s missing from checked out commit", expectedFile)
 	}
 }

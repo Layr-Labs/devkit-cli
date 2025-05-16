@@ -126,7 +126,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Get template URLs
-		mainURL, contractsURL, err := getTemplateURLs(cCtx)
+		mainURL, mainCommit, contractsURL, contractsCommit, err := getTemplateUrlsWithCommits(cCtx)
 		if err != nil {
 			return err
 		}
@@ -163,7 +163,7 @@ var CreateCommand = &cli.Command{
 				Verbose:        cCtx.Bool("verbose"),
 			},
 		}
-		if err := fetcher.Fetch(cCtx.Context, mainURL, targetDir); err != nil {
+		if err := fetcher.Fetch(cCtx.Context, mainURL, mainCommit, targetDir); err != nil {
 			return fmt.Errorf("failed to fetch template from %s: %w", mainURL, err)
 		}
 
@@ -174,7 +174,7 @@ var CreateCommand = &cli.Command{
 
 			// Fetch the contracts directory if it does not exist in the template
 			if _, err := os.Stat(contractsDirReadme); os.IsNotExist(err) {
-				if err := fetcher.Fetch(cCtx.Context, contractsURL, contractsDir); err != nil {
+				if err := fetcher.Fetch(cCtx.Context, contractsURL, contractsCommit, contractsDir); err != nil {
 					log.Warn("Failed to fetch contracts template: %v", err)
 				}
 			}
@@ -206,29 +206,26 @@ var CreateCommand = &cli.Command{
 	},
 }
 
-func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
+func getTemplateUrlsWithCommits(cCtx *cli.Context) (string, string, string, string, error) {
 	if templatePath := cCtx.String("template-path"); templatePath != "" {
-		return templatePath, "", nil
+		return templatePath, "", "", "", nil
 	}
 
 	config, err := template.LoadConfig()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to load templates config: %w", err)
+		return "", "", "", "", fmt.Errorf("failed to load templates config: %w", err)
 	}
 
 	arch := cCtx.String("arch")
 	lang := cCtx.String("lang")
 
-	mainURL, contractsURL, err := template.GetTemplateURLs(config, arch, lang)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to get template URLs: %w", err)
-	}
+	mainURL, mainCommit, contractsURL, contractsCommit := template.GetTemplateURLs(config, arch, lang)
 
 	if mainURL == "" {
-		return "", "", fmt.Errorf("no template found for architecture %s and language %s", arch, lang)
+		return "", "", "", "", fmt.Errorf("no template found for architecture %s and language %s", arch, lang)
 	}
 
-	return mainURL, contractsURL, nil
+	return mainURL, mainCommit, contractsURL, contractsCommit, nil
 }
 
 func createProjectDir(targetDir string, overwrite, verbose bool) error {

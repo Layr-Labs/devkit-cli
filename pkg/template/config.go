@@ -21,6 +21,7 @@ type ContractConfig struct {
 
 type Language struct {
 	Template string `yaml:"template"`
+	Commit   string `yaml:"commit"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -37,30 +38,33 @@ func LoadConfig() (*Config, error) {
 
 // GetTemplateURLs retrieves both main and contracts template URLs for the given architecture
 // Returns main template URL, contracts template URL (may be empty), and error
-func GetTemplateURLs(config *Config, arch, lang string) (string, string, error) {
+func GetTemplateURLs(config *Config, arch, lang string) (string, string, string, string) {
 	archConfig, exists := config.Architectures[arch]
 	if !exists {
-		return "", "", nil
+		return "", "", "", ""
 	}
 
 	// Get main template URL
 	langConfig, exists := archConfig.Languages[lang]
 	if !exists {
-		return "", "", nil
+		return "", "", "", ""
 	}
 
 	mainURL := langConfig.Template
 	if mainURL == "" {
-		return "", "", nil
+		return "", "", "", ""
 	}
+	mainCommit := langConfig.Commit
 
 	// Get contracts template URL (default to solidity, no error if missing)
 	contractsURL := ""
+	contractsCommit := ""
 	if archConfig.Contracts != nil {
 		if contractsLang, exists := archConfig.Contracts.Languages["solidity"]; exists {
 			contractsURL = contractsLang.Template
+			contractsCommit = contractsLang.Commit
 		}
 	}
 
-	return mainURL, contractsURL, nil
+	return mainURL, mainCommit, contractsURL, contractsCommit
 }
