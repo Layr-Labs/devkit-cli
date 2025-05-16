@@ -17,9 +17,9 @@ func TestTestCommand(t *testing.T) {
 
 	// Create a mock Makefile.Devkit
 	mockMakefile := `
-.PHONY: run
-run:
-	@echo "Mock run executed"
+.PHONY: test
+test:
+	@echo "Mock test executed"
 	`
 	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
@@ -54,9 +54,9 @@ func TestCancelledTestCommand(t *testing.T) {
 
 	// Create a mock Makefile.Devkit
 	mockMakefile := `
-.PHONY: run
+.PHONY: test
 run:
-	@echo "Mock run executed"
+	@echo "Mock test executed"
 	`
 	if err := os.WriteFile(filepath.Join(tmpDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
