@@ -158,7 +158,20 @@ Optionally, submit tasks directly to the on-chain TaskMailBox contract via a fro
 
 ---
 
-## 📖 Logging and Telemetry
+## Bls keystore 
+You can create and read keystore for bn254 private keys using our cli 
+
+- To create a keystore from a given private key in BigInt
+```bash
+devkit keystore create --key <private key in big int> --path <path to json file(It needs to include the filename ex: ./keystores/operator1.keystore.json)> --password <password for the keystore>
+```
+
+- To read an existing keystore json using the password
+```bash
+devkit keystore read --path <./keystores/operator1.keystore.json> --password <password>
+```
+
+## 📖 Logging
 
 <!-- 
 @TODO: bring this back when we reintroduce config log levels
