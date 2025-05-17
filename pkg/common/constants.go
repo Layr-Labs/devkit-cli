@@ -16,4 +16,10 @@ const (
 
 	// Filename for the config
 	BaseConfig = "config.yaml"
+
+	// Docker open timeout
+	DockerOpenTimeoutSeconds = 10
+
+	// Docker open retry interval in milliseconds
+	DockerOpenRetryIntervalMilliseconds = 500
 )

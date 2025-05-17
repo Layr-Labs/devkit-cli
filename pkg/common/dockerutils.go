@@ -50,11 +50,11 @@ func EnsureDockerIsRunning(ctx context.Context) error {
 	}
 
 	log.Info("⏳ Waiting for Docker to start")
-	ticker := time.NewTicker(500 * time.Millisecond)
+	ticker := time.NewTicker(DockerOpenRetryIntervalMilliseconds * time.Millisecond)
 	defer ticker.Stop()
 
 	start := time.Now()
-	timeout := time.After(10 * time.Second)
+	timeout := time.After(DockerOpenTimeoutSeconds * time.Second)
 
 	var lastErr error
 
