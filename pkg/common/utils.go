@@ -37,3 +37,8 @@ func GetLogger() (iface.Logger, iface.ProgressTracker) {
 
 	return log, tracker
 }
+
+// isCI checks if the code is running in a CI environment like GitHub Actions.
+func isCI() bool {
+	return os.Getenv("CI") == "true"
+}

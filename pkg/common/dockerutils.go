@@ -34,6 +34,17 @@ func EnsureDockerIsRunning(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to launch Docker Desktop: %w", err)
 		}
+	case "linux":
+		if isCI(){
+			// In CI, don't attempt to auto-start Docker. Assume it's pre-installed and running.
+			return nil
+		}else{
+
+			err := exec.Command("systemctl", "start", "docker").Start()
+			if err != nil {
+				return fmt.Errorf("failed to launch Docker Desktop: %w", err)
+			}
+		}
 	default:
 		return fmt.Errorf("unsupported OS for automatic Docker launch! please start Docker manually")
 	}
