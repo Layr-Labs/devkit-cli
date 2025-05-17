@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"context"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/devnet"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,8 +18,11 @@ import (
 func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Check if docker is running, else try to start it
-	err := common.EnsureDockerIsRunning()
-	if err != nil {
+	if err := common.EnsureDockerIsRunning(cCtx.Context); err != nil {
+
+		if errors.Is(err, context.Canceled) {
+			return err // propagate the cancellation directly
+		}
 		return cli.Exit(err.Error(), 1)
 	}
 
@@ -95,7 +100,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 	log, _ := common.GetLogger()
 	// Check if docker is running, else try to start it
-	err := common.EnsureDockerIsRunning()
+	err := common.EnsureDockerIsRunning(cCtx.Context)
 	if err != nil {
 		return cli.Exit(err.Error(), 1)
 	}

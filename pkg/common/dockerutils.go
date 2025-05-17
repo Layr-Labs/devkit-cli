@@ -11,13 +11,13 @@ import (
 )
 
 // EnsureDockerIsRunning checks if Docker is running and attempts to launch Docker Desktop if not.
-func EnsureDockerIsRunning() error {
+func EnsureDockerIsRunning(ctx context.Context) error {
 
 	if !isDockerInstalled() {
 		return fmt.Errorf("docker is not installed. Please install Docker Desktop from https://www.docker.com/products/docker-desktop")
 	}
 
-	if isDockerRunning() {
+	if isDockerRunning(ctx) {
 		return nil
 	}
 
@@ -40,29 +40,38 @@ func EnsureDockerIsRunning() error {
 		return fmt.Errorf("unsupported OS for automatic Docker launch! please start Docker Desktop manually")
 	}
 
-	// Wait for Docker to come online
-	fmt.Print("⏳ Waiting for Docker to start...")
-	for i := 0; i < 20; i++ { // up to 10 seconds
-		if isDockerRunning() {
-			fmt.Println("\n✅ Docker is now running.")
-			return nil
-		}
-		fmt.Print(".")
-		time.Sleep(500 * time.Millisecond)
-	}
+	fmt.Print("⏳ Waiting for Docker to start")
 
-	return fmt.Errorf("timed out waiting for Docker to start. Please start Docker manually")
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	timeout := time.After(10 * time.Second)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timeout:
+			return fmt.Errorf("timed out waiting for Docker to start")
+		case <-ticker.C:
+			if isDockerRunning(ctx) {
+				fmt.Println("\n✅ Docker is now running.")
+				return nil
+			}
+			fmt.Print(".")
+		}
+	}
 }
 
 // isDockerRunning attempts to ping the Docker daemon.
-func isDockerRunning() bool {
+func isDockerRunning(ctx context.Context) bool {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return false
 	}
 	defer cli.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
 	_, err = cli.Ping(ctx)
