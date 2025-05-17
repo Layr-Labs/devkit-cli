@@ -1,13 +1,12 @@
 package hooks
 
 import (
-	"devkit-cli/pkg/common"
 	"fmt"
 	"os"
-	"runtime"
 	"time"
 
-	kitcontext "devkit-cli/pkg/context"
+	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/common/logger"
 	"devkit-cli/pkg/telemetry"
 
 	"github.com/joho/godotenv"
@@ -16,6 +15,7 @@ import (
 
 // EnvFile is the name of the environment file
 const EnvFile = ".env"
+const namespace = "DevKit"
 
 type ActionChain struct {
 	Processors []func(action cli.ActionFunc) cli.ActionFunc
@@ -95,25 +95,17 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 
 func setupTelemetry(ctx *cli.Context) telemetry.Client {
 	// TODO: (brandon c) handle disabled telemetry after private preview.
-	appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context)
+	appEnv, ok := common.AppEnvironmentFromContext(ctx.Context)
 	if !ok {
 		return telemetry.NewNoopClient()
 	}
 
-	phClient, err := telemetry.NewPostHogClient(appEnv, "DevKit")
+	phClient, err := telemetry.NewPostHogClient(appEnv, namespace)
 	if err != nil {
 		return telemetry.NewNoopClient()
 	}
 
 	return phClient
-}
-
-func WithAppEnvironment(ctx *cli.Context) {
-	ctx.Context = kitcontext.WithAppEnvironment(ctx.Context, kitcontext.NewAppEnvironment(
-		runtime.GOOS,
-		runtime.GOARCH,
-		common.GetProjectUUID(),
-	))
 }
 
 func WithMetricEmission(action cli.ActionFunc) cli.ActionFunc {
@@ -153,20 +145,22 @@ func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
 	}
 	defer client.Close()
 
+	l := logger.NewZapLogger()
 	for _, metric := range metrics.Metrics {
 		mDimensions := metric.Dimensions
 		for k, v := range metrics.Properties {
 			mDimensions[k] = v
 		}
-		_ = client.AddMetric(ctx.Context, metric)
+		err = client.AddMetric(ctx.Context, metric)
+		if err != nil {
+			l.Error("failed to add metric", "error", err.Error())
+		}
 	}
 }
 
 func LoadEnvFile(ctx *cli.Context) error {
-	command := ctx.Command.Name
-
 	// Skip loading .env for the create command
-	if command != "create" {
+	if ctx.Command.Name != "create" {
 		if err := loadEnvFile(); err != nil {
 			return err
 		}
@@ -190,7 +184,7 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 	metrics := telemetry.NewMetricsContext()
 	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
-	if appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context); ok {
+	if appEnv, ok := common.AppEnvironmentFromContext(ctx.Context); ok {
 		metrics.Properties["cli_version"] = appEnv.CLIVersion
 		metrics.Properties["os"] = appEnv.OS
 		metrics.Properties["arch"] = appEnv.Arch

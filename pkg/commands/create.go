@@ -173,7 +173,11 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Save project settings with telemetry preference
-		if err := common.SaveTelemetrySetting(targetDir, true); err != nil {
+		appEnv, ok := common.AppEnvironmentFromContext(cCtx.Context)
+		if !ok {
+			return fmt.Errorf("could not determine application environment")
+		}
+		if err := common.SaveProjectIdAndTelemetryToggle(targetDir, appEnv.ProjectUUID, true); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 

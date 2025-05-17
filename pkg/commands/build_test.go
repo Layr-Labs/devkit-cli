@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"devkit-cli/pkg/common"
-	kitcontext "devkit-cli/pkg/context"
 	"devkit-cli/pkg/testutils"
 	"errors"
 	"os"
@@ -128,7 +127,7 @@ echo "Mock build executed"`
 	defer func() { _ = os.Chdir(oldWd) }()
 
 	parentCtx, cancel := context.WithCancel(context.Background())
-	ctx := kitcontext.WithShutdown(parentCtx)
+	ctx := common.WithShutdown(parentCtx)
 
 	app := &cli.App{
 		Name:     "test",

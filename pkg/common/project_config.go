@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,12 +14,8 @@ type ProjectSettings struct {
 	TelemetryEnabled bool   `yaml:"telemetry_enabled"`
 }
 
-const (
-	configFileName = ".config.devkit.yml"
-)
-
-// SaveTelemetrySetting saves project settings to the project directory
-func SaveTelemetrySetting(projectDir string, telemetryEnabled bool) error {
+// SaveProjectIdAndTelemetryToggle saves project settings to the project directory
+func SaveProjectIdAndTelemetryToggle(projectDir string, projectUuid string, telemetryEnabled bool) error {
 	// Try to load existing settings first to preserve UUID if it exists
 	var settings ProjectSettings
 	existingSettings, err := LoadProjectSettings()
@@ -31,7 +26,7 @@ func SaveTelemetrySetting(projectDir string, telemetryEnabled bool) error {
 	} else {
 		// Create new settings with a new UUID
 		settings = ProjectSettings{
-			ProjectUUID:      uuid.New().String(),
+			ProjectUUID:      projectUuid,
 			TelemetryEnabled: telemetryEnabled,
 		}
 	}
@@ -41,7 +36,7 @@ func SaveTelemetrySetting(projectDir string, telemetryEnabled bool) error {
 		return fmt.Errorf("failed to marshal settings: %w", err)
 	}
 
-	configPath := filepath.Join(projectDir, configFileName)
+	configPath := filepath.Join(projectDir, DevkitConfigFile)
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
@@ -49,11 +44,8 @@ func SaveTelemetrySetting(projectDir string, telemetryEnabled bool) error {
 	return nil
 }
 
-// LoadProjectSettings loads project settings from the current directory
-func LoadProjectSettings() (*ProjectSettings, error) {
-	configPath := configFileName
-
-	data, err := os.ReadFile(configPath)
+func loadProjectSettingsFromLocation(location string) (*ProjectSettings, error) {
+	data, err := os.ReadFile(location)
 	if err != nil {
 		return nil, err
 	}
@@ -66,24 +58,37 @@ func LoadProjectSettings() (*ProjectSettings, error) {
 	return &settings, nil
 }
 
-// IsTelemetryEnabled returns whether telemetry is enabled for the project
-// Returns false if config file doesn't exist or telemetry is explicitly disabled
-// TODO: (brandon c) currently unused -- update to use after private preview
-func IsTelemetryEnabled() bool {
-	settings, err := LoadProjectSettings()
-	if err != nil {
-		return false // Config doesn't exist, assume telemetry disabled
-	}
-
-	return settings.TelemetryEnabled
+// LoadProjectSettings loads project settings from the current directory
+func LoadProjectSettings() (*ProjectSettings, error) {
+	return loadProjectSettingsFromLocation(DevkitConfigFile)
 }
 
-// GetProjectUUID returns the project UUID or empty string if not found
-func GetProjectUUID() string {
-	settings, err := LoadProjectSettings()
+func getProjectUUIDFromLocation(location string) string {
+	settings, err := loadProjectSettingsFromLocation(location)
 	if err != nil {
 		return ""
 	}
 
 	return settings.ProjectUUID
+}
+
+// GetProjectUUID returns the project UUID or empty string if not found
+func GetProjectUUID() string {
+	return getProjectUUIDFromLocation(DevkitConfigFile)
+}
+
+// IsTelemetryEnabled returns whether telemetry is enabled for the project
+// Returns false if config file doesn't exist or telemetry is explicitly disabled
+// TODO: (brandon c) currently unused -- update to use after private preview
+func IsTelemetryEnabled() bool {
+	return isTelemetryEnabled(DevkitConfigFile)
+}
+
+func isTelemetryEnabled(location string) bool {
+	settings, err := loadProjectSettingsFromLocation(location)
+	if err != nil {
+		return false // Config doesn't exist, assume telemetry disabled
+	}
+
+	return settings.TelemetryEnabled
 }

@@ -8,14 +8,13 @@ import (
 	"devkit-cli/pkg/commands"
 	"devkit-cli/pkg/commands/keystore"
 	"devkit-cli/pkg/common"
-	kitcontext "devkit-cli/pkg/context"
 	"devkit-cli/pkg/hooks"
 
 	"github.com/urfave/cli/v2"
 )
 
 func main() {
-	ctx := kitcontext.WithShutdown(context.Background())
+	ctx := common.WithShutdown(context.Background())
 
 	app := &cli.App{
 		Name:  "devkit",
@@ -26,7 +25,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			hooks.WithAppEnvironment(ctx)
+			common.WithAppEnvironment(ctx)
 			return hooks.WithCommandMetricsContext(ctx)
 		},
 		Commands:               []*cli.Command{commands.AVSCommand, keystore.KeystoreCommand},
