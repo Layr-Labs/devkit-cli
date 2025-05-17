@@ -80,7 +80,6 @@ func isDockerRunning(ctx context.Context) bool {
 
 // Check if docker is installed
 func isDockerInstalled() bool {
-	cmd := exec.Command("docker", "version", "--format", "'{{.Client.Version}}'")
-	err := cmd.Run()
+	_, err := exec.LookPath("docker")
 	return err == nil
 }
