@@ -2,61 +2,49 @@ package commands
 
 import (
 	"context"
+	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli/v2"
 )
 
 func TestCreateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	mockConfigYaml := `
-version: 0.0.1
-config:
-  project:
-    name: "my-avs"
-    version: "0.1.0"
-    context: "devnet"
-`
+	mockConfigYaml := config.DefaultConfigYaml
 	configDir := filepath.Join("config")
 	err := os.MkdirAll(configDir, 0755)
 	assert.NoError(t, err)
 
 	// Create config/config.yaml in current directory
-	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(mockConfigYaml), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(configDir, common.BaseConfig), []byte(mockConfigYaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Remove(filepath.Join("config", "config.yaml")); err != nil {
+		if err := os.Remove(filepath.Join("config", common.BaseConfig)); err != nil {
 			t.Logf("Failed to remove test file: %v", err)
 		}
 	}()
 
-	devnetYaml := `
-version: 0.0.1
-config:
-  project:
-    name: "my-avs"
-    version: "0.1.0"
-    context: "devnet"
-`
+	devnetYaml := config.ContextYamls["devnet"]
 	contextsDir := filepath.Join(configDir, "contexts")
 	err = os.MkdirAll(contextsDir, 0755)
 	assert.NoError(t, err)
 
-	// Create config/config.yaml in current directory
+	// Create config/context/devnet.yaml in current directory
 	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(devnetYaml), 0644); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := os.Remove(filepath.Join("config", "contexts", "devnet.yaml")); err != nil {
+		if err := os.Remove(filepath.Join(contextsDir, "devnet.yaml")); err != nil {
 			t.Logf("Failed to remove test file: %v", err)
 		}
 	}()
@@ -101,7 +89,7 @@ config:
 			return err
 		}
 
-		// Create eigen.toml
+		// Create config.yaml
 		return copyDefaultConfigToProject(targetDir, projectName, false)
 	}
 
@@ -120,9 +108,9 @@ config:
 	}
 
 	// Verify file exists
-	eigenTomlPath := filepath.Join(tmpDir, "test-project", "config", "config.yaml")
+	eigenTomlPath := filepath.Join(tmpDir, "test-project", "config", common.BaseConfig)
 	if _, err := os.Stat(eigenTomlPath); os.IsNotExist(err) {
-		t.Error("config/config.yaml was not created properly")
+		t.Errorf("config/%s was not created properly", common.BaseConfig)
 	}
 
 	// Verify contracts directory exists
@@ -139,18 +127,24 @@ config:
 	// Test 4: Test build after project creation
 	projectPath := filepath.Join(tmpDir, "test-project")
 
-	// Create a mock Makefile.Devkit in the project directory
+	// Create a mock Devkit in the contracts directory
 	mockMakefile := `
 .PHONY: build
 build:
 	@echo "Mock build executed"
 	`
-	if err := os.WriteFile(filepath.Join(projectPath, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectPath, "contracts", common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	// Create a mock Makefile.Devkit in the contracts directory
-	if err := os.WriteFile(filepath.Join(contractsDir, common.DevkitMakefile), []byte(mockMakefile), 0644); err != nil {
+	// Create build script
+	scriptsDir := filepath.Join(projectPath, ".devkit", "scripts")
+	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	buildScript := `#!/bin/bash
+	echo "Mock create executed"`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "build"), []byte(buildScript), 0755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -214,15 +208,11 @@ func TestCreateCommand_WithTemplates(t *testing.T) {
 }
 
 func TestCreateCommand_ContextCancellation(t *testing.T) {
-	mockToml := `
-[project]
-name = "cancelled-avs"
-version = "0.1.0"
-`
-	if err := os.WriteFile("default.eigen.toml", []byte(mockToml), 0644); err != nil {
+	mockYaml := config.DefaultConfigYaml
+	if err := os.WriteFile("config.yaml", []byte(mockYaml), 0644); err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove("default.eigen.toml")
+	defer os.Remove("config.yaml")
 
 	origCmd := CreateCommand
 	origCmd.Action = func(cCtx *cli.Context) error {

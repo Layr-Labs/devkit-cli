@@ -2,15 +2,14 @@ package commands
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/telemetry"
 	"devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
@@ -20,12 +19,12 @@ import (
 var CreateCommand = &cli.Command{
 	Name:      "create",
 	Usage:     "Initializes a new AVS project scaffold (Hourglass model)",
-	ArgsUsage: "<project-name>",
+	ArgsUsage: "<project-name> [target-dir]",
 	Flags: append([]cli.Flag{
 		&cli.StringFlag{
 			Name:  "dir",
 			Usage: "Set output directory for the new project",
-			Value: filepath.Join(os.Getenv("HOME"), "avs"),
+			Value: ".",
 		},
 		&cli.StringFlag{
 			Name:  "lang",
@@ -40,10 +39,6 @@ var CreateCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "template-path",
 			Usage: "Direct GitHub URL to use as template (overrides templates.yml)",
-		},
-		&cli.BoolFlag{
-			Name:  "no-telemetry",
-			Usage: "Opt out of anonymous telemetry collection",
 		},
 		&cli.StringFlag{
 			Name:  "env",
@@ -76,14 +71,29 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
+		// exit early if no project name is provided
 		if cCtx.NArg() == 0 {
 			return fmt.Errorf("project name is required\nUsage: avs create <project-name> [flags]")
 		}
 		projectName := cCtx.Args().First()
-		targetDir := filepath.Join(cCtx.String("dir"), projectName)
+		dest := cCtx.Args().Get(1)
 
 		// get logger
 		log, tracker := common.GetLogger()
+
+		// use dest from dir flag or positional
+		var targetDir string
+		if dest != "" {
+			targetDir = dest
+		} else {
+			targetDir = cCtx.String("dir")
+		}
+
+		// ensure provided dir is absolute
+		targetDir, err := filepath.Abs(filepath.Join(targetDir, projectName))
+		if err != nil {
+			return fmt.Errorf("failed to resolve absolute path for target directory: %w", err)
+		}
 
 		// in verbose mode, detail the situation
 		if cCtx.Bool("verbose") {
@@ -94,18 +104,6 @@ var CreateCommand = &cli.Command{
 			log.Info("Environment: %s", cCtx.String("env"))
 			if cCtx.String("template-path") != "" {
 				log.Info("Template Path: %s", cCtx.String("template-path"))
-			}
-
-			// Log telemetry status (accounting for client type)
-			if cCtx.Bool("no-telemetry") {
-				log.Info("Telemetry: disabled (via flag)")
-			} else {
-				client, ok := telemetry.FromContext(cCtx.Context)
-				if !ok || telemetry.IsNoopClient(client) {
-					log.Info("Telemetry: disabled")
-				} else {
-					log.Info("Telemetry: enabled")
-				}
 			}
 		}
 
@@ -164,9 +162,9 @@ var CreateCommand = &cli.Command{
 			}
 		}
 
-		// Copy default.eigen.toml to the project directory
+		// Copy config.yaml to the project directory
 		if err := copyDefaultConfigToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {
-			return fmt.Errorf("failed to initialize eigen.toml: %w", err)
+			return fmt.Errorf("failed to initialize %s: %w", common.BaseConfig, err)
 		}
 
 		// Copies the default keystore json files in the keystores/ directory
@@ -175,8 +173,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Save project settings with telemetry preference
-		telemetryEnabled := !cCtx.Bool("no-telemetry")
-		if err := common.SaveProjectSettings(targetDir, telemetryEnabled); err != nil {
+		if err := common.SaveTelemetrySetting(targetDir, true); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
@@ -245,58 +242,39 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	// get logger
 	log, _ := common.GetLogger()
 
-	// get directories
-	configDir := filepath.Join("config")
-	contextsDir := filepath.Join(configDir, "contexts")
-
-	content, err := os.ReadFile(filepath.Join(configDir, "config.yaml"))
-	if err != nil {
-		return fmt.Errorf("config/config.yaml not found: %w", err)
-	}
-
-	// Replace project name
-	newContent := strings.Replace(string(content), `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
-
 	// Create and ensure target config directory exists
 	destConfigDir := filepath.Join(targetDir, "config")
 	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target config directory: %w", err)
 	}
 
-	// Write modified config.yaml
-	destConfigPath := filepath.Join(destConfigDir, "config.yaml")
-	if err := os.WriteFile(destConfigPath, []byte(newContent), 0644); err != nil {
-		return fmt.Errorf("failed to write config/config.yaml: %w", err)
+	// Read config.yaml from config embed and write to target
+	newContent := strings.Replace(config.DefaultConfigYaml, `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
+	err := os.WriteFile(filepath.Join(destConfigDir, common.BaseConfig), []byte(newContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write %s: %w", common.BaseConfig, err)
 	}
 
 	if verbose {
-		log.Info("Created config/config.yaml in project directory")
+		log.Info("Created config/%s in project directory", common.BaseConfig)
 	}
 
-	// Step 2: Copy all context files
+	// Copy all context files
 	destContextsDir := filepath.Join(destConfigDir, "contexts")
 	if err := os.MkdirAll(destContextsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target contexts directory: %w", err)
 	}
+	for name, yaml := range config.ContextYamls {
+		content := yaml
+		entryName := fmt.Sprintf("%s.yaml", name)
 
-	entries, err := os.ReadDir(contextsDir)
-	if err != nil {
-		return fmt.Errorf("failed to read contexts directory: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue // skip subdirectories
-		}
-		srcPath := filepath.Join(contextsDir, entry.Name())
-		destPath := filepath.Join(destContextsDir, entry.Name())
-
-		if err := common.CopyFile(srcPath, destPath); err != nil {
-			return fmt.Errorf("failed to copy %s: %w", entry.Name(), err)
+		err := os.WriteFile(filepath.Join(destContextsDir, entryName), []byte(content), 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write %s: %w", entryName, err)
 		}
 
 		if verbose {
-			log.Info("Copied context file: %s", entry.Name())
+			log.Info("Copied context file: %s", entryName)
 		}
 	}
 
@@ -307,7 +285,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 	log, _ := common.GetLogger()
 
-	srcKeystoreDir := "keystores"
+	// Construct keystore dest
 	destKeystoreDir := filepath.Join(targetDir, "keystores")
 
 	// Create the destination keystore directory
@@ -318,38 +296,24 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 		log.Info("Created directory: %s", destKeystoreDir)
 	}
 
-	// Read files from the source keystores directory
-	files, err := os.ReadDir(srcKeystoreDir)
-	if err != nil {
-		return fmt.Errorf("failed to read keystores directory: %w", err)
-	}
+	// Read files embedded keystore
+	files := config.KeystoreEmbeds
 
-	for _, file := range files {
-		if file.IsDir() {
-			continue // skip subdirectories
-		}
-
-		srcPath := filepath.Join(srcKeystoreDir, file.Name())
-		destPath := filepath.Join(destKeystoreDir, file.Name())
-
-		srcFile, err := os.Open(srcPath)
-		if err != nil {
-			return fmt.Errorf("failed to open source keystore file %s: %w", srcPath, err)
-		}
-		defer srcFile.Close()
-
+	// Write files to destKeystoreDir
+	for fileName, file := range files {
+		destPath := filepath.Join(destKeystoreDir, fileName)
 		destFile, err := os.Create(destPath)
 		if err != nil {
 			return fmt.Errorf("failed to create destination keystore file %s: %w", destPath, err)
 		}
 		defer destFile.Close()
 
-		if _, err := io.Copy(destFile, srcFile); err != nil {
-			return fmt.Errorf("failed to copy file %s: %w", file.Name(), err)
+		if err := os.WriteFile(destPath, []byte(file), 0644); err != nil {
+			return fmt.Errorf("failed to write file %s: %w", fileName, err)
 		}
 
 		if verbose {
-			log.Info("Copied keystore: %s", file.Name())
+			log.Info("Copied keystore: %s", fileName)
 		}
 	}
 

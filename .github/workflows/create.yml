@@ -28,7 +28,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
+          version: stable
       
       - name: Authenticate Go to GitHub private repos
         run: |
@@ -51,8 +51,8 @@ jobs:
 
       - name: Verify AVS project created
         run: |
-          if [ ! -f "$HOME/avs/my-awesome-avs/config/config.yaml" ]; then
+          if [ ! -f "./my-awesome-avs/config/config.yaml" ]; then
             echo "❌ AVS project config/config.yaml not found!"
             exit 1
           fi
-          echo "✅ AVS project created successfully at $HOME/avs/my-awesome-avs/"
+          echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"

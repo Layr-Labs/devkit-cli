@@ -6,8 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 
+	"devkit-cli/config"
 	"devkit-cli/pkg/hooks"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
 )
 
@@ -42,7 +44,7 @@ func TestBasicE2E(t *testing.T) {
 	}
 
 	// Test env loading
-	testEnvLoading(t)
+	testEnvLoading(t, projectDir)
 }
 
 func setupBasicProject(t *testing.T, dir string) {
@@ -51,13 +53,15 @@ func setupBasicProject(t *testing.T, dir string) {
 		t.Fatalf("Failed to create project dir: %v", err)
 	}
 
-	// Create eigen.toml (needed to identify project root)
-	eigenContent := `[project]
-name = "test-avs"
-version = "0.1.0"
-`
-	if err := os.WriteFile(filepath.Join(dir, "eigen.toml"), []byte(eigenContent), 0644); err != nil {
-		t.Fatalf("Failed to write eigen.toml: %v", err)
+	// Create config directory
+	configDir := filepath.Join(dir, "config")
+	err := os.MkdirAll(configDir, 0755)
+	assert.NoError(t, err)
+
+	// Create config.yaml (needed to identify project root)
+	eigenContent := config.DefaultConfigYaml
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(eigenContent), 0644); err != nil {
+		t.Fatalf("Failed to write config.yaml: %v", err)
 	}
 
 	// Create .env file
@@ -67,52 +71,55 @@ version = "0.1.0"
 		t.Fatalf("Failed to write .env: %v", err)
 	}
 
-	// Create Makefile.Devkit
-	makefileContent := `
-.PHONY: build run
-build:
-	@echo "Building with env: DEVKIT_TEST_ENV=$${DEVKIT_TEST_ENV:-not_set}"
-run:
-	@echo "Running with env: DEVKIT_TEST_ENV=$${DEVKIT_TEST_ENV:-not_set}"
-`
-	if err := os.WriteFile(filepath.Join(dir, "Makefile.Devkit"), []byte(makefileContent), 0644); err != nil {
-		t.Fatalf("Failed to write Makefile.Devkit: %v", err)
+	// Create build script
+	scriptsDir := filepath.Join(dir, ".devkit", "scripts")
+	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	buildScript := `#!/bin/bash
+echo -e "Mock build executed ${DEVKIT_TEST_ENV}"`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "build"), []byte(buildScript), 0755); err != nil {
+		t.Fatal(err)
 	}
 }
 
-func testEnvLoading(t *testing.T) {
-	// Clear env var first
+func testEnvLoading(t *testing.T, dir string) {
+	// Backup and unset the original env var
+	original := os.Getenv("DEVKIT_TEST_ENV")
+	defer os.Setenv("DEVKIT_TEST_ENV", original)
+
+	// Clear env var
 	os.Unsetenv("DEVKIT_TEST_ENV")
 
-	// 1. Test that the middleware loads .env
-	action := func(c *cli.Context) error { return nil }
-	ctx := cli.NewContext(cli.NewApp(), nil, nil)
-	ctx.Command = &cli.Command{Name: "build"}
-
-	if err := hooks.WithEnvLoader(action)(ctx); err != nil {
-		t.Fatalf("Command failed: %v", err)
+	// 1. Simulate CLI context and run the Before hook
+	app := cli.NewApp()
+	cmd := &cli.Command{
+		Name: "build",
+		Before: func(ctx *cli.Context) error {
+			return hooks.LoadEnvFile(ctx)
+		},
+		Action: func(ctx *cli.Context) error {
+			// Verify that the env var is now set
+			if val := os.Getenv("DEVKIT_TEST_ENV"); val != "test_value" {
+				t.Errorf("Expected DEVKIT_TEST_ENV=test_value, got: %q", val)
+			}
+			return nil
+		},
 	}
+	app.Commands = []*cli.Command{cmd}
 
-	// Verify env var was loaded
-	if val := os.Getenv("DEVKIT_TEST_ENV"); val != "test_value" {
-		t.Errorf("Expected DEVKIT_TEST_ENV=test_value, got: %q", val)
-	}
-
-	// 2. Verify makefile works with loaded env
-	cmd := exec.Command("make", "-f", "Makefile.Devkit", "build")
-	out, err := cmd.CombinedOutput()
+	err := app.Run([]string{"cmd", "build"})
 	if err != nil {
-		t.Fatalf("Failed to run make build: %v", err)
+		t.Fatalf("CLI command failed: %v", err)
 	}
 
-	t.Logf("Make build output: %s", out)
+	// Ref the scripts dir
+	scriptsDir := filepath.Join(dir, ".devkit", "scripts")
 
-	// 3. Verify makefile works with loaded env
-	cmd = exec.Command("make", "-f", "Makefile.Devkit", "run")
-	out, err = cmd.CombinedOutput()
+	// 2. Run `bash -c ./build` and verify output
+	cmdOut := exec.Command("bash", "-c", filepath.Join(scriptsDir, "build"))
+	out, err := cmdOut.CombinedOutput()
 	if err != nil {
-		t.Fatalf("Failed to run make run: %v", err)
+		t.Fatalf("Failed to run 'make build': %v\nOutput:\n%s", err, out)
 	}
-
-	t.Logf("Make run output: %s", out)
 }

@@ -2,63 +2,59 @@ package telemetry
 
 import (
 	"context"
-	"os"
-	"time"
-
+	kitcontext "devkit-cli/pkg/context"
 	"github.com/posthog/posthog-go"
 	"gopkg.in/yaml.v3"
+	"os"
 )
 
 // PostHogClient implements the Client interface using PostHog
 type PostHogClient struct {
-	client posthog.Client
-	props  Properties
+	namespace      string
+	client         posthog.Client
+	appEnvironment *kitcontext.AppEnvironment
 }
 
 // NewPostHogClient creates a new PostHog client
-func NewPostHogClient(props Properties) (*PostHogClient, error) {
+func NewPostHogClient(environment *kitcontext.AppEnvironment, namespace string) (*PostHogClient, error) {
 	apiKey := getPostHogAPIKey()
 	if apiKey == "" {
 		// No API key available, return noop client without error
 		return nil, nil
 	}
-
-	client, err := posthog.NewWithConfig(apiKey, posthog.Config{
-		Endpoint: getPostHogEndpoint(),
-		Interval: 30 * time.Second,
-	})
+	client, err := posthog.NewWithConfig(apiKey, posthog.Config{Endpoint: getPostHogEndpoint()})
 	if err != nil {
-		// Error creating client - return nil without error to allow fallback
-		return nil, nil
+		return nil, err
 	}
-
 	return &PostHogClient{
-		client: client,
-		props:  props,
+		namespace:      namespace,
+		client:         client,
+		appEnvironment: environment,
 	}, nil
 }
 
-// Track implements the Client interface
-func (c *PostHogClient) Track(ctx context.Context, event string, props map[string]interface{}) error {
+// AddMetric implements the Client interface
+func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
 	if c == nil || c.client == nil {
 		return nil
 	}
 
-	mergedProps := make(map[string]interface{})
-	mergedProps["cli_version"] = c.props.CLIVersion
-	mergedProps["os"] = c.props.OS
-	mergedProps["arch"] = c.props.Arch
-	mergedProps["project_uuid"] = c.props.ProjectUUID
+	// Create properties map starting with base properties
+	props := make(map[string]interface{})
+	// Add metric value
+	props["name"] = metric.Name
+	props["value"] = metric.Value
 
-	for k, v := range props {
-		mergedProps[k] = v
+	// Add metric dimensions
+	for k, v := range metric.Dimensions {
+		props[k] = v
 	}
 
 	// Never return errors from telemetry operations
 	_ = c.client.Enqueue(posthog.Capture{
-		DistinctId: c.props.ProjectUUID,
-		Event:      event,
-		Properties: mergedProps,
+		DistinctId: c.appEnvironment.ProjectUUID,
+		Event:      c.namespace,
+		Properties: props,
 	})
 	return nil
 }
@@ -72,9 +68,6 @@ func (c *PostHogClient) Close() error {
 	_ = c.client.Close()
 	return nil
 }
-
-// Embedded API key, can be set during build time
-var embeddedPostHogAPIKey string
 
 func getPostHogAPIKey() string {
 	// Priority order:
@@ -101,13 +94,13 @@ func getPostHogAPIKey() string {
 		}
 	}
 
-	// Finally, check embedded key
-	return embeddedPostHogAPIKey
+	// return embedded key if no overrides provided
+	return embeddedTelemetryApiKey
 }
 
 func getPostHogEndpoint() string {
 	if endpoint := os.Getenv("DEVKIT_POSTHOG_ENDPOINT"); endpoint != "" {
 		return endpoint
 	}
-	return "https://app.posthog.com"
+	return "https://us.i.posthog.com"
 }

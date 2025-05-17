@@ -6,9 +6,9 @@ import (
 	"devkit-cli/docker/anvil"
 )
 
-// WriteEmbeddedArtifacts writes the embedded docker-compose.yaml and state.json files.
+// WriteEmbeddedArtifacts writes the embedded docker-compose.yaml.
 // Returns the paths to the written files.
-func WriteEmbeddedArtifacts() (composePath string, statePath string) {
+func WriteEmbeddedArtifacts() (composePath string) {
 	var err error
 
 	composePath, err = assets.WriteDockerComposeToPath()
@@ -16,10 +16,5 @@ func WriteEmbeddedArtifacts() (composePath string, statePath string) {
 		log.Fatalf("❌ Could not write embedded docker-compose.yaml: %v", err)
 	}
 
-	statePath, err = assets.WriteStateJSONToPath()
-	if err != nil {
-		log.Fatalf("❌ Could not write embedded state.json: %v", err)
-	}
-
-	return composePath, statePath
+	return composePath
 }

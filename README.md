@@ -1,174 +1,183 @@
-# EigenLayer Development Kit (DevKit)
+# EigenLayer Development Kit (DevKit) 🚀
 
-A CLI tool for developing and managing EigenLayer AVS (Autonomous Verifiable Services) projects.
+**A CLI toolkit for developing, testing, and managing EigenLayer Autonomous Verifiable Services (AVS).**
+
+EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold projects, compile contracts, run local networks, and simulate tasks with ease.
+
+![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
 
 ---
 
-## 🚀 Quick Start
+## 🌟 Key Commands Overview
 
-### Prerequisites
+| Command      | Description                              |
+| ------------ | ---------------------------------------- |
+| `avs create` | Scaffold a new AVS project               |
+| `avs config` | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...)        |
+| `avs build`  | Compile AVS smart contracts and binaries |
+| `avs devnet` | Manage local development network         |
+| `avs call`    | Simulate AVS task execution locally      |
 
-- [Docker](https://docs.docker.com/engine/install/)
-- [Go](https://go.dev/doc/install)
-- [Foundry](https://book.getfoundry.sh/getting-started/installation)
-- [make](https://formulae.brew.sh/formula/make)
-- [yq](https://github.com/mikefarah/yq/#install)
+---
 
-#### Setup to fetch private go modules
+## 🚦 Getting Started
 
-To ensure you can fetch private Go modules hosted on GitHub (needed before the template dependency repos are live):
+### ✅ Prerequisites
 
-1.  **Ensure SSH Key is Added to GitHub:** Verify that you have an SSH key associated with your GitHub account. You can find instructions [here](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account).
-2.  **Repository Access:** Confirm with EigenLabs that your GitHub account has been granted access to the necessary private repositories (e.g., for preview features or specific AVS components).
-3.  **Configure Git URL Rewrite:** Run the following command in your terminal to instruct Git to use SSH instead of HTTPS for Eigenlabs repositories:
-    ```bash
-    git config --global url."ssh://git@github.com/Layr-Labs/".insteadOf "https://github.com/Layr-Labs/"
-    ```
+Before you begin, ensure you have:
 
-If you are on OSX, ensure that your `~/.ssh/config` file does not contain the line `UseKeychain yes`, as it can interfere with SSH agent forwarding or other SSH functionalities needed for fetching private modules. If it exists, you may need to comment it out or remove it.
+* [Docker](https://docs.docker.com/engine/install/)
+* [Go](https://go.dev/doc/install)
+* [make](https://formulae.brew.sh/formula/make)
+* [Foundry](https://book.getfoundry.sh/getting-started/installation)
+* [yq](https://github.com/mikefarah/yq/#install)
 
+### 📦 Installation
+
+Clone and build the DevKit CLI:
 
 ```bash
-# Clone and build
 git clone https://github.com/Layr-Labs/devkit-cli
 cd devkit-cli
-
-# Install the CLI
-make install
-
-# Or build manually
 go build -o devkit ./cmd/devkit
-
-# add the binary to your path
 export PATH=$PATH:~/bin
+```
 
-# Get started
+Verify your installation:
+
+```bash
 devkit --help
 ```
 
-## Demo flow
+### 🔑 Setup for Private Go Modules
+
+During this Private Preview (closed beta), you'll need access to private Go modules hosted on GitHub:
+
+1. **Add SSH Key to GitHub:** Ensure your SSH key is associated with your GitHub account ([instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
+2. **Verify Repository Access:** Confirm with EigenLabs support that your account has access to necessary private repositories.
+
+---
+
+## 🚧 Step-by-Step Guide
+
+### 1️⃣ Create a New AVS Project
+
+Quickly scaffold your new AVS project:
+
+* Initializes a new project based on the default task-based architecture in Go.
+* Generates boilerplate code and default configuration.
+
+Projects are created by default in the current directory from where the below command is called.
+
 ```bash
-# If not already, clone it
-git clone https://github.com/Layr-Labs/devkit-cli
-cd devkit-cli
+devkit avs create my-avs-project
+cd my-avs-project
+```
 
-# If not already, pull the latest commit
-git pull origin main
+> \[!IMPORTANT]
+> All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder . The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files , example `devnet.yaml`.
 
-# Note that you have to run the create command from repository directory
-devkit avs create my-hourglass-project  # by default pick task arch and go lang
-OR
-devkit avs create --overwrite my-existing-hourglass-project
+### 2️⃣ Configure Your AVS (`config.yaml`,`devnet.yaml`)
 
-# Once you have a project directory, following commands should be run from the project directory you created.
+Customize project settings to define operators, network configurations, and more. You can configure this file either through the CLI or by manually editing the `config.yaml` and `contexts/devnet.yaml` files.
+View current settings via CLI:
+
+```bash
+devkit avs config
+```
+
+Edit settings directly via CLI:
+
+```bash
+devkit avs config --edit --path <path to the config.yaml or contexts/devnet.yaml file>
+```
+
+Alternatively, manually edit `` in a text editor of your choice.
+
+> \[!IMPORTANT]
+> These commands must be run from your AVS project's root directory.
+
+### 3️⃣ Build Your AVS
+
+Compile AVS smart contracts and binaries to prepare your service for local execution:
+
+* Compiles smart contracts using Foundry.
+* Builds operator, aggregator, and AVS logic binaries.
+
+Ensure you're in your project directory before running:
+
+```bash
 devkit avs build
+```
 
+### 4️⃣ Launch Local DevNet
+
+Start a local Ethereum-based development network to simulate your AVS environment:
+
+* Forks ethereum mainnet using a fork url which the user passes along with the block number.
+* Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
+* Setup required AVS contracts.
+* Initializes aggregator and executor processes.
+
+> \[!IMPORTANT]
+> Please ensure your Docker daemon is running beforehand.
+
+Run this from your project directory:
+
+```bash
 devkit avs devnet start
-
-devkit avs run
 ```
 
+DevNet management commands:
 
-## 🛠️ Development Workflow
+| Command | Description                                                             |
+| ------- | -------------------------------------------                             |
+| `start` | Start local Docker containers and contracts                             |
+| `stop`  | Stop and remove container from the avs project this command is called   |
+| `list`  | List active containers and their ports                                  |
+| `stop --all`  | Stops all devkit devnet containers that are currently currening                                  |
+| `stop --project.name`  | Stops the specific project's devnet                                  |
+| `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
+
+
+### 5️⃣ Simulate Task Execution (`avs call`)
+
+Test your AVS logic locally by simulating task execution:
+
+* Simulate the full lifecycle of task submission and execution.
+* Validate both off-chain and on-chain logic.
+* Review detailed execution results.
+
+Run this from your project directory:
 
 ```bash
-make help      # Show all available dev commands
-make build     # Build CLI binary
-make tests     # Run all unit tests
-make lint      # Run linter and static checks
+devkit avs call
 ```
 
+Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
 
-## 💻 Core DevKit Commands
-> [!IMPORTANT]  
-> All <code>devkit avs</code> commands(except `devkit avs create`) must be run from the root of your AVS project — the directory that contains the <code>eigen.toml</code> file.  
-> If <code>eigen.toml</code> is missing or located elsewhere, the CLI will fail to load the project configuration.
+---
 
-| Command                     | Description                                 |
-|----------------------------|---------------------------------------------|
-| `devkit avs create`        | Scaffold a new AVS project                  |
-| `devkit avs config`        | Read or modify `eigen.toml` configuration   |
-| `devkit avs build`         | Compile smart contracts and binaries        |
-| `devkit avs devnet`        | Start/stop a local Docker-based devnet      |
-| `devkit avs run`           | Simulate and execute AVS tasks locally      |
-| `devkit avs release`       | Package your AVS for testnet/mainnet        |
+## 📖 Logging and Telemetry
 
-### Devnet 
-The devnet consists of [eigenlayer-contracts-1.3.0](https://github.com/Layr-Labs/eigenlayer-contracts/tree/v1.3.0) deployed on top of a fresh anvil state.
-We automatically fund the wallets(`operator_keys` and `submit_wallet`) used in the `eigen.toml` if balance is low(< `10 ether`).
+<!-- 
+@TODO: bring this back when we reintroduce config log levels
+Configure logging levels through `config.yaml`:
 
-> [!Warning]
-> Docker daemon must be running beforehand.
-#### Starting the devnet 
-```bash
-devkit avs devnet start 
-```
-#### Stopping the devnet 
-```bash
-devkit avs devnet stop
-```
+```yaml
+log:
+  level: info  # Options: "info", "debug", "warn", "error"
+``` -->
 
-### Config
-We autogenerate a default config file called `eigen.toml` in the avs project directory. 
-
-> [!Warning]
-> These commands must be run from the directory of the project you created using `devkit avs create`.
-#### List the current config
-This commands lists the current configuration including `eigen.toml` , telemetry status etc.
+To enable detailed logging during commands:
 
 ```bash
-devkit avs config 
-```
-Or 
-```bash
-devkit avs config --list
+devkit avs build --verbose
 ```
 
-#### Edit the config
-There are 2 ways to edit `eigen.toml` config of the respective avs project.
+---
 
-##### Option 1
-This will allow to edit the config in a text editor.
-```bash
-devkit avs config --edit
-```
-
-##### Option 2
-Manually edit the config in `eigen.toml`.
-
-## ⚙️ Global Options
-
-| Flag             | Description            |
-|------------------|------------------------|
-| `--verbose`, `-v`| Enable verbose logging |
-| `--help`, `-h`   | Show help output       |
-
-
-## 💡 Example Usage
-```bash
-# Scaffold a new AVS named MyAVS
-devkit avs create MyAVS --lang go
-
-# Start a local devnet
-devkit avs devnet start
-
-# Stop the devnet
-devkit avs devnet stop
-```
-
-## Logging
-- To enable persistent logging , you can set the verbosity under the key `[log]` in `eigen.toml`. By default it's set to `debug`.
-```toml
-[log]
-level = "debug" # valid options: "info", "debug", "warn", "error"
-```
-
-- You can also use `--verbose` flag with the respective command, example:
-```bash
-devkit --verbose avs build
-```
-
-## Environment Variables
+## 🌍 Environment Variables
 
 The DevKit CLI automatically loads environment variables from a `.env` file in your project directory:
 
@@ -189,40 +198,32 @@ nano .env
 
 # Run commands - the .env file will be automatically loaded
 devkit avs build
-devkit avs run
+devkit avs call
 ```
 
-## Telemetry
-
-The CLI collects anonymous usage data to help improve the tool. This includes:
-- Command usage (which commands are run)
-- Basic system information (OS, architecture)
-- Command execution time
-- Errors encountered
-
-No personal information or project details are collected. You can disable telemetry:
-- Use the `--no-telemetry` flag when running create command
-
-## For Developers
-
-Adding custom telemetry metrics is simple with a single line of code: 
-Example in a command implementation:
-
-```go
-Action: func(cCtx *cli.Context) error {
-    // ... 
-    // Track a custom event with properties
-    props := map[string]interface{}{
-        "port": cCtx.Int("port"),
-        "contract_count": 5,
-    }
-    hooks.Track(cCtx.Context, hooks.FormatEventName("avs_devnet", "containers_up"), props)
-    
-    return nil
-}
-```
-
-Standard metrics like command invocation, completion, and errors are tracked automatically.
+---
 
 ## 🤝 Contributing
-Pull requests are welcome! For major changes, open an issue first to discuss what you would like to change.
+
+Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request.
+
+## Release Process
+To release a new version of the CLI, follow the steps below:
+> Note: You need to have write permission to this repo to release new version
+
+1. Checkout the master branch and pull the latest changes:
+    ```bash
+    git checkout master
+    git pull origin master
+    ```
+2. In your local clone, create a new release tag using the following command:
+    ```bash
+     git tag v<version> -m "Release v<version>"
+    ```
+3. Push the tag to the repository using the following command:
+    ```bash
+    git push origin v<version>
+    ```
+
+4. This will automatically start the release process in the [GitHub Actions](https://github.com/Layr-Labs/eigenlayer-cli/actions/workflows/release.yml) and will create a draft release to the [GitHub Releases](https://github.com/Layr-Labs/eigenlayer-cli/releases) with all the required binaries and assets
+5. Check the release notes and add any notable changes and publish the release

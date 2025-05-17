@@ -13,15 +13,14 @@ import (
 type ProjectSettings struct {
 	ProjectUUID      string `yaml:"project_uuid"`
 	TelemetryEnabled bool   `yaml:"telemetry_enabled"`
-	PostHogAPIKey    string `yaml:"posthog_api_key,omitempty"`
 }
 
 const (
 	configFileName = ".config.devkit.yml"
 )
 
-// SaveProjectSettings saves project settings to the project directory
-func SaveProjectSettings(projectDir string, telemetryEnabled bool) error {
+// SaveTelemetrySetting saves project settings to the project directory
+func SaveTelemetrySetting(projectDir string, telemetryEnabled bool) error {
 	// Try to load existing settings first to preserve UUID if it exists
 	var settings ProjectSettings
 	existingSettings, err := LoadProjectSettings()
@@ -69,6 +68,7 @@ func LoadProjectSettings() (*ProjectSettings, error) {
 
 // IsTelemetryEnabled returns whether telemetry is enabled for the project
 // Returns false if config file doesn't exist or telemetry is explicitly disabled
+// TODO: (brandon c) currently unused -- update to use after private preview
 func IsTelemetryEnabled() bool {
 	settings, err := LoadProjectSettings()
 	if err != nil {

@@ -1,15 +1,13 @@
 package hooks
 
 import (
-	"context"
+	"devkit-cli/pkg/common"
 	"fmt"
-	"log"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
-	"devkit-cli/pkg/common"
+	kitcontext "devkit-cli/pkg/context"
 	"devkit-cli/pkg/telemetry"
 
 	"github.com/joho/godotenv"
@@ -19,18 +17,39 @@ import (
 // EnvFile is the name of the environment file
 const EnvFile = ".env"
 
-// CommandMetrics holds timing and metadata for command execution
-type CommandMetrics struct {
-	StartTime time.Time
-	Command   string
-	Flags     map[string]interface{}
+type ActionChain struct {
+	Processors []func(action cli.ActionFunc) cli.ActionFunc
 }
 
-// contextKey is used to store command metrics in context
-type contextKey struct{}
+// NewActionChain creates a new action chain
+func NewActionChain() *ActionChain {
+	return &ActionChain{
+		Processors: make([]func(action cli.ActionFunc) cli.ActionFunc, 0),
+	}
+}
 
-// CommandPrefix is the prefix to apply to all command names
-const CommandPrefix = "avs_"
+// Use appends a new processor to the chain
+func (ac *ActionChain) Use(processor func(action cli.ActionFunc) cli.ActionFunc) {
+	ac.Processors = append(ac.Processors, processor)
+}
+
+func (ac *ActionChain) Wrap(action cli.ActionFunc) cli.ActionFunc {
+	for i := len(ac.Processors) - 1; i >= 0; i-- {
+		action = ac.Processors[i](action)
+	}
+	return action
+}
+
+func ApplyMiddleware(commands []*cli.Command, chain *ActionChain) {
+	for _, cmd := range commands {
+		if cmd.Action != nil {
+			cmd.Action = chain.Wrap(cmd.Action)
+		}
+		if len(cmd.Subcommands) > 0 {
+			ApplyMiddleware(cmd.Subcommands, chain)
+		}
+	}
+}
 
 func getFlagValue(ctx *cli.Context, name string) interface{} {
 	if !ctx.IsSet(name) {
@@ -74,181 +93,85 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 	return flags
 }
 
-func setupTelemetry(ctx *cli.Context, command string) telemetry.Client {
-	if command != "create" && !common.IsTelemetryEnabled() {
+func setupTelemetry(ctx *cli.Context) telemetry.Client {
+	// TODO: (brandon c) handle disabled telemetry after private preview.
+	appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context)
+	if !ok {
 		return telemetry.NewNoopClient()
 	}
 
-	// Try to create active client
-	props := telemetry.NewProperties(
-		ctx.App.Version,
+	phClient, err := telemetry.NewPostHogClient(appEnv, "DevKit")
+	if err != nil {
+		return telemetry.NewNoopClient()
+	}
+
+	return phClient
+}
+
+func WithAppEnvironment(ctx *cli.Context) {
+	ctx.Context = kitcontext.WithAppEnvironment(ctx.Context, kitcontext.NewAppEnvironment(
 		runtime.GOOS,
 		runtime.GOARCH,
 		common.GetProjectUUID(),
-	)
-
-	phClient, _ := telemetry.NewPostHogClient(props)
-	if phClient != nil {
-		return phClient
-	}
-
-	// no client available, return noop client which means telemetry is disabled
-	return telemetry.NewNoopClient()
+	))
 }
 
-func MetricsFromContext(ctx context.Context) (CommandMetrics, bool) {
-	metrics, ok := ctx.Value(contextKey{}).(CommandMetrics)
-	if metrics.Command == "" {
-		return CommandMetrics{}, false
-	}
-	return metrics, ok
-}
-
-func WithCommandMetrics(ctx context.Context, metrics CommandMetrics) context.Context {
-	return context.WithValue(ctx, contextKey{}, metrics)
-}
-
-func FormatEventName(command, action string) string {
-	if strings.Contains(action, ".") {
-		return fmt.Sprintf("cli.%s%s.%s", CommandPrefix, command, action)
-	}
-	return fmt.Sprintf("cli.%s%s.%s", CommandPrefix, command, action)
-}
-
-func Track(ctx context.Context, name string, props map[string]interface{}) error {
-	client, ok := telemetry.FromContext(ctx)
-	if !ok {
-		return nil
-	}
-	return client.Track(ctx, name, props)
-}
-
-func FormatCustomMetric(ctx context.Context, metricPath string) string {
-	metrics, ok := MetricsFromContext(ctx)
-	if !ok {
-		return fmt.Sprintf("cli.%sunknown.%s", CommandPrefix, metricPath)
-	}
-	return fmt.Sprintf("cli.%s%s.%s", CommandPrefix, metrics.Command, metricPath)
-}
-
-func trackCommandResult(ctx *cli.Context, result string, err error) {
-	metrics, ok := MetricsFromContext(ctx.Context)
-	if !ok {
-		return
-	}
-
-	command := metrics.Command
-
-	// Copy the flags map to avoid modifying the original
-	props := make(map[string]interface{}, len(metrics.Flags))
-	for k, v := range metrics.Flags {
-		props[k] = v
-	}
-	duration := time.Since(metrics.StartTime)
-	props["duration_ms"] = duration.Milliseconds()
-
-	// Add error message if present
-	if err != nil {
-		props["error"] = err.Error()
-	}
-
-	// Track the event
-	_ = Track(ctx.Context, FormatEventName(command, result), props)
-}
-
-func WithTelemetry(action cli.ActionFunc) cli.ActionFunc {
+func WithMetricEmission(action cli.ActionFunc) cli.ActionFunc {
 	return func(ctx *cli.Context) error {
-		command := ctx.Command.Name
-
-		// Get telemetry client
-		client := setupTelemetry(ctx, command)
-		ctx.Context = telemetry.WithContext(ctx.Context, client)
-
-		// Collect flags and store metrics
-		flags := collectFlagValues(ctx)
-		startTime := time.Now()
-
-		// Store command metrics in context
-		metrics := CommandMetrics{
-			StartTime: startTime,
-			Command:   command,
-			Flags:     flags,
-		}
-		ctx.Context = WithCommandMetrics(ctx.Context, metrics)
-
-		// Track command invocation
-		_ = Track(ctx.Context, FormatEventName(command, "invoked"), flags)
-
-		// If this is the create command with --no-telemetry, switch to NoopClient after tracking "invoked"
-		if command == "create" && ctx.Bool("no-telemetry") {
-			log.Printf("DEBUG: Detected --no-telemetry flag in create command, switching to NoopClient after invoked event")
-			ctx.Context = telemetry.WithContext(ctx.Context, telemetry.NewNoopClient())
-		}
-
-		// Execute the wrapped action and capture result
+		// Run command action
 		err := action(ctx)
 
-		// Track result based on error
-		if err != nil {
-			trackCommandResult(ctx, "fail", err)
-		} else {
-			trackCommandResult(ctx, "success", nil)
-		}
+		client := setupTelemetry(ctx)
+		ctx.Context = telemetry.ContextWithClient(ctx.Context, client)
+		// emit result metrics
+		emitTelemetryMetrics(ctx, err)
 
 		return err
 	}
 }
 
-// ApplyMiddleware applies a list of middleware functions to commands
-func ApplyMiddleware(commands []*cli.Command, middlewares ...func(cli.ActionFunc) cli.ActionFunc) {
-	for _, cmd := range commands {
-		// Apply middleware to this command's action if it exists
-		if cmd.Action != nil {
-			// Store original action
-			originalAction := cmd.Action
+func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
+	metrics, err := telemetry.MetricsFromContext(ctx.Context)
+	if err != nil {
+		return
+	}
+	metrics.Properties["command"] = ctx.Command.HelpName
+	result := "Success"
+	dimensions := map[string]string{}
+	if actionError != nil {
+		result = "Failure"
+		dimensions["error"] = actionError.Error()
+	}
+	metrics.AddMetricWithDimensions(result, 1, dimensions)
 
-			// Apply all middlewares in order
-			wrappedAction := originalAction
-			for _, middleware := range middlewares {
-				wrappedAction = middleware(wrappedAction)
-			}
+	duration := time.Since(metrics.StartTime).Milliseconds()
+	metrics.AddMetric("DurationMilliseconds", float64(duration))
 
-			// Set the final wrapped action
-			cmd.Action = wrappedAction
+	client, ok := telemetry.ClientFromContext(ctx.Context)
+	if !ok {
+		return
+	}
+	defer client.Close()
+
+	for _, metric := range metrics.Metrics {
+		mDimensions := metric.Dimensions
+		for k, v := range metrics.Properties {
+			mDimensions[k] = v
 		}
-
-		// Recursively apply to subcommands
-		if len(cmd.Subcommands) > 0 {
-			ApplyMiddleware(cmd.Subcommands, middlewares...)
-		}
+		_ = client.AddMetric(ctx.Context, metric)
 	}
 }
 
-// ApplyTelemetryToCommands applies the telemetry middleware to all commands
-func ApplyTelemetryToCommands(commands []*cli.Command) {
-	ApplyMiddleware(commands, WithTelemetry)
-}
+func LoadEnvFile(ctx *cli.Context) error {
+	command := ctx.Command.Name
 
-// ApplyEnvLoaderToCommands applies the env loader middleware to all commands
-func ApplyEnvLoaderToCommands(commands []*cli.Command) {
-	ApplyMiddleware(commands, WithEnvLoader)
-}
-
-// WithEnvLoader wraps a command action to load .env file before execution
-// except for the create command
-func WithEnvLoader(action cli.ActionFunc) cli.ActionFunc {
-	return func(ctx *cli.Context) error {
-		command := ctx.Command.Name
-
-		// Skip loading .env for the create command
-		if command != "create" {
-			if err := loadEnvFile(); err != nil {
-				return err
-			}
+	// Skip loading .env for the create command
+	if command != "create" {
+		if err := loadEnvFile(); err != nil {
+			return err
 		}
-
-		return action(ctx)
 	}
+	return nil
 }
 
 // loadEnvFile loads environment variables from .env file if it exists
@@ -261,4 +184,23 @@ func loadEnvFile() error {
 
 	// Load .env file
 	return godotenv.Load(EnvFile)
+}
+
+func WithCommandMetricsContext(ctx *cli.Context) error {
+	metrics := telemetry.NewMetricsContext()
+	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
+
+	if appEnv, ok := kitcontext.AppEnvironmentFromContext(ctx.Context); ok {
+		metrics.Properties["cli_version"] = appEnv.CLIVersion
+		metrics.Properties["os"] = appEnv.OS
+		metrics.Properties["arch"] = appEnv.Arch
+		metrics.Properties["project_uuid"] = appEnv.ProjectUUID
+	}
+
+	for k, v := range collectFlagValues(ctx) {
+		metrics.Properties[k] = fmt.Sprintf("%v", v)
+	}
+
+	metrics.AddMetric("Count", 1)
+	return nil
 }

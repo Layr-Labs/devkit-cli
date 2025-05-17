@@ -2,30 +2,22 @@ package hooks
 
 import (
 	"context"
-	"errors"
-	"testing"
-	"time"
-
 	"devkit-cli/pkg/telemetry"
+	"errors"
+	"fmt"
+	"runtime"
+	"testing"
 
 	"github.com/urfave/cli/v2"
 )
 
 // mockTelemetryClient is a test implementation of the telemetry.Client interface
 type mockTelemetryClient struct {
-	events []mockEvent
+	metrics []telemetry.Metric
 }
 
-type mockEvent struct {
-	name  string
-	props map[string]interface{}
-}
-
-func (m *mockTelemetryClient) Track(_ context.Context, event string, props map[string]interface{}) error {
-	m.events = append(m.events, mockEvent{
-		name:  event,
-		props: props,
-	})
+func (m *mockTelemetryClient) AddMetric(_ context.Context, metric telemetry.Metric) error {
+	m.metrics = append(m.metrics, metric)
 	return nil
 }
 
@@ -33,40 +25,75 @@ func (m *mockTelemetryClient) Close() error {
 	return nil
 }
 
-// MockWithTelemetry is a test version of WithTelemetry that uses a provided client
+// MockWithTelemetry is a test version of WithMetricEmission that uses a provided client
 func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.ActionFunc {
 	return func(ctx *cli.Context) error {
-		command := ctx.Command.Name
-
 		// Use the mock client directly instead of setupTelemetry
-		ctx.Context = telemetry.WithContext(ctx.Context, mockClient)
+		ctx.Context = telemetry.ContextWithClient(ctx.Context, mockClient)
 
-		// Collect flags and store metrics
+		// Create metrics context
+		metrics := telemetry.NewMetricsContext()
+		ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
+
+		// Add base properties
+		metrics.Properties["cli_version"] = ctx.App.Version
+		metrics.Properties["os"] = runtime.GOOS
+		metrics.Properties["arch"] = runtime.GOARCH
+		metrics.Properties["project_uuid"] = "test-uuid"
+
+		// Add command flags as properties
 		flags := collectFlagValues(ctx)
-		startTime := time.Now()
-
-		// Store command metrics in context
-		metrics := CommandMetrics{
-			StartTime: startTime,
-			Command:   command,
-			Flags:     flags,
+		for k, v := range flags {
+			metrics.Properties[k] = fmt.Sprintf("%v", v)
 		}
-		ctx.Context = WithCommandMetrics(ctx.Context, metrics)
 
 		// Track command invocation
-		_ = Track(ctx.Context, FormatEventName(command, "invoked"), flags)
+		metrics.AddMetric("Count", 1)
 
 		// Execute the wrapped action and capture result
 		err := action(ctx)
 
-		// Track result based on error
-		if err != nil {
-			trackCommandResult(ctx, "fail", err)
-		} else {
-			trackCommandResult(ctx, "success", nil)
-		}
-
+		// emit metrics
+		emitTelemetryMetrics(ctx, err)
 		return err
+	}
+}
+
+func TestAddMetric(t *testing.T) {
+	// Create a mock telemetry client
+	mockClient := &mockTelemetryClient{}
+
+	// Create context with telemetry client
+	ctx := context.Background()
+	ctx = telemetry.ContextWithClient(ctx, mockClient)
+
+	// Add a custom metric
+	props := map[string]string{
+		"direct_prop": "direct_value",
+	}
+
+	err := mockClient.AddMetric(ctx, telemetry.Metric{Name: "metricName", Value: 42, Dimensions: props})
+	if err != nil {
+		t.Fatalf("AddMetric returned error: %v", err)
+	}
+
+	// Verify metrics were tracked
+	if len(mockClient.metrics) != 1 {
+		t.Fatalf("Expected 1 metric, got %d", len(mockClient.metrics))
+	}
+
+	metric := mockClient.metrics[0]
+	if metric.Name != "metricName" {
+		t.Errorf("Expected metric 'custom.event', got '%s'", metric.Name)
+	}
+
+	if metric.Value != 42 {
+		t.Errorf("Expected value 42, got %f", metric.Value)
+	}
+
+	// Check dimensions
+	if val, ok := metric.Dimensions["direct_prop"]; !ok || val != "direct_value" {
+		t.Errorf("Direct property not correctly captured: %v", metric.Dimensions)
 	}
 }
 
@@ -91,7 +118,7 @@ func TestWithTelemetry(t *testing.T) {
 		return nil
 	}
 
-	// Use our mock version instead of the real WithTelemetry
+	// Use our mock version instead of the real WithMetricEmission
 	wrappedAction := MockWithTelemetry(originalAction, mockClient)
 
 	// Run the wrapped action
@@ -101,18 +128,23 @@ func TestWithTelemetry(t *testing.T) {
 	}
 
 	// Verify events were tracked (invoked and success)
-	if len(mockClient.events) != 2 {
-		t.Fatalf("Expected 2 events, got %d", len(mockClient.events))
+	if len(mockClient.metrics) != 3 {
+		t.Fatalf("Expected 3 metrics, got %d", len(mockClient.metrics))
 	}
 
 	// Check invoked event
-	if mockClient.events[0].name != FormatEventName("test-command", "invoked") {
-		t.Errorf("Expected invoked event, got '%s'", mockClient.events[0].name)
+	if mockClient.metrics[0].Name != "Count" {
+		t.Errorf("Expected Count metric, got '%s'", mockClient.metrics[0].Name)
 	}
 
 	// Check success event
-	if mockClient.events[1].name != FormatEventName("test-command", "success") {
-		t.Errorf("Expected success event, got '%s'", mockClient.events[1].name)
+	if mockClient.metrics[1].Name != "Success" {
+		t.Errorf("Expected success metric, got '%s'", mockClient.metrics[1].Name)
+	}
+
+	// Check duration event
+	if mockClient.metrics[2].Name != "DurationMilliseconds" {
+		t.Errorf("Expected duration metric, got '%s'", mockClient.metrics[2].Name)
 	}
 }
 
@@ -148,76 +180,27 @@ func TestWithTelemetryError(t *testing.T) {
 	}
 
 	// Verify events were tracked (invoked and fail)
-	if len(mockClient.events) != 2 {
-		t.Fatalf("Expected 2 events, got %d", len(mockClient.events))
+	if len(mockClient.metrics) != 3 {
+		t.Fatalf("Expected 2 metrics, got %d", len(mockClient.metrics))
 	}
 
 	// Check invoked event
-	if mockClient.events[0].name != FormatEventName("test-command", "invoked") {
-		t.Errorf("Expected invoked event, got '%s'", mockClient.events[0].name)
+	if mockClient.metrics[0].Name != "Count" {
+		t.Errorf("Expected Count metric, got '%s'", mockClient.metrics[0].Name)
 	}
 
 	// Check fail event
-	if mockClient.events[1].name != FormatEventName("test-command", "fail") {
-		t.Errorf("Expected fail event, got '%s'", mockClient.events[1].name)
+	if mockClient.metrics[1].Name != "Failure" {
+		t.Errorf("Expected fail metric, got '%s'", mockClient.metrics[1].Name)
 	}
 
 	// Check error message in event properties
-	if val, ok := mockClient.events[1].props["error"]; !ok || val != "test error message" {
-		t.Errorf("Error message not correctly captured: %v", mockClient.events[1].props)
-	}
-}
-
-func TestTrack(t *testing.T) {
-	// Create a mock telemetry client
-	mockClient := &mockTelemetryClient{}
-
-	// Create context with telemetry client
-	ctx := context.Background()
-	ctx = telemetry.WithContext(ctx, mockClient)
-
-	// Track a custom metric
-	props := map[string]interface{}{
-		"direct_prop": "direct_value",
+	if val, ok := mockClient.metrics[1].Dimensions["error"]; !ok || val != "test error message" {
+		t.Errorf("Error message not correctly captured: %v", mockClient.metrics[1].Dimensions)
 	}
 
-	err := Track(ctx, "custom.event", props)
-	if err != nil {
-		t.Fatalf("Track returned error: %v", err)
-	}
-
-	// Verify events were tracked
-	if len(mockClient.events) != 1 {
-		t.Fatalf("Expected 1 event, got %d", len(mockClient.events))
-	}
-
-	event := mockClient.events[0]
-	if event.name != "custom.event" {
-		t.Errorf("Expected event 'custom.event', got '%s'", event.name)
-	}
-
-	// Check properties
-	if val, ok := event.props["direct_prop"]; !ok || val != "direct_value" {
-		t.Errorf("Direct property not correctly captured: %v", event.props)
-	}
-}
-
-func TestFormatEventName(t *testing.T) {
-	tests := []struct {
-		command  string
-		action   string
-		expected string
-	}{
-		{"avs_create", "invoked", "cli.avs_avs_create.invoked"},
-		{"avs_run", "task_completed", "cli.avs_avs_run.task_completed"},
-		{"build", "failed_step", "cli.avs_build.failed_step"},
-	}
-
-	for _, test := range tests {
-		result := FormatEventName(test.command, test.action)
-		if result != test.expected {
-			t.Errorf("FormatEventName(%s, %s) = %s, want %s",
-				test.command, test.action, result, test.expected)
-		}
+	// Check duration event
+	if mockClient.metrics[2].Name != "DurationMilliseconds" {
+		t.Errorf("Expected duration metric, got '%s'", mockClient.metrics[2].Name)
 	}
 }

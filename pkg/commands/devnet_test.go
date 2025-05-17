@@ -3,11 +3,10 @@ package commands
 import (
 	"bytes"
 	"context"
+	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"errors"
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/urfave/cli/v2"
 	"io"
 	"net"
 	"os"
@@ -16,9 +15,14 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/urfave/cli/v2"
+	"sigs.k8s.io/yaml"
 )
 
-func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error) {
+// helper to create a temp AVS project dir with config.yaml copied
+func createTempAVSProject(t *testing.T) (string, error) {
 	tempDir, err := os.MkdirTemp("", "devkit-test-avs-*")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp dir: %w", err)
@@ -31,10 +35,11 @@ func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error)
 	}
 
 	// Copy config.yaml
-	srcConfigFile := filepath.Join(defaultConfigDir, "config.yaml")
-	destConfigFile := filepath.Join(destConfigDir, "config.yaml")
-
-	common.CopyFileTesting(t, srcConfigFile, destConfigFile)
+	destConfigFile := filepath.Join(destConfigDir, common.BaseConfig)
+	err = os.WriteFile(destConfigFile, []byte(config.DefaultConfigYaml), 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to copy %s: %w", common.BaseConfig, err)
+	}
 
 	// Create config/contexts directory
 	destContextsDir := filepath.Join(destConfigDir, "contexts")
@@ -43,12 +48,43 @@ func createTempAVSProject(t *testing.T, defaultConfigDir string) (string, error)
 	}
 
 	// Copy devnet.yaml context file
-	srcDevnetFile := filepath.Join(defaultConfigDir, "contexts", "devnet.yaml")
 	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml")
+	err = os.WriteFile(destDevnetFile, []byte(config.ContextYamls["devnet"]), 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to create config/contexts/devnet.yaml: %w", err)
+	}
 
-	common.CopyFileTesting(t, srcDevnetFile, destDevnetFile)
+	// Create build script
+	scriptsDir := filepath.Join(tempDir, ".devkit", "scripts")
+	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	deployScript := `#!/bin/bash
+echo '{"mock": "deployContracts"}'`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "deployContracts"), []byte(deployScript), 0755); err != nil {
+		t.Fatal(err)
+	}
+	getOperatorSets := `#!/bin/bash
+echo '{"mock": "getOperatorSets"}'`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "getOperatorSets"), []byte(getOperatorSets), 0755); err != nil {
+		t.Fatal(err)
+	}
+	getOperatorRegistrationMetadata := `#!/bin/bash
+echo '{"mock": "getOperatorRegistrationMetadata"}'`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "getOperatorRegistrationMetadata"), []byte(getOperatorRegistrationMetadata), 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	return tempDir, nil
+}
+
+func findSubcommandByName(name string, commands []*cli.Command) *cli.Command {
+	for _, cmd := range commands {
+		if cmd.Name == name {
+			return cmd
+		}
+	}
+	return nil
 }
 
 func TestStartAndStopDevnet(t *testing.T) {
@@ -58,9 +94,8 @@ func TestStartAndStopDevnet(t *testing.T) {
 	t.Cleanup(func() {
 		_ = os.Chdir(originalCwd)
 	})
-	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
 
-	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir, err := createTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -76,11 +111,12 @@ func TestStartAndStopDevnet(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
 		},
 		Action: StartDevnetAction,
 	}
 
-	err = startApp.Run([]string{"devkit", "--port", port, "--verbose"})
+	err = startApp.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts"})
 	assert.NoError(t, err)
 
 	// Stop
@@ -104,14 +140,11 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 	t.Cleanup(func() {
 		_ = os.Chdir(originalCwd) // Restore cwd after test
 	})
-
-	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
-
-	projectDir1, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir1, err := createTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir1)
 
-	projectDir2, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir2, err := createTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir2)
 
@@ -127,10 +160,11 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
 		},
 		Action: StartDevnetAction,
 	}
-	err = app1.Run([]string{"devkit", "--port", port, "--verbose"})
+	err = app1.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts"})
 	assert.NoError(t, err)
 
 	// Attempt from dir2
@@ -142,10 +176,11 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
 		},
 		Action: StartDevnetAction,
 	}
-	err = app2.Run([]string{"devkit", "--port", port, "--verbose"})
+	err = app2.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "already in use")
 
@@ -162,6 +197,101 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 		Action: StopDevnetAction,
 	}
 	_ = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
+}
+func TestStartDevnet_WithDeployContracts(t *testing.T) {
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	projectDir, err := createTempAVSProject(t)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	app := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
+		},
+		Action: StartDevnetAction,
+	}
+
+	err = app.Run([]string{"devkit", "--port", port})
+	assert.NoError(t, err)
+
+	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
+	data, err := os.ReadFile(yamlPath)
+	assert.NoError(t, err)
+
+	var parsed map[string]interface{}
+	err = yaml.Unmarshal(data, &parsed)
+	assert.NoError(t, err)
+
+	ctx, ok := parsed["context"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should run by default")
+
+	stopApp := &cli.App{
+		Name:   "devkit",
+		Flags:  []cli.Flag{&cli.IntFlag{Name: "port"}},
+		Action: StopDevnetAction,
+	}
+	_ = stopApp.Run([]string{"devkit", "--port", port})
+}
+
+func TestStartDevnet_SkipDeployContracts(t *testing.T) {
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	projectDir, err := createTempAVSProject(t)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	app := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
+		},
+		Action: StartDevnetAction,
+	}
+
+	err = app.Run([]string{"devkit", "--port", port, "--skip-deploy-contracts"})
+	assert.NoError(t, err)
+
+	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
+	data, err := os.ReadFile(yamlPath)
+	assert.NoError(t, err)
+
+	var parsed map[string]interface{}
+	err = yaml.Unmarshal(data, &parsed)
+	assert.NoError(t, err)
+
+	ctx, ok := parsed["context"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.NotEqual(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should be skipped")
+
+	stopApp := &cli.App{
+		Name:   "devkit",
+		Flags:  []cli.Flag{&cli.IntFlag{Name: "port"}},
+		Action: StopDevnetAction,
+	}
+	_ = stopApp.Run([]string{"devkit", "--port", port})
 }
 
 // getFreePort finds an available TCP port for testing
@@ -182,8 +312,7 @@ func TestListRunningDevnets(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare temp AVS project
-	defaultConfigWithContextConfigPath := filepath.Join("..", "..", "config")
-	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir, err := createTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -199,10 +328,11 @@ func TestListRunningDevnets(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
 		},
 		Action: StartDevnetAction,
 	}
-	err = startApp.Run([]string{"devkit", "--port", port, "--verbose"})
+	err = startApp.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts"})
 	assert.NoError(t, err)
 
 	// Capture output of list
@@ -249,10 +379,8 @@ func TestStopDevnetAll(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare and start multiple devnets
-	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
-
 	for i := 0; i < 2; i++ {
-		projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+		projectDir, err := createTempAVSProject(t)
 		assert.NoError(t, err)
 		defer os.RemoveAll(projectDir)
 
@@ -267,11 +395,12 @@ func TestStopDevnetAll(t *testing.T) {
 			Flags: []cli.Flag{
 				&cli.IntFlag{Name: "port"},
 				&cli.BoolFlag{Name: "verbose"},
+				&cli.BoolFlag{Name: "skip-deploy-contracts"},
 			},
 			Action: StartDevnetAction,
 		}
 
-		err = startApp.Run([]string{"devkit", "--port", port, "--verbose"})
+		err = startApp.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts"})
 		assert.NoError(t, err)
 	}
 
@@ -283,9 +412,10 @@ func TestStopDevnetAll(t *testing.T) {
 				Name: "avs",
 				Subcommands: []*cli.Command{
 					{
-						Name:        "devnet",
-						Subcommands: []*cli.Command{DevnetCommand.Subcommands[1]}, // stop
-					},
+						Name: "devnet",
+						Subcommands: []*cli.Command{
+							findSubcommandByName("stop", DevnetCommand.Subcommands),
+						}},
 				},
 			},
 		},
@@ -308,10 +438,7 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
-	// Prepare and start multiple devnets
-	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
-
-	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir, err := createTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -326,11 +453,12 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
 		},
 		Action: StartDevnetAction,
 	}
 
-	err = startApp.Run([]string{"devkit", "--port", port, "--verbose"})
+	err = startApp.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts"})
 	assert.NoError(t, err)
 
 	devkitApp := &cli.App{
@@ -340,8 +468,10 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 				Name: "avs",
 				Subcommands: []*cli.Command{
 					{
-						Name:        "devnet",
-						Subcommands: []*cli.Command{DevnetCommand.Subcommands[1]}, // stop
+						Name: "devnet",
+						Subcommands: []*cli.Command{
+							findSubcommandByName("stop", DevnetCommand.Subcommands),
+						},
 					},
 				},
 			},
@@ -358,15 +488,82 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 	assert.NotContains(t, string(output), "devkit-devnet-", "The devnet container should be stopped")
 }
 
+func TestDeployContracts(t *testing.T) {
+	// Save working dir
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	// Setup temp project
+	projectDir, err := createTempAVSProject(t)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	// Start devnet first
+	startApp := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
+		},
+		Action: StartDevnetAction,
+	}
+	err = startApp.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts"})
+	assert.NoError(t, err)
+
+	// Run deploy-contracts
+	deployApp := &cli.App{
+		Name:   "devkit",
+		Action: DeployContractsAction,
+	}
+	err = deployApp.Run([]string{"devkit", "avs", "devnet", "deploy-contracts"})
+	assert.NoError(t, err)
+
+	// Read and verify context output
+	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
+	data, err := os.ReadFile(yamlPath)
+	assert.NoError(t, err)
+	assert.Contains(t, string(data), "context")
+
+	// Unmarshal the context file
+	var parsed map[string]interface{}
+	err = yaml.Unmarshal(data, &parsed)
+	assert.NoError(t, err)
+
+	// Expect the context to be present
+	ctx, ok := parsed["context"].(map[string]interface{})
+	assert.True(t, ok, "expected context map in devnet.yaml")
+
+	// Expect getOperatorRegistrationMetadata to be written to mock
+	mockVal := ctx["mock"]
+	assert.Equal(t, "getOperatorRegistrationMetadata", mockVal)
+
+	// Cleanup
+	stopApp := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+		},
+		Action: StopDevnetAction,
+	}
+	err = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
+	assert.NoError(t, err)
+}
+
 func TestStartDevnet_ContextCancellation(t *testing.T) {
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
-	// Prepare and start multiple devnets
-	defaultConfigWithContextConfigPath, _ := filepath.Abs(filepath.Join("..", "..", "config"))
-
-	projectDir, err := createTempAVSProject(t, defaultConfigWithContextConfigPath)
+	projectDir, err := createTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -383,13 +580,14 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
 		},
 		Action: StartDevnetAction,
 	}
 
 	done := make(chan error, 1)
 	go func() {
-		args := []string{"devkit", "--port", port, "--verbose"}
+		args := []string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts"}
 		done <- app.RunContext(ctx, args)
 	}()
 

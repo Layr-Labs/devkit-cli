@@ -1,6 +1,7 @@
 package common_test
 
 import (
+	"devkit-cli/config"
 	"devkit-cli/pkg/common"
 	"fmt"
 	"os"
@@ -14,19 +15,17 @@ import (
 func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	// Setup temp directory
 	tmpDir := t.TempDir()
-	tmpYamlPath := filepath.Join(tmpDir, "config.yaml")
+	tmpYamlPath := filepath.Join(tmpDir, common.BaseConfig)
 
 	// Copy config/config.yaml to tempDir
-	srcConfigPath := filepath.Join("..", "..", "config", "config.yaml")
-	common.CopyFileTesting(t, srcConfigPath, tmpYamlPath)
+	assert.NoError(t, os.WriteFile(tmpYamlPath, []byte(config.DefaultConfigYaml), 0644))
 
 	// Copy config/contexts/devnet.yaml to tempDir/config/contexts
 	tmpContextDir := filepath.Join(tmpDir, "config", "contexts")
 	assert.NoError(t, os.MkdirAll(tmpContextDir, 0755))
 
-	srcDevnetPath := filepath.Join("..", "..", "config", "contexts", "devnet.yaml")
 	tmpDevnetPath := filepath.Join(tmpContextDir, "devnet.yaml")
-	common.CopyFileTesting(t, srcDevnetPath, tmpDevnetPath)
+	assert.NoError(t, os.WriteFile(tmpDevnetPath, []byte(config.ContextYamls["devnet"]), 0644))
 
 	// Run loader with the new base path
 	cfg, err := LoadConfigWithContextConfigFromPath("devnet", tmpDir)
@@ -36,8 +35,8 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "0.1.0", cfg.Config.Project.Version)
 	assert.Equal(t, "devnet", cfg.Config.Project.Context)
 
-	assert.Equal(t, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].DeployerPrivateKey)
-	assert.Equal(t, "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].AppDeployerPrivateKey)
+	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].DeployerPrivateKey)
+	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].AppDeployerPrivateKey)
 
 	assert.Equal(t, "keystores/operator1.keystore.json", cfg.Context["devnet"].Operators[0].BlsKeystorePath)
 	assert.Equal(t, "keystores/operator2.keystore.json", cfg.Context["devnet"].Operators[1].BlsKeystorePath)
@@ -47,12 +46,10 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "1000ETH", cfg.Context["devnet"].Operators[1].Stake)
 
 	assert.Equal(t, "devnet", cfg.Context["devnet"].Name)
-	assert.Equal(t, "l1", cfg.Context["devnet"].Chains[0].Name)
-	assert.Equal(t, "l2", cfg.Context["devnet"].Chains[1].Name)
-	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[0].RPCURL)
-	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains[1].RPCURL)
-	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
-	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains[0].Fork.Block)
+	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l1"].RPCURL)
+	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l2"].RPCURL)
+	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
+	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.Address)
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
@@ -62,7 +59,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 
 func LoadConfigWithContextConfigFromPath(contextName string, config_directory_path string) (*common.ConfigWithContextConfig, error) {
 	// Load base config
-	data, err := os.ReadFile(filepath.Join(config_directory_path, "config.yaml"))
+	data, err := os.ReadFile(filepath.Join(config_directory_path, common.BaseConfig))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read base config: %w", err)
 	}
