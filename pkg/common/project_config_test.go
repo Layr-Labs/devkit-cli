@@ -106,9 +106,15 @@ func TestIsTelemetryEnabled_TrueAndFalse(t *testing.T) {
 	falsePath := filepath.Join(tmpDir, "telemetry_false.yaml")
 
 	// Write "true" config
-	os.WriteFile(truePath, []byte("project_uuid: "+uuid.New().String()+"\ntelemetry_enabled: true\n"), 0644)
+	err := os.WriteFile(truePath, []byte("project_uuid: "+uuid.New().String()+"\ntelemetry_enabled: true\n"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write telemetry config: %v", err)
+	}
 	// Write "false" config
-	os.WriteFile(falsePath, []byte("project_uuid: "+uuid.New().String()+"\ntelemetry_enabled: false\n"), 0644)
+	err = os.WriteFile(falsePath, []byte("project_uuid: "+uuid.New().String()+"\ntelemetry_enabled: false\n"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write telemetry config: %v", err)
+	}
 
 	// Override global path
 	if !isTelemetryEnabled(truePath) {
