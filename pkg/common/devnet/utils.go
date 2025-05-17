@@ -47,4 +47,3 @@ func GetDockerPsDevnetArgs() []string {
 		"--format", "{{.Names}}: {{.Ports}}",
 	}
 }
-
