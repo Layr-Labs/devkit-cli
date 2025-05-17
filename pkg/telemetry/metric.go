@@ -20,7 +20,7 @@ type Metric struct {
 	Dimensions map[string]string `json:"dimensions"`
 }
 
-// clientContextKey is used to store the metrics context
+// metricsContextKey is used to store the metrics context
 type metricsContextKey struct{}
 
 // WithMetricsContext returns a new context with the metrics context
