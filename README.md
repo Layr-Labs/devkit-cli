@@ -172,9 +172,9 @@ devkit keystore read --path --password
 ```
 
 ### Flag Descriptions
-**`key`**: Private key in BigInt format . Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
-**`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
-**`password`**: Password to encrypt/decrypt the keystore.
+- **`key`**: Private key in BigInt format . Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
+- **`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
+- **`password`**: Password to encrypt/decrypt the keystore.
 
 ## 📖 Logging
 
