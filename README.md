@@ -141,7 +141,15 @@ DevNet management commands:
 | `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
 
 
-### 5️⃣ Simulate Task Execution (`avs call`)
+### 5️⃣ Start you offchain AVS infrastructure (`avs run`)
+
+Run your offchain AVS components locally. This will start your `aggregator` and `executor` to facilitate task execution:
+
+```bash
+devkit avs run
+```
+
+### 6️⃣ Simulate Task Execution (`avs call`)
 
 Test your AVS logic locally by simulating task execution:
 
