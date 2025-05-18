@@ -105,9 +105,6 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Run scriptPath from cwd
 	const dir = ""
 
-	// Run script with expectJSONResponse - each script returns context fragment
-	const expectJSONResponse = true
-
 	// Set path for .devkit scripts
 	scriptsDir := filepath.Join(".devkit", "scripts")
 
