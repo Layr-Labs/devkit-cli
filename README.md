@@ -1,5 +1,8 @@
 # EigenLayer Development Kit (DevKit) 🚀
 
+## ⚠️ Disclaimer: Closed Alpha Not Production Ready
+EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used for use in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
+
 **A CLI toolkit for developing, testing, and managing EigenLayer Autonomous Verifiable Services (AVS).**
 
 EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold projects, compile contracts, run local networks, and simulate tasks with ease.
