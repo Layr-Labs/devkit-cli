@@ -118,6 +118,7 @@ Start a local Ethereum-based development network to simulate your AVS environmen
 * Forks ethereum mainnet using a fork url which the user passes along with the block number.
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
 * Setup required `AVS` contracts.
+* Initializes `aggregator` and `executor` processes.
 * Register `AVS` and `Operators`.
 
 > \[!IMPORTANT]
@@ -140,18 +141,7 @@ DevNet management commands:
 | `stop --project.name`  | Stops the specific project's devnet                                  |
 | `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
 
-
-### 5️⃣ Start offchain AVS infrastructure (`avs run`)
-
-Run your offchain AVS components locally.
-
-* Initializes aggregator and executor processes
-
-```bash
-devkit avs run
-```
-
-### 6️⃣ Simulate Task Execution (`avs call`)
+### 5️⃣ Simulate Task Execution (`avs call`)
 
 Test your AVS logic locally by simulating task execution:
 
