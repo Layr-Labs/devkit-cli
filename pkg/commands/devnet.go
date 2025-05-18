@@ -31,6 +31,11 @@ var DevnetCommand = &cli.Command{
 					Value: 8545,
 				},
 				&cli.BoolFlag{
+					Name:  "skip-avs-run",
+					Usage: "Skip starting offchain AVS components",
+					Value: false,
+				},
+				&cli.BoolFlag{
 					Name:  "skip-deploy-contracts",
 					Usage: "Skip deploying contracts and only start local devnet",
 					Value: false,

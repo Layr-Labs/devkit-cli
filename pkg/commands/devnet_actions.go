@@ -19,6 +19,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Get logger
 	log, _ := common.GetLogger()
 
+	// Extract vars
+	skipAvsRun := cCtx.Bool("skip-avs-run")
+	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+
 	// Load config for devnet
 	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
@@ -31,8 +35,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	chainImage := devnet.GetDevnetChainImageOrDefault(config)
 	chainArgs := devnet.GetDevnetChainArgsOrDefault(config)
 
-	startTime := time.Now() // <-- start timing
-	// if user gives , say, log = "DEBUG" Or "Debug", we normalize it to lowercase
+	// Start timer
+	startTime := time.Now()
+
+	// If user gives, say, log = "DEBUG" Or "Debug", we normalize it to lowercase
 	if common.IsVerboseEnabled(cCtx, config) {
 		log.Info("Starting devnet...\n")
 
@@ -46,7 +52,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			log.Info("Running in headless mode")
 		}
 	}
-	// docker-compose for anvil devnet
+
+	// Docker-compose for anvil devnet
 	composePath := devnet.WriteEmbeddedArtifacts()
 	fork_url, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
 	if err != nil {
@@ -85,10 +92,17 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(1 * time.Second)
 	log.Info("\nDevnet started successfully in %s", elapsed)
 
-	// Deploy the contracts after starting next work unless skipped
-	if !cCtx.Bool("skip-deploy-contracts") {
+	// Deploy the contracts after starting devnet unless skipped
+	if !skipDeployContracts {
 		if err := DeployContractsAction(cCtx); err != nil {
 			return fmt.Errorf("deploy-contracts failed: %w", err)
+		}
+	}
+
+	// Start offchain AVS components after starting devnet and deploying contracts unless skipped
+	if !skipDeployContracts && !skipAvsRun {
+		if err := AVSRun(cCtx); err != nil {
+			return fmt.Errorf("avs run failed: %w", err)
 		}
 	}
 
