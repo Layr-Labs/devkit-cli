@@ -62,7 +62,7 @@ During this Private Preview, you'll need access to private Go modules hosted on 
 
 ### 1️⃣ Create a New AVS Project (`avs create`)
 
-Quickly scaffold your new AVS project:
+Sets up a new AVS project with the recommended structure, configuration files, and boilerplate code. This helps you get started quickly without needing to manually organize files or determine a layout. Details:
 
 * Initializes a new project based on the default Hourglass task-based architecture in Go.
 * Generates boilerplate code and default configuration.
@@ -86,9 +86,6 @@ Before running your AVS, you’ll need to configure both project-level and envir
 
 You can view or modify these configurations using the DevKit CLI or by editing the files manually.
 
-#### 📋 View current configuration:
-```bash
-devkit avs config
 View current settings via CLI:
 
 ```bash
@@ -108,7 +105,7 @@ Alternatively, manually edit the config files in the text editor of your choice.
 
 ### 3️⃣ Build Your AVS
 
-Compile AVS smart contracts and binaries to prepare your service for local execution:
+Compiles your AVS contracts and offchain binaries. Required before running a devnet or simulating tasks to ensure all components are built and ready.
 
 * Compiles smart contracts using Foundry.
 * Builds operator, aggregator, and AVS logic binaries.
@@ -121,9 +118,9 @@ devkit avs build
 
 ### 4️⃣ Launch Local DevNet
 
-Start a local Ethereum-based development network to simulate your AVS environment:
+Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
-- Forks Ethereum mainnet using a fork URL (provided by you) and a block number.
+* Forks Ethereum mainnet using a fork URL (provided by you) and a block number.
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
 * Setup required `AVS` contracts.
 * Register `AVS` and `Operators`.
@@ -154,7 +151,7 @@ DevNet management commands:
 
 ### 5️⃣ Simulate Task Execution (`avs call`)
 
-Test your AVS logic locally by simulating task execution:
+Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
 
 * Simulate the full lifecycle of task submission and execution.
 * Validate both off-chain and on-chain logic.
@@ -192,10 +189,11 @@ Deploy your AVS’s onchain contracts independently of the full devnet setup.
 
 This step is **optional**. The `devkit avs devnet start` command already handles contract deployment as part of its full setup. However, you may choose to run this command separately if you want to deploy contracts without launching a local devnet — for example, when preparing for a testnet deployment.
 
-> Note: Testnet deployment is not yet supported, but this command is designed to accommodate that workflow in the future.
+> Note: Testnet support is not yet implemented, but this command is structured to support such workflows in the future.
 
 ```bash
 devkit avs deploy-contract
+```
 
 ### Create Operator Keys (`avs keystore`)
 Create and read keystores for bn254 private keys using the CLI. 
