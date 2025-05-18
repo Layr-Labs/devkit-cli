@@ -13,11 +13,12 @@ import (
 // EnsureDockerIsRunning checks if Docker is running and attempts to launch Docker Desktop if not.
 func EnsureDockerIsRunning(ctx context.Context) error {
 	log, _ := GetLogger()
+	dockerPingTimeout := 2 * time.Second
 	if !isDockerInstalled() {
 		return fmt.Errorf("docker is not installed. Please install Docker Desktop from https://www.docker.com/products/docker-desktop")
 	}
 
-	if err := isDockerRunning(ctx); err == nil {
+	if err := isDockerRunning(ctx, dockerPingTimeout); err == nil {
 		return nil
 	}
 
@@ -55,7 +56,6 @@ func EnsureDockerIsRunning(ctx context.Context) error {
 
 	start := time.Now()
 	timeout := time.After(DockerOpenTimeoutSeconds * time.Second)
-
 	var lastErr error
 
 	for {
@@ -66,7 +66,7 @@ func EnsureDockerIsRunning(ctx context.Context) error {
 			return fmt.Errorf("timed out waiting for Docker to start after %s: error: %v",
 				time.Since(start).Round(time.Millisecond), lastErr)
 		case <-ticker.C:
-			if err := isDockerRunning(ctx); err == nil {
+			if err := isDockerRunning(ctx, dockerPingTimeout); err == nil {
 				log.Info("\n✅ Docker is now running.")
 				return nil
 			} else {
@@ -77,17 +77,17 @@ func EnsureDockerIsRunning(ctx context.Context) error {
 	}
 }
 
-func isDockerRunning(ctx context.Context) error {
-	cli, err := client.NewClientWithOpts(client.FromEnv)
+func isDockerRunning(ctx context.Context, pingTimeout time.Duration) error {
+	client, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return err
 	}
-	defer cli.Close()
+	defer client.Close()
 
-	pingCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	pingCtx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
 
-	_, err = cli.Ping(pingCtx)
+	_, err = client.Ping(pingCtx)
 	return err
 }
 
