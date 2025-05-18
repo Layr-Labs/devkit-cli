@@ -62,9 +62,10 @@ func TestRunCommand_MalformedYAML(t *testing.T) {
 	defer restore()
 
 	yamlPath := filepath.Join(tmpDir, "config", "contexts", "devnet.yaml")
-	os.WriteFile(yamlPath, []byte(":\n  - bad"), 0644)
+	err := os.WriteFile(yamlPath, []byte(":\n  - bad"), 0644)
+	assert.NoError(t, err)
 
-	err := app.Run([]string{"app", "run"})
+	err = app.Run([]string{"app", "run"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load context")
 }
@@ -86,9 +87,10 @@ func TestRunCommand_ScriptReturnsNonZero(t *testing.T) {
 
 	scriptPath := filepath.Join(tmpDir, ".devkit", "scripts", "run")
 	failScript := "#!/bin/bash\nexit 1"
-	os.WriteFile(scriptPath, []byte(failScript), 0755)
+	err := os.WriteFile(scriptPath, []byte(failScript), 0755)
+	assert.NoError(t, err)
 
-	err := app.Run([]string{"app", "run"})
+	err = app.Run([]string{"app", "run"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "run failed")
 }
@@ -99,7 +101,8 @@ func TestRunCommand_ScriptOutputsInvalidJSON(t *testing.T) {
 
 	scriptPath := filepath.Join(tmpDir, ".devkit", "scripts", "run")
 	badOutput := "#!/bin/bash\necho 'not-json'\n"
-	os.WriteFile(scriptPath, []byte(badOutput), 0755)
+	err := os.WriteFile(scriptPath, []byte(badOutput), 0755)
+	assert.NoError(t, err)
 
 	stdout, stderr := testutils.CaptureOutput(func() {
 		err := app.Run([]string{"app", "run"})
