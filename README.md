@@ -16,7 +16,6 @@ EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold 
 | `avs config` | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...)        |
 | `avs build`  | Compile AVS smart contracts and binaries |
 | `avs devnet` | Manage local development network         |
-| `avs run`    | Start offchain AVS components            |
 | `avs call`   | Simulate AVS task execution locally      |
 
 ---
@@ -52,7 +51,7 @@ devkit --help
 
 ### 🔑 Setup for Private Go Modules
 
-During this Private Preview (closed beta), you'll need access to private Go modules hosted on GitHub:
+During this Private Preview, you'll need access to private Go modules hosted on GitHub:
 
 1. **Add SSH Key to GitHub:** Ensure your SSH key is associated with your GitHub account ([instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
 2. **Verify Repository Access:** Confirm with EigenLabs support that your account has access to necessary private repositories.
@@ -61,11 +60,11 @@ During this Private Preview (closed beta), you'll need access to private Go modu
 
 ## 🚧 Step-by-Step Guide
 
-### 1️⃣ Create a New AVS Project
+### 1️⃣ Create a New AVS Project (`avs create`)
 
 Quickly scaffold your new AVS project:
 
-* Initializes a new project based on the default task-based architecture in Go.
+* Initializes a new project based on the default Hourglass task-based architecture in Go.
 * Generates boilerplate code and default configuration.
 
 Projects are created by default in the current directory from where the below command is called.
@@ -76,11 +75,20 @@ cd my-avs-project
 ```
 
 > \[!IMPORTANT]
-> All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder . The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files , example `devnet.yaml`.
+> All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
-### 2️⃣ Configure Your AVS (`config.yaml`,`devnet.yaml`)
+### 2️⃣ Configure Your AVS (`avs config`)
 
-Customize project settings to define operators, network configurations, and more. You can configure this file either through the CLI or by manually editing the `config.yaml` and `contexts/devnet.yaml` files.
+Before running your AVS, you’ll need to configure both project-level and environment-specific settings. This is done through two configuration files:
+
+- **`config.yaml`**: Defines project-wide settings such as AVS name and context names.
+- **`contexts/devnet.yaml`**: Contains environment-specific settings for your a given context (i.e. devnet), including the Ethereum fork url, block height, operator keys, AVS keys, and other runtime parameters.
+
+You can view or modify these configurations using the DevKit CLI or by editing the files manually.
+
+#### 📋 View current configuration:
+```bash
+devkit avs config
 View current settings via CLI:
 
 ```bash
@@ -93,7 +101,7 @@ Edit settings directly via CLI:
 devkit avs config --edit --path <path to the config.yaml or contexts/devnet.yaml file>
 ```
 
-Alternatively, manually edit the config files in a text editor of your choice.
+Alternatively, manually edit the config files in the text editor of your choice.
 
 > \[!IMPORTANT]
 > These commands must be run from your AVS project's root directory.
@@ -115,20 +123,23 @@ devkit avs build
 
 Start a local Ethereum-based development network to simulate your AVS environment:
 
-* Forks ethereum mainnet using a fork url which the user passes along with the block number.
+- Forks Ethereum mainnet using a fork URL (provided by you) and a block number.
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
 * Setup required `AVS` contracts.
-* Initializes `aggregator` and `executor` processes.
 * Register `AVS` and `Operators`.
 
-> \[!IMPORTANT]
-> Please ensure your Docker daemon is running beforehand.
+> Note: You must provide a fork URL that forks from Ethereum mainnet. You can use any popular RPC provider such as QuickNode or Alchemy.
+
+This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
 
 Run this from your project directory:
 
 ```bash
 devkit avs devnet start
 ```
+
+> \[!IMPORTANT]
+> Please ensure your Docker daemon is running before running this command.
 
 DevNet management commands:
 
@@ -159,7 +170,34 @@ Optionally, submit tasks directly to the on-chain TaskMailBox contract via a fro
 
 ---
 
-## Bls keystore 
+## Optional Commands
+
+### Start offchain AVS infrastructure (`avs run`)
+
+Run your offchain AVS components locally.
+
+* Initializes the Aggregator and Executor Hourglass processes.
+
+This step is optional. The devkit `devkit avs devnet start` command already starts these components. However, you may choose to run this separately if you want to start the offchain processes without launching a local devnet — for example, when testing against a testnet deployment.
+
+> Note: Testnet support is not yet implemented, but this command is structured to support such workflows in the future.
+
+```bash
+devkit avs run
+```
+
+### Deploy AVS Contracts (`avs deploy-contract`)
+
+Deploy your AVS’s onchain contracts independently of the full devnet setup.
+
+This step is **optional**. The `devkit avs devnet start` command already handles contract deployment as part of its full setup. However, you may choose to run this command separately if you want to deploy contracts without launching a local devnet — for example, when preparing for a testnet deployment.
+
+> Note: Testnet deployment is not yet supported, but this command is designed to accommodate that workflow in the future.
+
+```bash
+devkit avs deploy-contract
+
+### Create Operator Keys (`avs keystore`)
 Create and read keystores for bn254 private keys using the CLI. 
 
 - To create a keystore
@@ -172,12 +210,12 @@ devkit keystore create --key --path --password
 devkit keystore read --path --password
 ```
 
-### Flag Descriptions
+**Flag Descriptions**
 - **`key`**: Private key in BigInt format . Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
 - **`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
 - **`password`**: Password to encrypt/decrypt the keystore.
 
-## 📖 Logging
+### 📖 Logging (`--verbose`)
 
 <!-- 
 @TODO: bring this back when we reintroduce config log levels
@@ -196,39 +234,13 @@ devkit avs build --verbose
 
 ---
 
-## 🌍 Environment Variables
-
-The DevKit CLI automatically loads environment variables from a `.env` file in your project directory:
-
-- If a `.env` file exists in your project directory, its variables will be loaded for all commands except `create`
-- Template repositories should include a `.env.example` file that you can copy to `.env` and modify
-- This is useful for storing configuration that shouldn't be committed to version control (API keys, private endpoints, etc.)
-
-Example workflow:
-```bash
-# After creating a project from a template
-cd my-avs-project
-
-# Copy the example env file (if provided by the template)
-cp .env.example .env
-
-# Edit with your specific values
-nano .env
-
-# Run commands - the .env file will be automatically loaded
-devkit avs build
-devkit avs devnet start
-devkit avs run
-devkit avs call --params payload=1
-```
-
----
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request.
 
-## Release Process
+---
+
+## For DevKit Maintainers: DevKit Release Process
 To release a new version of the CLI, follow the steps below:
 > Note: You need to have write permission to this repo to release new version
 
