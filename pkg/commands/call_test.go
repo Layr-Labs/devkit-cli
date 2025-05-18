@@ -76,9 +76,10 @@ func TestCallCommand_MalformedYAML(t *testing.T) {
 	defer restore()
 
 	yamlPath := filepath.Join(tmpDir, "config", "contexts", "devnet.yaml")
-	os.WriteFile(yamlPath, []byte(":\n  - bad"), 0644)
+	err := os.WriteFile(yamlPath, []byte(":\n  - bad"), 0644)
+	assert.NoError(t, err)
 
-	err := app.Run([]string{"app", "call", "--params", "payload=0x1"})
+	err = app.Run([]string{"app", "call", "--params", "payload=0x1"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load context")
 }
@@ -87,9 +88,10 @@ func TestCallCommand_MissingScript(t *testing.T) {
 	tmpDir, restore, app := setupCallApp(t)
 	defer restore()
 
-	os.Remove(filepath.Join(tmpDir, ".devkit", "scripts", "call"))
+	err := os.Remove(filepath.Join(tmpDir, ".devkit", "scripts", "call"))
+	assert.NoError(t, err)
 
-	err := app.Run([]string{"app", "call", "--params", "payload=0x1"})
+	err = app.Run([]string{"app", "call", "--params", "payload=0x1"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no such file or directory")
 }
@@ -100,9 +102,10 @@ func TestCallCommand_ScriptReturnsNonZero(t *testing.T) {
 
 	scriptPath := filepath.Join(tmpDir, ".devkit", "scripts", "call")
 	failScript := "#!/bin/bash\nexit 1"
-	os.WriteFile(scriptPath, []byte(failScript), 0755)
+	err := os.WriteFile(scriptPath, []byte(failScript), 0755)
+	assert.NoError(t, err)
 
-	err := app.Run([]string{"app", "call", "--params", "payload=0x1"})
+	err = app.Run([]string{"app", "call", "--params", "payload=0x1"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "call failed")
 }
@@ -113,7 +116,8 @@ func TestCallCommand_ScriptOutputsInvalidJSON(t *testing.T) {
 
 	scriptPath := filepath.Join(tmpDir, ".devkit", "scripts", "call")
 	badJSON := "#!/bin/bash\necho 'not-json'\nexit 0"
-	os.WriteFile(scriptPath, []byte(badJSON), 0755)
+	err := os.WriteFile(scriptPath, []byte(badJSON), 0755)
+	assert.NoError(t, err)
 
 	stdout, stderr := testutils.CaptureOutput(func() {
 		err := app.Run([]string{"app", "call", "--params", "payload=0x1"})

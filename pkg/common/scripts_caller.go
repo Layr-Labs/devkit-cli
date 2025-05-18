@@ -10,7 +10,7 @@ import (
 	"os/exec"
 )
 
-func CallTemplateScript(cmdCtx context.Context, scriptPath string, expectJSONResponse bool, params ...[]byte) (map[string]interface{}, error) {
+func CallTemplateScript(cmdCtx context.Context, dir string, scriptPath string, expectJSONResponse bool, params ...[]byte) (map[string]interface{}, error) {
 	// Get logger
 	log, _ := GetLogger()
 
@@ -23,7 +23,7 @@ func CallTemplateScript(cmdCtx context.Context, scriptPath string, expectJSONRes
 	// Prepare the command
 	var stdout bytes.Buffer
 	cmd := exec.CommandContext(cmdCtx, scriptPath, stringParams...)
-	cmd.Dir = ""
+	cmd.Dir = dir
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 

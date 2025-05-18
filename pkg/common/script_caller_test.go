@@ -16,7 +16,8 @@ input=$1
 echo '{"status": "ok", "received": '"$input"'}'`
 
 	tmpDir := t.TempDir()
-	scriptPath := filepath.Join(tmpDir, "echo.sh")
+	name := "echo.sh"
+	scriptPath := filepath.Join(tmpDir, name)
 	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
 		t.Fatalf("failed to write test script: %v", err)
 	}
@@ -28,8 +29,9 @@ echo '{"status": "ok", "received": '"$input"'}'`
 	}
 
 	// Run the template script
+	const dir = ""
 	const expectJSONResponse = true
-	out, err := CallTemplateScript(context.Background(), scriptPath, expectJSONResponse, inputJSON)
+	out, err := CallTemplateScript(context.Background(), dir, scriptPath, expectJSONResponse, inputJSON)
 	if err != nil {
 		t.Fatalf("CallTemplateScript failed: %v", err)
 	}

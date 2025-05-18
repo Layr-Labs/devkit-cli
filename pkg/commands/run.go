@@ -23,6 +23,10 @@ var RunCommand = &cli.Command{
 			log.Info("Starting offchain AVS components...")
 		}
 
+		// Run the script from root of project dir
+		// (@TODO (GD): this should always be the root of the project, but we need to do this everywhere (ie reading ctx/config etc))
+		const dir = ""
+
 		// Set path for .devkit scripts
 		scriptPath := filepath.Join(".devkit", "scripts", "run")
 
@@ -36,7 +40,7 @@ var RunCommand = &cli.Command{
 
 		// Run init on the template init script
 		const expectJSONResponse = false
-		if _, err := common.CallTemplateScript(cCtx.Context, scriptPath, expectJSONResponse, contextJSON); err != nil {
+		if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, expectJSONResponse, contextJSON); err != nil {
 			return fmt.Errorf("run failed: %w", err)
 		}
 

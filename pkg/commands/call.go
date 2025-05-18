@@ -40,6 +40,7 @@ var CallCommand = &cli.Command{
 		}
 
 		// Set path for .devkit scripts
+		dir := ""
 		scriptPath := filepath.Join(".devkit", "scripts", "call")
 
 		// Extract params from flag
@@ -55,7 +56,7 @@ var CallCommand = &cli.Command{
 
 		// Run init on the template init script
 		const expectJSONResponse = true
-		if _, err := common.CallTemplateScript(cCtx.Context, scriptPath, expectJSONResponse, contextJSON, paramsJSON); err != nil {
+		if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, expectJSONResponse, contextJSON, paramsJSON); err != nil {
 			return fmt.Errorf("call failed: %w", err)
 		}
 

@@ -111,6 +111,9 @@ func FindSubcommandByName(name string, commands []*cli.Command) *cli.Command {
 }
 
 func CaptureOutput(fn func()) (stdout string, stderr string) {
+	// Get the logger
+	log, _ := common.GetLogger()
+
 	// Capture stdout
 	origStdout := os.Stdout
 	origStderr := os.Stderr
@@ -125,12 +128,18 @@ func CaptureOutput(fn func()) (stdout string, stderr string) {
 	go func() {
 		var buf bytes.Buffer
 		buf.ReadFrom(rOut)
+		if _, err := buf.ReadFrom(rOut); err != nil {
+			log.Warn("failed to read stdout: %v", err)
+		}
 		outC <- buf.String()
 	}()
 
 	go func() {
 		var buf bytes.Buffer
 		buf.ReadFrom(rErr)
+		if _, err := buf.ReadFrom(rOut); err != nil {
+			log.Warn("failed to read stdout: %v", err)
+		}
 		errC <- buf.String()
 	}()
 

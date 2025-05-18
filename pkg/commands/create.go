@@ -163,7 +163,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Set path for .devkit scripts
-		scriptDir := filepath.Join(targetDir, ".devkit", "scripts")
+		scriptDir := filepath.Join(".devkit", "scripts")
 		scriptPath := filepath.Join(scriptDir, "init")
 
 		// Run init to install deps
@@ -171,7 +171,7 @@ var CreateCommand = &cli.Command{
 
 		// Run init on the template init script
 		const expectJSONResponse = false
-		if _, err = common.CallTemplateScript(cCtx.Context, scriptPath, expectJSONResponse, nil); err != nil {
+		if _, err = common.CallTemplateScript(cCtx.Context, targetDir, scriptPath, expectJSONResponse, nil); err != nil {
 			return fmt.Errorf("failed to initialize %s: %w", scriptPath, err)
 		}
 
