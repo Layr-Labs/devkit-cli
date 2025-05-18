@@ -39,8 +39,10 @@ var CallCommand = &cli.Command{
 			return fmt.Errorf("failed to load context %w", err)
 		}
 
+		// Run scriptPath from cwd
+		const dir = ""
+
 		// Set path for .devkit scripts
-		dir := ""
 		scriptPath := filepath.Join(".devkit", "scripts", "call")
 
 		// Extract params from flag

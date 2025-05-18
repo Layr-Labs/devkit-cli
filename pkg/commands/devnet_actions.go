@@ -102,6 +102,12 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Start timing execution runtime
 	startTime := time.Now()
 
+	// Run scriptPath from cwd
+	const dir = ""
+
+	// Run script with expectJSONResponse - each script returns context fragment
+	const expectJSONResponse = true
+
 	// Set path for .devkit scripts
 	scriptsDir := filepath.Join(".devkit", "scripts")
 
@@ -156,10 +162,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 			return fmt.Errorf("marshal context: %w", err)
 		}
 
-		// Run script passing in the context
-		const expectJSONResponse = true
 		// Set path in scriptsDir
-		dir := ""
 		scriptPath := filepath.Join(scriptsDir, name)
 		// Expect a JSON response which we will curry to the next call and later save to context
 		outMap, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, expectJSONResponse, inputJSON)
