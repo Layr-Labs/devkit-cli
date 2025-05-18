@@ -17,6 +17,7 @@ require (
 )
 
 require (
+	github.com/Layr-Labs/eigenlayer-contracts v1.4.2 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.17.0 // indirect
