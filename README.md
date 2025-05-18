@@ -159,17 +159,22 @@ Optionally, submit tasks directly to the on-chain TaskMailBox contract via a fro
 ---
 
 ## Bls keystore 
-You can create and read keystore for bn254 private keys using our cli 
+Create and read keystores for bn254 private keys using the CLI. 
 
-- To create a keystore from a given private key in BigInt
+- To create a keystore
 ```bash
-devkit keystore create --key <private key in big int> --path <path to json file(It needs to include the filename ex: ./keystores/operator1.keystore.json)> --password <password for the keystore>
+devkit keystore create --key --path --password
 ```
 
-- To read an existing keystore json using the password
+- To read an existing keystore json
 ```bash
 devkit keystore read --path <./keystores/operator1.keystore.json> --password <password>
 ```
+
+### Flag Descriptions
+**`key`**: Private key in BigInt format . Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
+**`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
+**`password`**: Password to encrypt/decrypt the keystore.
 
 ## 📖 Logging
 
