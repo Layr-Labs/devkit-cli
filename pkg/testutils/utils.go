@@ -127,7 +127,6 @@ func CaptureOutput(fn func()) (stdout string, stderr string) {
 
 	go func() {
 		var buf bytes.Buffer
-		buf.ReadFrom(rOut)
 		if _, err := buf.ReadFrom(rOut); err != nil {
 			log.Warn("failed to read stdout: %v", err)
 		}
@@ -136,8 +135,7 @@ func CaptureOutput(fn func()) (stdout string, stderr string) {
 
 	go func() {
 		var buf bytes.Buffer
-		buf.ReadFrom(rErr)
-		if _, err := buf.ReadFrom(rOut); err != nil {
+		if _, err := buf.ReadFrom(rErr); err != nil {
 			log.Warn("failed to read stdout: %v", err)
 		}
 		errC <- buf.String()
