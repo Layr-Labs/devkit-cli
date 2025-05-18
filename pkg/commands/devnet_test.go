@@ -151,13 +151,14 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
-			&cli.BoolFlag{Name: "skip-deploy-contracts"},
 		},
 		Action: StartDevnetAction,
 	}
 
-	err = app.Run([]string{"devkit", "--port", port})
-	assert.NoError(t, err)
+	stdout, stderr := testutils.CaptureOutput(func() {
+		err = app.Run([]string{"devkit", "--port", port})
+		assert.NoError(t, err)
+	})
 
 	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
 	data, err := os.ReadFile(yamlPath)
@@ -170,6 +171,7 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 	ctx, ok := parsed["context"].(map[string]interface{})
 	assert.True(t, ok)
 	assert.Equal(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should run by default")
+	assert.Contains(t, stdout+stderr, "Offchain AVS components started successfully", "AVSRun should run by default")
 
 	stopApp := &cli.App{
 		Name:   "devkit",
@@ -204,8 +206,10 @@ func TestStartDevnet_SkipDeployContracts(t *testing.T) {
 		Action: StartDevnetAction,
 	}
 
-	err = app.Run([]string{"devkit", "--port", port, "--skip-deploy-contracts"})
-	assert.NoError(t, err)
+	stdout, stderr := testutils.CaptureOutput(func() {
+		err = app.Run([]string{"devkit", "--port", port, "--skip-deploy-contracts"})
+		assert.NoError(t, err)
+	})
 
 	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
 	data, err := os.ReadFile(yamlPath)
@@ -217,7 +221,60 @@ func TestStartDevnet_SkipDeployContracts(t *testing.T) {
 
 	ctx, ok := parsed["context"].(map[string]interface{})
 	assert.True(t, ok)
+	assert.NotEqual(t, "run", ctx["mock"], "avs run should run by default")
 	assert.NotEqual(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should be skipped")
+	assert.NotContains(t, stdout+stderr, "Offchain AVS components started successfully", "AVSRun should be skipped")
+
+	stopApp := &cli.App{
+		Name:   "devkit",
+		Flags:  []cli.Flag{&cli.IntFlag{Name: "port"}},
+		Action: StopDevnetAction,
+	}
+	_ = stopApp.Run([]string{"devkit", "--port", port})
+}
+
+func TestStartDevnet_SkipAVSRun(t *testing.T) {
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	projectDir, err := testutils.CreateTempAVSProject(t)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	app := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-avs-run"},
+		},
+		Action: StartDevnetAction,
+	}
+
+	stdout, stderr := testutils.CaptureOutput(func() {
+		err = app.Run([]string{"devkit", "--port", port, "--skip-avs-run"})
+		assert.NoError(t, err)
+	})
+
+	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
+	data, err := os.ReadFile(yamlPath)
+	assert.NoError(t, err)
+
+	var parsed map[string]interface{}
+	err = yaml.Unmarshal(data, &parsed)
+	assert.NoError(t, err)
+
+	ctx, ok := parsed["context"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should not be skipped")
+	assert.NotContains(t, stdout+stderr, "Offchain AVS components started successfully", "AVSRun should be skipped")
 
 	stopApp := &cli.App{
 		Name:   "devkit",
