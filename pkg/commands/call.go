@@ -57,8 +57,7 @@ var CallCommand = &cli.Command{
 		}
 
 		// Run init on the template init script
-		const expectJSONResponse = true
-		if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, expectJSONResponse, contextJSON, paramsJSON); err != nil {
+		if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, common.ExpectJSONResponse, contextJSON, paramsJSON); err != nil {
 			return fmt.Errorf("call failed: %w", err)
 		}
 

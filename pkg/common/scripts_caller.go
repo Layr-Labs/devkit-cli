@@ -10,7 +10,14 @@ import (
 	"os/exec"
 )
 
-func CallTemplateScript(cmdCtx context.Context, dir string, scriptPath string, expectJSONResponse bool, params ...[]byte) (map[string]interface{}, error) {
+type ResponseExpectation int
+
+const (
+	ExpectNonJSONResponse ResponseExpectation = iota
+	ExpectJSONResponse
+)
+
+func CallTemplateScript(cmdCtx context.Context, dir string, scriptPath string, expect ResponseExpectation, params ...[]byte) (map[string]interface{}, error) {
 	// Get logger
 	log, _ := GetLogger()
 
@@ -44,7 +51,7 @@ func CallTemplateScript(cmdCtx context.Context, dir string, scriptPath string, e
 	}
 
 	// Return the result as JSON if expected
-	if expectJSONResponse {
+	if expect == ExpectJSONResponse {
 		var result map[string]interface{}
 		if err := json.Unmarshal(raw, &result); err != nil {
 			log.Warn("Invalid or non-JSON script output: %s; returning empty result: %v", string(raw), err)

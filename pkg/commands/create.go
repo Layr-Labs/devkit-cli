@@ -170,8 +170,7 @@ var CreateCommand = &cli.Command{
 		log.Info("Installing template dependencies\n\n")
 
 		// Run init on the template init script
-		const expectJSONResponse = false
-		if _, err = common.CallTemplateScript(cCtx.Context, targetDir, scriptPath, expectJSONResponse, nil); err != nil {
+		if _, err = common.CallTemplateScript(cCtx.Context, targetDir, scriptPath, common.ExpectNonJSONResponse, nil); err != nil {
 			return fmt.Errorf("failed to initialize %s: %w", scriptPath, err)
 		}
 

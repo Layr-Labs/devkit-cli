@@ -39,8 +39,7 @@ var RunCommand = &cli.Command{
 		}
 
 		// Run init on the template init script
-		const expectJSONResponse = false
-		if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, expectJSONResponse, contextJSON); err != nil {
+		if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON); err != nil {
 			return fmt.Errorf("run failed: %w", err)
 		}
 
