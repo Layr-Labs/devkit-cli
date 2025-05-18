@@ -28,3 +28,7 @@ Thumbs.db
 
 # Release outputs
 temp_external/
+
+# DevKit configuration (remove only after ensuring no personal data is exposed here)
+config/
+.config.devkit.yml

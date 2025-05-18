@@ -364,6 +364,12 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	if err != nil {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
+
+	err = os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(config.GitIgnore), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write .gitignore: %w", err)
+	}
+
 	if verbose {
 		log.Info("Git repository initialized successfully.")
 		if len(output) > 0 {
