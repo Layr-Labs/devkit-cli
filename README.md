@@ -166,9 +166,9 @@ Create and read keystores for bn254 private keys using the CLI.
 devkit keystore create --key --path --password
 ```
 
-- To read an existing keystore json
+- To read an existing keystore
 ```bash
-devkit keystore read --path <./keystores/operator1.keystore.json> --password <password>
+devkit keystore read --path --password
 ```
 
 ### Flag Descriptions
