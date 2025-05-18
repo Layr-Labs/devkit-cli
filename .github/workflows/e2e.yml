@@ -9,6 +9,8 @@ on:
 env:
   FOUNDRY_PROFILE: ci
   GOPRIVATE: github.com/Layr-Labs/*
+  L1_FORK_URL: ${{ vars.L1_FORK_URL }}
+  L2_FORK_URL: ${{ vars.L2_FORK_URL }}
 
 jobs:
   e2e:
@@ -32,7 +34,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
+          version: stable
 
       - name: Install devkit CLI
         run: make install

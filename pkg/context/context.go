@@ -8,6 +8,9 @@ import (
 	"syscall"
 )
 
+// Embedded devkit version from release
+var embeddedDevkitReleaseVersion = "Development"
+
 // WithShutdown creates a new context that will be cancelled on SIGTERM/SIGINT
 func WithShutdown(ctx context.Context) context.Context {
 	ctx, cancel := context.WithCancel(ctx)
@@ -33,9 +36,9 @@ type AppEnvironment struct {
 	ProjectUUID string
 }
 
-func NewAppEnvironment(cliVersion string, os string, arch string, projectUuid string) *AppEnvironment {
+func NewAppEnvironment(os string, arch string, projectUuid string) *AppEnvironment {
 	return &AppEnvironment{
-		CLIVersion:  cliVersion,
+		CLIVersion:  embeddedDevkitReleaseVersion,
 		OS:          os,
 		Arch:        arch,
 		ProjectUUID: projectUuid,

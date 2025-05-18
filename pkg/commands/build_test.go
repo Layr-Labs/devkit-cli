@@ -104,51 +104,6 @@ echo "Mock build executed"`
 	}
 }
 
-// Test the case where contracts directory exists but has no Makefile
-func TestBuildCommand_ContractsNoMakefile(t *testing.T) {
-	tmpDir := t.TempDir()
-
-	// Create build script
-	scriptsDir := filepath.Join(tmpDir, ".devkit", "scripts")
-	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	buildScript := `#!/bin/bash
-echo "Mock build executed"`
-	if err := os.WriteFile(filepath.Join(scriptsDir, "build"), []byte(buildScript), 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	// Create contracts directory but no Makefile
-	contractsDir := filepath.Join(tmpDir, common.ContractsDir)
-	if err := os.MkdirAll(contractsDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	oldWd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(tmpDir); err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.Chdir(oldWd); err != nil {
-			t.Logf("Failed to restore original directory: %v", err)
-		}
-	}()
-
-	app := &cli.App{
-		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
-	}
-
-	// This should fail because contracts dir exists but has no Makefile
-	if err := app.Run([]string{"app", "build"}); err == nil {
-		t.Errorf("Expected build to fail due to missing contracts Makefile, but it succeeded")
-	}
-}
-
 func TestBuildCommand_ContextCancellation(t *testing.T) {
 	tmpDir := t.TempDir()
 

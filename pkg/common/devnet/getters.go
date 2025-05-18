@@ -35,6 +35,19 @@ func FileExistsInRoot(filename string) bool {
 }
 
 func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName string) (string, error) {
+	// Check in env first for L1 fork url
+	l1ForkUrl := os.Getenv("L1_FORK_URL")
+	if chainName == "l1" && l1ForkUrl != "" {
+		return l1ForkUrl, nil
+	}
+
+	// Check in env first for l2 fork url
+	l2ForkUrl := os.Getenv("L2_FORK_URL")
+	if chainName == "l2" && l2ForkUrl != "" {
+		return l2ForkUrl, nil
+	}
+
+	// Fallback to context defined value
 	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
 	if !found {
 		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
@@ -43,5 +56,4 @@ func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName stri
 		return "", fmt.Errorf("no fork URL configured for chain: %s", chainName)
 	}
 	return chainConfig.Fork.Url, nil
-
 }

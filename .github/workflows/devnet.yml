@@ -32,7 +32,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly-1ae64e38a1c69bda45343947875f7c86bad00038
+          version: stable
       
       - name: Authenticate Go to GitHub private repos
         run: |
