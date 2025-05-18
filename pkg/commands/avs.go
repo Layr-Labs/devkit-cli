@@ -12,6 +12,7 @@ var AVSCommand = &cli.Command{
 		ConfigCommand,
 		BuildCommand,
 		DevnetCommand,
+		RunCommand,
 		CallCommand,
 		ReleaseCommand,
 	},

@@ -16,7 +16,8 @@ EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold 
 | `avs config` | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...)        |
 | `avs build`  | Compile AVS smart contracts and binaries |
 | `avs devnet` | Manage local development network         |
-| `avs call`    | Simulate AVS task execution locally      |
+| `avs run`    | Start offchain AVS components            |
+| `avs call`   | Simulate AVS task execution locally      |
 
 ---
 
@@ -198,7 +199,9 @@ nano .env
 
 # Run commands - the .env file will be automatically loaded
 devkit avs build
-devkit avs call
+devkit avs devnet start
+devkit avs run
+devkit avs call --params payload=1
 ```
 
 ---

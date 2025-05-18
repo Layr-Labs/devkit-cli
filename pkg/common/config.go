@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -116,4 +117,31 @@ func LoadConfigWithContextConfigWithoutContext() (*ConfigWithContextConfig, erro
 		return nil, fmt.Errorf("failed to parse base config: %w", err)
 	}
 	return &cfg, nil
+}
+
+func LoadContext(yamlPath string) ([]byte, error) {
+	rootNode, err := LoadYAML(yamlPath)
+	if err != nil {
+		return nil, err
+	}
+	if len(rootNode.Content) == 0 {
+		return nil, fmt.Errorf("empty YAML root node")
+	}
+
+	contextNode := GetChildByKey(rootNode.Content[0], "context")
+	if contextNode == nil {
+		return nil, fmt.Errorf("missing 'context' key in %s", yamlPath)
+	}
+
+	var ctxMap map[string]interface{}
+	if err := contextNode.Decode(&ctxMap); err != nil {
+		return nil, fmt.Errorf("decode context node: %w", err)
+	}
+
+	context, err := json.Marshal(map[string]interface{}{"context": ctxMap})
+	if err != nil {
+		return nil, fmt.Errorf("marshal context: %w", err)
+	}
+
+	return context, nil
 }

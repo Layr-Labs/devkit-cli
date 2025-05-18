@@ -157,8 +157,11 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		}
 
 		// Run script passing in the context
+		const expectJSONResponse = true
+		// Set path in scriptsDir
 		scriptPath := filepath.Join(scriptsDir, name)
-		outMap, err := common.RunTemplateScript(cCtx.Context, scriptPath, inputJSON)
+		// Expect a JSON response which we will curry to the next call and later save to context
+		outMap, err := common.CallTemplateScript(cCtx.Context, scriptPath, expectJSONResponse, inputJSON)
 		if err != nil {
 			return fmt.Errorf("%s failed: %w", name, err)
 		}

@@ -3,8 +3,7 @@ package commands
 import (
 	"bytes"
 	"context"
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
+	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
 	"io"
@@ -21,72 +20,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// helper to create a temp AVS project dir with config.yaml copied
-func createTempAVSProject(t *testing.T) (string, error) {
-	tempDir, err := os.MkdirTemp("", "devkit-test-avs-*")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temp dir: %w", err)
-	}
-
-	// Create config/ directory
-	destConfigDir := filepath.Join(tempDir, "config")
-	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create config dir: %w", err)
-	}
-
-	// Copy config.yaml
-	destConfigFile := filepath.Join(destConfigDir, common.BaseConfig)
-	err = os.WriteFile(destConfigFile, []byte(config.DefaultConfigYaml), 0644)
-	if err != nil {
-		return "", fmt.Errorf("failed to copy %s: %w", common.BaseConfig, err)
-	}
-
-	// Create config/contexts directory
-	destContextsDir := filepath.Join(destConfigDir, "contexts")
-	if err := os.MkdirAll(destContextsDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create config/contexts dir: %w", err)
-	}
-
-	// Copy devnet.yaml context file
-	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml")
-	err = os.WriteFile(destDevnetFile, []byte(config.ContextYamls["devnet"]), 0644)
-	if err != nil {
-		return "", fmt.Errorf("failed to create config/contexts/devnet.yaml: %w", err)
-	}
-
-	// Create build script
-	scriptsDir := filepath.Join(tempDir, ".devkit", "scripts")
-	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	deployScript := `#!/bin/bash
-echo '{"mock": "deployContracts"}'`
-	if err := os.WriteFile(filepath.Join(scriptsDir, "deployContracts"), []byte(deployScript), 0755); err != nil {
-		t.Fatal(err)
-	}
-	getOperatorSets := `#!/bin/bash
-echo '{"mock": "getOperatorSets"}'`
-	if err := os.WriteFile(filepath.Join(scriptsDir, "getOperatorSets"), []byte(getOperatorSets), 0755); err != nil {
-		t.Fatal(err)
-	}
-	getOperatorRegistrationMetadata := `#!/bin/bash
-echo '{"mock": "getOperatorRegistrationMetadata"}'`
-	if err := os.WriteFile(filepath.Join(scriptsDir, "getOperatorRegistrationMetadata"), []byte(getOperatorRegistrationMetadata), 0755); err != nil {
-		t.Fatal(err)
-	}
-
-	return tempDir, nil
-}
-
-func findSubcommandByName(name string, commands []*cli.Command) *cli.Command {
-	for _, cmd := range commands {
-		if cmd.Name == name {
-			return cmd
-		}
-	}
-	return nil
-}
-
 func TestStartAndStopDevnet(t *testing.T) {
 	// Save current working directory
 	originalCwd, err := os.Getwd()
@@ -95,7 +28,7 @@ func TestStartAndStopDevnet(t *testing.T) {
 		_ = os.Chdir(originalCwd)
 	})
 
-	projectDir, err := createTempAVSProject(t)
+	projectDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -140,11 +73,11 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 	t.Cleanup(func() {
 		_ = os.Chdir(originalCwd) // Restore cwd after test
 	})
-	projectDir1, err := createTempAVSProject(t)
+	projectDir1, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir1)
 
-	projectDir2, err := createTempAVSProject(t)
+	projectDir2, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir2)
 
@@ -203,7 +136,7 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
-	projectDir, err := createTempAVSProject(t)
+	projectDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -251,7 +184,7 @@ func TestStartDevnet_SkipDeployContracts(t *testing.T) {
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
-	projectDir, err := createTempAVSProject(t)
+	projectDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -312,7 +245,7 @@ func TestListRunningDevnets(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Prepare temp AVS project
-	projectDir, err := createTempAVSProject(t)
+	projectDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -380,7 +313,7 @@ func TestStopDevnetAll(t *testing.T) {
 
 	// Prepare and start multiple devnets
 	for i := 0; i < 2; i++ {
-		projectDir, err := createTempAVSProject(t)
+		projectDir, err := testutils.CreateTempAVSProject(t)
 		assert.NoError(t, err)
 		defer os.RemoveAll(projectDir)
 
@@ -414,7 +347,7 @@ func TestStopDevnetAll(t *testing.T) {
 					{
 						Name: "devnet",
 						Subcommands: []*cli.Command{
-							findSubcommandByName("stop", DevnetCommand.Subcommands),
+							testutils.FindSubcommandByName("stop", DevnetCommand.Subcommands),
 						}},
 				},
 			},
@@ -438,7 +371,7 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
-	projectDir, err := createTempAVSProject(t)
+	projectDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -470,7 +403,7 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 					{
 						Name: "devnet",
 						Subcommands: []*cli.Command{
-							findSubcommandByName("stop", DevnetCommand.Subcommands),
+							testutils.FindSubcommandByName("stop", DevnetCommand.Subcommands),
 						},
 					},
 				},
@@ -495,7 +428,7 @@ func TestDeployContracts(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
 	// Setup temp project
-	projectDir, err := createTempAVSProject(t)
+	projectDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 
@@ -563,7 +496,7 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 
-	projectDir, err := createTempAVSProject(t)
+	projectDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 	defer os.RemoveAll(projectDir)
 

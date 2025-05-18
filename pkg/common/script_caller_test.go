@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestRunTemplateScript(t *testing.T) {
+func TestCallTemplateScript(t *testing.T) {
 	// Create temporary shell script
 	script := `#!/bin/bash
 input=$1
@@ -28,9 +28,10 @@ echo '{"status": "ok", "received": '"$input"'}'`
 	}
 
 	// Run the template script
-	out, err := RunTemplateScript(context.Background(), scriptPath, inputJSON)
+	const expectJSONResponse = true
+	out, err := CallTemplateScript(context.Background(), scriptPath, expectJSONResponse, inputJSON)
 	if err != nil {
-		t.Fatalf("RunTemplateScript failed: %v", err)
+		t.Fatalf("CallTemplateScript failed: %v", err)
 	}
 
 	// Assert known structure
