@@ -1,4 +1,4 @@
-name: Devkit AVS Create Test
+name: Devkit E2E Test
 
 on:
   push:
