@@ -14,6 +14,9 @@ var GitIgnore string
 //go:embed contexts/devnet.yaml
 var devnetContextYaml string
 
+//go:embed .env.example
+var EnvExample string
+
 // Map of context name → content
 var ContextYamls = map[string]string{
 	"devnet": devnetContextYaml,

@@ -189,6 +189,12 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to initialize keystores: %w", err)
 		}
 
+		// Write the example .env file
+		err = os.WriteFile(filepath.Join(targetDir, ".env.example"), []byte(config.EnvExample), 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write .env.example: %w", err)
+		}
+
 		// Save project settings with telemetry preference
 		appEnv, ok := common.AppEnvironmentFromContext(cCtx.Context)
 		if !ok {
