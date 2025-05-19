@@ -122,7 +122,7 @@ devkit avs build
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
-* Forks Ethereum mainnet using a fork URL (provided by you) and a block number.
+* Forks Ethereum mainnet using a fork URL (provided by you) and a block number. Refer to `.env.example` to set your environment correctly (create your own `.env`).
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
 * Setup required `AVS` contracts.
 * Register `AVS` and `Operators`.
