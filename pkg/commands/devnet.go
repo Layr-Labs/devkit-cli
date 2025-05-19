@@ -73,5 +73,11 @@ var DevnetCommand = &cli.Command{
 			Usage:  "Lists all running devkit devnet containers with their ports",
 			Action: ListDevnetContainersAction,
 		},
+		// TODO: Surface the following actions as separate commands:
+		// - update-avs-metadata: Updates the AVS metadata URI on the devnet
+		// - set-avs-registrar: Sets the AVS registrar address on the devnet
+		// - create-avs-operator-sets: Creates AVS operator sets on the devnet
+		// - register-operator-el: Registers an operator with EigenLayer
+		// - register-operator-avs: Registers an operator for a specific AVS
 	},
 }

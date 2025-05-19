@@ -27,6 +27,7 @@ type ForkConfig struct {
 }
 
 type OperatorSpec struct {
+	Address             string `json:"address" yaml:"address"`
 	ECDSAKey            string `json:"ecdsa_key" yaml:"ecdsa_key"`
 	BlsKeystorePath     string `json:"bls_keystore_path" yaml:"bls_keystore_path"`
 	BlsKeystorePassword string `json:"bls_keystore_password" yaml:"bls_keystore_password"`
@@ -41,6 +42,8 @@ type ChainContextConfig struct {
 	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
 	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
 	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
+	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
+	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 }
 
 type AvsConfig struct {
@@ -59,7 +62,9 @@ type ChainConfig struct {
 type DeployedContract struct {
 	Name    string `json:"name" yaml:"name"`
 	Address string `json:"address" yaml:"address"`
+	Abi     string `json:"abi" yaml:"abi"`
 }
+
 type ConfigWithContextConfig struct {
 	Config  ConfigBlock                   `json:"config" yaml:"config"`
 	Context map[string]ChainContextConfig `json:"context" yaml:"context"`
@@ -68,6 +73,21 @@ type ConfigWithContextConfig struct {
 type ContextConfig struct {
 	Version string             `json:"version" yaml:"version"`
 	Context ChainContextConfig `json:"context" yaml:"context"`
+}
+
+type OperatorSet struct {
+	OperatorSetID uint64     `json:"operator_set_id" yaml:"operator_set_id"`
+	Strategies    []Strategy `json:"strategies" yaml:"strategies"`
+}
+
+type Strategy struct {
+	StrategyAddress string `json:"strategy" yaml:"strategy"`
+}
+
+type OperatorRegistration struct {
+	Address       string `json:"address" yaml:"address"`
+	OperatorSetID uint64 `json:"operator_set_id" yaml:"operator_set_id"`
+	Payload       string `json:"payload" yaml:"payload"`
 }
 
 func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {
