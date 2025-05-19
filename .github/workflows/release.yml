@@ -69,11 +69,15 @@ jobs:
           ./scripts/version.sh $REF
       - name: Build binary
         env:
+          HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
           RELEASE_BUCKET_NAME: ${{ vars.RELEASE_BUCKET_NAME }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
+          git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
+          go mod tidy
+          
           VERSION=$(cat VERSION | tr -d '[:space:]')
           echo "Building binary for version $VERSION"
           make release
