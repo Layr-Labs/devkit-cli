@@ -8,8 +8,8 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
-  L1_FORK_URL: ${{ vars.L1_FORK_URL }}
-  L2_FORK_URL: ${{ vars.L2_FORK_URL }}
+  L1_FORK_URL: ${{ secrets.L1_FORK_URL }}
+  L2_FORK_URL: ${{ secrets.L2_FORK_URL }}
 
 jobs:
   devnet-test:
