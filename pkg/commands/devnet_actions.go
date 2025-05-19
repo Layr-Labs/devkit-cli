@@ -122,7 +122,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 		log.Info("AVS registered with EigenLayer successfully.")
 
-		if err := registerOperatorsFromConfig(cCtx, cfg); err != nil {
+		if err := registerOperatorsFromConfig(cCtx, config); err != nil {
 			return fmt.Errorf("registering operators failed: %w", err)
 		}
 	}
