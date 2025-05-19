@@ -162,6 +162,23 @@ var CreateCommand = &cli.Command{
 			}
 		}
 
+		// Set path for .devkit scripts
+		scriptDir := filepath.Join(".devkit", "scripts")
+		scriptPath := filepath.Join(scriptDir, "init")
+
+		// Run init to install deps
+		log.Info("Installing template dependencies\n\n")
+
+		// Run init on the template init script
+		if _, err = common.CallTemplateScript(cCtx.Context, targetDir, scriptPath, common.ExpectNonJSONResponse, nil); err != nil {
+			return fmt.Errorf("failed to initialize %s: %w", scriptPath, err)
+		}
+
+		// Tidy the logs
+		if cCtx.Bool("verbose") {
+			log.Info("\nFinalising new project\n\n")
+		}
+
 		// Copy config.yaml to the project directory
 		if err := copyDefaultConfigToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {
 			return fmt.Errorf("failed to initialize %s: %w", common.BaseConfig, err)
@@ -172,8 +189,18 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to initialize keystores: %w", err)
 		}
 
+		// Write the example .env file
+		err = os.WriteFile(filepath.Join(targetDir, ".env.example"), []byte(config.EnvExample), 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write .env.example: %w", err)
+		}
+
 		// Save project settings with telemetry preference
-		if err := common.SaveTelemetrySetting(targetDir, true); err != nil {
+		appEnv, ok := common.AppEnvironmentFromContext(cCtx.Context)
+		if !ok {
+			return fmt.Errorf("could not determine application environment")
+		}
+		if err := common.SaveProjectIdAndTelemetryToggle(targetDir, appEnv.ProjectUUID, true); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
@@ -182,7 +209,7 @@ var CreateCommand = &cli.Command{
 			log.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
-		log.Info("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
+		log.Info("\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
 }
@@ -326,14 +353,29 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	log, _ := common.GetLogger()
 
 	if verbose {
+		log.Info("Removing existing .git directory in %s (if any)...", targetDir)
+	}
+	gitDir := filepath.Join(targetDir, ".git")
+	if err := os.RemoveAll(gitDir); err != nil {
+		return fmt.Errorf("failed to remove existing .git directory: %w", err)
+	}
+
+	if verbose {
 		log.Info("Initializing Git repository in %s...", targetDir)
 	}
+
 	cmd := exec.CommandContext(ctx.Context, "git", "init")
 	cmd.Dir = targetDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
+
+	err = os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(config.GitIgnore), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write .gitignore: %w", err)
+	}
+
 	if verbose {
 		log.Info("Git repository initialized successfully.")
 		if len(output) > 0 {

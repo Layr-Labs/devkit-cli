@@ -4,24 +4,43 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 )
 
-func RunTemplateScript(cmdCtx context.Context, scriptPath string, params []byte) (map[string]interface{}, error) {
+type ResponseExpectation int
+
+const (
+	ExpectNonJSONResponse ResponseExpectation = iota
+	ExpectJSONResponse
+)
+
+func CallTemplateScript(cmdCtx context.Context, dir string, scriptPath string, expect ResponseExpectation, params ...[]byte) (map[string]interface{}, error) {
 	// Get logger
 	log, _ := GetLogger()
 
+	// Convert byte params to strings
+	stringParams := make([]string, len(params))
+	for i, b := range params {
+		stringParams[i] = string(b)
+	}
+
 	// Prepare the command
 	var stdout bytes.Buffer
-	cmd := exec.CommandContext(cmdCtx, scriptPath, string(params))
+	cmd := exec.CommandContext(cmdCtx, scriptPath, stringParams...)
+	cmd.Dir = dir
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 
 	// Exec the command
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("Call to %s failed: %w", scriptPath, err)
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			return nil, fmt.Errorf("script %s exited with code %d", scriptPath, exitErr.ExitCode())
+		}
+		return nil, fmt.Errorf("failed to run script %s: %w", scriptPath, err)
 	}
 
 	// Clean and validate stdout
@@ -31,12 +50,18 @@ func RunTemplateScript(cmdCtx context.Context, scriptPath string, params []byte)
 		return map[string]interface{}{}, nil
 	}
 
-	// Collect the result as JSON
-	var result map[string]interface{}
-	if err := json.Unmarshal(raw, &result); err != nil {
-		log.Warn("Invalid or non-JSON script output: %s; returning empty result: %w", string(raw), err)
-		return map[string]interface{}{}, nil
+	// Return the result as JSON if expected
+	if expect == ExpectJSONResponse {
+		var result map[string]interface{}
+		if err := json.Unmarshal(raw, &result); err != nil {
+			log.Warn("Invalid or non-JSON script output: %s; returning empty result: %v", string(raw), err)
+			return map[string]interface{}{}, nil
+		}
+		return result, nil
 	}
 
-	return result, nil
+	// Log the raw stdout
+	log.Info("%s", string(raw))
+
+	return nil, nil
 }

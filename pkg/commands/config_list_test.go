@@ -34,7 +34,7 @@ telemetry_enabled: true
 `
 
 	require.NoError(t, os.WriteFile(
-		filepath.Join(tmpDir, ".config.devkit.yml"),
+		filepath.Join(tmpDir, common.DevkitConfigFile),
 		[]byte(mockTelemteryContent),
 		0644,
 	))

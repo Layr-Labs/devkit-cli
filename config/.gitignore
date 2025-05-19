@@ -28,3 +28,10 @@ Thumbs.db
 
 # Release outputs
 temp_external/
+
+# DevKit context configurations (only devnet.yaml is indexed)
+config/contexts/**/*
+!config/contexts/devnet.yaml
+
+# Environment
+.env

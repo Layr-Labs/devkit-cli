@@ -15,15 +15,15 @@ type Client interface {
 	Close() error
 }
 
+type clientContextKey struct{}
+
 // ContextWithClient returns a new context with the telemetry client
 func ContextWithClient(ctx context.Context, client Client) context.Context {
-	return context.WithValue(ctx, contextKey{}, client)
+	return context.WithValue(ctx, clientContextKey{}, client)
 }
 
 // ClientFromContext retrieves the telemetry client from context
 func ClientFromContext(ctx context.Context) (Client, bool) {
-	client, ok := ctx.Value(contextKey{}).(Client)
+	client, ok := ctx.Value(clientContextKey{}).(Client)
 	return client, ok
 }
-
-type contextKey struct{}

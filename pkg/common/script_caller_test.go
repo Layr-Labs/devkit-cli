@@ -9,16 +9,16 @@ import (
 	"testing"
 )
 
-func TestRunTemplateScript(t *testing.T) {
-	// Create temporary shell script
-	script := `#!/bin/bash
+func TestCallTemplateScript(t *testing.T) {
+	// JSON response case
+	scriptJSON := `#!/bin/bash
 input=$1
 echo '{"status": "ok", "received": '"$input"'}'`
 
 	tmpDir := t.TempDir()
-	scriptPath := filepath.Join(tmpDir, "echo.sh")
-	if err := os.WriteFile(scriptPath, []byte(script), 0755); err != nil {
-		t.Fatalf("failed to write test script: %v", err)
+	jsonScriptPath := filepath.Join(tmpDir, "json_echo.sh")
+	if err := os.WriteFile(jsonScriptPath, []byte(scriptJSON), 0755); err != nil {
+		t.Fatalf("failed to write JSON test script: %v", err)
 	}
 
 	// Parse the provided params
@@ -27,10 +27,10 @@ echo '{"status": "ok", "received": '"$input"'}'`
 		t.Fatalf("marshal context: %v", err)
 	}
 
-	// Run the template script
-	out, err := RunTemplateScript(context.Background(), scriptPath, inputJSON)
+	// Run the json_echo script
+	out, err := CallTemplateScript(context.Background(), "", jsonScriptPath, ExpectJSONResponse, inputJSON)
 	if err != nil {
-		t.Fatalf("RunTemplateScript failed: %v", err)
+		t.Fatalf("CallTemplateScript (JSON) failed: %v", err)
 	}
 
 	// Assert known structure
@@ -46,5 +46,23 @@ echo '{"status": "ok", "received": '"$input"'}'`
 	expected := map[string]interface{}{"foo": "bar"}
 	if !reflect.DeepEqual(received["context"], expected) {
 		t.Errorf("expected context %v, got %v", expected, received["context"])
+	}
+
+	// Non-JSON response case
+	scriptText := `#!/bin/bash
+echo "This is plain text output"`
+
+	textScriptPath := filepath.Join(tmpDir, "text_echo.sh")
+	if err := os.WriteFile(textScriptPath, []byte(scriptText), 0755); err != nil {
+		t.Fatalf("failed to write text test script: %v", err)
+	}
+
+	// Run the text_echo script
+	out, err = CallTemplateScript(context.Background(), "", textScriptPath, ExpectNonJSONResponse)
+	if err != nil {
+		t.Fatalf("CallTemplateScript (non-JSON) failed: %v", err)
+	}
+	if out != nil {
+		t.Errorf("expected nil output for non-JSON response, got: %v", out)
 	}
 }

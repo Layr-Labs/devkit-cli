@@ -2,21 +2,23 @@ package telemetry
 
 import (
 	"context"
-	kitcontext "devkit-cli/pkg/context"
+	"os"
+
+	"devkit-cli/pkg/common"
+
 	"github.com/posthog/posthog-go"
 	"gopkg.in/yaml.v3"
-	"os"
 )
 
 // PostHogClient implements the Client interface using PostHog
 type PostHogClient struct {
 	namespace      string
 	client         posthog.Client
-	appEnvironment *kitcontext.AppEnvironment
+	appEnvironment *common.AppEnvironment
 }
 
 // NewPostHogClient creates a new PostHog client
-func NewPostHogClient(environment *kitcontext.AppEnvironment, namespace string) (*PostHogClient, error) {
+func NewPostHogClient(environment *common.AppEnvironment, namespace string) (*PostHogClient, error) {
 	apiKey := getPostHogAPIKey()
 	if apiKey == "" {
 		// No API key available, return noop client without error
@@ -34,7 +36,7 @@ func NewPostHogClient(environment *kitcontext.AppEnvironment, namespace string) 
 }
 
 // AddMetric implements the Client interface
-func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
+func (c *PostHogClient) AddMetric(_ context.Context, metric Metric) error {
 	if c == nil || c.client == nil {
 		return nil
 	}
@@ -51,12 +53,12 @@ func (c *PostHogClient) AddMetric(ctx context.Context, metric Metric) error {
 	}
 
 	// Never return errors from telemetry operations
-	_ = c.client.Enqueue(posthog.Capture{
+	err := c.client.Enqueue(posthog.Capture{
 		DistinctId: c.appEnvironment.ProjectUUID,
 		Event:      c.namespace,
 		Properties: props,
 	})
-	return nil
+	return err
 }
 
 // Close implements the Client interface
@@ -82,8 +84,7 @@ func getPostHogAPIKey() string {
 
 	// Check project config file next
 	// Use a direct import to avoid circular dependencies
-	configPath := ".config.devkit.yml"
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(common.DevkitConfigFile)
 	if err == nil {
 		// Simple YAML parsing to extract just the key we need
 		var config struct {
