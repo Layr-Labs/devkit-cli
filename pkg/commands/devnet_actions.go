@@ -44,9 +44,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Start timer
 	startTime := time.Now()
-
+	isVerbose := common.IsVerboseEnabled(cCtx, config)
+	log.Info("ia_verbose %t", isVerbose)
 	// If user gives, say, log = "DEBUG" Or "Debug", we normalize it to lowercase
-	if common.IsVerboseEnabled(cCtx, config) {
+	if isVerbose {
 		log.Info("Starting devnet...\n")
 
 		if cCtx.Bool("reset") {
@@ -156,18 +157,18 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		log.Info("Registering AVS with EigenLayer...")
 
 		if !cCtx.Bool("skip-setup") {
-			if err := UpdateAVSMetadataAction(cCtx); err != nil {
+			if err := UpdateAVSMetadataAction(cCtx, isVerbose); err != nil {
 				return fmt.Errorf("updating AVS metadata failed: %w", err)
 			}
-			if err := SetAVSRegistrarAction(cCtx); err != nil {
+			if err := SetAVSRegistrarAction(cCtx, isVerbose); err != nil {
 				return fmt.Errorf("setting AVS registrar failed: %w", err)
 			}
-			if err := CreateAVSOperatorSetsAction(cCtx); err != nil {
+			if err := CreateAVSOperatorSetsAction(cCtx, isVerbose); err != nil {
 				return fmt.Errorf("creating AVS operator sets failed: %w", err)
 			}
 			log.Info("AVS registered with EigenLayer successfully.")
 
-			if err := RegisterOperatorsFromConfigAction(cCtx); err != nil {
+			if err := RegisterOperatorsFromConfigAction(cCtx, isVerbose); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
 		} else {
@@ -427,7 +428,7 @@ func extractHostPort(portStr string) string {
 	return portStr
 }
 
-func UpdateAVSMetadataAction(cCtx *cli.Context) error {
+func UpdateAVSMetadataAction(cCtx *cli.Context, isVerbose bool) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
@@ -463,10 +464,10 @@ func UpdateAVSMetadataAction(cCtx *cli.Context) error {
 	}
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
-	return contractCaller.UpdateAVSMetadata(cCtx.Context, avsAddr, uri)
+	return contractCaller.UpdateAVSMetadata(cCtx.Context, avsAddr, uri, isVerbose)
 }
 
-func SetAVSRegistrarAction(cCtx *cli.Context) error {
+func SetAVSRegistrarAction(cCtx *cli.Context, isVerbose bool) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
@@ -517,10 +518,10 @@ func SetAVSRegistrarAction(cCtx *cli.Context) error {
 		return fmt.Errorf("AvsRegistrar contract not found in deployed contracts for context '%s'", devnet.CONTEXT)
 	}
 
-	return contractCaller.SetAVSRegistrar(cCtx.Context, avsAddr, registrarAddr)
+	return contractCaller.SetAVSRegistrar(cCtx.Context, avsAddr, registrarAddr, isVerbose)
 }
 
-func CreateAVSOperatorSetsAction(cCtx *cli.Context) error {
+func CreateAVSOperatorSetsAction(cCtx *cli.Context, isVerbose bool) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
@@ -572,10 +573,10 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context) error {
 		}
 	}
 
-	return contractCaller.CreateOperatorSets(cCtx.Context, avsAddr, createSetParams)
+	return contractCaller.CreateOperatorSets(cCtx.Context, avsAddr, createSetParams, isVerbose)
 }
 
-func RegisterOperatorsFromConfigAction(cCtx *cli.Context) error {
+func RegisterOperatorsFromConfigAction(cCtx *cli.Context, isVerbose bool) error {
 	log, _ := common.GetLogger()
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
@@ -594,7 +595,7 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context) error {
 
 	for _, opReg := range envCtx.OperatorRegistrations {
 		log.Info("Processing registration for operator at address %s", opReg.Address)
-		if err := registerOperatorEL(cCtx, opReg.Address); err != nil {
+		if err := registerOperatorEL(cCtx, opReg.Address, isVerbose); err != nil {
 			log.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
 			continue
 		}
@@ -608,7 +609,7 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context) error {
 	return nil
 }
 
-func registerOperatorEL(cCtx *cli.Context, operatorAddress string) error {
+func registerOperatorEL(cCtx *cli.Context, operatorAddress string, isVerbose bool) error {
 	if operatorAddress == "" {
 		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
 	}
@@ -662,7 +663,7 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string) error {
 		return fmt.Errorf("failed to create contract caller: %w", err)
 	}
 
-	return contractCaller.RegisterAsOperator(cCtx.Context, ethcommon.HexToAddress(operatorAddress), 0, "test")
+	return contractCaller.RegisterAsOperator(cCtx.Context, ethcommon.HexToAddress(operatorAddress), 0, "test", isVerbose)
 }
 
 func registerOperatorAVS(cCtx *cli.Context, operatorAddress string, operatorSetID uint32, payloadHex string) error {
