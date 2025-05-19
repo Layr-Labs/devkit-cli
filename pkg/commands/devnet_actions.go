@@ -89,6 +89,50 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
 	log.Info("Waiting for devnet to be ready...")
 
+	// Set path for context yaml
+	contextDir := filepath.Join("config", "contexts")
+	yamlPath := path.Join(contextDir, "devnet.yaml")
+
+	// Load YAML as *yaml.Node
+	rootNode, err := common.LoadYAML(yamlPath)
+	if err != nil {
+		return err
+	}
+
+	// YAML is parsed into a DocumentNode:
+	//   - rootNode.Content[0] is the top-level MappingNode
+	//   - It contains the 'context' mapping we're interested in
+	if len(rootNode.Content) == 0 {
+		return fmt.Errorf("empty YAML root node")
+	}
+
+	// Check for context
+	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
+	if contextNode == nil {
+		return fmt.Errorf("missing 'context' key in ./config/contexts/devnet.yaml")
+	}
+
+	// Get chains node
+	chainsNode := common.GetChildByKey(contextNode, "chains")
+	if chainsNode == nil {
+		return fmt.Errorf("missing 'chains' key in context")
+	}
+
+	// Update RPC URLs for both L1 and L2 chains
+	for i := 0; i < len(chainsNode.Content); i += 2 {
+		chainNode := chainsNode.Content[i+1]
+
+		rpcUrlNode := common.GetChildByKey(chainNode, "rpc_url")
+		if rpcUrlNode != nil {
+			rpcUrlNode.Value = rpcUrl
+		}
+	}
+
+	// Write yaml back to project directory
+	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
+		return err
+	}
+
 	// Sleep for 4 second to ensure the devnet is fully started
 	time.Sleep(4 * time.Second)
 
@@ -111,19 +155,23 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 		log.Info("Registering AVS with EigenLayer...")
 
-		if err := UpdateAVSMetadataAction(cCtx); err != nil {
-			return fmt.Errorf("updating AVS metadata failed: %w", err)
-		}
-		if err := SetAVSRegistrarAction(cCtx); err != nil {
-			return fmt.Errorf("setting AVS registrar failed: %w", err)
-		}
-		if err := CreateAVSOperatorSetsAction(cCtx); err != nil {
-			return fmt.Errorf("creating AVS operator sets failed: %w", err)
-		}
-		log.Info("AVS registered with EigenLayer successfully.")
+		if !cCtx.Bool("skip-setup") {
+			if err := UpdateAVSMetadataAction(cCtx); err != nil {
+				return fmt.Errorf("updating AVS metadata failed: %w", err)
+			}
+			if err := SetAVSRegistrarAction(cCtx); err != nil {
+				return fmt.Errorf("setting AVS registrar failed: %w", err)
+			}
+			if err := CreateAVSOperatorSetsAction(cCtx); err != nil {
+				return fmt.Errorf("creating AVS operator sets failed: %w", err)
+			}
+			log.Info("AVS registered with EigenLayer successfully.")
 
-		if err := registerOperatorsFromConfig(cCtx, config); err != nil {
-			return fmt.Errorf("registering operators failed: %w", err)
+			if err := registerOperatorsFromConfig(cCtx, config); err != nil {
+				return fmt.Errorf("registering operators failed: %w", err)
+			}
+		} else {
+			log.Info("Skipping AVS setup steps...")
 		}
 	}
 
@@ -182,6 +230,9 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Loop scripts with cloned context
 	for _, name := range scriptNames {
+		// Log the script name that's about to be executed
+		log, _ := common.GetLogger()
+		log.Info("Executing script: %s", name)
 		// Clone context node and convert to map
 		clonedCtxNode := common.CloneNode(contextNode)
 		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
@@ -229,6 +280,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	log.Info("\nDevnet contracts deployed successfully in %s", elapsed)
 	return nil
 }
+
 func StopDevnetAction(cCtx *cli.Context) error {
 	// Get logger
 	log, _ := common.GetLogger()
@@ -419,7 +471,6 @@ func SetAVSRegistrarAction(cCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
-	address := cCtx.String("address")
 
 	log, _ := common.GetLogger()
 	envCtx, ok := cfg.Context[devnet.CONTEXT]
@@ -452,22 +503,18 @@ func SetAVSRegistrarAction(cCtx *cli.Context) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	var registrarAddr ethcommon.Address
-	if address == "" {
-		log.Info("Registrar address not provided, attempting to find in deployed contracts...")
-		foundInDeployed := false
-		for _, contract := range envCtx.DeployedContracts {
-			if strings.Contains(strings.ToLower(contract.Name), "avsregistrar") {
-				registrarAddr = ethcommon.HexToAddress(contract.Address)
-				log.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
-				foundInDeployed = true
-				break
-			}
+	log.Info("Attempting to find AvsRegistrar in deployed contracts...")
+	foundInDeployed := false
+	for _, contract := range envCtx.DeployedContracts {
+		if strings.Contains(strings.ToLower(contract.Name), "avsregistrar") {
+			registrarAddr = ethcommon.HexToAddress(contract.Address)
+			log.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
+			foundInDeployed = true
+			break
 		}
-		if !foundInDeployed {
-			return fmt.Errorf("AvsRegistrar contract not found in deployed contracts for context '%s' and no address provided", devnet.CONTEXT)
-		}
-	} else {
-		registrarAddr = ethcommon.HexToAddress(address)
+	}
+	if !foundInDeployed {
+		return fmt.Errorf("AvsRegistrar contract not found in deployed contracts for context '%s'", devnet.CONTEXT)
 	}
 
 	return contractCaller.SetAVSRegistrar(cCtx.Context, avsAddr, registrarAddr)

@@ -40,6 +40,11 @@ var DevnetCommand = &cli.Command{
 					Usage: "Skip deploying contracts and only start local devnet",
 					Value: false,
 				},
+				&cli.BoolFlag{
+					Name:  "skip-setup",
+					Usage: "Skip AVS setup steps (metadata update, registrar setup, etc.) after contract deployment",
+					Value: false,
+				},
 			},
 			Action: StartDevnetAction,
 		},

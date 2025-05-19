@@ -151,12 +151,15 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
+			&cli.BoolFlag{Name: "skip-setup"},
 		},
 		Action: StartDevnetAction,
 	}
 
 	stdout, stderr := testutils.CaptureOutput(func() {
-		err = app.Run([]string{"devkit", "--port", port})
+		// Use --skip-setup to avoid AVS setup steps while still deploying contracts
+		err = app.Run([]string{"devkit", "--port", port, "--skip-setup"})
 		assert.NoError(t, err)
 	})
 
@@ -253,13 +256,14 @@ func TestStartDevnet_SkipAVSRun(t *testing.T) {
 		Flags: []cli.Flag{
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-setup"},
 			&cli.BoolFlag{Name: "skip-avs-run"},
 		},
 		Action: StartDevnetAction,
 	}
 
 	stdout, stderr := testutils.CaptureOutput(func() {
-		err = app.Run([]string{"devkit", "--port", port, "--skip-avs-run"})
+		err = app.Run([]string{"devkit", "--port", port, "--skip-setup", "--skip-avs-run"})
 		assert.NoError(t, err)
 	})
 
