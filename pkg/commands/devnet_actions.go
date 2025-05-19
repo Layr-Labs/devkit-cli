@@ -23,6 +23,7 @@ import (
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
+	// Get logger
 	log, _ := common.GetLogger()
 
 	// Extract vars
@@ -61,35 +62,34 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Docker-compose for anvil devnet
 	composePath := devnet.WriteEmbeddedArtifacts()
-	forkURL, err := devnet.GetDevnetForkUrlDefault(cfg, devnet.L1)
+	fork_url, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
 	if err != nil {
-		return fmt.Errorf("getting fork URL: %w", err)
+		return fmt.Errorf("%w", err)
 	}
 
-	envCtxForStart, ok := cfg.Context[devnet.CONTEXT]
-	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration for StartDevnetAction", devnet.CONTEXT)
-	}
-	l1ChainConfigForStart, ok := envCtxForStart.Chains[devnet.L1]
-	if !ok {
-		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s' for StartDevnetAction", devnet.L1, devnet.CONTEXT)
-	}
+	// Run docker compose up for anvil devnet
+	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
 
-	dockerCmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", cfg.Config.Project.Name, "-f", composePath, "up", "-d")
-	containerName := fmt.Sprintf("devkit-devnet-%s", cfg.Config.Project.Name)
-	dockerCmd.Env = append(os.Environ(),
+	containerName := fmt.Sprintf("devkit-devnet-%s", config.Config.Project.Name)
+	l1ChainConfig, found := config.Context[devnet.CONTEXT].Chains["l1"]
+	if !found {
+		return fmt.Errorf("failed to find a chain with name: l1 in devnet.yaml")
+	}
+	cmd.Env = append(os.Environ(),
 		"FOUNDRY_IMAGE="+chainImage,
 		"ANVIL_ARGS="+chainArgs,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
-		"FORK_RPC_URL="+forkURL,
-		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfigForStart.Fork.Block),
+		"FORK_RPC_URL="+fork_url,
+		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
 		"AVS_CONTAINER_NAME="+containerName,
 	)
-	if err := dockerCmd.Run(); err != nil {
-		return fmt.Errorf("❌ Failed to start devnet containers: %w", err)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
-	rpcURL := fmt.Sprintf("http://localhost:%d", port)
+	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
 	log.Info("Waiting for devnet to be ready...")
+
+	// Sleep for 4 second to ensure the devnet is fully started
 	time.Sleep(4 * time.Second)
 
 	// Fund the wallets defined in config
@@ -105,6 +105,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		if err := DeployContractsAction(cCtx); err != nil { // Assumes DeployContractsAction remains as is or is also refactored if needed
 			return fmt.Errorf("deploy-contracts failed: %w", err)
 		}
+
+		// Sleep for 1 second to make sure new context values have been written
+		time.Sleep(1 * time.Second)
 
 		log.Info("Registering AVS with EigenLayer...")
 
@@ -135,7 +138,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 }
 
 func DeployContractsAction(cCtx *cli.Context) error {
+	// Get logger
 	log, _ := common.GetLogger()
+
+	// Start timing execution runtime
 	startTime := time.Now()
 
 	// Run scriptPath from cwd
@@ -143,30 +149,53 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Set path for .devkit scripts
 	scriptsDir := filepath.Join(".devkit", "scripts")
+
+	// Set path for context yaml
 	contextDir := filepath.Join("config", "contexts")
 	yamlPath := path.Join(contextDir, "devnet.yaml") // @TODO: use selected context name
+
+	// Load YAML as *yaml.Node
 	rootNode, err := common.LoadYAML(yamlPath)
 	if err != nil {
 		return err
 	}
-	scriptNames := []string{"deployContracts", "getOperatorSets", "getOperatorRegistrationMetadata"}
+
+	// List of scripts we want to call and curry context through
+	scriptNames := []string{
+		"deployContracts",
+		"getOperatorSets",
+		"getOperatorRegistrationMetadata",
+	}
+
+	// YAML is parsed into a DocumentNode:
+	//   - rootNode.Content[0] is the top-level MappingNode
+	//   - It contains the 'context' mapping we're interested in
 	if len(rootNode.Content) == 0 {
 		return fmt.Errorf("empty YAML root node")
 	}
+
+	// Check for context
 	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
 	if contextNode == nil {
 		return fmt.Errorf("missing 'context' key in ./config/contexts/devnet.yaml")
 	}
+
+	// Loop scripts with cloned context
 	for _, name := range scriptNames {
+		// Clone context node and convert to map
 		clonedCtxNode := common.CloneNode(contextNode)
 		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
 		if err != nil {
 			return fmt.Errorf("context decode failed: %w", err)
 		}
+
+		// Check context is a map
 		ctxMap, ok := ctxInterface.(map[string]interface{})
 		if !ok {
 			return fmt.Errorf("cloned context is not a map")
 		}
+
+		// Parse the provided params
 		inputJSON, err := json.Marshal(map[string]interface{}{"context": ctxMap})
 		if err != nil {
 			return fmt.Errorf("marshal context: %w", err)
@@ -179,59 +208,87 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("%s failed: %w", name, err)
 		}
+
+		// Convert to node for merge
 		outNode, err := common.InterfaceToNode(outMap)
 		if err != nil {
 			return fmt.Errorf("%s output invalid: %w", name, err)
 		}
+
+		// Merge output into original context node
 		common.DeepMerge(contextNode, outNode)
 	}
+
+	// Write yaml back to project directory
 	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
 		return err
 	}
-	log.Info("Devnet contracts deployed successfully in %s", time.Since(startTime).Round(time.Second))
+
+	// Measure how long we ran for
+	elapsed := time.Since(startTime).Round(time.Second)
+	log.Info("\nDevnet contracts deployed successfully in %s", elapsed)
 	return nil
 }
-
 func StopDevnetAction(cCtx *cli.Context) error {
+	// Get logger
 	log, _ := common.GetLogger()
+
+	// Read flags
 	stopAllContainers := cCtx.Bool("all")
+
+	// Should we stop all?
 	if stopAllContainers {
+		// Get all running containers
 		cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
 		output, err := cmd.Output()
 		if err != nil {
 			return fmt.Errorf("failed to list devnet containers: %w", err)
 		}
 		containerNames := strings.Split(strings.TrimSpace(string(output)), "\n")
+
 		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 		if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
 			fmt.Printf("%s🚫 No devnet containers running.%s\n", devnet.Yellow, devnet.Reset)
 			return nil
 		}
+
 		if cCtx.Bool("verbose") {
 			log.Info("Attempting to stop devnet containers...")
 		}
+
 		for _, name := range containerNames {
 			name = strings.TrimSpace(name)
 			if name == "" {
 				continue
 			}
 			containerName := strings.Split(name, ": ")[0]
+
 			devnet.StopAndRemoveContainer(cCtx, containerName)
+
 		}
+
 		return nil
 	}
+
 	projectName := cCtx.String("project.name")
 	projectPort := cCtx.Int("port")
+
+	// Check if any of the args are provided
 	if !(projectName == "") || !(projectPort == 0) {
 		if projectName != "" {
 			container := fmt.Sprintf("devkit-devnet-%s", projectName)
 			devnet.StopAndRemoveContainer(cCtx, container)
 		} else {
+			// project.name is empty, but port is provided
+			// List all running Docker containers whose names include "devkit-devnet",
+			// and format the output to show each container's name and its exposed ports.
 			cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
+
 			output, err := cmd.Output()
 			if err != nil {
 				log.Warn("Failed to list running devnet containers: %v", err)
 			}
+
 			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 			containerFoundUsingthePort := false
 			for _, line := range lines {
@@ -242,10 +299,13 @@ func StopDevnetAction(cCtx *cli.Context) error {
 				containerName := parts[0]
 				port := parts[1]
 				hostPort := extractHostPort(port)
+
 				if hostPort == fmt.Sprintf("%d", projectPort) {
-					projectNameFromContainer := strings.TrimPrefix(containerName, "devkit-devnet-")
+					// Derive project name from container name
+					projectName := strings.TrimPrefix(containerName, "devkit-devnet-")
 					devnet.StopAndRemoveContainer(cCtx, containerName)
-					log.Info("Stopped devnet container running on port %d, project.name %s", projectPort, projectNameFromContainer)
+
+					log.Info("Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
 					containerFoundUsingthePort = true
 					break
 				}
@@ -253,19 +313,26 @@ func StopDevnetAction(cCtx *cli.Context) error {
 			if !containerFoundUsingthePort {
 				log.Info("No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers", projectPort, devnet.Cyan, devnet.Reset)
 			}
+
 		}
 		return nil
 	}
+
 	if devnet.FileExistsInRoot(filepath.Join(common.DefaultConfigWithContextConfigPath, common.BaseConfig)) {
+		// Load config
 		config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 		if err != nil {
 			return err
 		}
+
 		container := fmt.Sprintf("devkit-devnet-%s", config.Config.Project.Name)
+
 		devnet.StopAndRemoveContainer(cCtx, container)
+
 	} else {
 		log.Info("Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
 	}
+
 	return nil
 }
 
@@ -308,7 +375,6 @@ func extractHostPort(portStr string) string {
 	return portStr
 }
 
-// UpdateAVSMetadataAction handles the CLI command for updating AVS metadata.
 func UpdateAVSMetadataAction(cCtx *cli.Context) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
@@ -348,7 +414,6 @@ func UpdateAVSMetadataAction(cCtx *cli.Context) error {
 	return contractCaller.UpdateAVSMetadata(cCtx.Context, avsAddr, uri)
 }
 
-// SetAVSRegistrarAction handles the CLI command for setting the AVS registrar.
 func SetAVSRegistrarAction(cCtx *cli.Context) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
