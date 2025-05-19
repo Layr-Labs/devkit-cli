@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/telemetry"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
 
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"

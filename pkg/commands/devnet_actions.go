@@ -1,11 +1,11 @@
 package commands
 
 import (
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/devnet"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"math/big"
 	"os"
 	"os/exec"

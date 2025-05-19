@@ -1,10 +1,11 @@
-module devkit-cli
+module github.com/Layr-Labs/devkit-cli
 
 go 1.23.6
 
 toolchain go1.24.2
 
 require (
+	github.com/Layr-Labs/eigenlayer-contracts v1.4.2
 	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250430200448-e0f09ac951eb
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
@@ -17,7 +18,6 @@ require (
 )
 
 require (
-	github.com/Layr-Labs/eigenlayer-contracts v1.4.2 // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.17.0 // indirect

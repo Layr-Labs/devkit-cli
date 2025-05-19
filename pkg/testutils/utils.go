@@ -3,9 +3,9 @@ package testutils
 import (
 	"bytes"
 	"context"
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"os"
 	"path/filepath"
 	"testing"

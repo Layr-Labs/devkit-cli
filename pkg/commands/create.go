@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/template"
+	"github.com/Layr-Labs/devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
 )

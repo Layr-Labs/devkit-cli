@@ -3,9 +3,9 @@ package commands
 import (
 	"bytes"
 	"context"
-	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"io"
 	"net"
 	"os"

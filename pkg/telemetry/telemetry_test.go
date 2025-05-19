@@ -2,7 +2,7 @@ package telemetry
 
 import (
 	"context"
-	"devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"testing"
 )
 

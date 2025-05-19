@@ -1,8 +1,8 @@
 package commands
 
 import (
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/testutils"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"os"
 	"os/exec"
 	"path/filepath"

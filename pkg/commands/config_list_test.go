@@ -2,7 +2,7 @@ package commands
 
 import (
 	"bytes"
-	"devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"os"
 	"path/filepath"
 	"testing"

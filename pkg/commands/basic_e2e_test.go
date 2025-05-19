@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"devkit-cli/config"
-	"devkit-cli/pkg/hooks"
+	"github.com/Layr-Labs/devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/pkg/hooks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"

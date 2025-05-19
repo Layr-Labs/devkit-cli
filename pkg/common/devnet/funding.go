@@ -1,7 +1,7 @@
 package devnet
 
 import (
-	devkitcommon "devkit-cli/pkg/common"
+	devkitcommon "github.com/Layr-Labs/devkit-cli/pkg/common"
 	"log"
 	"math/big"
 	"os"

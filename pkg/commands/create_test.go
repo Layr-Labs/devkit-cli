@@ -2,11 +2,11 @@ package commands
 
 import (
 	"context"
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"os"
 	"path/filepath"
 	"testing"

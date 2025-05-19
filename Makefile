@@ -3,11 +3,13 @@
 APP_NAME=devkit
 GO_PACKAGES=./pkg/... ./cmd/...
 
+GO_FLAGS=-ldflags "-X 'github.com/Layr-Labs/devkit-cli/internal/version.Version=$(shell cat VERSION)' -X 'github.com/Layr-Labs/devkit-cli/internal/version.Commit=$(shell git rev-parse --short HEAD)'"
+
 help: ## Show available commands
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the binary
-	@go build -o $(APP_NAME) cmd/$(APP_NAME)/main.go
+	@go build $(GO_FLAGS) -o $(APP_NAME) cmd/$(APP_NAME)/main.go
 
 tests: ## Run tests
 	@go test $(GO_PACKAGES)

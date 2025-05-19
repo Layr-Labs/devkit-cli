@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/posthog/posthog-go"
 	"gopkg.in/yaml.v3"

@@ -5,6 +5,9 @@ on:
     tags:
       - "*"
 
+env:
+  GOPRIVATE: github.com/Layr-Labs/*
+
 jobs:
   Lint:
     name: Lint
@@ -23,8 +26,9 @@ jobs:
           HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
         run: |
           git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
-          git clone --depth=1 https://github.com/Layr-Labs/hourglass-monorepo.git temp_external/hourglass-monorepo
-          go mod edit -replace=github.com/Layr-Labs/hourglass-monorepo=./temp_external/hourglass-monorepo
+          
+          # git clone --depth=1 https://github.com/Layr-Labs/hourglass-monorepo.git temp_external/hourglass-monorepo
+          # go mod edit -replace=github.com/Layr-Labs/hourglass-monorepo=./temp_external/hourglass-monorepo
           go mod tidy
 
       - name: Run golangci-lint

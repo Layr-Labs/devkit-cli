@@ -2,9 +2,9 @@ package hooks
 
 import (
 	"context"
-	"devkit-cli/pkg/telemetry"
 	"errors"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
 	"runtime"
 	"testing"
 

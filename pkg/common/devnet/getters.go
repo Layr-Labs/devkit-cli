@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 )
 
 // GetDevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
