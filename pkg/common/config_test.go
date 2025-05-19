@@ -36,7 +36,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "devnet", cfg.Config.Project.Context)
 
 	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].DeployerPrivateKey)
-	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].AppDeployerPrivateKey)
+	assert.Equal(t, "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a", cfg.Context["devnet"].AppDeployerPrivateKey)
 
 	assert.Equal(t, "keystores/operator1.keystore.json", cfg.Context["devnet"].Operators[0].BlsKeystorePath)
 	assert.Equal(t, "keystores/operator2.keystore.json", cfg.Context["devnet"].Operators[1].BlsKeystorePath)
@@ -51,7 +51,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 
-	assert.Equal(t, "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", cfg.Context["devnet"].Avs.Address)
+	assert.Equal(t, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", cfg.Context["devnet"].Avs.Address)
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
 	assert.Equal(t, "https://my-org.com/avs/metadata.json", cfg.Context["devnet"].Avs.MetadataUri)
 
