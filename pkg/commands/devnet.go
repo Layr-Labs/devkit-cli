@@ -82,7 +82,6 @@ var DevnetCommand = &cli.Command{
 		// - update-avs-metadata: Updates the AVS metadata URI on the devnet
 		// - set-avs-registrar: Sets the AVS registrar address on the devnet
 		// - create-avs-operator-sets: Creates AVS operator sets on the devnet
-		// - register-operator-el: Registers an operator with EigenLayer
-		// - register-operator-avs: Registers an operator for a specific AVS
+		// - register-operators-from-config: Registers operators defined in config to Eigenlayer and the AVS on the devnet
 	},
 }

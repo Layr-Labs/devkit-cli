@@ -167,7 +167,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			}
 			log.Info("AVS registered with EigenLayer successfully.")
 
-			if err := registerOperatorsFromConfig(cCtx, config); err != nil {
+			if err := RegisterOperatorsFromConfigAction(cCtx); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
 		} else {
@@ -575,10 +575,42 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context) error {
 	return contractCaller.CreateOperatorSets(cCtx.Context, avsAddr, createSetParams)
 }
 
-func RegisterOperatorELAction(cCtx *cli.Context) error {
-	operatorAddress := cCtx.String("operator-address")
+func RegisterOperatorsFromConfigAction(cCtx *cli.Context) error {
+	log, _ := common.GetLogger()
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+
+	log.Info("Registering operators with EigenLayer...")
+	if len(envCtx.OperatorRegistrations) == 0 {
+		log.Info("No operator registrations found in context, skipping operator registration.")
+		return nil
+	}
+
+	for _, opReg := range envCtx.OperatorRegistrations {
+		log.Info("Processing registration for operator at address %s", opReg.Address)
+		if err := registerOperatorEL(cCtx, opReg.Address); err != nil {
+			log.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
+			continue
+		}
+		if err := registerOperatorAVS(cCtx, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
+			log.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
+			continue
+		}
+		log.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
+	}
+	log.Info("Operator registration with EigenLayer completed.")
+	return nil
+}
+
+func registerOperatorEL(cCtx *cli.Context, operatorAddress string) error {
 	if operatorAddress == "" {
-		return fmt.Errorf("operator-address flag is required")
+		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
 	}
 
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
@@ -633,19 +665,12 @@ func RegisterOperatorELAction(cCtx *cli.Context) error {
 	return contractCaller.RegisterAsOperator(cCtx.Context, ethcommon.HexToAddress(operatorAddress), 0, "test")
 }
 
-func RegisterOperatorAVSAction(cCtx *cli.Context) error {
-	operatorAddress := cCtx.String("operator-address")
-	operatorSetID := uint32(cCtx.Uint("operator-set-id"))
-	payloadHex := cCtx.String("payload-hex")
-
+func registerOperatorAVS(cCtx *cli.Context, operatorAddress string, operatorSetID uint32, payloadHex string) error {
 	if operatorAddress == "" {
-		return fmt.Errorf("operator-address flag is required")
-	}
-	if operatorSetID == 0 {
-		return fmt.Errorf("operator-set-id flag is required")
+		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
 	}
 	if payloadHex == "" {
-		return fmt.Errorf("payload-hex flag is required")
+		return fmt.Errorf("payloadHex parameter is required and cannot be empty")
 	}
 
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
@@ -709,33 +734,4 @@ func RegisterOperatorAVSAction(cCtx *cli.Context) error {
 		[]uint32{operatorSetID},
 		payloadBytes,
 	)
-}
-
-func registerOperatorsFromConfig(cCtx *cli.Context, cfg *common.ConfigWithContextConfig) error {
-	log, _ := common.GetLogger()
-	envCtx, ok := cfg.Context[devnet.CONTEXT]
-	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
-	}
-
-	log.Info("Registering operators with EigenLayer...")
-	if len(envCtx.OperatorRegistrations) == 0 {
-		log.Info("No operator registrations found in context, skipping operator registration.")
-		return nil
-	}
-
-	for _, opReg := range envCtx.OperatorRegistrations {
-		log.Info("Processing registration for operator at address %s", opReg.Address)
-		if err := RegisterOperatorELAction(cCtx); err != nil {
-			log.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
-			continue
-		}
-		if err := RegisterOperatorAVSAction(cCtx); err != nil {
-			log.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
-			continue
-		}
-		log.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
-	}
-	log.Info("Operator registration with EigenLayer completed.")
-	return nil
 }
