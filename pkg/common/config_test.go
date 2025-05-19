@@ -51,7 +51,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 
-	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.Address)
+	assert.Equal(t, "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266", cfg.Context["devnet"].Avs.Address)
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
 	assert.Equal(t, "https://my-org.com/avs/metadata.json", cfg.Context["devnet"].Avs.MetadataUri)
 
