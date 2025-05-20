@@ -22,8 +22,9 @@ type ProjectConfig struct {
 }
 
 type ForkConfig struct {
-	Block int    `json:"block" yaml:"block"`
-	Url   string `json:"url" yaml:"url"`
+	Url       string `json:"url" yaml:"url"`
+	Block     int    `json:"block" yaml:"block"`
+	BlockTime int    `json:"block_time" yaml:"block_time"`
 }
 
 type OperatorSpec struct {

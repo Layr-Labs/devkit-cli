@@ -3,6 +3,7 @@ package devnet
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 )
@@ -32,6 +33,33 @@ func FileExistsInRoot(filename string) bool {
 	// Assumes current working directory is the root of the project
 	_, err := os.Stat(filename)
 	return err == nil || !os.IsNotExist(err)
+}
+
+func GetDevnetBlockTimeOrDefault(cfg *common.ConfigWithContextConfig, chainName string) (int, error) {
+	// Check in env first for L1 block time
+	l1BlockTime := os.Getenv("L1_BLOCK_TIME")
+	l1BlockTimeInt, err := strconv.Atoi(l1BlockTime)
+	if chainName == "l1" && err != nil && l1BlockTimeInt != 0 {
+		return l1BlockTimeInt, nil
+	}
+
+	// Check in env first for l2 block time
+	l2BlockTime := os.Getenv("L2_BLOCK_TIME")
+	l2BlockTimeInt, err := strconv.Atoi(l2BlockTime)
+	if chainName == "l2" && err != nil && l2BlockTimeInt != 0 {
+		return l2BlockTimeInt, nil
+	}
+
+	// Fallback to context defined value or 12s if undefined
+	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
+	if !found {
+		return 12, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+	}
+	if chainConfig.Fork.BlockTime == 0 {
+		return 12, fmt.Errorf("block-time not set for %s; set block-time in ./config/context/devnet.yaml or .env", chainName)
+	}
+
+	return chainConfig.Fork.BlockTime, nil
 }
 
 func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName string) (string, error) {

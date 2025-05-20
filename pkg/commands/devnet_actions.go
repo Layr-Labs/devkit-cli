@@ -89,15 +89,23 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Docker-compose for anvil devnet
 	composePath := devnet.WriteEmbeddedArtifacts()
-	fork_url, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
+	forkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
 	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
 
-	// Error if the fork_url has not been modified
-	if fork_url == "" {
+	// Error if the forkUrl has not been modified
+	if forkUrl == "" {
 		return fmt.Errorf("fork-url not set; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
 	}
+
+	// Get the block_time from env/config
+	blockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L1)
+	if err != nil {
+		blockTime = 12
+	}
+	// Append blockTime to chainArgs
+	chainArgs = fmt.Sprintf("%s --block-time %d", chainArgs, blockTime)
 
 	// Run docker compose up for anvil devnet
 	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
@@ -111,7 +119,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		"FOUNDRY_IMAGE="+chainImage,
 		"ANVIL_ARGS="+chainArgs,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
-		"FORK_RPC_URL="+fork_url,
+		"FORK_RPC_URL="+forkUrl,
 		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
 		"AVS_CONTAINER_NAME="+containerName,
 	)
