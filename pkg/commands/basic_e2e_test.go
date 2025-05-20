@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Layr-Labs/devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/pkg/hooks"
 
 	"github.com/stretchr/testify/assert"
@@ -59,7 +59,7 @@ func setupBasicProject(t *testing.T, dir string) {
 	assert.NoError(t, err)
 
 	// Create config.yaml (needed to identify project root)
-	eigenContent := config.DefaultConfigYaml
+	eigenContent := configs.ConfigYamls[configs.LatestVersion]
 	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(eigenContent), 0644); err != nil {
 		t.Fatalf("Failed to write config.yaml: %v", err)
 	}

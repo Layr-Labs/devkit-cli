@@ -3,12 +3,15 @@ package testutils
 import (
 	"bytes"
 	"context"
+
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/config"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/urfave/cli/v2"
 )
@@ -49,7 +52,7 @@ func CreateTempAVSProject(t *testing.T) (string, error) {
 
 	// Copy config.yaml
 	destConfigFile := filepath.Join(destConfigDir, common.BaseConfig)
-	err = os.WriteFile(destConfigFile, []byte(config.DefaultConfigYaml), 0644)
+	err = os.WriteFile(destConfigFile, []byte(configs.ConfigYamls[configs.LatestVersion]), 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to copy %s: %w", common.BaseConfig, err)
 	}
@@ -61,8 +64,8 @@ func CreateTempAVSProject(t *testing.T) (string, error) {
 	}
 
 	// Copy devnet.yaml context file
-	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml")
-	err = os.WriteFile(destDevnetFile, []byte(config.ContextYamls["devnet"]), 0644)
+	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml") // this "devnet" should be supplied by selected context
+	err = os.WriteFile(destDevnetFile, []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to create config/contexts/devnet.yaml: %w", err)
 	}

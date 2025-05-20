@@ -4,6 +4,8 @@ go 1.23.6
 
 toolchain go1.24.2
 
+replace github.com/Layr-Labs/devkit-cli => ./
+
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.4.2
 	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250430200448-e0f09ac951eb

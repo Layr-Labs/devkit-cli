@@ -3,9 +3,8 @@ package commands
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"math/big"
 	"os"
 	"os/exec"
@@ -13,6 +12,12 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
+	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -29,6 +34,28 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Extract vars
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+
+	// Migrate config
+	configMigrated, err := migrateConfig()
+	if err != nil {
+		log.Error("config migration failed: %w", err)
+	}
+	if configMigrated > 0 {
+		log.Info("Config migration complete")
+	}
+
+	// Migrate contexts
+	contextsMigrated, err := migrateContexts()
+	if err != nil {
+		log.Error("context migrations failed: %w", err)
+	}
+	if contextsMigrated > 0 {
+		suffix := "s"
+		if contextsMigrated == 1 {
+			suffix = ""
+		}
+		log.Info("%d context migration%s complete", suffix, contextsMigrated)
+	}
 
 	// Load config for devnet
 	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
@@ -89,7 +116,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
 	log.Info("Waiting for devnet to be ready...")
 
-	// Set path for context yaml
+	// Set path for context yamls
 	contextDir := filepath.Join("config", "contexts")
 	yamlPath := path.Join(contextDir, "devnet.yaml")
 
@@ -734,4 +761,79 @@ func registerOperatorAVS(cCtx *cli.Context, operatorAddress string, operatorSetI
 		[]uint32{operatorSetID},
 		payloadBytes,
 	)
+}
+
+func migrateConfig() (int, error) {
+	// Get logger
+	log, _ := common.GetLogger()
+
+	// Set path for context yamls
+	configDir := filepath.Join("config")
+	configPath := filepath.Join(configDir, "config.yaml")
+
+	// Migrate the config
+	err := migration.MigrateYaml(configPath, configs.LatestVersion, configs.MigrationChain)
+	// Check for already upto date and ignore
+	alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
+
+	// For any other error, migration has failed
+	if err != nil && !alreadyUptoDate {
+		return 0, fmt.Errorf("failed to migrate: %v", err)
+	}
+
+	// If config was migrated
+	if !alreadyUptoDate {
+		log.Info("Migrated %s\n", configPath)
+
+		return 1, nil
+	}
+
+	return 0, nil
+}
+
+func migrateContexts() (int, error) {
+	// Get logger
+	log, _ := common.GetLogger()
+
+	// Count the number of contexts we migrate
+	contextsMigrated := 0
+
+	// Set path for context yamls
+	contextDir := filepath.Join("config", "contexts")
+
+	// Read all contexts/*.yamls
+	entries, err := os.ReadDir(contextDir)
+	if err != nil {
+		return 0, fmt.Errorf("unable to read context directory: %v", err)
+	}
+
+	// Attempt to upgrade every entry
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		contextPath := filepath.Join(contextDir, e.Name())
+
+		// Migrate the context
+		err := migration.MigrateYaml(contextPath, contexts.LatestVersion, contexts.MigrationChain)
+		// Check for already upto date and ignore
+		alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
+
+		// For every other error, migration failed
+		if err != nil && !alreadyUptoDate {
+			log.Error("failed to migrate: %v", err)
+			continue
+		}
+
+		// If context was migrated
+		if !alreadyUptoDate {
+			// Incr number of contextsMigrated
+			contextsMigrated += 1
+
+			// If migration succeeds
+			log.Info("Migrated %s\n", contextPath)
+		}
+	}
+
+	return contextsMigrated, nil
 }
