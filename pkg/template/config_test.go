@@ -15,7 +15,7 @@ func TestLoadConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get template URL: %v", err)
 	}
-	expected := "https://github.com/Layr-Labs/hourglass-avs-template/tree/v0.0.2"
+	expected := "https://github.com/Layr-Labs/hourglass-avs-template/tree/v0.0.3"
 	if url != expected {
 		t.Errorf("Unexpected template URL: got %s, want %s", url, expected)
 	}
