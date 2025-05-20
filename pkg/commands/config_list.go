@@ -12,51 +12,49 @@ import (
 
 func listConfig(config *common.ConfigWithContextConfig, projectSettings *common.ProjectSettings) error {
 	fmt.Printf("Displaying current configuration... \n\n")
-	fmt.Printf("telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
+	fmt.Printf("Telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
 
-	fmt.Printf("Project: %s \n", config.Config.Project.Name)
-	fmt.Printf("Version: %s \n", config.Config.Project.Version)
+	fmt.Printf("Project: %s\n", config.Config.Project.Name)
+	fmt.Printf("Version: %s\n\n", config.Config.Project.Version)
 
-	// Read all files from config/contexts/
 	contextDir := filepath.Join("config", "contexts")
 	entries, err := os.ReadDir(contextDir)
 	if err != nil {
 		return fmt.Errorf("failed to read contexts directory: %w", err)
 	}
 
-	fmt.Println("Available Contexts: ")
+	fmt.Println("Available Contexts:")
+
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
 			continue
 		}
 
-		name := strings.TrimSuffix(entry.Name(), ".yaml")
-		ctxPath := filepath.Join(contextDir, entry.Name())
-
-		data, err := os.ReadFile(ctxPath)
+		filePath := filepath.Join(contextDir, entry.Name())
+		data, err := os.ReadFile(filePath)
 		if err != nil {
-			fmt.Printf("  %s: failed to read (%v)\n", name, err)
+			fmt.Printf("❌ Failed to read %s: %v\n\n", entry.Name(), err)
 			continue
 		}
 
-		var wrapper struct {
-			Context common.ChainContextConfig `yaml:"context"`
-		}
-		if err := yaml.Unmarshal(data, &wrapper); err != nil {
-			fmt.Printf("  %s: failed to parse (%v)\n", name, err)
+		var content map[string]interface{}
+		if err := yaml.Unmarshal(data, &content); err != nil {
+			fmt.Printf("Failed to parse %s: %v\n\n", entry.Name(), err)
 			continue
 		}
 
-		ctx := wrapper.Context
-		fmt.Printf("  - %s:\n", name)
-		fmt.Printf("      Name: %s\n\n", ctx.Name)
-		for name, chain := range ctx.Chains {
-			fmt.Printf("      Chain Name: %s\n", name)
-			fmt.Printf("      Chain ID: %d\n", chain.ChainID)
-			fmt.Printf("      RPC URL: %s\n\n", chain.RPCURL)
+		fmt.Printf("%s\n", entry.Name())
+		fmt.Println(strings.Repeat("-", len(entry.Name())+2))
+
+		yamlContent, err := yaml.Marshal(content)
+		if err != nil {
+			fmt.Printf("Failed to marshal %s: %v\n\n", entry.Name(), err)
+			continue
 		}
+
+		fmt.Println(string(yamlContent))
+		fmt.Println()
 	}
 
 	return nil
-
 }

@@ -1,11 +1,11 @@
 package commands
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
-	"os"
-	"os/exec"
-	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 )
@@ -29,14 +29,20 @@ var BuildCommand = &cli.Command{
 	Action: func(cCtx *cli.Context) error {
 		log, _ := common.GetLogger(cCtx.Bool("verbose"))
 
+		// Run scriptPath from cwd
+		const dir = ""
+
+		// Get the config (based on if we're in a test or not)
 		var cfg *common.ConfigWithContextConfig
 
 		// First check if config is in context (for testing)
 		if cfgValue := cCtx.Context.Value(testutils.ConfigContextKey); cfgValue != nil {
+			// Use test config from context
 			cfg = cfgValue.(*common.ConfigWithContextConfig)
 		} else {
-
+			// Load selected context
 			context := cCtx.String("context")
+
 			// Load from file if not in context
 			var err error
 			cfg, err = common.LoadConfigWithContextConfig(context)
@@ -55,11 +61,8 @@ var BuildCommand = &cli.Command{
 		scriptsDir := filepath.Join(".devkit", "scripts")
 
 		// Execute build via .devkit scripts
-		cmd := exec.CommandContext(cCtx.Context, "bash", "-c", filepath.Join(scriptsDir, "build"))
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return err
+		if _, err := common.CallTemplateScript(cCtx.Context, dir, filepath.Join(scriptsDir, "build"), common.ExpectNonJSONResponse); err != nil {
+			return fmt.Errorf("build failed: %w", err)
 		}
 
 		log.Info("Build completed successfully")

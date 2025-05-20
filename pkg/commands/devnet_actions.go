@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -15,6 +16,9 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -31,6 +35,28 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Extract vars
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+
+	// Migrate config
+	configMigrated, err := migrateConfig()
+	if err != nil {
+		log.Error("config migration failed: %w", err)
+	}
+	if configMigrated > 0 {
+		log.Info("Config migration complete")
+	}
+
+	// Migrate contexts
+	contextsMigrated, err := migrateContexts()
+	if err != nil {
+		log.Error("context migrations failed: %w", err)
+	}
+	if contextsMigrated > 0 {
+		suffix := "s"
+		if contextsMigrated == 1 {
+			suffix = ""
+		}
+		log.Info("%d context migration%s complete", contextsMigrated, suffix)
+	}
 
 	// Load config for devnet
 	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
@@ -64,10 +90,23 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Docker-compose for anvil devnet
 	composePath := devnet.WriteEmbeddedArtifacts()
-	fork_url, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
+	forkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
 	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
+
+	// Error if the forkUrl has not been modified
+	if forkUrl == "" {
+		return fmt.Errorf("fork-url not set; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
+	}
+
+	// Get the block_time from env/config
+	blockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L1)
+	if err != nil {
+		blockTime = 12
+	}
+	// Append blockTime to chainArgs
+	chainArgs = fmt.Sprintf("%s --block-time %d", chainArgs, blockTime)
 
 	// Run docker compose up for anvil devnet
 	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
@@ -81,7 +120,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		"FOUNDRY_IMAGE="+chainImage,
 		"ANVIL_ARGS="+chainArgs,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
-		"FORK_RPC_URL="+fork_url,
+		"FORK_RPC_URL="+forkUrl,
 		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
 		"AVS_CONTAINER_NAME="+containerName,
 	)
@@ -91,7 +130,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
 	logger.Info("Waiting for devnet to be ready...")
 
-	// Set path for context yaml
+	// Set path for context yamls
 	contextDir := filepath.Join("config", "contexts")
 	yamlPath := path.Join(contextDir, "devnet.yaml")
 
@@ -139,7 +178,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(4 * time.Second)
 
 	// Fund the wallets defined in config
-	devnet.FundWalletsDevnet(config, rpcUrl)
+	err = devnet.FundWalletsDevnet(config, rpcUrl)
+	if err != nil {
+		return err
+	}
 	elapsed := time.Since(startTime).Round(time.Second)
 
 	// Sleep for 1 second to make sure wallets are funded
@@ -736,4 +778,79 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		[]uint32{operatorSetID},
 		payloadBytes,
 	)
+}
+
+func migrateConfig() (int, error) {
+	// Get logger
+	log, _ := common.GetLogger()
+
+	// Set path for context yamls
+	configDir := filepath.Join("config")
+	configPath := filepath.Join(configDir, "config.yaml")
+
+	// Migrate the config
+	err := migration.MigrateYaml(configPath, configs.LatestVersion, configs.MigrationChain)
+	// Check for already upto date and ignore
+	alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
+
+	// For any other error, migration has failed
+	if err != nil && !alreadyUptoDate {
+		return 0, fmt.Errorf("failed to migrate: %v", err)
+	}
+
+	// If config was migrated
+	if !alreadyUptoDate {
+		log.Info("Migrated %s\n", configPath)
+
+		return 1, nil
+	}
+
+	return 0, nil
+}
+
+func migrateContexts() (int, error) {
+	// Get logger
+	log, _ := common.GetLogger()
+
+	// Count the number of contexts we migrate
+	contextsMigrated := 0
+
+	// Set path for context yamls
+	contextDir := filepath.Join("config", "contexts")
+
+	// Read all contexts/*.yamls
+	entries, err := os.ReadDir(contextDir)
+	if err != nil {
+		return 0, fmt.Errorf("unable to read context directory: %v", err)
+	}
+
+	// Attempt to upgrade every entry
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		contextPath := filepath.Join(contextDir, e.Name())
+
+		// Migrate the context
+		err := migration.MigrateYaml(contextPath, contexts.LatestVersion, contexts.MigrationChain)
+		// Check for already upto date and ignore
+		alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
+
+		// For every other error, migration failed
+		if err != nil && !alreadyUptoDate {
+			log.Error("failed to migrate: %v", err)
+			continue
+		}
+
+		// If context was migrated
+		if !alreadyUptoDate {
+			// Incr number of contextsMigrated
+			contextsMigrated += 1
+
+			// If migration succeeds
+			log.Info("Migrated %s\n", contextPath)
+		}
+	}
+
+	return contextsMigrated, nil
 }

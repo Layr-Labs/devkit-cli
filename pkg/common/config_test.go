@@ -2,11 +2,15 @@ package common_test
 
 import (
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/config"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
+
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/yaml"
@@ -18,14 +22,14 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	tmpYamlPath := filepath.Join(tmpDir, common.BaseConfig)
 
 	// Copy config/config.yaml to tempDir
-	assert.NoError(t, os.WriteFile(tmpYamlPath, []byte(config.DefaultConfigYaml), 0644))
+	assert.NoError(t, os.WriteFile(tmpYamlPath, []byte(configs.ConfigYamls[configs.LatestVersion]), 0644))
 
 	// Copy config/contexts/devnet.yaml to tempDir/config/contexts
 	tmpContextDir := filepath.Join(tmpDir, "config", "contexts")
 	assert.NoError(t, os.MkdirAll(tmpContextDir, 0755))
 
 	tmpDevnetPath := filepath.Join(tmpContextDir, "devnet.yaml")
-	assert.NoError(t, os.WriteFile(tmpDevnetPath, []byte(config.ContextYamls["devnet"]), 0644))
+	assert.NoError(t, os.WriteFile(tmpDevnetPath, []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644))
 
 	// Run loader with the new base path
 	cfg, err := LoadConfigWithContextConfigFromPath("devnet", tmpDir)

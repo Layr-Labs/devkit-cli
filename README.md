@@ -57,6 +57,11 @@ During this Private Preview, you'll need access to private Go modules hosted on 
 
 1. **Add SSH Key to GitHub:** Ensure your SSH key is associated with your GitHub account ([instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
 2. **Verify Repository Access:** Confirm with EigenLabs support that your account has access to necessary private repositories.
+3. **ssh-agent:** Make sure your ssh-agent is running and your SSH key is added. You can do this by running:
+   ```bash
+   [[ -z $(pgrep -f ssh-agent) ]] && eval "$(ssh-agent -s)"
+   ssh-add ~/.ssh/<your github private key>
+   ```
 
 ---
 
@@ -122,16 +127,26 @@ devkit avs build
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
-* Forks Ethereum mainnet using a fork URL (provided by you) and a block number. These URLs CAN be set in the `config/context/devnet.yaml`, but we recommend placing them in a `.env` file. Please see `.env.example`.
+* Forks Ethereum mainnet using a fork URL (provided by you) and a block number. These URLs CAN be set in the `config/context/devnet.yaml`, but we recommend placing them in a `.env` file which will take precedence over `config/context/devnet.yaml`. Please see `.env.example`.
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
 * Setup required `AVS` contracts.
 * Register `AVS` and `Operators`.
 
-> Note: You must provide a fork URL that forks from Ethereum mainnet. You can use any popular RPC provider such as QuickNode or Alchemy.
+
+> \[!IMPORTANT]
+> You **must** set valid `*_FORK_URL`s before launching your local devnet.  
+> Add them to your `.env` (copied from `.env.example`) or to `config/context/devnet.yaml`.
+
+> **Note:** Use any popular RPC provider (e.g. QuickNode, Alchemy) for `FORK_URL`.
 
 This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
 
-Run this from your project directory:
+```
+$ cp .env.example .env
+# edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
+```
+
+After adding `*_FORK_URL`s, run this from your project directory:
 
 ```bash
 devkit avs devnet start

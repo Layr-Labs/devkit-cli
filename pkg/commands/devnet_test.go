@@ -21,6 +21,7 @@ import (
 )
 
 func TestStartAndStopDevnet(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save current working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -67,6 +68,7 @@ func TestStartAndStopDevnet(t *testing.T) {
 }
 
 func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save current working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -132,6 +134,7 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 	_ = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
 }
 func TestStartDevnet_WithDeployContracts(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
@@ -185,6 +188,7 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 }
 
 func TestStartDevnet_SkipDeployContracts(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
@@ -237,6 +241,7 @@ func TestStartDevnet_SkipDeployContracts(t *testing.T) {
 }
 
 func TestStartDevnet_SkipAVSRun(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
@@ -300,6 +305,7 @@ func getFreePort() (string, error) {
 }
 
 func TestListRunningDevnets(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -367,6 +373,7 @@ func TestListRunningDevnets(t *testing.T) {
 }
 
 func TestStopDevnetAll(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -427,6 +434,7 @@ func TestStopDevnetAll(t *testing.T) {
 }
 
 func TestStopDevnetContainerFlag(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -483,6 +491,7 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 }
 
 func TestDeployContracts(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save working dir
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
