@@ -36,14 +36,27 @@ Before you begin, ensure you have:
 
 ### 📦 Installation
 
-Clone and build the DevKit CLI:
-
+To download a binary for the latest release, run:
 ```bash
 sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.2/devkit-darwin-arm64-v0.0.2.tar.gz | sudo tar xvz -C /usr/local/bin
 ```
 
-Verify your installation:
+The binary will be installed inside the ~/bin directory.
 
+To add the binary to your path, run:
+```bash
+export PATH=$PATH:~/bin
+```
+
+To build and install the devkit cli locally:
+```bash
+git clone https://github.com/Layr-Labs/devkit-cli
+cd devkit-cli
+go build -o devkit ./cmd/devkit
+export PATH=$PATH:~/bin
+```
+
+Verify your installation:
 ```bash
 devkit --help
 ```
