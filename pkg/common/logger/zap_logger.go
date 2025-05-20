@@ -10,8 +10,15 @@ type ZapLogger struct {
 	log *zap.SugaredLogger
 }
 
-func NewZapLogger() *ZapLogger {
-	logger, _ := zap.NewDevelopment()
+func NewZapLogger(verbose bool) *ZapLogger {
+	var logger *zap.Logger
+
+	if verbose {
+		logger, _ = zap.NewDevelopment()
+	} else {
+		logger, _ = zap.NewProduction()
+	}
+
 	return &ZapLogger{log: logger.Sugar()}
 }
 

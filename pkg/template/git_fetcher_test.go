@@ -33,7 +33,7 @@ func getFetcher(maxDepth int) *GitFetcher {
 	// Set Cache location as ~/.devkit
 	basePath := filepath.Join(os.Getenv("HOME"), ".devkit")
 	// Set logger
-	log := logger.NewZapLogger()
+	log := logger.NewZapLogger(false)
 	// Set fetcher
 	fetcher := &GitFetcher{
 		Git:   NewGitClient(),

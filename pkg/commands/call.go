@@ -24,11 +24,11 @@ var CallCommand = &cli.Command{
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		// Get logger
-		log, _ := common.GetLogger()
+		logger, _ := common.GetLogger(cCtx.Bool("verbose"))
 
 		// Print task if verbose
 		if cCtx.Bool("verbose") {
-			log.Info("Testing AVS tasks...")
+			logger.Info("Testing AVS tasks...")
 		}
 
 		// Set path for context yaml
@@ -57,11 +57,11 @@ var CallCommand = &cli.Command{
 		}
 
 		// Run init on the template init script
-		if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, common.ExpectJSONResponse, contextJSON, paramsJSON); err != nil {
+		if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectJSONResponse, contextJSON, paramsJSON); err != nil {
 			return fmt.Errorf("call failed: %w", err)
 		}
 
-		log.Info("Task execution completed successfully")
+		logger.Info("Task execution completed successfully")
 		return nil
 	},
 }

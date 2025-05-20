@@ -27,7 +27,7 @@ var BuildCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		log, _ := common.GetLogger()
+		log, _ := common.GetLogger(cCtx.Bool("verbose"))
 
 		var cfg *common.ConfigWithContextConfig
 

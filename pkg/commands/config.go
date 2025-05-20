@@ -21,10 +21,10 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		log, _ := common.GetLogger()
+		logger, _ := common.GetLogger(cCtx.Bool("verbose"))
 
 		if path := cCtx.String("edit"); path != "" {
-			log.Info("Opening config file for editing...")
+			logger.Info("Opening config file for editing...")
 			return editConfig(cCtx, path)
 		}
 

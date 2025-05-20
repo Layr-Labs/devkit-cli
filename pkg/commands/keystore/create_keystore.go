@@ -38,7 +38,7 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		log, _ := common.GetLogger()
+		log, _ := common.GetLogger(cCtx.Bool("verbose"))
 
 		privateKey := cCtx.String("key")
 		path := cCtx.String("path")
@@ -57,7 +57,7 @@ var CreateCommand = &cli.Command{
 }
 
 func CreateBLSKeystore(privateKey, path, password, curve string, verbose bool) error {
-	log, _ := common.GetLogger()
+	log, _ := common.GetLogger(verbose)
 
 	if filepath.Ext(path) != ".json" {
 		return errors.New("invalid path: must include full file name ending in .json")

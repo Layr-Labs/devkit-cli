@@ -3,15 +3,16 @@ package commands
 import (
 	"context"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
-	"go.uber.org/zap"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"reflect"
 	"strings"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
+	"go.uber.org/zap"
 
 	"sigs.k8s.io/yaml"
 
@@ -22,6 +23,7 @@ import (
 
 // editConfig is the main entry point for the edit config functionality
 func editConfig(cCtx *cli.Context, configPath string) error {
+	logger, _ := common.GetLogger(cCtx.Bool("verbose"))
 	// Find an available editor
 	editor, err := findEditor()
 	if err != nil {
@@ -35,15 +37,15 @@ func editConfig(cCtx *cli.Context, configPath string) error {
 	}
 
 	// Open the editor and wait for it to close
-	if err := openEditor(editor, configPath); err != nil {
+	if err := openEditor(editor, configPath, logger); err != nil {
 		return err
 	}
 
 	// Validate the edited config
 	newConfig, err := validateConfig(configPath)
 	if err != nil {
-		log.Printf("Error validating config: %v", err)
-		log.Printf("Reverting changes...")
+		logger.Error("Error validating config: %v", err)
+		logger.Info("Reverting changes...")
 		if restoreErr := restoreBackup(configPath, backupData); restoreErr != nil {
 			return fmt.Errorf("failed to restore backup after validation error: %w", restoreErr)
 		}
@@ -51,15 +53,15 @@ func editConfig(cCtx *cli.Context, configPath string) error {
 	}
 
 	// Collect changes
-	changes := collectConfigChanges(originalConfig, newConfig)
+	changes := collectConfigChanges(originalConfig, newConfig, logger)
 
 	// Log changes
-	logConfigChanges(changes)
+	logConfigChanges(changes, logger)
 
 	// Send telemetry
-	sendConfigChangeTelemetry(cCtx.Context, changes)
+	sendConfigChangeTelemetry(cCtx.Context, changes, logger)
 
-	log.Printf("Config file updated successfully.")
+	logger.Info("Config file updated successfully.")
 	return nil
 }
 
@@ -107,8 +109,8 @@ func backupConfig(configPath string) (*common.ConfigWithContextConfig, []byte, e
 }
 
 // openEditor launches the editor for the config file
-func openEditor(editorPath, filePath string) error {
-	log.Printf("Opening config file in %s...", editorPath)
+func openEditor(editorPath, filePath string, logger iface.Logger) error {
+	logger.Info("Opening config file in %s...", editorPath)
 
 	cmd := exec.Command(editorPath, filePath)
 	cmd.Stdin = os.Stdin
@@ -156,14 +158,14 @@ type ConfigChange struct {
 }
 
 // collectConfigChanges collects all changes between two configs
-func collectConfigChanges(original, updated interface{}) []ConfigChange {
+func collectConfigChanges(original, updated interface{}, logger iface.Logger) []ConfigChange {
 	var changes []ConfigChange
 
 	switch oldCfg := original.(type) {
 	case *common.ConfigWithContextConfig:
 		newCfg, ok := updated.(*common.ConfigWithContextConfig)
 		if !ok {
-			log.Printf("Mismatched types for %s comparison", common.BaseConfig)
+			logger.Info("Mismatched types for %s comparison", common.BaseConfig)
 			return nil
 		}
 		// Compare project block
@@ -172,14 +174,14 @@ func collectConfigChanges(original, updated interface{}) []ConfigChange {
 	case *common.ChainContextConfig:
 		newCfg, ok := updated.(*common.ChainContextConfig)
 		if !ok {
-			log.Println("Mismatched types for context.yaml comparison")
+			logger.Info("Mismatched types for context.yaml comparison")
 			return nil
 		}
 		// Compare context fields
 		changes = append(changes, getFieldChangesDetailed("context", *oldCfg, *newCfg)...)
 
 	default:
-		log.Println("Unsupported config type for change tracking")
+		logger.Info("Unsupported config type for change tracking")
 	}
 
 	return changes
@@ -245,9 +247,9 @@ func getFieldChangesDetailed(prefix string, old, new interface{}) []ConfigChange
 }
 
 // logConfigChanges logs the configuration changes
-func logConfigChanges(changes []ConfigChange) {
+func logConfigChanges(changes []ConfigChange, logger iface.Logger) {
 	if len(changes) == 0 {
-		log.Println("No changes detected in configuration.")
+		logger.Info("No changes detected in configuration.")
 		return
 	}
 
@@ -263,15 +265,15 @@ func logConfigChanges(changes []ConfigChange) {
 
 	// Log changes by section
 	for section, sectionChanges := range sections {
-		log.Printf("%s changes:", titleCaser.String(section))
+		logger.Info("%s changes:", titleCaser.String(section))
 		for _, change := range sectionChanges {
-			formatAndLogChange(change)
+			formatAndLogChange(change, logger)
 		}
 	}
 }
 
 // formatAndLogChange formats and logs a single change
-func formatAndLogChange(change ConfigChange) {
+func formatAndLogChange(change ConfigChange, logger iface.Logger) {
 	var changeMsg string
 
 	// Format based on change type
@@ -304,11 +306,11 @@ func formatAndLogChange(change ConfigChange) {
 		}
 	}
 
-	log.Printf("  - %s", changeMsg)
+	logger.Info("  - %s", changeMsg)
 }
 
 // sendConfigChangeTelemetry sends telemetry data for config changes
-func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
+func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange, logger iface.Logger) {
 	if len(changes) == 0 {
 		return
 	}
@@ -316,7 +318,6 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 	// Get metrics context
 	metrics, err := telemetry.MetricsFromContext(ctx)
 	if err != nil {
-		logger, _ := common.GetLogger()
 		logger.Warn("Error while getting telemetry client from context.", zap.Error(err))
 	}
 
@@ -332,7 +333,6 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange) {
 	changeDimensions := make(map[string]string)
 	for i, change := range changes {
 		if i >= maxChangesToInclude {
-			logger, _ := common.GetLogger()
 			logger.Warn("Reached max change limit of ", maxChangesToInclude, " for ", change.Path)
 			break
 		}

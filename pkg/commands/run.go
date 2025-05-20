@@ -22,11 +22,11 @@ var RunCommand = &cli.Command{
 
 func AVSRun(cCtx *cli.Context) error {
 	// Get logger
-	log, _ := common.GetLogger()
+	logger, _ := common.GetLogger(cCtx.Bool("verbose"))
 
 	// Print task if verbose
 	if cCtx.Bool("verbose") {
-		log.Info("Starting offchain AVS components...")
+		logger.Info("Starting offchain AVS components...")
 	}
 
 	// Run the script from root of project dir
@@ -45,11 +45,11 @@ func AVSRun(cCtx *cli.Context) error {
 	}
 
 	// Run init on the template init script
-	if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON); err != nil {
+	if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON); err != nil {
 		return fmt.Errorf("run failed: %w", err)
 	}
 
-	log.Info("Offchain AVS components started successfully!")
+	logger.Info("Offchain AVS components started successfully!")
 
 	return nil
 }

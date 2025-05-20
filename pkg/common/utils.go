@@ -1,10 +1,11 @@
 package common
 
 import (
+	"os"
+
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
-	"os"
 
 	"github.com/urfave/cli/v2"
 )
@@ -24,14 +25,14 @@ func IsVerboseEnabled(cCtx *cli.Context, cfg *ConfigWithContextConfig) bool {
 }
 
 // Get logger for the env we're in
-func GetLogger() (iface.Logger, iface.ProgressTracker) {
-	var log iface.Logger
+func GetLogger(verbose bool) (iface.Logger, iface.ProgressTracker) {
+
+	log := logger.NewZapLogger(verbose)
 	var tracker iface.ProgressTracker
+
 	if progress.IsTTY() {
-		log = logger.NewLogger()
 		tracker = progress.NewTTYProgressTracker(10, os.Stdout)
 	} else {
-		log = logger.NewZapLogger()
 		tracker = progress.NewLogProgressTracker(10, log)
 	}
 

@@ -9,7 +9,7 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/config"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	progresslogger "github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
@@ -79,7 +79,7 @@ var CreateCommand = &cli.Command{
 		dest := cCtx.Args().Get(1)
 
 		// get logger
-		log, tracker := common.GetLogger()
+		logger, tracker := common.GetLogger(cCtx.Bool("verbose"))
 
 		// use dest from dir flag or positional
 		var targetDir string
@@ -97,13 +97,13 @@ var CreateCommand = &cli.Command{
 
 		// in verbose mode, detail the situation
 		if cCtx.Bool("verbose") {
-			log.Info("Creating new AVS project: %s", projectName)
-			log.Info("Directory: %s", cCtx.String("dir"))
-			log.Info("Language: %s", cCtx.String("lang"))
-			log.Info("Architecture: %s", cCtx.String("arch"))
-			log.Info("Environment: %s", cCtx.String("env"))
+			logger.Info("Creating new AVS project: %s", projectName)
+			logger.Info("Directory: %s", cCtx.String("dir"))
+			logger.Info("Language: %s", cCtx.String("lang"))
+			logger.Info("Architecture: %s", cCtx.String("arch"))
+			logger.Info("Environment: %s", cCtx.String("env"))
 			if cCtx.String("template-path") != "" {
-				log.Info("Template Path: %s", cCtx.String("template-path"))
+				logger.Info("Template Path: %s", cCtx.String("template-path"))
 			}
 		}
 
@@ -119,9 +119,9 @@ var CreateCommand = &cli.Command{
 		}
 
 		if cCtx.Bool("verbose") {
-			log.Info("Using template: %s", mainURL)
+			logger.Info("Using template: %s", mainURL)
 			if contractsURL != "" {
-				log.Info("Using contracts template: %s", contractsURL)
+				logger.Info("Using contracts template: %s", contractsURL)
 			}
 		}
 
@@ -132,8 +132,8 @@ var CreateCommand = &cli.Command{
 		fetcher := &template.GitFetcher{
 			Git:   template.NewGitClient(),
 			Cache: template.NewGitRepoCache(basePath),
-			Logger: *logger.NewProgressLogger(
-				log,
+			Logger: *progresslogger.NewProgressLogger(
+				logger,
 				tracker,
 			),
 			Config: template.GitFetcherConfig{
@@ -157,7 +157,7 @@ var CreateCommand = &cli.Command{
 			// Fetch the contracts directory if it does not exist in the template
 			if _, err := os.Stat(contractsDirReadme); os.IsNotExist(err) {
 				if err := fetcher.Fetch(cCtx.Context, contractsURL, contractsDir); err != nil {
-					log.Warn("Failed to fetch contracts template: %v", err)
+					logger.Warn("Failed to fetch contracts template: %v", err)
 				}
 			}
 		}
@@ -167,16 +167,16 @@ var CreateCommand = &cli.Command{
 		scriptPath := filepath.Join(scriptDir, "init")
 
 		// Run init to install deps
-		log.Info("Installing template dependencies\n\n")
+		logger.Info("Installing template dependencies\n\n")
 
 		// Run init on the template init script
-		if _, err = common.CallTemplateScript(cCtx.Context, targetDir, scriptPath, common.ExpectNonJSONResponse, nil); err != nil {
+		if _, err = common.CallTemplateScript(cCtx.Context, logger, targetDir, scriptPath, common.ExpectNonJSONResponse, nil); err != nil {
 			return fmt.Errorf("failed to initialize %s: %w", scriptPath, err)
 		}
 
 		// Tidy the logs
 		if cCtx.Bool("verbose") {
-			log.Info("\nFinalising new project\n\n")
+			logger.Info("\nFinalising new project\n\n")
 		}
 
 		// Copy config.yaml to the project directory
@@ -206,10 +206,10 @@ var CreateCommand = &cli.Command{
 
 		// Initialize git repository in the project directory
 		if err := initGitRepo(cCtx, targetDir, cCtx.Bool("verbose")); err != nil {
-			log.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
+			logger.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
-		log.Info("\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
+		logger.Info("\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
 }
@@ -241,7 +241,7 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 
 func createProjectDir(targetDir string, overwrite, verbose bool) error {
 	// get logger
-	log, _ := common.GetLogger()
+	logger, _ := common.GetLogger(verbose)
 
 	// Check if directory exists and handle overwrite
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
@@ -253,7 +253,7 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 			return fmt.Errorf("failed to remove existing directory: %w", err)
 		}
 		if verbose {
-			log.Info("Removed existing directory: %s", targetDir)
+			logger.Info("Removed existing directory: %s", targetDir)
 		}
 	}
 
@@ -267,7 +267,7 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 // copyDefaultConfigToProject copies config to the project directory with updated project name
 func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) error {
 	// get logger
-	log, _ := common.GetLogger()
+	logger, _ := common.GetLogger(verbose)
 
 	// Create and ensure target config directory exists
 	destConfigDir := filepath.Join(targetDir, "config")
@@ -283,7 +283,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	}
 
 	if verbose {
-		log.Info("Created config/%s in project directory", common.BaseConfig)
+		logger.Info("Created config/%s in project directory", common.BaseConfig)
 	}
 
 	// Copy all context files
@@ -301,7 +301,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 		}
 
 		if verbose {
-			log.Info("Copied context file: %s", entryName)
+			logger.Info("Copied context file: %s", entryName)
 		}
 	}
 
@@ -310,7 +310,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 
 // / Creates a keystores directory with default keystore json files
 func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
-	log, _ := common.GetLogger()
+	logger, _ := common.GetLogger(verbose)
 
 	// Construct keystore dest
 	destKeystoreDir := filepath.Join(targetDir, "keystores")
@@ -319,9 +319,8 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 	if err := os.MkdirAll(destKeystoreDir, 0755); err != nil {
 		return fmt.Errorf("failed to create keystores directory: %w", err)
 	}
-	if verbose {
-		log.Info("Created directory: %s", destKeystoreDir)
-	}
+
+	logger.Debug("Created directory: %s", destKeystoreDir)
 
 	// Read files embedded keystore
 	files := config.KeystoreEmbeds
@@ -339,9 +338,7 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 			return fmt.Errorf("failed to write file %s: %w", fileName, err)
 		}
 
-		if verbose {
-			log.Info("Copied keystore: %s", fileName)
-		}
+		logger.Debug("Copied keystore: %s", fileName)
 	}
 
 	return nil
@@ -350,19 +347,16 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	// get logger
-	log, _ := common.GetLogger()
+	logger, _ := common.GetLogger(verbose)
 
-	if verbose {
-		log.Info("Removing existing .git directory in %s (if any)...", targetDir)
-	}
+	logger.Debug("Removing existing .git directory in %s (if any)...", targetDir)
+
 	gitDir := filepath.Join(targetDir, ".git")
 	if err := os.RemoveAll(gitDir); err != nil {
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
 	}
 
-	if verbose {
-		log.Info("Initializing Git repository in %s...", targetDir)
-	}
+	logger.Debug("Initializing Git repository in %s...", targetDir)
 
 	cmd := exec.CommandContext(ctx.Context, "git", "init")
 	cmd.Dir = targetDir
@@ -376,11 +370,9 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 		return fmt.Errorf("failed to write .gitignore: %w", err)
 	}
 
-	if verbose {
-		log.Info("Git repository initialized successfully.")
-		if len(output) > 0 {
-			log.Info("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
-		}
+	logger.Debug("Git repository initialized successfully.")
+	if len(output) > 0 {
+		logger.Debug("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
 	}
 	return nil
 }

@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 	delegationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -23,9 +25,10 @@ type ContractCaller struct {
 	ethclient         *ethclient.Client
 	privateKey        *ecdsa.PrivateKey
 	chainID           *big.Int
+	logger            *logger.ZapLogger
 }
 
-func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr common.Address) (*ContractCaller, error) {
+func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
@@ -62,36 +65,43 @@ func (cc *ContractCaller) SendAndWaitForTransaction(
 	ctx context.Context,
 	txDescription string,
 	fn func() (*types.Transaction, error),
-) error {
-	log, _ := GetLogger()
+) (string, error) {
 
 	tx, err := fn()
 	if err != nil {
-		log.Error("%s failed during execution: %v", txDescription, err)
-		return fmt.Errorf("%s execution: %w", txDescription, err)
+		cc.logger.Error("%s failed during execution: %v", txDescription, err)
+		return "", fmt.Errorf("%s execution: %w", txDescription, err)
 	}
 
 	receipt, err := bind.WaitMined(ctx, cc.ethclient, tx)
 	if err != nil {
-		log.Error("Waiting for %s transaction (hash: %s) failed: %v", txDescription, tx.Hash().Hex(), err)
-		return fmt.Errorf("waiting for %s transaction (hash: %s): %w", txDescription, tx.Hash().Hex(), err)
+		cc.logger.Error("Waiting for %s transaction (hash: %s) failed: %v", txDescription, tx.Hash().Hex(), err)
+		return "", fmt.Errorf("waiting for %s transaction (hash: %s): %w", txDescription, tx.Hash().Hex(), err)
 	}
 	if receipt.Status == 0 {
-		log.Error("%s transaction (hash: %s) reverted", txDescription, tx.Hash().Hex())
-		return fmt.Errorf("%s transaction (hash: %s) reverted", txDescription, tx.Hash().Hex())
+		cc.logger.Error("%s transaction (hash: %s) reverted", txDescription, tx.Hash().Hex())
+		return "", fmt.Errorf("%s transaction (hash: %s) reverted", txDescription, tx.Hash().Hex())
 	}
-	return nil
+	return tx.Hash().Hex(), nil
 }
 
 func (cc *ContractCaller) UpdateAVSMetadata(ctx context.Context, avsAddress common.Address, metadataURI string) error {
+	cc.logger.Info("enter_update_metadata")
 	opts, err := cc.buildTxOpts(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to build transaction options: %w", err)
 	}
 
-	return cc.SendAndWaitForTransaction(ctx, "UpdateAVSMetadataURI", func() (*types.Transaction, error) {
+	txHash, err := cc.SendAndWaitForTransaction(ctx, "UpdateAVSMetadataURI", func() (*types.Transaction, error) {
 		return cc.allocationManager.UpdateAVSMetadataURI(opts, avsAddress, metadataURI)
 	})
+	if err == nil {
+
+		cc.logger.Debug("transaction hash for UpdateAVSMetadata :%s ", txHash)
+	}
+	cc.logger.Debug("metadata_update %w", err)
+
+	return err
 }
 
 // SetAVSRegistrar sets the registrar address for an AVS
@@ -101,9 +111,11 @@ func (cc *ContractCaller) SetAVSRegistrar(ctx context.Context, avsAddress, regis
 		return fmt.Errorf("failed to build transaction options: %w", err)
 	}
 
-	return cc.SendAndWaitForTransaction(ctx, "SetAVSRegistrar", func() (*types.Transaction, error) {
+	txHash, err := cc.SendAndWaitForTransaction(ctx, "SetAVSRegistrar", func() (*types.Transaction, error) {
 		return cc.allocationManager.SetAVSRegistrar(opts, avsAddress, registrarAddress)
 	})
+	cc.logger.Debug("transaction hash for SetAVSRegistrar :%s ,avsAddress :%s, registrarAddress :%s", txHash, avsAddress, registrarAddress)
+	return err
 }
 
 // CreateOperatorSets creates operator sets for an AVS
@@ -113,9 +125,11 @@ func (cc *ContractCaller) CreateOperatorSets(ctx context.Context, avsAddress com
 		return fmt.Errorf("failed to build transaction options: %w", err)
 	}
 
-	return cc.SendAndWaitForTransaction(ctx, "CreateOperatorSets", func() (*types.Transaction, error) {
+	txHash, err := cc.SendAndWaitForTransaction(ctx, "CreateOperatorSets", func() (*types.Transaction, error) {
 		return cc.allocationManager.CreateOperatorSets(opts, avsAddress, sets)
 	})
+	cc.logger.Debug("transaction hash for CreateOperatorSets :%s,Arguments: \n avsAddress :%s,\n IAllocationManagerTypesCreateSetParams[] :%s", txHash, avsAddress, sets)
+	return err
 }
 
 func (cc *ContractCaller) RegisterAsOperator(ctx context.Context, operatorAddress common.Address, allocationDelay uint32, metadataURI string) error {
@@ -124,9 +138,11 @@ func (cc *ContractCaller) RegisterAsOperator(ctx context.Context, operatorAddres
 		return fmt.Errorf("failed to build transaction options: %w", err)
 	}
 
-	return cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterAsOperator for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
+	txHash, err := cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterAsOperator for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
 		return cc.delegationManager.RegisterAsOperator(opts, operatorAddress, allocationDelay, metadataURI)
 	})
+	cc.logger.Debug("transaction hash for RegisterAsOperator :%s, Arguments: \noperatorAddress :%s \nallocationDelay :%s\nmetadataURI :%s", txHash, operatorAddress, allocationDelay, metadataURI)
+	return err
 }
 
 func (cc *ContractCaller) RegisterForOperatorSets(ctx context.Context, operatorAddress, avsAddress common.Address, operatorSetIDs []uint32, payload []byte) error {
@@ -141,7 +157,11 @@ func (cc *ContractCaller) RegisterForOperatorSets(ctx context.Context, operatorA
 		Data:           payload,
 	}
 
-	return cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterForOperatorSets for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
+	txHash, err := cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterForOperatorSets for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
 		return cc.allocationManager.RegisterForOperatorSets(opts, operatorAddress, params)
 	})
+	cc.logger.Debug("transaction hash for RegisterForOperatorSets :%s, Arguments: \noperatorAddress :%s \navsAddress :%s\noperatorSetIDs :%s\npayload: %s", txHash, operatorAddress, avsAddress, operatorSetIDs, payload)
+
+	return err
+
 }
