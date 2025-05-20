@@ -97,8 +97,8 @@ func (cc *ContractCaller) UpdateAVSMetadata(ctx context.Context, avsAddress comm
 	})
 	cc.logger.Debug(
 		"Transaction hash for UpdateAVSMetadata: %s\n"+
-			"avsAddress: %s\n"+
-			"metadataURI: %s",
+		"avsAddress: %s\n"+
+		"metadataURI: %s",
 		txHash,
 		avsAddress,
 		metadataURI,
@@ -119,7 +119,7 @@ func (cc *ContractCaller) SetAVSRegistrar(ctx context.Context, avsAddress, regis
 	})
 	cc.logger.Debug("Transaction hash for SetAVSRegistrar :%s\n"+
 		"avsAddress :%s\n"+
-		"registrarAddress :%s",
+		"registrarAddress :%s\n",
 		txHash,
 		avsAddress,
 		registrarAddress)
@@ -139,8 +139,8 @@ func (cc *ContractCaller) CreateOperatorSets(ctx context.Context, avsAddress com
 
 	cc.logger.Debug(
 		"Transaction hash for CreateOperatorSets :%s\n"+
-			"avsAddress :%s\n"+
-			"IAllocationManagerTypesCreateSetParams[] :%s",
+		"avsAddress :%s\n"+
+		"IAllocationManagerTypesCreateSetParams[] :%s\n",
 		txHash,
 		avsAddress,
 		sets)
