@@ -61,7 +61,7 @@ func TestCreateCommand(t *testing.T) {
 			Value: tmpDir,
 		},
 		&cli.StringFlag{
-			Name:  "template-path",
+			Name:  "template-url",
 			Value: "https://github.com/Layr-Labs/teal",
 		},
 	}
@@ -93,7 +93,7 @@ func TestCreateCommand(t *testing.T) {
 		}
 
 		// Create config.yaml
-		return copyDefaultConfigToProject(targetDir, projectName, false)
+		return copyDefaultConfigToProject(targetDir, projectName, "https://github.com/Layr-Labs/teal", "", false)
 	}
 
 	app := &cli.App{
