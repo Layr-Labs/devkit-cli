@@ -127,14 +127,15 @@ devkit avs build
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
-> 🚨 **IMPORTANT:** You **must** set a valid `*_FORK_URL`s before running this command.  
-> Add them to your `.env` (copied from `.env.example`) or to `config/context/devnet.yaml`.
-
-
 * Forks Ethereum mainnet using a fork URL (provided by you) and a block number. These URLs CAN be set in the `config/context/devnet.yaml`, but we recommend placing them in a `.env` file which will take precedence over `config/context/devnet.yaml`. Please see `.env.example`.
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
 * Setup required `AVS` contracts.
 * Register `AVS` and `Operators`.
+
+
+> \[!IMPORTANT]
+> You **must** set valid `*_FORK_URL`s before launching your local devnet.  
+> Add them to your `.env` (copied from `.env.example`) or to `config/context/devnet.yaml`.
 
 > **Note:** Use any popular RPC provider (e.g. QuickNode, Alchemy) for `FORK_URL`.
 
@@ -145,7 +146,7 @@ $ cp .env.example .env
 # edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
 ```
 
-Run this from your project directory:
+After adding `*_FORK_URL`s, run this from your project directory:
 
 ```bash
 devkit avs devnet start
