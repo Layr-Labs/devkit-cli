@@ -63,7 +63,7 @@ func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
 		return nil
 	}
 
-	log.Printf("💸 Funding %s with %s from private key", to, FUND_VALUE)
+	log.Printf("💸 Funding %s with %s from %s", to, FUND_VALUE, fromKey)
 	cmd := exec.Command("cast", "send",
 		to.String(),
 		"--value", FUND_VALUE,
