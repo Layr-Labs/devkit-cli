@@ -1,5 +1,5 @@
 # Devnet context to be used for local deployments against Anvil chain
-version: 0.0.2
+version: 0.0.3
 context:
   # Name of the context
   name: "devnet"
