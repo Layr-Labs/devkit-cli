@@ -2,7 +2,7 @@ architectures:
   task:
     languages:
       go:
-        template: "https://github.com/Layr-Labs/hourglass-avs-template/tree/pinned-may-16"
+        template: "https://github.com/Layr-Labs/hourglass-avs-template/tree/v0.0.1"
       ts:
         template: ""
       rust:
