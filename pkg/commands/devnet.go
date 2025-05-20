@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/urfave/cli/v2"
 )
 
@@ -12,7 +13,7 @@ var DevnetCommand = &cli.Command{
 		{
 			Name:  "start",
 			Usage: "Starts Docker containers and deploys local contracts",
-			Flags: []cli.Flag{
+			Flags: append([]cli.Flag{
 				&cli.BoolFlag{
 					Name:  "reset",
 					Usage: "Wipe and restart the devnet from scratch",
@@ -45,7 +46,7 @@ var DevnetCommand = &cli.Command{
 					Usage: "Skip AVS setup steps (metadata update, registrar setup, etc.) after contract deployment",
 					Value: false,
 				},
-			},
+			}, common.GlobalFlags...),
 			Action: StartDevnetAction,
 		},
 		{

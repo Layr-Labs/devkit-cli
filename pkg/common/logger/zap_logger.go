@@ -38,3 +38,11 @@ func (l *ZapLogger) Error(msg string, args ...any) {
 	}
 	l.log.Errorf(msg, args...)
 }
+
+func (l *ZapLogger) Debug(msg string, args ...any) {
+	msg = strings.Trim(msg, "\n")
+	if msg == "" {
+		return
+	}
+	l.log.Debugf(msg, args...)
+}
