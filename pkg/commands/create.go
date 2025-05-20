@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	project "github.com/Layr-Labs/devkit-cli"
 	"github.com/Layr-Labs/devkit-cli/config"
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
@@ -162,6 +163,18 @@ var CreateCommand = &cli.Command{
 					log.Warn("Failed to fetch contracts template: %v", err)
 				}
 			}
+		}
+
+		// Copy DevKit README.md to templates README.md
+		readMePath := filepath.Join(targetDir, "README.md")
+		readMeTemplate, err := os.ReadFile(readMePath)
+		if err != nil {
+			log.Warn("Project README.md is missing: %w", err)
+		}
+		readMeTemplate = append(readMeTemplate, project.RawReadme...)
+		err = os.WriteFile(readMePath, readMeTemplate, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write README.md: %w", err)
 		}
 
 		// Set path for .devkit scripts
