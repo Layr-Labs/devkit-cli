@@ -54,7 +54,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		if contextsMigrated == 1 {
 			suffix = ""
 		}
-		log.Info("%d context migration%s complete", suffix, contextsMigrated)
+		log.Info("%d context migration%s complete", contextsMigrated, suffix)
 	}
 
 	// Load config for devnet

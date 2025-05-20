@@ -95,9 +95,9 @@ param: old
 	if err := engine.Apply(); err != nil {
 		t.Fatalf("Apply failed: %v", err)
 	}
-	pn := ResolveNode(user, []string{"param"})
-	if pn == nil || pn.Value != "new" {
-		t.Errorf("Expected param=new, got %v", pn.Value)
+	on := ResolveNode(user, []string{"param"})
+	if on == nil || on.Value != "new" {
+		t.Errorf("Expected param=new, got %v", on.Value)
 	}
 }
 

@@ -118,7 +118,7 @@ func MigrateYaml(path string, latestVersion string, migrationChain []MigrationSt
 	if from == to {
 		return ErrAlreadyUpToDate
 	}
-	log.Info("Migrating config.yaml v%s -> v%s", from, to)
+	log.Info("Migrating %s v%s -> v%s", path, from, to)
 
 	// Perform node-based migration
 	migrated, err := MigrateNode(userNode, from, to, migrationChain)
@@ -152,10 +152,16 @@ func MigrateNode(
 		if versionGreaterThan(step.To, to) {
 			break
 		}
+
 		oldDef := &yaml.Node{}
-		yaml.Unmarshal(step.OldYAML, oldDef)
+		if err := yaml.Unmarshal(step.OldYAML, oldDef); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal old default for %s: %w", step.From, err)
+		}
+
 		newDef := &yaml.Node{}
-		yaml.Unmarshal(step.NewYAML, newDef)
+		if err := yaml.Unmarshal(step.NewYAML, newDef); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal new default for %s: %w", step.To, err)
+		}
 
 		var err error
 		user, err = step.Apply(user, oldDef, newDef)
