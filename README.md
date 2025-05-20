@@ -57,8 +57,9 @@ During this Private Preview, you'll need access to private Go modules hosted on 
 
 1. **Add SSH Key to GitHub:** Ensure your SSH key is associated with your GitHub account ([instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
 2. **Verify Repository Access:** Confirm with EigenLabs support that your account has access to necessary private repositories.
-3. **Add your SSH key to your SSH agent:**
+3. **ssh-agent:** Make sure your ssh-agent is running and your SSH key is added. You can do this by running:
    ```bash
+   [[ -z $(pgrep -f ssh-agent) ]] && eval "$(ssh-agent -s)"
    ssh-add ~/.ssh/<your github private key>
    ```
 
