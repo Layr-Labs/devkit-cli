@@ -434,7 +434,6 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
 	uri := cCtx.String("uri")
-
 	envCtx, ok := cfg.Context[devnet.CONTEXT]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
