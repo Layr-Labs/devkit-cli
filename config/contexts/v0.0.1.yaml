@@ -52,7 +52,7 @@ context:
       stake: "1000ETH"
   # AVS configuration
   avs:
-    address: "0x0123456789abcdef0123456789ABCDEF01234567"
+    address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
     avs_private_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" # Anvil Private Key 0
     metadata_url: "https://my-org.com/avs/metadata.json"
     registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"

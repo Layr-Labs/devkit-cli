@@ -2,10 +2,13 @@ package commands
 
 import (
 	"bytes"
-	"devkit-cli/pkg/common"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -14,12 +17,9 @@ import (
 func TestConfigCommand_ListOutput(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	defaultConfigPath := filepath.Join("..", "..", "config")
-	defaultConfigFile, err := os.ReadFile(filepath.Join(defaultConfigPath, common.BaseConfig))
-	require.NoError(t, err)
+	defaultConfigFile := configs.ConfigYamls[configs.LatestVersion]
+	defaultDevnetConfigFile := contexts.ContextYamls[contexts.LatestVersion]
 
-	defaultDevnetConfigFile, err := os.ReadFile(filepath.Join(defaultConfigPath, "contexts", "devnet.yaml"))
-	require.NoError(t, err)
 	configPath := filepath.Join(tmpDir, "config")
 	require.NoError(t, os.MkdirAll(configPath, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(configPath, common.BaseConfig), defaultConfigFile, 0644))
@@ -64,7 +64,7 @@ telemetry_enabled: true
 			},
 		},
 	}
-	err = app.Run([]string{"devkit", "avs", "config", "--list"})
+	err := app.Run([]string{"devkit", "avs", "config", "--list"})
 	require.NoError(t, err)
 
 	// 📤 Finish capturing output

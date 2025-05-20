@@ -1,8 +1,8 @@
 package keystore
 
 import (
-	"devkit-cli/pkg/common"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
 	"github.com/urfave/cli/v2"

@@ -1,7 +1,7 @@
 package commands
 
 import (
-	"devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"log"
 
 	"github.com/urfave/cli/v2"

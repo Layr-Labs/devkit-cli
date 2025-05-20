@@ -2,8 +2,8 @@ package template
 
 import (
 	"context"
-	"devkit-cli/pkg/common/logger"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"os"
 	"path/filepath"
 	"strings"

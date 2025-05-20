@@ -1,12 +1,16 @@
 package common_test
 
 import (
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
 	"fmt"
+
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/yaml"
@@ -16,9 +20,8 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	// Setup temp directory
 	tmpDir := t.TempDir()
 
-	// Create 'config' and 'config/contexts' directories
-	configDir := filepath.Join(tmpDir, "config")
-	assert.NoError(t, os.MkdirAll(filepath.Join(configDir, "contexts"), 0755))
+	// Copy config/config.yaml to tempDir
+	assert.NoError(t, os.WriteFile(tmpYamlPath, []byte(configs.ConfigYamls[configs.LatestVersion]), 0644))
 
 	// Write config/config.yaml
 	configYamlPath := filepath.Join(configDir, "config.yaml")
@@ -27,7 +30,11 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	devnetYamlPath := filepath.Join(configDir, "contexts", "devnet.yaml")
 	assert.NoError(t, os.WriteFile(devnetYamlPath, []byte(config.ContextYamls["devnet"]), 0644))
 
-	cfg, err := LoadConfigWithContextConfigWithPath("devnet", configDir)
+	tmpDevnetPath := filepath.Join(tmpContextDir, "devnet.yaml")
+	assert.NoError(t, os.WriteFile(tmpDevnetPath, []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644))
+
+	// Run loader with the new base path
+	cfg, err := LoadConfigWithContextConfigFromPath("devnet", tmpDir)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "my-avs", cfg.Config.Project.Name)
@@ -35,7 +42,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "devnet", cfg.Config.Project.Context)
 
 	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].DeployerPrivateKey)
-	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].AppDeployerPrivateKey)
+	assert.Equal(t, "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a", cfg.Context["devnet"].AppDeployerPrivateKey)
 
 	assert.Equal(t, "keystores/operator1.keystore.json", cfg.Context["devnet"].Operators[0].BlsKeystorePath)
 	assert.Equal(t, "keystores/operator2.keystore.json", cfg.Context["devnet"].Operators[1].BlsKeystorePath)
@@ -50,7 +57,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 
-	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.Address)
+	assert.Equal(t, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", cfg.Context["devnet"].Avs.Address)
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
 	assert.Equal(t, "https://my-org.com/avs/metadata.json", cfg.Context["devnet"].Avs.MetadataUri)
 

@@ -1,9 +1,9 @@
 package commands
 
 import (
-	"devkit-cli/pkg/common"
 	"encoding/json"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"path"
 	"path/filepath"
 	"strings"

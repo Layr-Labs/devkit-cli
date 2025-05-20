@@ -1,10 +1,11 @@
 package commands
 
 import (
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/devnet"
+	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"path"
@@ -12,12 +13,49 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
+	"github.com/Layr-Labs/devkit-cli/pkg/migration"
+
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
+
+	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
 	// Get logger
 	log, _ := common.GetLogger()
+
+	// Extract vars
+	skipAvsRun := cCtx.Bool("skip-avs-run")
+	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+
+	// Migrate config
+	configMigrated, err := migrateConfig()
+	if err != nil {
+		log.Error("config migration failed: %w", err)
+	}
+	if configMigrated > 0 {
+		log.Info("Config migration complete")
+	}
+
+	// Migrate contexts
+	contextsMigrated, err := migrateContexts()
+	if err != nil {
+		log.Error("context migrations failed: %w", err)
+	}
+	if contextsMigrated > 0 {
+		suffix := "s"
+		if contextsMigrated == 1 {
+			suffix = ""
+		}
+		log.Info("%d context migration%s complete", contextsMigrated, suffix)
+	}
 
 	// Load config for devnet
 	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
@@ -31,8 +69,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	chainImage := devnet.GetDevnetChainImageOrDefault(config)
 	chainArgs := devnet.GetDevnetChainArgsOrDefault(config)
 
-	startTime := time.Now() // <-- start timing
-	// if user gives , say, log = "DEBUG" Or "Debug", we normalize it to lowercase
+	// Start timer
+	startTime := time.Now()
+
+	// If user gives, say, log = "DEBUG" Or "Debug", we normalize it to lowercase
 	if common.IsVerboseEnabled(cCtx, config) {
 		log.Info("Starting devnet...\n")
 
@@ -46,11 +86,17 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			log.Info("Running in headless mode")
 		}
 	}
-	// docker-compose for anvil devnet
+
+	// Docker-compose for anvil devnet
 	composePath := devnet.WriteEmbeddedArtifacts()
 	fork_url, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
 	if err != nil {
 		return fmt.Errorf("%w", err)
+	}
+
+	// Error if the fork_url has not been modified
+	if fork_url == "" {
+		return fmt.Errorf("fork-url not set; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
 	}
 
 	// Run docker compose up for anvil devnet
@@ -73,22 +119,101 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
+	log.Info("Waiting for devnet to be ready...")
+
+	// Set path for context yamls
+	contextDir := filepath.Join("config", "contexts")
+	yamlPath := path.Join(contextDir, "devnet.yaml")
+
+	// Load YAML as *yaml.Node
+	rootNode, err := common.LoadYAML(yamlPath)
+	if err != nil {
+		return err
+	}
+
+	// YAML is parsed into a DocumentNode:
+	//   - rootNode.Content[0] is the top-level MappingNode
+	//   - It contains the 'context' mapping we're interested in
+	if len(rootNode.Content) == 0 {
+		return fmt.Errorf("empty YAML root node")
+	}
+
+	// Check for context
+	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
+	if contextNode == nil {
+		return fmt.Errorf("missing 'context' key in ./config/contexts/devnet.yaml")
+	}
+
+	// Get chains node
+	chainsNode := common.GetChildByKey(contextNode, "chains")
+	if chainsNode == nil {
+		return fmt.Errorf("missing 'chains' key in context")
+	}
+
+	// Update RPC URLs for both L1 and L2 chains
+	for i := 0; i < len(chainsNode.Content); i += 2 {
+		chainNode := chainsNode.Content[i+1]
+
+		rpcUrlNode := common.GetChildByKey(chainNode, "rpc_url")
+		if rpcUrlNode != nil {
+			rpcUrlNode.Value = rpcUrl
+		}
+	}
+
+	// Write yaml back to project directory
+	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
+		return err
+	}
 
 	// Sleep for 4 second to ensure the devnet is fully started
 	time.Sleep(4 * time.Second)
 
 	// Fund the wallets defined in config
-	devnet.FundWalletsDevnet(config, rpcUrl)
+	err = devnet.FundWalletsDevnet(config, rpcUrl)
+	if err != nil {
+		return err
+	}
 	elapsed := time.Since(startTime).Round(time.Second)
 
 	// Sleep for 1 second to make sure wallets are funded
 	time.Sleep(1 * time.Second)
 	log.Info("\nDevnet started successfully in %s", elapsed)
 
-	// Deploy the contracts after starting next work unless skipped
-	if !cCtx.Bool("skip-deploy-contracts") {
-		if err := DeployContractsAction(cCtx); err != nil {
+	// Deploy the contracts after starting devnet unless skipped
+	if !skipDeployContracts {
+		if err := DeployContractsAction(cCtx); err != nil { // Assumes DeployContractsAction remains as is or is also refactored if needed
 			return fmt.Errorf("deploy-contracts failed: %w", err)
+		}
+
+		// Sleep for 1 second to make sure new context values have been written
+		time.Sleep(1 * time.Second)
+
+		log.Info("Registering AVS with EigenLayer...")
+
+		if !cCtx.Bool("skip-setup") {
+			if err := UpdateAVSMetadataAction(cCtx); err != nil {
+				return fmt.Errorf("updating AVS metadata failed: %w", err)
+			}
+			if err := SetAVSRegistrarAction(cCtx); err != nil {
+				return fmt.Errorf("setting AVS registrar failed: %w", err)
+			}
+			if err := CreateAVSOperatorSetsAction(cCtx); err != nil {
+				return fmt.Errorf("creating AVS operator sets failed: %w", err)
+			}
+			log.Info("AVS registered with EigenLayer successfully.")
+
+			if err := RegisterOperatorsFromConfigAction(cCtx); err != nil {
+				return fmt.Errorf("registering operators failed: %w", err)
+			}
+		} else {
+			log.Info("Skipping AVS setup steps...")
+		}
+	}
+
+	// Start offchain AVS components after starting devnet and deploying contracts unless skipped
+	if !skipDeployContracts && !skipAvsRun {
+		if err := AVSRun(cCtx); err != nil {
+			return fmt.Errorf("avs run failed: %w", err)
 		}
 	}
 
@@ -140,6 +265,9 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Loop scripts with cloned context
 	for _, name := range scriptNames {
+		// Log the script name that's about to be executed
+		log, _ := common.GetLogger()
+		log.Info("Executing script: %s", name)
 		// Clone context node and convert to map
 		clonedCtxNode := common.CloneNode(contextNode)
 		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
@@ -301,13 +429,11 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to list devnet containers: %w", err)
 	}
-
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
 		fmt.Printf("%s🚫 No devnet containers running.%s\n", devnet.Yellow, devnet.Reset)
 		return nil
 	}
-
 	fmt.Printf("%s📦 Running Devnet Containers:%s\n\n", devnet.Blue, devnet.Reset)
 	for _, line := range lines {
 		parts := strings.Split(line, ": ")
@@ -324,7 +450,6 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 			devnet.Yellow, port, devnet.Reset,
 		)
 	}
-
 	return nil
 }
 
@@ -335,4 +460,388 @@ func extractHostPort(portStr string) string {
 		return hostPort[len(hostPort)-1]
 	}
 	return portStr
+}
+
+func UpdateAVSMetadataAction(cCtx *cli.Context) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+	uri := cCtx.String("uri")
+
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+	l1ChainCfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, devnet.CONTEXT)
+	}
+	client, err := ethclient.Dial(l1ChainCfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
+	}
+	defer client.Close()
+
+	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
+	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+
+	contractCaller, err := common.NewContractCaller(
+		envCtx.Avs.AVSPrivateKey,
+		big.NewInt(int64(l1ChainCfg.ChainID)),
+		client,
+		allocationManagerAddr,
+		delegationManagerAddr,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
+	}
+
+	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
+	return contractCaller.UpdateAVSMetadata(cCtx.Context, avsAddr, uri)
+}
+
+func SetAVSRegistrarAction(cCtx *cli.Context) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+
+	log, _ := common.GetLogger()
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+	l1ChainCfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, devnet.CONTEXT)
+	}
+	client, err := ethclient.Dial(l1ChainCfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
+	}
+	defer client.Close()
+
+	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
+	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+
+	contractCaller, err := common.NewContractCaller(
+		envCtx.Avs.AVSPrivateKey,
+		big.NewInt(int64(l1ChainCfg.ChainID)),
+		client,
+		allocationManagerAddr,
+		delegationManagerAddr,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
+	}
+
+	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
+	var registrarAddr ethcommon.Address
+	log.Info("Attempting to find AvsRegistrar in deployed contracts...")
+	foundInDeployed := false
+	for _, contract := range envCtx.DeployedContracts {
+		if strings.Contains(strings.ToLower(contract.Name), "avsregistrar") {
+			registrarAddr = ethcommon.HexToAddress(contract.Address)
+			log.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
+			foundInDeployed = true
+			break
+		}
+	}
+	if !foundInDeployed {
+		return fmt.Errorf("AvsRegistrar contract not found in deployed contracts for context '%s'", devnet.CONTEXT)
+	}
+
+	return contractCaller.SetAVSRegistrar(cCtx.Context, avsAddr, registrarAddr)
+}
+
+func CreateAVSOperatorSetsAction(cCtx *cli.Context) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+
+	log, _ := common.GetLogger()
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+	l1ChainCfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, devnet.CONTEXT)
+	}
+	client, err := ethclient.Dial(l1ChainCfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
+	}
+	defer client.Close()
+
+	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
+	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+
+	contractCaller, err := common.NewContractCaller(
+		envCtx.Avs.AVSPrivateKey,
+		big.NewInt(int64(l1ChainCfg.ChainID)),
+		client,
+		allocationManagerAddr,
+		delegationManagerAddr,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
+	}
+
+	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
+	if len(envCtx.OperatorSets) == 0 {
+		log.Info("No operator sets to create.")
+		return nil
+	}
+	createSetParams := make([]allocationmanager.IAllocationManagerTypesCreateSetParams, len(envCtx.OperatorSets))
+	for i, opSet := range envCtx.OperatorSets {
+		strategies := make([]ethcommon.Address, len(opSet.Strategies))
+		for j, strategy := range opSet.Strategies {
+			strategies[j] = ethcommon.HexToAddress(strategy.StrategyAddress)
+		}
+		createSetParams[i] = allocationmanager.IAllocationManagerTypesCreateSetParams{
+			OperatorSetId: uint32(opSet.OperatorSetID),
+			Strategies:    strategies,
+		}
+	}
+
+	return contractCaller.CreateOperatorSets(cCtx.Context, avsAddr, createSetParams)
+}
+
+func RegisterOperatorsFromConfigAction(cCtx *cli.Context) error {
+	log, _ := common.GetLogger()
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+
+	log.Info("Registering operators with EigenLayer...")
+	if len(envCtx.OperatorRegistrations) == 0 {
+		log.Info("No operator registrations found in context, skipping operator registration.")
+		return nil
+	}
+
+	for _, opReg := range envCtx.OperatorRegistrations {
+		log.Info("Processing registration for operator at address %s", opReg.Address)
+		if err := registerOperatorEL(cCtx, opReg.Address); err != nil {
+			log.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
+			continue
+		}
+		if err := registerOperatorAVS(cCtx, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
+			log.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
+			continue
+		}
+		log.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
+	}
+	log.Info("Operator registration with EigenLayer completed.")
+	return nil
+}
+
+func registerOperatorEL(cCtx *cli.Context, operatorAddress string) error {
+	if operatorAddress == "" {
+		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
+	}
+
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.CONTEXT)
+	}
+
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer client.Close()
+
+	var operatorPrivateKey string
+	for _, op := range envCtx.Operators {
+		key, keyErr := crypto.HexToECDSA(strings.TrimPrefix(op.ECDSAKey, "0x"))
+		if keyErr != nil {
+			continue
+		}
+		if strings.EqualFold(crypto.PubkeyToAddress(key.PublicKey).Hex(), operatorAddress) {
+			operatorPrivateKey = op.ECDSAKey
+			break
+		}
+	}
+	if operatorPrivateKey == "" {
+		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
+	}
+
+	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
+	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+
+	contractCaller, err := common.NewContractCaller(
+		operatorPrivateKey,
+		big.NewInt(int64(l1Cfg.ChainID)),
+		client,
+		allocationManagerAddr,
+		delegationManagerAddr,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
+	}
+
+	return contractCaller.RegisterAsOperator(cCtx.Context, ethcommon.HexToAddress(operatorAddress), 0, "test")
+}
+
+func registerOperatorAVS(cCtx *cli.Context, operatorAddress string, operatorSetID uint32, payloadHex string) error {
+	if operatorAddress == "" {
+		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
+	}
+	if payloadHex == "" {
+		return fmt.Errorf("payloadHex parameter is required and cannot be empty")
+	}
+
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.CONTEXT)
+	}
+
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer client.Close()
+
+	var operatorPrivateKey string
+	for _, op := range envCtx.Operators {
+		key, keyErr := crypto.HexToECDSA(strings.TrimPrefix(op.ECDSAKey, "0x"))
+		if keyErr != nil {
+			continue
+		}
+		if strings.EqualFold(crypto.PubkeyToAddress(key.PublicKey).Hex(), operatorAddress) {
+			operatorPrivateKey = op.ECDSAKey
+			break
+		}
+	}
+	if operatorPrivateKey == "" {
+		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
+	}
+
+	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
+	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+
+	contractCaller, err := common.NewContractCaller(
+		operatorPrivateKey,
+		big.NewInt(int64(l1Cfg.ChainID)),
+		client,
+		allocationManagerAddr,
+		delegationManagerAddr,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
+	}
+
+	payloadBytes, err := hex.DecodeString(payloadHex)
+	if err != nil {
+		return fmt.Errorf("failed to decode payload hex '%s': %w", payloadHex, err)
+	}
+
+	return contractCaller.RegisterForOperatorSets(
+		cCtx.Context,
+		ethcommon.HexToAddress(operatorAddress),
+		ethcommon.HexToAddress(envCtx.Avs.Address),
+		[]uint32{operatorSetID},
+		payloadBytes,
+	)
+}
+
+func migrateConfig() (int, error) {
+	// Get logger
+	log, _ := common.GetLogger()
+
+	// Set path for context yamls
+	configDir := filepath.Join("config")
+	configPath := filepath.Join(configDir, "config.yaml")
+
+	// Migrate the config
+	err := migration.MigrateYaml(configPath, configs.LatestVersion, configs.MigrationChain)
+	// Check for already upto date and ignore
+	alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
+
+	// For any other error, migration has failed
+	if err != nil && !alreadyUptoDate {
+		return 0, fmt.Errorf("failed to migrate: %v", err)
+	}
+
+	// If config was migrated
+	if !alreadyUptoDate {
+		log.Info("Migrated %s\n", configPath)
+
+		return 1, nil
+	}
+
+	return 0, nil
+}
+
+func migrateContexts() (int, error) {
+	// Get logger
+	log, _ := common.GetLogger()
+
+	// Count the number of contexts we migrate
+	contextsMigrated := 0
+
+	// Set path for context yamls
+	contextDir := filepath.Join("config", "contexts")
+
+	// Read all contexts/*.yamls
+	entries, err := os.ReadDir(contextDir)
+	if err != nil {
+		return 0, fmt.Errorf("unable to read context directory: %v", err)
+	}
+
+	// Attempt to upgrade every entry
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		contextPath := filepath.Join(contextDir, e.Name())
+
+		// Migrate the context
+		err := migration.MigrateYaml(contextPath, contexts.LatestVersion, contexts.MigrationChain)
+		// Check for already upto date and ignore
+		alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
+
+		// For every other error, migration failed
+		if err != nil && !alreadyUptoDate {
+			log.Error("failed to migrate: %v", err)
+			continue
+		}
+
+		// If context was migrated
+		if !alreadyUptoDate {
+			// Incr number of contextsMigrated
+			contextsMigrated += 1
+
+			// If migration succeeds
+			log.Info("Migrated %s\n", contextPath)
+		}
+	}
+
+	return contextsMigrated, nil
 }

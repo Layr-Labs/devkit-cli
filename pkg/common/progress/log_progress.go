@@ -1,8 +1,8 @@
 package progress
 
 import (
-	"devkit-cli/pkg/common/iface"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"sync"
 )
 

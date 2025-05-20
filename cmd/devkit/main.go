@@ -5,10 +5,11 @@ import (
 	"log"
 	"os"
 
-	"devkit-cli/pkg/commands"
-	"devkit-cli/pkg/commands/keystore"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/hooks"
+	"github.com/Layr-Labs/devkit-cli/pkg/commands"
+	"github.com/Layr-Labs/devkit-cli/pkg/commands/keystore"
+	"github.com/Layr-Labs/devkit-cli/pkg/commands/version"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/hooks"
 
 	"github.com/urfave/cli/v2"
 )
@@ -28,7 +29,11 @@ func main() {
 			common.WithAppEnvironment(ctx)
 			return hooks.WithCommandMetricsContext(ctx)
 		},
-		Commands:               []*cli.Command{commands.AVSCommand, keystore.KeystoreCommand},
+		Commands: []*cli.Command{
+			commands.AVSCommand,
+			keystore.KeystoreCommand,
+			version.VersionCommand,
+		},
 		UseShortOptionHandling: true,
 	}
 

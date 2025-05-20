@@ -2,15 +2,18 @@ package commands
 
 import (
 	"context"
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/testutils"
+
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
@@ -19,7 +22,7 @@ import (
 func TestCreateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	mockConfigYaml := config.DefaultConfigYaml
+	mockConfigYaml := configs.ConfigYamls[configs.LatestVersion]
 	configDir := filepath.Join("config")
 	err := os.MkdirAll(configDir, 0755)
 	assert.NoError(t, err)
@@ -34,7 +37,7 @@ func TestCreateCommand(t *testing.T) {
 		}
 	}()
 
-	devnetYaml := config.ContextYamls["devnet"]
+	devnetYaml := contexts.ContextYamls[contexts.LatestVersion]
 	contextsDir := filepath.Join(configDir, "contexts")
 	err = os.MkdirAll(contextsDir, 0755)
 	assert.NoError(t, err)
@@ -208,7 +211,7 @@ func TestCreateCommand_WithTemplates(t *testing.T) {
 }
 
 func TestCreateCommand_ContextCancellation(t *testing.T) {
-	mockYaml := config.DefaultConfigYaml
+	mockYaml := configs.ConfigYamls[configs.LatestVersion]
 	if err := os.WriteFile("config.yaml", []byte(mockYaml), 0644); err != nil {
 		t.Fatal(err)
 	}

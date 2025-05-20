@@ -3,9 +3,9 @@ package commands
 import (
 	"bytes"
 	"context"
-	"devkit-cli/pkg/testutils"
 	"errors"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"io"
 	"net"
 	"os"
@@ -21,6 +21,7 @@ import (
 )
 
 func TestStartAndStopDevnet(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save current working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -67,6 +68,7 @@ func TestStartAndStopDevnet(t *testing.T) {
 }
 
 func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save current working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -132,6 +134,7 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 	_ = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
 }
 func TestStartDevnet_WithDeployContracts(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
@@ -152,12 +155,16 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 			&cli.IntFlag{Name: "port"},
 			&cli.BoolFlag{Name: "verbose"},
 			&cli.BoolFlag{Name: "skip-deploy-contracts"},
+			&cli.BoolFlag{Name: "skip-setup"},
 		},
 		Action: StartDevnetAction,
 	}
 
-	err = app.Run([]string{"devkit", "--port", port})
-	assert.NoError(t, err)
+	stdout, stderr := testutils.CaptureOutput(func() {
+		// Use --skip-setup to avoid AVS setup steps while still deploying contracts
+		err = app.Run([]string{"devkit", "--port", port, "--skip-setup"})
+		assert.NoError(t, err)
+	})
 
 	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
 	data, err := os.ReadFile(yamlPath)
@@ -170,6 +177,7 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 	ctx, ok := parsed["context"].(map[string]interface{})
 	assert.True(t, ok)
 	assert.Equal(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should run by default")
+	assert.Contains(t, stdout+stderr, "Offchain AVS components started successfully", "AVSRun should run by default")
 
 	stopApp := &cli.App{
 		Name:   "devkit",
@@ -180,6 +188,7 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 }
 
 func TestStartDevnet_SkipDeployContracts(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
 	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
@@ -204,8 +213,10 @@ func TestStartDevnet_SkipDeployContracts(t *testing.T) {
 		Action: StartDevnetAction,
 	}
 
-	err = app.Run([]string{"devkit", "--port", port, "--skip-deploy-contracts"})
-	assert.NoError(t, err)
+	stdout, stderr := testutils.CaptureOutput(func() {
+		err = app.Run([]string{"devkit", "--port", port, "--skip-deploy-contracts"})
+		assert.NoError(t, err)
+	})
 
 	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
 	data, err := os.ReadFile(yamlPath)
@@ -217,7 +228,62 @@ func TestStartDevnet_SkipDeployContracts(t *testing.T) {
 
 	ctx, ok := parsed["context"].(map[string]interface{})
 	assert.True(t, ok)
+	assert.NotEqual(t, "run", ctx["mock"], "avs run should run by default")
 	assert.NotEqual(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should be skipped")
+	assert.NotContains(t, stdout+stderr, "Offchain AVS components started successfully", "AVSRun should be skipped")
+
+	stopApp := &cli.App{
+		Name:   "devkit",
+		Flags:  []cli.Flag{&cli.IntFlag{Name: "port"}},
+		Action: StopDevnetAction,
+	}
+	_ = stopApp.Run([]string{"devkit", "--port", port})
+}
+
+func TestStartDevnet_SkipAVSRun(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	projectDir, err := testutils.CreateTempAVSProject(t)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	app := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-setup"},
+			&cli.BoolFlag{Name: "skip-avs-run"},
+		},
+		Action: StartDevnetAction,
+	}
+
+	stdout, stderr := testutils.CaptureOutput(func() {
+		err = app.Run([]string{"devkit", "--port", port, "--skip-setup", "--skip-avs-run"})
+		assert.NoError(t, err)
+	})
+
+	yamlPath := filepath.Join("config", "contexts", "devnet.yaml")
+	data, err := os.ReadFile(yamlPath)
+	assert.NoError(t, err)
+
+	var parsed map[string]interface{}
+	err = yaml.Unmarshal(data, &parsed)
+	assert.NoError(t, err)
+
+	ctx, ok := parsed["context"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.Equal(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should not be skipped")
+	assert.NotContains(t, stdout+stderr, "Offchain AVS components started successfully", "AVSRun should be skipped")
 
 	stopApp := &cli.App{
 		Name:   "devkit",
@@ -239,6 +305,7 @@ func getFreePort() (string, error) {
 }
 
 func TestListRunningDevnets(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save original working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -306,6 +373,7 @@ func TestListRunningDevnets(t *testing.T) {
 }
 
 func TestStopDevnetAll(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -366,6 +434,7 @@ func TestStopDevnetAll(t *testing.T) {
 }
 
 func TestStopDevnetContainerFlag(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save working directory
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)
@@ -422,6 +491,7 @@ func TestStopDevnetContainerFlag(t *testing.T) {
 }
 
 func TestDeployContracts(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	// Save working dir
 	originalCwd, err := os.Getwd()
 	assert.NoError(t, err)

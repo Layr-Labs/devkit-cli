@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/template"
+	"github.com/Layr-Labs/devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
 )
@@ -276,7 +278,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	}
 
 	// Read config.yaml from config embed and write to target
-	newContent := strings.Replace(config.DefaultConfigYaml, `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
+	newContent := strings.Replace(string(configs.ConfigYamls[configs.LatestVersion]), `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
 	err := os.WriteFile(filepath.Join(destConfigDir, common.BaseConfig), []byte(newContent), 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write %s: %w", common.BaseConfig, err)
@@ -291,8 +293,9 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	if err := os.MkdirAll(destContextsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target contexts directory: %w", err)
 	}
-	for name, yaml := range config.ContextYamls {
-		content := yaml
+	// copy latest version of context to project for default contexts
+	for _, name := range contexts.DefaultContexts {
+		content := contexts.ContextYamls[contexts.LatestVersion]
 		entryName := fmt.Sprintf("%s.yaml", name)
 
 		err := os.WriteFile(filepath.Join(destContextsDir, entryName), []byte(content), 0644)

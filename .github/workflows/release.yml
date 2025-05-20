@@ -4,10 +4,12 @@ on:
   push:
     tags:
       - "*"
+env:
+  GOPRIVATE: github.com/Layr-Labs/*
 
 jobs:
-  Lint:
-    name: Lint
+  lint:
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -18,13 +20,11 @@ jobs:
         with:
           go-version: '1.24.2'
 
-      - name: Clone hourglass-monorepo privately
+      - name: Install dependencies
         env:
           HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
         run: |
           git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
-          git clone --depth=1 https://github.com/Layr-Labs/hourglass-monorepo.git temp_external/hourglass-monorepo
-          go mod edit -replace=github.com/Layr-Labs/hourglass-monorepo=./temp_external/hourglass-monorepo
           go mod tidy
 
       - name: Run golangci-lint
@@ -32,8 +32,8 @@ jobs:
         with:
           version: latest
           args: --timeout 3m
-  Test:
-    name: Unit Test
+  test:
+    name: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -44,44 +44,100 @@ jobs:
         with:
           go-version: '1.24.2'
 
-      - name: Clone hourglass-monorepo privately
+      - name: run tests
         env:
           HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
         run: |
           git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
-          git clone --depth=1 https://github.com/Layr-Labs/hourglass-monorepo.git temp_external/hourglass-monorepo
-          go mod edit -replace=github.com/Layr-Labs/hourglass-monorepo=./temp_external/hourglass-monorepo
           go mod tidy
-
-      - name: Run Tests
-        run: make tests
-  Release:
-    needs: [Lint, Test]
+          make tests
+  build-create-release:
     runs-on: ubuntu-latest
+    needs: [lint, test]
+    permissions: write-all
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.24.2'
-
-      - name: Clone hourglass-monorepo privately
+      - name: Check and set release version
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          ./scripts/version.sh $REF
+      - name: Build binary
         env:
           HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
+          RELEASE_BUCKET_NAME: ${{ secrets.RELEASE_BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
-          git clone --depth=1 https://github.com/Layr-Labs/hourglass-monorepo.git temp_external/hourglass-monorepo
-          go mod edit -replace=github.com/Layr-Labs/hourglass-monorepo=./temp_external/hourglass-monorepo
           go mod tidy
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean
+          
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "Building binary for version $VERSION"
+          make release
+          sudo chown -R $USER:$USER .
+          ./scripts/bundleReleases.sh $VERSION
+          
+          # Create the content using a heredoc assigned to a variable
+          RELEASE_BODY=$(cat << 'EOF'
+          ## Downloads
+          EOF
+          )
+          
+          # Create a temporary file to build up the release body
+          echo "$RELEASE_BODY" > release_body_temp.txt
+          
+          for asset_name in $(ls ./release | grep '.tar');
+          do
+          asset="./release/${asset_name}"
+          echo "Uploading ${asset_name}..."
+          aws s3 cp "$asset" "s3://${RELEASE_BUCKET_NAME}/$VERSION/"
+          
+          # append to the release body file with proper newlines
+          echo "- [${asset_name}](https://s3.amazonaws.com/${RELEASE_BUCKET_NAME}/$VERSION/${asset_name})" >> release_body_temp.txt
+          done
+          
+          # Read the complete release body from the file
+          RELEASE_BODY=$(cat release_body_temp.txt)
+          
+          # Set it as an environment variable for later steps
+          echo 'RELEASE_BODY<<EOF' >> $GITHUB_ENV
+          echo "$RELEASE_BODY" >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TELEMETRY_TOKEN: ${{ secrets.TELEMETRY_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+          body: ${{ env.RELEASE_BODY }}
+      - name: Upload Release Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_BUCKET_NAME: ${{ vars.RELEASE_BUCKET_NAME }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          set -x
+          ls -al ./release
+      
+          echo "Upload URL: ${{ steps.create_release.outputs.upload_url }}"
+          export upload_url=$(echo "${{ steps.create_release.outputs.upload_url }}" | sed -e "s/{?name,label}//")
+      
+          for asset_name in $(ls ./release | grep '.tar');
+          do
+            asset="./release/${asset_name}"
+            echo "Uploading ${asset_name}..."
+            curl --fail \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: $(file -b --mime-type "$asset")" \
+              --data-binary @"$asset" \
+              "${upload_url}?name=$asset_name"
+          done

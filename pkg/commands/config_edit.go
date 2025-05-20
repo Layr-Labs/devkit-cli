@@ -2,9 +2,9 @@ package commands
 
 import (
 	"context"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/telemetry"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
 	"go.uber.org/zap"
 	"io"
 	"log"

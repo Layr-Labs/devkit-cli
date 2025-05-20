@@ -31,8 +31,18 @@ var DevnetCommand = &cli.Command{
 					Value: 8545,
 				},
 				&cli.BoolFlag{
+					Name:  "skip-avs-run",
+					Usage: "Skip starting offchain AVS components",
+					Value: false,
+				},
+				&cli.BoolFlag{
 					Name:  "skip-deploy-contracts",
 					Usage: "Skip deploying contracts and only start local devnet",
+					Value: false,
+				},
+				&cli.BoolFlag{
+					Name:  "skip-setup",
+					Usage: "Skip AVS setup steps (metadata update, registrar setup, etc.) after contract deployment",
 					Value: false,
 				},
 			},
@@ -68,5 +78,10 @@ var DevnetCommand = &cli.Command{
 			Usage:  "Lists all running devkit devnet containers with their ports",
 			Action: ListDevnetContainersAction,
 		},
+		// TODO: Surface the following actions as separate commands:
+		// - update-avs-metadata: Updates the AVS metadata URI on the devnet
+		// - set-avs-registrar: Sets the AVS registrar address on the devnet
+		// - create-avs-operator-sets: Creates AVS operator sets on the devnet
+		// - register-operators-from-config: Registers operators defined in config to Eigenlayer and the AVS on the devnet
 	},
 }

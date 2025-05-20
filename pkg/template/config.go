@@ -1,7 +1,7 @@
 package template
 
 import (
-	"devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/config"
 
 	"gopkg.in/yaml.v3"
 )
