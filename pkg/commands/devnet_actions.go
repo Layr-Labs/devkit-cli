@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
-	"github.com/Layr-Labs/devkit-cli/config/configs"
-	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
