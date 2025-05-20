@@ -177,7 +177,7 @@ Triggers task execution through your AVS, simulating how a task would be submitt
 Run this from your project directory:
 
 ```bash
-devkit avs call
+devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
 ```
 
 Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.

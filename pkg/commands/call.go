@@ -16,13 +16,7 @@ import (
 var CallCommand = &cli.Command{
 	Name:  "call",
 	Usage: "Submits tasks to the local devnet, triggers off-chain execution, and aggregates results",
-	Flags: append([]cli.Flag{
-		&cli.BoolFlag{
-			Name:     "params",
-			Usage:    "parameters for the call (e.g., payload=\"<payload>\")",
-			Required: true,
-		},
-	}, common.GlobalFlags...),
+	Flags: common.GlobalFlags,
 	Action: func(cCtx *cli.Context) error {
 		// Get logger
 		log, _ := common.GetLogger()
@@ -46,12 +40,10 @@ var CallCommand = &cli.Command{
 		// Set path for .devkit scripts
 		scriptPath := filepath.Join(".devkit", "scripts", "call")
 
-		// Drop the dummy --params if present, collect the rest
+		// Check that args are provided
 		parts := cCtx.Args().Slice()
-		if cCtx.Bool("params") {
-			if len(parts) == 0 {
-				return fmt.Errorf("no parameters supplied after --params")
-			}
+		if len(parts) == 0 {
+			return fmt.Errorf("no parameters supplied")
 		}
 
 		// Parse the params from the provided args
