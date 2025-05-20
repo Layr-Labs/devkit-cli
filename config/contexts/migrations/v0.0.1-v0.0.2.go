@@ -12,6 +12,8 @@ func Migration_0_0_1_to_0_0_2(user, old, new *yaml.Node) (*yaml.Node, error) {
 		New:  new,
 		User: user,
 		Rules: []migration.PatchRule{
+			{Path: []string{"context", "chains", "l1", "fork", "url"}, Condition: migration.IfUnchanged{}},
+			{Path: []string{"context", "chains", "l2", "fork", "url"}, Condition: migration.IfUnchanged{}},
 			{Path: []string{"context", "app_private_key"}, Condition: migration.IfUnchanged{}},
 			{Path: []string{"context", "operators", "0", "address"}, Condition: migration.IfUnchanged{}},
 			{Path: []string{"context", "operators", "0", "ecdsa_key"}, Condition: migration.IfUnchanged{}},

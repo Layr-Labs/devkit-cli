@@ -95,7 +95,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Error if the fork_url has not been modified
-	if fork_url == "https://eth.llamarpc.com" {
+	if fork_url == "" {
 		return fmt.Errorf("fork-url not set; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
 	}
 

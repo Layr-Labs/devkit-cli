@@ -53,7 +53,7 @@ func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName stri
 		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
 	}
 	if chainConfig.Fork.Url == "" {
-		return "", fmt.Errorf("no fork URL configured for chain: %s", chainName)
+		return "", fmt.Errorf("fork-url not set for %s; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance", chainName)
 	}
 	return chainConfig.Fork.Url, nil
 }
