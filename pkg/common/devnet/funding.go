@@ -1,40 +1,22 @@
 package devnet
 
 import (
-	devkitcommon "github.com/Layr-Labs/devkit-cli/pkg/common"
+	"fmt"
 	"log"
 	"math/big"
 	"os"
 	"os/exec"
 	"strings"
-	"time"
+
+	devkitcommon "github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // FundWallets sends ETH to a list of addresses using `cast send`
 // Only funds wallets with balance < 10 ether.
-func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) {
-	var client *ethclient.Client
-	var err error
-
-	// Retry with exponential backoff up to 5 times
-	for retries := 0; retries < 5; retries++ {
-		client, err = ethclient.Dial(rpcURL)
-		if err == nil {
-			break
-		}
-		log.Printf("⚠️  Waiting for devnet to be ready (%d/5)...", retries+1)
-		time.Sleep(time.Duration(1<<retries) * time.Second) // 1s, 2s, 4s, 8s, 16s
-	}
-
-	if err != nil {
-		log.Printf("❌ Could not connect to devnet RPC after retries: %v", err)
-		return
-	}
-	defer client.Close()
+func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) error {
 
 	// All operator keys from [operator]
 	// We only intend to fund for devnet, so hardcoding to `CONTEXT` is fine
@@ -44,43 +26,53 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 		if err != nil {
 			log.Fatalf("invalid private key %q: %v", key.ECDSAKey, err)
 		}
-		fundIfNeeded(client, crypto.PubkeyToAddress(privateKey.PublicKey), key.ECDSAKey, rpcURL)
+		err = fundIfNeeded(crypto.PubkeyToAddress(privateKey.PublicKey), key.ECDSAKey, rpcURL)
+		if err != nil {
+			return err
+		}
 	}
-
+	return nil
 }
 
-func fundIfNeeded(client *ethclient.Client, to common.Address, fromKey string, rpcURL string) {
-	log.Printf("rpc_devnet %s", rpcURL)
-	balanceCmd := exec.Command("cast", "balance",
-		to.String(),
-		"--rpc-url", rpcURL,
-	)
-	balanceOutput, err := balanceCmd.Output()
+func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
+	balanceCmd := exec.Command("cast", "balance", to.String(), "--rpc-url", rpcURL)
+	balanceCmd.Env = append(os.Environ(), "FOUNDRY_DISABLE_NIGHTLY_WARNING=1")
+	output, err := balanceCmd.CombinedOutput()
 	if err != nil {
-		log.Printf("❌ Failed to get balance for %s: %v", to.String(), err)
-		return
+		if strings.Contains(string(output), "Error: error sending request for url") {
+			log.Printf(" Please check if your mainnet fork rpc url is up")
+		}
+		return fmt.Errorf("failed to get balance for account%s", to.String())
 	}
 	threshold := new(big.Int)
 	threshold.SetString(FUND_VALUE, 10)
+
+	balanceStr := strings.TrimSpace(string(output))
 	balance := new(big.Int)
-	balance.SetString(string(balanceOutput), 10)
+	if _, ok := balance.SetString(balanceStr, 10); !ok {
+		return fmt.Errorf("failed to parse balance from cast output: %s", balanceStr)
+	}
+	balance.SetString(string(output), 10)
 	if balance.Cmp(threshold) >= 0 {
 		log.Printf("✅ %s already has sufficient balance (%s wei)", to, balance.String())
-		return
+		return nil
 	}
 
-	log.Printf("Funding %s with %s from %s", to, FUND_VALUE, fromKey)
+	log.Printf("💸 Funding %s with %s from private key", to, FUND_VALUE)
 	cmd := exec.Command("cast", "send",
 		to.String(),
 		"--value", FUND_VALUE,
 		"--rpc-url", rpcURL,
 		"--private-key", fromKey,
 	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+
+	_, err = cmd.CombinedOutput()
+
+	if err != nil {
 		log.Printf("❌ Failed to fund %s: %v", to, err)
+		return err
 	} else {
 		log.Printf("✅ Funded %s", to)
 	}
+	return nil
 }

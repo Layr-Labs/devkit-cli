@@ -137,7 +137,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(4 * time.Second)
 
 	// Fund the wallets defined in config
-	devnet.FundWalletsDevnet(config, rpcUrl)
+	err = devnet.FundWalletsDevnet(config, rpcUrl)
+	if err != nil {
+		return err
+	}
 	elapsed := time.Since(startTime).Round(time.Second)
 
 	// Sleep for 1 second to make sure wallets are funded
