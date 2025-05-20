@@ -39,10 +39,7 @@ Before you begin, ensure you have:
 Clone and build the DevKit CLI:
 
 ```bash
-git clone https://github.com/Layr-Labs/devkit-cli
-cd devkit-cli
-go build -o devkit ./cmd/devkit
-export PATH=$PATH:~/bin
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.2/devkit-darwin-arm64-v0.0.2.tar.gz | sudo tar xvz -C /usr/local/bin
 ```
 
 Verify your installation:
