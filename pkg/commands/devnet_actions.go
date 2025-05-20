@@ -94,6 +94,11 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("%w", err)
 	}
 
+	// Error if the fork_url has not been modified
+	if fork_url == "https://eth.llamarpc.com" {
+		return fmt.Errorf("fork-url not set; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
+	}
+
 	// Run docker compose up for anvil devnet
 	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
 
