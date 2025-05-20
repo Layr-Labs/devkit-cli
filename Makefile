@@ -9,7 +9,7 @@ CONTEXT_PKG=github.com/Layr-Labs/devkit-cli/pkg/context
 LD_FLAGS=\
   -X '$(VERSION_PKG).Version=$(shell cat VERSION)' \
   -X '$(VERSION_PKG).Commit=$(shell git rev-parse --short HEAD)' \
-  -X '$(TELEMETRY_PKG).embeddedTelemetryApiKey={{ .Env.TELEMETRY_TOKEN }}' \
+  -X '$(TELEMETRY_PKG).embeddedTelemetryApiKey=$${TELEMETRY_TOKEN}' \
   -X '$(CONTEXT_PKG).embeddedDevkitReleaseVersion=$(shell cat VERSION)'
 
 GO_PACKAGES=./pkg/... ./cmd/...
