@@ -18,6 +18,11 @@ import (
 // Only funds wallets with balance < 10 ether.
 func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) error {
 
+	if os.Getenv("SKIP_DEVNET_FUNDING") == "true" {
+		log.Println("🔧 Skipping devnet wallet funding (test mode)")
+		return nil
+	}
+
 	// All operator keys from [operator]
 	// We only intend to fund for devnet, so hardcoding to `CONTEXT` is fine
 	for _, key := range cfg.Context[CONTEXT].Operators {
