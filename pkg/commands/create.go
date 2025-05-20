@@ -96,15 +96,13 @@ var CreateCommand = &cli.Command{
 		}
 
 		// in verbose mode, detail the situation
-		if cCtx.Bool("verbose") {
-			logger.Info("Creating new AVS project: %s", projectName)
-			logger.Info("Directory: %s", cCtx.String("dir"))
-			logger.Info("Language: %s", cCtx.String("lang"))
-			logger.Info("Architecture: %s", cCtx.String("arch"))
-			logger.Info("Environment: %s", cCtx.String("env"))
-			if cCtx.String("template-path") != "" {
-				logger.Info("Template Path: %s", cCtx.String("template-path"))
-			}
+		logger.Debug("Creating new AVS project: %s", projectName)
+		logger.Debug("Directory: %s", cCtx.String("dir"))
+		logger.Debug("Language: %s", cCtx.String("lang"))
+		logger.Debug("Architecture: %s", cCtx.String("arch"))
+		logger.Debug("Environment: %s", cCtx.String("env"))
+		if cCtx.String("template-path") != "" {
+			logger.Debug("Template Path: %s", cCtx.String("template-path"))
 		}
 
 		// Get template URLs
@@ -118,11 +116,9 @@ var CreateCommand = &cli.Command{
 			return err
 		}
 
-		if cCtx.Bool("verbose") {
-			logger.Info("Using template: %s", mainURL)
-			if contractsURL != "" {
-				logger.Info("Using contracts template: %s", contractsURL)
-			}
+		logger.Debug("Using template: %s", mainURL)
+		if contractsURL != "" {
+			logger.Debug("Using contracts template: %s", contractsURL)
 		}
 
 		// Set Cache location as ~/.devkit
@@ -175,9 +171,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Tidy the logs
-		if cCtx.Bool("verbose") {
-			logger.Info("\nFinalising new project\n\n")
-		}
+		logger.Debug("\nFinalising new project\n\n")
 
 		// Copy config.yaml to the project directory
 		if err := copyDefaultConfigToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {

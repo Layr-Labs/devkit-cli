@@ -26,10 +26,7 @@ var CallCommand = &cli.Command{
 		// Get logger
 		logger, _ := common.GetLogger(cCtx.Bool("verbose"))
 
-		// Print task if verbose
-		if cCtx.Bool("verbose") {
-			logger.Info("Testing AVS tasks...")
-		}
+		logger.Debug("Testing AVS tasks...")
 
 		// Set path for context yaml
 		contextDir := filepath.Join("config", "contexts")
