@@ -246,9 +246,8 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 		if err := os.RemoveAll(targetDir); err != nil {
 			return fmt.Errorf("failed to remove existing directory: %w", err)
 		}
-		if verbose {
-			logger.Info("Removed existing directory: %s", targetDir)
-		}
+
+		logger.Debug("Removed existing directory: %s", targetDir)
 	}
 
 	// Create main project directory
@@ -276,9 +275,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 		return fmt.Errorf("failed to write %s: %w", common.BaseConfig, err)
 	}
 
-	if verbose {
-		logger.Info("Created config/%s in project directory", common.BaseConfig)
-	}
+	logger.Debug("Created config/%s in project directory", common.BaseConfig)
 
 	// Copy all context files
 	destContextsDir := filepath.Join(destConfigDir, "contexts")
@@ -294,9 +291,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 			return fmt.Errorf("failed to write %s: %w", entryName, err)
 		}
 
-		if verbose {
-			logger.Info("Copied context file: %s", entryName)
-		}
+		logger.Debug("Copied context file: %s", entryName)
 	}
 
 	return nil
