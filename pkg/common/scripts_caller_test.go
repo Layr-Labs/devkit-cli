@@ -3,9 +3,11 @@ package common
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -64,5 +66,43 @@ echo "This is plain text output"`
 	}
 	if out != nil {
 		t.Errorf("expected nil output for non-JSON response, got: %v", out)
+	}
+
+	// Empty response case
+	empty := `#!/bin/bash`
+
+	emptyPath := filepath.Join(tmpDir, "empty.sh")
+	if err := os.WriteFile(emptyPath, []byte(empty), 0755); err != nil {
+		t.Fatalf("failed to write empty test script: %v", err)
+	}
+
+	// Prepare pipes
+	oldOut, oldErr := os.Stdout, os.Stderr
+	rOut, wOut, _ := os.Pipe()
+	rErr, wErr, _ := os.Pipe()
+	os.Stdout, os.Stderr = wOut, wErr
+
+	// Run the empty script
+	out, err = CallTemplateScript(context.Background(), "", textScriptPath, ExpectNonJSONResponse)
+	if err != nil {
+		t.Fatalf("CallTemplateScript (non-JSON) failed: %v", err)
+	}
+	if out != nil {
+		t.Errorf("expected nil output for non-JSON response, got: %v", out)
+	}
+
+	// Restore and close writers
+	wOut.Close()
+	wErr.Close()
+	os.Stdout, os.Stderr = oldOut, oldErr
+
+	// Read captured output
+	bufOut, _ := io.ReadAll(rOut)
+	bufErr, _ := io.ReadAll(rErr)
+	captured := string(bufOut) + string(bufErr)
+
+	// Assert no warning
+	if strings.Contains(captured, "returning empty result") {
+		t.Errorf("unexpected warning in output: %q", captured)
 	}
 }
