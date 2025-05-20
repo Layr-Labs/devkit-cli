@@ -37,25 +37,25 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
 
 	// Migrate config
-	configMigrated, err := migrateConfig()
+	configMigrated, err := migrateConfig(logger)
 	if err != nil {
-		log.Error("config migration failed: %w", err)
+		logger.Error("config migration failed: %w", err)
 	}
 	if configMigrated > 0 {
-		log.Info("Config migration complete")
+		logger.Info("Config migration complete")
 	}
 
 	// Migrate contexts
-	contextsMigrated, err := migrateContexts()
+	contextsMigrated, err := migrateContexts(logger)
 	if err != nil {
-		log.Error("context migrations failed: %w", err)
+		logger.Error("context migrations failed: %w", err)
 	}
 	if contextsMigrated > 0 {
 		suffix := "s"
 		if contextsMigrated == 1 {
 			suffix = ""
 		}
-		log.Info("%d context migration%s complete", contextsMigrated, suffix)
+		logger.Info("%d context migration%s complete", contextsMigrated, suffix)
 	}
 
 	// Load config for devnet
@@ -780,16 +780,14 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 	)
 }
 
-func migrateConfig() (int, error) {
-	// Get logger
-	log, _ := common.GetLogger()
+func migrateConfig(logger iface.Logger) (int, error) {
 
 	// Set path for context yamls
 	configDir := filepath.Join("config")
 	configPath := filepath.Join(configDir, "config.yaml")
 
 	// Migrate the config
-	err := migration.MigrateYaml(configPath, configs.LatestVersion, configs.MigrationChain)
+	err := migration.MigrateYaml(logger, configPath, configs.LatestVersion, configs.MigrationChain)
 	// Check for already upto date and ignore
 	alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
 
@@ -800,7 +798,7 @@ func migrateConfig() (int, error) {
 
 	// If config was migrated
 	if !alreadyUptoDate {
-		log.Info("Migrated %s\n", configPath)
+		logger.Info("Migrated %s\n", configPath)
 
 		return 1, nil
 	}
@@ -808,9 +806,7 @@ func migrateConfig() (int, error) {
 	return 0, nil
 }
 
-func migrateContexts() (int, error) {
-	// Get logger
-	log, _ := common.GetLogger()
+func migrateContexts(logger iface.Logger) (int, error) {
 
 	// Count the number of contexts we migrate
 	contextsMigrated := 0
@@ -832,13 +828,13 @@ func migrateContexts() (int, error) {
 		contextPath := filepath.Join(contextDir, e.Name())
 
 		// Migrate the context
-		err := migration.MigrateYaml(contextPath, contexts.LatestVersion, contexts.MigrationChain)
+		err := migration.MigrateYaml(logger, contextPath, contexts.LatestVersion, contexts.MigrationChain)
 		// Check for already upto date and ignore
 		alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
 
 		// For every other error, migration failed
 		if err != nil && !alreadyUptoDate {
-			log.Error("failed to migrate: %v", err)
+			logger.Error("failed to migrate: %v", err)
 			continue
 		}
 
@@ -848,7 +844,7 @@ func migrateContexts() (int, error) {
 			contextsMigrated += 1
 
 			// If migration succeeds
-			log.Info("Migrated %s\n", contextPath)
+			logger.Info("Migrated %s\n", contextPath)
 		}
 	}
 
