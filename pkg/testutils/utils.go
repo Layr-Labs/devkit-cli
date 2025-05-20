@@ -3,7 +3,6 @@ package testutils
 import (
 	"bytes"
 	"context"
-
 	"fmt"
 	"os"
 	"path/filepath"
@@ -63,8 +62,12 @@ func CreateTempAVSProject(t *testing.T) (string, error) {
 		return "", fmt.Errorf("failed to create config/contexts dir: %w", err)
 	}
 
+	// Set fork_urls as envs
+	os.Setenv("L1_FORK_URL", "https://eth.llamarpc.com")
+	os.Setenv("L2_FORK_URL", "https://eth.llamarpc.com")
+
 	// Copy devnet.yaml context file
-	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml") // this "devnet" should be supplied by selected context
+	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml")
 	err = os.WriteFile(destDevnetFile, []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644)
 	if err != nil {
 		return "", fmt.Errorf("failed to create config/contexts/devnet.yaml: %w", err)
