@@ -3,10 +3,11 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/urfave/cli/v2"
 )
@@ -16,7 +17,7 @@ var CallCommand = &cli.Command{
 	Name:  "call",
 	Usage: "Submits tasks to the local devnet, triggers off-chain execution, and aggregates results",
 	Flags: append([]cli.Flag{
-		&cli.StringFlag{
+		&cli.BoolFlag{
 			Name:     "params",
 			Usage:    "parameters for the call (e.g., payload=\"<payload>\")",
 			Required: true,
@@ -45,9 +46,16 @@ var CallCommand = &cli.Command{
 		// Set path for .devkit scripts
 		scriptPath := filepath.Join(".devkit", "scripts", "call")
 
-		// Extract params from flag
-		paramsStr := cCtx.String("params")
-		paramsMap, err := parseParams(paramsStr)
+		// Drop the dummy --params if present, collect the rest
+		parts := cCtx.Args().Slice()
+		if cCtx.Bool("params") {
+			if len(parts) == 0 {
+				return fmt.Errorf("no parameters supplied after --params")
+			}
+		}
+
+		// Parse the params from the provided args
+		paramsMap, err := parseParams(strings.Join(parts, " "))
 		if err != nil {
 			return err
 		}

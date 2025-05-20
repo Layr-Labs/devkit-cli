@@ -3,13 +3,15 @@ package commands
 import (
 	"context"
 	"errors"
-	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 )
 
@@ -60,6 +62,14 @@ func TestCallCommand_MissingParams(t *testing.T) {
 	err := app.Run([]string{"app", "call"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), `Required flag "params"`)
+}
+
+func TestParseParams_MultipleParams(t *testing.T) {
+	input := `signature="(uint256,string)" args='(5,"hello")'`
+	m, err := parseParams(input)
+	require.NoError(t, err)
+	assert.Equal(t, "(uint256,string)", m["signature"])
+	assert.Equal(t, `(5,"hello")`, m["args"])
 }
 
 func TestCallCommand_MalformedParams(t *testing.T) {
