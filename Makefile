@@ -2,9 +2,19 @@
 
 APP_NAME=devkit
 
+VERSION_PKG=github.com/Layr-Labs/devkit-cli/internal/version
+TELEMETRY_PKG=github.com/Layr-Labs/devkit-cli/pkg/telemetry
+CONTEXT_PKG=github.com/Layr-Labs/devkit-cli/pkg/context
+
+LD_FLAGS=\
+  -X '$(VERSION_PKG).Version=$(shell cat VERSION)' \
+  -X '$(VERSION_PKG).Commit=$(shell git rev-parse --short HEAD)' \
+  -X '$(TELEMETRY_PKG).embeddedTelemetryApiKey={{ .Env.TELEMETRY_TOKEN }}' \
+  -X '$(CONTEXT_PKG).embeddedDevkitReleaseVersion={{.Version}}'
+
 GO_PACKAGES=./pkg/... ./cmd/...
 ALL_FLAGS=
-GO_FLAGS=-ldflags "-X 'github.com/Layr-Labs/devkit-cli/internal/version.Version=$(shell cat VERSION)' -X 'github.com/Layr-Labs/devkit-cli/internal/version.Commit=$(shell git rev-parse --short HEAD)'"
+GO_FLAGS=-ldflags "$(LD_FLAGS)"
 GO=$(shell which go)
 
 help: ## Show available commands
