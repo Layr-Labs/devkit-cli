@@ -31,6 +31,13 @@ jobs:
           git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
           echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
 
+      - name: Start SSH agent
+        run: |
+          eval "$(ssh-agent -s)"
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-add -
+          mkdir -p ~/.ssh
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
