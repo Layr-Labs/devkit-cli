@@ -7,6 +7,10 @@ Hourglass is in active development and is not yet audited. Use at your own risk.
 
 **A CLI toolkit for developing, testing, and managing EigenLayer Autonomous Verifiable Services (AVS).**
 
+<!-- 
+TODO: Add something about how it's a tool to test your AVS POC...not to manage the day-to-day operations of your existing AVS (yet).
+-->
+
 EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold projects, compile contracts, run local networks, and simulate tasks with ease.
 
 ![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
