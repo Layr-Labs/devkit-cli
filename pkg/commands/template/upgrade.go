@@ -112,8 +112,7 @@ func createUpgradeCommand(
 					MaxRetries:     3,
 					MaxConcurrency: 8,
 					UseCache:       false,
-					// Verbose:        cCtx.Bool("verbose"),
-					Verbose: true,
+					Verbose:        cCtx.Bool("verbose"),
 				},
 			}
 			log.Info("Cloning template repository...")

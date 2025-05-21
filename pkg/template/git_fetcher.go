@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 type GitFetcher struct {
@@ -67,7 +69,7 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, branch, commit,
 
 	// call Clone to copy cached repo to targetDir
 	err := g.Git.Clone(ctx, repoURL, targetDir, CloneOptions{
-		Branch:      branch,
+		Ref:         branch,
 		Depth:       1,
 		Dissociate:  true,
 		NoHardlinks: true,
@@ -87,25 +89,28 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, branch, commit,
 	// clear progress reporting
 	g.Logger.ClearProgress()
 
-	if err := g.vanillaFetchSubmodules(ctx, targetDir); err != nil {
+	if err := g.fetchSubmodules(ctx, templateName, repoURL, targetDir, 0); err != nil {
+		g.Logger.Error("Failed to fetch submodules", "repo", targetDir, "error", err)
 		return false, fmt.Errorf("failed to fetch submodules: %w", err)
 	}
+	//if err := g.vanillaFetchSubmodules(ctx, targetDir); err != nil {
+	//	return false, fmt.Errorf("failed to fetch submodules: %w", err)
+	//}
 	g.Logger.Info("Submodules fetched for %s\n", targetDir)
 
 	return true, nil
 }
 
-func (g *GitFetcher) vanillaFetchSubmodules(ctx context.Context, repoDir string) error {
-	g.Logger.Info("Fetching submodules for %s\n", repoDir)
-	return g.Git.SubmoduleInit(ctx, repoDir, CloneOptions{
-		ProgressCB: func(p int) {
-			g.Logger.SetProgress(repoDir, p, repoDir)
-			g.Logger.PrintProgress()
-		},
-	})
-}
+// func (g *GitFetcher) vanillaFetchSubmodules(ctx context.Context, repoDir string) error {
+// 	g.Logger.Info("Fetching submodules for %s\n", repoDir)
+// 	return g.Git.SubmoduleInit(ctx, repoDir, CloneOptions{
+// 		ProgressCB: func(p int) {
+// 			g.Logger.SetProgress(repoDir, p, repoDir)
+// 			g.Logger.PrintProgress()
+// 		},
+// 	})
+// }
 
-/*
 func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoURL string, repoDir string, depth int) error {
 	g.Logger.Info("Fetching submodules for %s (%s)\n", repoName, repoURL)
 	// if no submodules file exists, skip submodule fetching and continue
@@ -218,7 +223,7 @@ func (g *GitFetcher) cloneSubmodules(
 			// set submoduleUrl to current modUrl
 			submoduleUrl := mod.URL
 			cloneOpts := CloneOptions{
-				Branch: commit,
+				Ref: commit,
 				ProgressCB: func(p int) {
 					g.Logger.SetProgress(mod.Path, p, mod.Path)
 					g.Logger.PrintProgress()
@@ -230,27 +235,27 @@ func (g *GitFetcher) cloneSubmodules(
 			cachePath := filepath.Join(cacheDir, cacheKey)
 
 			// set/get from cache if enabled...
-			// if g.Config.UseCache {
-			// 	// call RetryClone with progress tracking
-			// 	if _, ok := g.Cache.Get(submoduleUrl, commit); !ok {
-			// 		err = g.Git.RetryClone(ctx, submoduleUrl, cachePath, CloneOptions{
-			// 			Bare: true,
-			// 			ProgressCB: func(p int) {
-			// 				g.Logger.SetProgress(mod.Path, p, mod.Path)
-			// 				g.Logger.PrintProgress()
-			// 			},
-			// 		}, g.Config.MaxRetries)
-			//
-			// 		// if we failed after all attempts log error
-			// 		if err != nil {
-			// 			g.Logger.Error("Failed to clone submodule", "path", mod.Path, "error", err)
-			// 			return
-			// 		}
-			// 	}
-			//
-			// 	// replace submoduleUrl with cachePath
-			// 	submoduleUrl = cachePath
-			// }
+			if g.Config.UseCache {
+				// call RetryClone with progress tracking
+				if _, ok := g.Cache.Get(submoduleUrl, commit); !ok {
+					err = g.Git.RetryClone(ctx, submoduleUrl, cachePath, CloneOptions{
+						Bare: true,
+						ProgressCB: func(p int) {
+							g.Logger.SetProgress(mod.Path, p, mod.Path)
+							g.Logger.PrintProgress()
+						},
+					}, g.Config.MaxRetries)
+
+					// if we failed after all attempts log error
+					if err != nil {
+						g.Logger.Error("Failed to clone submodule", "path", mod.Path, "error", err)
+						return
+					}
+				}
+
+				// replace submoduleUrl with cachePath
+				submoduleUrl = cachePath
+			}
 
 			// clone from cache/submoduleUrl to target with retries
 			err = g.Git.SubmoduleClone(ctx, mod, commit, submoduleUrl, targetDir, repoDir, cloneOpts)
@@ -292,4 +297,3 @@ func (g *GitFetcher) cloneSubmodules(
 
 	return failures
 }
-*/

@@ -38,7 +38,8 @@ type GitClient interface {
 }
 
 type CloneOptions struct {
-	Branch      string
+	// Ref is the branch, commit or tag to checkout after cloning
+	Ref         string
 	Depth       int
 	Bare        bool
 	Dissociate  bool
@@ -53,11 +54,10 @@ type Submodule struct {
 	Branch string
 }
 
-/*
 type SubmoduleFailure struct {
 	mod Submodule
 	err error
-}*/
+}
 
 type execGitClient struct {
 	repoLocksMu    sync.Mutex
@@ -144,10 +144,10 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 		return fmt.Errorf("failed to clone into cache: %w", err)
 	}
 
-	checkoutArgs := []string{"checkout", opts.Branch}
+	checkoutArgs := []string{"checkout", opts.Ref}
 	_, err = g.run(ctx, dest, CloneOptions{}, checkoutArgs...)
 	if err != nil {
-		return fmt.Errorf("failed to checkout ref %s: %w", opts.Branch, err)
+		return fmt.Errorf("failed to checkout ref %s: %w", opts.Ref, err)
 	}
 
 	return nil

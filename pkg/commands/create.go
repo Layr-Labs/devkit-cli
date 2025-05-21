@@ -144,7 +144,7 @@ var CreateCommand = &cli.Command{
 				MaxDepth:       cCtx.Int("depth"),
 				MaxRetries:     cCtx.Int("retries"),
 				MaxConcurrency: cCtx.Int("concurrency"),
-				UseCache:       false,
+				UseCache:       cCtx.Bool("use-cache"),
 				Verbose:        cCtx.Bool("verbose"),
 			},
 		}
