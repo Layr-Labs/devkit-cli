@@ -67,6 +67,28 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, branch, commit,
 	cacheKey := g.Cache.CacheKey(repoURL, commit)
 	cachePath := filepath.Join(cacheDir, cacheKey)
 
+	if g.Config.UseCache && commit != "HEAD" {
+		if _, ok := g.Cache.Get(repoURL, commit); !ok {
+			// call Clone with progress tracking
+			err := g.Git.RetryClone(ctx, repoURL, cachePath, CloneOptions{
+				Ref:   branch,
+				Depth: 1,
+				Bare:  true,
+				ProgressCB: func(p int) {
+					g.Logger.SetProgress(cachePath, p, templateName)
+					g.Logger.PrintProgress()
+				},
+			}, g.Config.MaxRetries)
+
+			// if we failed after all attempts log error
+			if err != nil {
+				return false, fmt.Errorf("failed to clone into cache: %w", err)
+			}
+		}
+		// move repoUrl to cachePath
+		repoURL = cachePath
+	}
+
 	// call Clone to copy cached repo to targetDir
 	err := g.Git.Clone(ctx, repoURL, targetDir, CloneOptions{
 		Ref:         branch,
