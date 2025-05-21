@@ -14,7 +14,6 @@ import (
 )
 
 type GitClient interface {
-	ParseGitHubURL(url string) (repoURL, branch string)
 	Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error
 	Checkout(ctx context.Context, repoDir, commit string) error
 	WorktreeCheckout(ctx context.Context, mirrorPath, commit, worktreePath string) error
@@ -35,6 +34,7 @@ type GitClient interface {
 	StageSubmodule(ctx context.Context, repoDir, path, sha string) error
 	SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error
 	ActivateSubmodule(ctx context.Context, repoDir, name string) error
+	SubmoduleInit(ctx context.Context, repoDir string) error
 }
 
 type CloneOptions struct {
@@ -69,18 +69,6 @@ func NewGitClient() GitClient {
 		repoLocks:      make(map[string]*sync.Mutex),
 		receivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
 	}
-}
-
-func (g *execGitClient) ParseGitHubURL(url string) (repoURL, branch string) {
-	if strings.Contains(url, "/tree/") {
-		parts := strings.Split(url, "/tree/")
-		if len(parts) == 2 {
-			repoURL = parts[0] + ".git"
-			branch = parts[1]
-			return
-		}
-	}
-	return url, ""
 }
 
 func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, args ...string) ([]byte, error) {
@@ -276,6 +264,11 @@ func (g *execGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]Su
 	return subs, nil
 }
 
+func (g *execGitClient) SubmoduleInit(ctx context.Context, repoDir string) error {
+	_, err := g.run(ctx, repoDir, CloneOptions{}, "submodule", "init", "--recursive", "--update")
+	return err
+}
+
 func (g *execGitClient) SubmoduleCommit(ctx context.Context, repoDir, path string) (string, error) {
 	out, err := g.run(ctx, repoDir, CloneOptions{}, "ls-tree", "HEAD", path)
 	if err != nil {
@@ -295,6 +288,7 @@ func (g *execGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, branch
 	} else {
 		args = append(args, "HEAD")
 	}
+	fmt.Printf("Resolving commit for %+v\n", args)
 	out, err := g.run(ctx, "", CloneOptions{}, args...)
 	if err != nil {
 		return "", err

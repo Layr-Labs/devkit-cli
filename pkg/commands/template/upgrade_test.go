@@ -20,8 +20,8 @@ type MockGitClient struct {
 	mockUpgradeScript string
 }
 
-func (m *MockGitClient) ParseGitHubURL(url string) (repoURL, branch string) {
-	return url, ""
+func (m *MockGitClient) SubmoduleInit(ctx context.Context, repoDir string) error {
+	return nil
 }
 
 func (m *MockGitClient) Clone(ctx context.Context, repoURL, dest string, opts template.CloneOptions) error {
