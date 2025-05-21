@@ -91,7 +91,14 @@ cd my-avs-project
 > \[!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
+<!-- Put in section about editing main.go file to replace comments with your actual business logic
+-->
+
 ### 2️⃣ Configure Your AVS (`avs config` & `avs context`)
+
+<!-- TODO: Make it very clear and very specific that the one field we need to change is the fork_url and that they are in charge of supplying this.
+Also, keep stuff at the top about introducing config yaml files and what they do.
+-->
 
 Before running your AVS, you’ll need to configure both project-level and context-specific settings. This is done through two configuration files:
 
