@@ -35,8 +35,8 @@ jobs:
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.HOURGLASS_TOKEN }}
+          username: grezle
+          password: ${{ secrets.GHCR_PAT_TOKEN }}
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
