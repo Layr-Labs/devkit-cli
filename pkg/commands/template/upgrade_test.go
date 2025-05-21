@@ -146,20 +146,6 @@ func TestUpgradeCommand(t *testing.T) {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
-	// Create mock upgrade script content inline
-	mockUpgradeScript := `#!/bin/bash
-echo "Running upgrade script for project at: $1"
-exit 0
-`
-
-	// Create mock git client and getter
-	mockGitClient := &MockGitClient{
-		mockUpgradeScript: mockUpgradeScript,
-	}
-	mockGitClientGetter := &MockGitClientGetter{
-		client: mockGitClient,
-	}
-
 	// Create mock template info getter
 	mockTemplateInfoGetter := &MockTemplateInfoGetter{
 		projectName:     "template-upgrade-test",
@@ -168,7 +154,7 @@ exit 0
 	}
 
 	// Create the test command with mocked dependencies
-	testCmd := createUpgradeCommand(mockTemplateInfoGetter, mockGitClientGetter)
+	testCmd := createUpgradeCommand(mockTemplateInfoGetter)
 
 	// Create test context
 	app := &cli.App{
@@ -195,7 +181,7 @@ exit 0
 	t.Run("Upgrade command with version", func(t *testing.T) {
 		// Create a flag set and context
 		set := flag.NewFlagSet("test", 0)
-		set.String("version", "v2.0.0", "")
+		set.String("version", "v0.0.4", "")
 		ctx := cli.NewContext(app, set, nil)
 
 		// Run the upgrade command (which is our test command with mocks)
@@ -224,8 +210,8 @@ exit 0
 			}
 		}
 
-		if templateVersion != "v2.0.0" {
-			t.Errorf("Template version not updated. Expected 'v2.0.0', got '%s'", templateVersion)
+		if templateVersion != "v0.0.4" {
+			t.Errorf("Template version not updated. Expected 'v0.0.4', got '%s'", templateVersion)
 		}
 	})
 
@@ -263,7 +249,7 @@ exit 0
 		}
 
 		// Create command with error getter
-		errorCmd := createUpgradeCommand(errorInfoGetter, mockGitClientGetter)
+		errorCmd := createUpgradeCommand(errorInfoGetter)
 
 		errorApp := &cli.App{
 			Name: "test-app",
