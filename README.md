@@ -40,7 +40,7 @@ Before you begin, ensure you have:
 
 To download a binary for the latest release, run:
 ```bash
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.4/devkit-darwin-arm64-v0.0.4.tar.gz | sudo tar xvz -C /usr/local/bin
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.5/devkit-darwin-arm64-v0.0.5.tar.gz | sudo tar xvz -C /usr/local/bin
 ```
 
 The binary will be installed inside the ~/bin directory.
