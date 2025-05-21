@@ -28,7 +28,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	expectedContractsBaseURL := "https://github.com/Layr-Labs/hourglass-contracts-template"
-	expectedContractsVersion := "main"
+	expectedContractsVersion := "master"
 
 	if contractsBaseURL != expectedContractsBaseURL {
 		t.Errorf("Unexpected contracts template base URL: got %s, want %s", contractsBaseURL, expectedContractsBaseURL)
