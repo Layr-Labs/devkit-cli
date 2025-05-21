@@ -189,7 +189,7 @@ var CreateCommand = &cli.Command{
 			// Fetch the contracts directory if it does not exist in the template
 			if _, err := os.Stat(contractsDirReadme); os.IsNotExist(err) {
 				if err := fetcher.Fetch(cCtx.Context, contractsFullURL, contractsDir); err != nil {
-					log.Warn("Failed to fetch contracts template: %v", err)
+					log.Warn("Failed to fetch contracts template '%s': %v", contractsFullURL, err)
 				}
 			}
 		}
