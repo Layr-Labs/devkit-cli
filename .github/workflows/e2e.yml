@@ -73,8 +73,8 @@ jobs:
         env:
           DOCKER_BUILDKIT: 1
         with:
-          context: .
-          file: ./my-awesome-avs/Dockerfile
+          context: ./my-awesome-avs
+          file: Dockerfile
           push: true
           tags: ghcr.io/${{ env.OWNER }}/performer:${{ github.sha }}
           ssh: default
