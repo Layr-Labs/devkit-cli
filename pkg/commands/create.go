@@ -57,11 +57,6 @@ var CreateCommand = &cli.Command{
 			Name:  "overwrite",
 			Usage: "Force overwrite if project directory already exists",
 		},
-		&cli.BoolFlag{
-			Name:  "no-cache",
-			Usage: "Disable the use of caching mechanisms",
-			Value: false,
-		},
 		&cli.IntFlag{
 			Name:  "depth",
 			Usage: "Maximum submodule recursion depth",
@@ -173,7 +168,7 @@ var CreateCommand = &cli.Command{
 				MaxDepth:       cCtx.Int("depth"),
 				MaxRetries:     cCtx.Int("retries"),
 				MaxConcurrency: cCtx.Int("concurrency"),
-				UseCache:       !cCtx.Bool("no-cache"),
+				UseCache:       false,
 				Verbose:        cCtx.Bool("verbose"),
 			},
 		}
@@ -181,17 +176,17 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to fetch template from %s: %w", mainFullURL, err)
 		}
 
-		// Check for contracts template and fetch if missing
-		if contractsFullURL != "" {
-			contractsDir := filepath.Join(targetDir, common.ContractsDir)
-
-			// Fetch the contracts directory if it does not exist in the template
-			if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
-				if err := fetcher.Fetch(cCtx.Context, contractsFullURL, contractsDir); err != nil {
-					log.Warn("Failed to fetch contracts template '%s': %v", contractsFullURL, err)
-				}
-			}
-		}
+		// // Check for contracts template and fetch if missing
+		// if contractsFullURL != "" {
+		// 	contractsDir := filepath.Join(targetDir, common.ContractsDir)
+		//
+		// 	// Fetch the contracts directory if it does not exist in the template
+		// 	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
+		// 		if err := fetcher.Fetch(cCtx.Context, contractsFullURL, contractsDir); err != nil {
+		// 			log.Warn("Failed to fetch contracts template '%s': %v", contractsFullURL, err)
+		// 		}
+		// 	}
+		// }
 
 		// Copy DevKit README.md to templates README.md
 		readMePath := filepath.Join(targetDir, "README.md")
