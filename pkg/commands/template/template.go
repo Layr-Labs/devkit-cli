@@ -75,6 +75,36 @@ func GetTemplateInfo() (string, string, string, error) {
 	return projectName, templateBaseURL, templateVersion, nil
 }
 
+// GetTemplateInfoDefault returns default template information without requiring a config file
+// Returns projectName, templateBaseURL, templateVersion, error
+func GetTemplateInfoDefault() (string, string, string, error) {
+	// Default values
+	projectName := ""
+	templateBaseURL := ""
+	templateVersion := "unknown"
+
+	// Try to load templates configuration
+	templateConfig, err := template.LoadConfig()
+	if err == nil {
+		// Default to "task" architecture and "go" language
+		defaultArch := "task"
+		defaultLang := "go"
+
+		// Look up the default template URL
+		mainBaseURL, _, _, _, _ := template.GetTemplateURLs(templateConfig, defaultArch, defaultLang)
+
+		// Use the default values
+		templateBaseURL = mainBaseURL
+	}
+
+	// If we still don't have a URL, use a hardcoded fallback
+	if templateBaseURL == "" {
+		templateBaseURL = "https://github.com/Layr-Labs/hourglass-avs-template"
+	}
+
+	return projectName, templateBaseURL, templateVersion, nil
+}
+
 // Command defines the main "template" command for template operations
 var Command = &cli.Command{
 	Name:  "template",
