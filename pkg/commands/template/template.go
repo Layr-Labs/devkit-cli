@@ -60,7 +60,7 @@ func GetTemplateInfo() (string, string, string, error) {
 			defaultLang := "go"
 
 			// Look up the default template URL
-			mainBaseURL, _, _, _, _ := template.GetTemplateURLs(templateConfig, defaultArch, defaultLang)
+			mainBaseURL, _, _ := template.GetTemplateURLs(templateConfig, defaultArch, defaultLang)
 
 			// Use the default values
 			templateBaseURL = mainBaseURL
@@ -91,7 +91,7 @@ func GetTemplateInfoDefault() (string, string, string, error) {
 		defaultLang := "go"
 
 		// Look up the default template URL
-		mainBaseURL, _, _, _, _ := template.GetTemplateURLs(templateConfig, defaultArch, defaultLang)
+		mainBaseURL, _, _ := template.GetTemplateURLs(templateConfig, defaultArch, defaultLang)
 
 		// Use the default values
 		templateBaseURL = mainBaseURL

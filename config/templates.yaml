@@ -3,26 +3,7 @@ architectures:
     languages:
       go:
         baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
-        version: "v0.0.5"
-      ts:
-        baseUrl: ""
-        version: ""
-      rust:
-        baseUrl: ""
-        version: ""
-    contracts:
-      languages:
-        solidity:
-          baseUrl: "https://github.com/Layr-Labs/hourglass-contracts-template"
-          version: "v0.0.2"
-        vyper:
-          baseUrl: ""
-          version: ""
-  hello-world-avs:
-    languages:
-      go:
-        baseUrl: "https://github.com/Layr-Labs/hello-world-avs"
-        version: "main"
+        version: "v0.0.6"
       ts:
         baseUrl: ""
         version: ""

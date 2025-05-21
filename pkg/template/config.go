@@ -38,33 +38,23 @@ func LoadConfig() (*Config, error) {
 
 // GetTemplateURLs retrieves both main and contracts template URLs for the given architecture
 // Returns main base URL, main version, contracts base URL, contracts version, and error
-func GetTemplateURLs(config *Config, arch, lang string) (string, string, string, string, error) {
+func GetTemplateURLs(config *Config, arch, lang string) (string, string, error) {
 	archConfig, exists := config.Architectures[arch]
 	if !exists {
-		return "", "", "", "", nil
+		return "", "", nil
 	}
 
 	// Get main template URL and version
 	langConfig, exists := archConfig.Languages[lang]
 	if !exists {
-		return "", "", "", "", nil
+		return "", "", nil
 	}
 
 	mainBaseURL := langConfig.BaseUrl
 	mainVersion := langConfig.Version
 	if mainBaseURL == "" {
-		return "", "", "", "", nil
+		return "", "", nil
 	}
 
-	// Get contracts template URL and version (default to solidity, no error if missing)
-	contractsBaseURL := ""
-	contractsVersion := ""
-	if archConfig.Contracts != nil {
-		if contractsLang, exists := archConfig.Contracts.Languages["solidity"]; exists {
-			contractsBaseURL = contractsLang.BaseUrl
-			contractsVersion = contractsLang.Version
-		}
-	}
-
-	return mainBaseURL, mainVersion, contractsBaseURL, contractsVersion, nil
+	return mainBaseURL, mainVersion, nil
 }

@@ -111,7 +111,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Get template URLs
-		mainBaseURL, mainVersion, contractsBaseURL, contractsVersion, err := getTemplateURLs(cCtx)
+		mainBaseURL, mainVersion, err := getTemplateURLs(cCtx)
 		if err != nil {
 			return err
 		}
@@ -129,26 +129,10 @@ var CreateCommand = &cli.Command{
 			mainFullURL = fmt.Sprintf("%s/tree/%s", mainBaseURL, mainVersion)
 		}
 
-		contractsFullURL := ""
-		if contractsBaseURL != "" {
-			contractsFullURL = contractsBaseURL
-			if contractsVersion != "" {
-				// Ensure URL doesn't end with .git before appending
-				contractsBaseURL = strings.TrimSuffix(contractsBaseURL, ".git")
-				contractsFullURL = fmt.Sprintf("%s/tree/%s", contractsBaseURL, contractsVersion)
-			}
-		}
-
 		if cCtx.Bool("verbose") {
 			log.Info("Using template: %s", mainFullURL)
-			if contractsFullURL != "" {
-				log.Info("Using contracts template: %s", contractsFullURL)
-			}
 			if mainVersion != "" {
 				log.Info("Template version: %s", mainVersion)
-			}
-			if contractsVersion != "" && contractsFullURL != "" {
-				log.Info("Contracts template version: %s", contractsVersion)
 			}
 		}
 
@@ -175,18 +159,6 @@ var CreateCommand = &cli.Command{
 		if err := fetcher.Fetch(cCtx.Context, mainFullURL, targetDir); err != nil {
 			return fmt.Errorf("failed to fetch template from %s: %w", mainFullURL, err)
 		}
-
-		// // Check for contracts template and fetch if missing
-		// if contractsFullURL != "" {
-		// 	contractsDir := filepath.Join(targetDir, common.ContractsDir)
-		//
-		// 	// Fetch the contracts directory if it does not exist in the template
-		// 	if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
-		// 		if err := fetcher.Fetch(cCtx.Context, contractsFullURL, contractsDir); err != nil {
-		// 			log.Warn("Failed to fetch contracts template '%s': %v", contractsFullURL, err)
-		// 		}
-		// 	}
-		// }
 
 		// Copy DevKit README.md to templates README.md
 		readMePath := filepath.Join(targetDir, "README.md")
@@ -252,30 +224,30 @@ var CreateCommand = &cli.Command{
 	},
 }
 
-func getTemplateURLs(cCtx *cli.Context) (string, string, string, string, error) {
+func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 	templateBaseOverride := cCtx.String("template-url")
 	templateVersionOverride := cCtx.String("template-version")
 
 	if templateBaseOverride != "" {
 		// Use the override values
-		return templateBaseOverride, templateVersionOverride, "", "", nil
+		return templateBaseOverride, templateVersionOverride, nil
 	}
 
 	config, err := template.LoadConfig()
 	if err != nil {
-		return "", "", "", "", fmt.Errorf("failed to load templates config: %w", err)
+		return "", "", fmt.Errorf("failed to load templates config: %w", err)
 	}
 
 	arch := cCtx.String("arch")
 	lang := cCtx.String("lang")
 
-	mainBaseURL, mainVersion, contractsBaseURL, contractsVersion, err := template.GetTemplateURLs(config, arch, lang)
+	mainBaseURL, mainVersion, err := template.GetTemplateURLs(config, arch, lang)
 	if err != nil {
-		return "", "", "", "", fmt.Errorf("failed to get template URLs: %w", err)
+		return "", "", fmt.Errorf("failed to get template URLs: %w", err)
 	}
 
 	if mainBaseURL == "" {
-		return "", "", "", "", fmt.Errorf("no template found for architecture %s and language %s", arch, lang)
+		return "", "", fmt.Errorf("no template found for architecture %s and language %s", arch, lang)
 	}
 
 	// If templateVersionOverride is provided, it takes precedence over the version from templates.yaml
@@ -283,7 +255,7 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, string, string, error) 
 		mainVersion = templateVersionOverride
 	}
 
-	return mainBaseURL, mainVersion, contractsBaseURL, contractsVersion, nil
+	return mainBaseURL, mainVersion, nil
 }
 
 func createProjectDir(targetDir string, overwrite, verbose bool) error {
