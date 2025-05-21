@@ -57,6 +57,11 @@ var CreateCommand = &cli.Command{
 			Name:  "overwrite",
 			Usage: "Force overwrite if project directory already exists",
 		},
+		&cli.BoolFlag{
+			Name:  "no-cache",
+			Usage: "Disable the use of caching mechanisms",
+			Value: false,
+		},
 		&cli.IntFlag{
 			Name:  "depth",
 			Usage: "Maximum submodule recursion depth",
