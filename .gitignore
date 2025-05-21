@@ -30,3 +30,4 @@ Thumbs.db
 temp_external/
 /test-projects
 .cursor/execution-plans
+{$

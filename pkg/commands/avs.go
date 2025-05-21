@@ -15,6 +15,6 @@ var AVSCommand = &cli.Command{
 		RunCommand,
 		CallCommand,
 		ReleaseCommand,
-		UpgradeTemplateCommand,
+		TemplateCommand,
 	},
 }
