@@ -751,15 +751,14 @@ func registerOperatorAVS(cCtx *cli.Context, operatorAddress string, operatorSetI
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
 
-	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
-	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+	allocationManagerAddr, delegationManagerAddr := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
 		big.NewInt(int64(l1Cfg.ChainID)),
 		client,
-		allocationManagerAddr,
-		delegationManagerAddr,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create contract caller: %w", err)

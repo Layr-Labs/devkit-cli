@@ -35,23 +35,16 @@ type OperatorSpec struct {
 	Stake               string `json:"stake" yaml:"stake"`
 }
 
-type ChainContextConfig struct {
-	Name                  string                 `json:"name" yaml:"name"`
-	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
-	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
-	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`
-	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
-	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
-	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
-	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
-	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
-}
-
 type AvsConfig struct {
 	Address          string `json:"address" yaml:"address"`
 	MetadataUri      string `json:"metadata_url" yaml:"metadata_url"`
 	AVSPrivateKey    string `json:"avs_private_key" yaml:"avs_private_key"`
 	RegistrarAddress string `json:"registrar_address" yaml:"registrar_address"`
+}
+
+type EigenLayerConfig struct {
+	AllocationManager string `json:"allocation_manager" yaml:"allocation_manager"`
+	DelegationManager string `json:"delegation_manager" yaml:"delegation_manager"`
 }
 
 type ChainConfig struct {
@@ -89,6 +82,19 @@ type OperatorRegistration struct {
 	Address       string `json:"address" yaml:"address"`
 	OperatorSetID uint64 `json:"operator_set_id" yaml:"operator_set_id"`
 	Payload       string `json:"payload" yaml:"payload"`
+}
+
+type ChainContextConfig struct {
+	Name                  string                 `json:"name" yaml:"name"`
+	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
+	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
+	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`
+	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
+	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
+	EigenLayer            *EigenLayerConfig      `json:"eigenlayer" yaml:"eigenlayer"`
+	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
+	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
+	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 }
 
 func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {

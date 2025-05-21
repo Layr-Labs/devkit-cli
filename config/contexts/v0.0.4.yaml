@@ -1,0 +1,64 @@
+# Devnet context to be used for local deployments against Anvil chain
+version: 0.0.4
+context:
+  # Name of the context
+  name: "devnet"
+  # Chains available to this context
+  chains:
+    l1: 
+      chain_id: 31337
+      rpc_url: "http://localhost:8545"
+      fork:
+        block: 22475020
+        url: ""
+        block_time: 3
+    l2:
+      chain_id: 31337
+      rpc_url: "http://localhost:8545"
+      fork:
+        block: 22475020
+        url: ""
+        block_time: 3
+  # All key material (BLS and ECDSA) within this file should be used for local testing ONLY
+  # ECDSA keys used are from Anvil's private key set
+  # BLS keystores are deterministically pre-generated and embedded. These are NOT derived from a secure seed
+  # Available private keys for deploying
+  deployer_private_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" # Anvil Private Key 0
+  app_private_key: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a" # Anvil Private Key 2
+  # List of Operators and their private keys / stake details
+  operators:
+    - address: "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
+      ecdsa_key: "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6" # Anvil Private Key 3
+      bls_keystore_path: "keystores/operator1.keystore.json"
+      bls_keystore_password: "testpass"
+      stake: "1000ETH"
+    - address: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
+      ecdsa_key: "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a" # Anvil Private Key 4
+      bls_keystore_path: "keystores/operator2.keystore.json"
+      bls_keystore_password: "testpass"
+      stake: "1000ETH"
+    - address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
+      ecdsa_key: "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba" # Anvil Private Key 5
+      bls_keystore_path: "keystores/operator3.keystore.json"
+      bls_keystore_password: "testpass"
+      stake: "1000ETH"
+    - address: "0x976EA74026E726554dB657fA54763abd0C3a0aa9"
+      ecdsa_key: "0x92db14e403b83dfe3df233f83dfa3a0d7096f21ca9b0d6d6b8d88b2b4ec1564e" # Anvil Private Key 6
+      bls_keystore_path: "keystores/operator4.keystore.json"
+      bls_keystore_password: "testpass"
+      stake: "1000ETH"
+    - address: "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955"
+      ecdsa_key: "0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356" # Anvil Private Key 7
+      bls_keystore_path: "keystores/operator5.keystore.json"
+      bls_keystore_password: "testpass"
+      stake: "1000ETH"
+  # AVS configuration
+  avs:
+    address: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+    avs_private_key: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" # Anvil Private Key 1
+    metadata_url: "https://my-org.com/avs/metadata.json"
+    registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"
+  # Core EigenLayer contract addresses
+  eigenlayer:
+    allocation_manager: "0x948a420b8CC1d6BFd0B6087C2E7c344a2CD0bc39"
+    delegation_manager: "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A" 
