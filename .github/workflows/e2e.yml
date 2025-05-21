@@ -74,7 +74,6 @@ jobs:
           DOCKER_BUILDKIT: 1
         with:
           context: ./my-awesome-avs
-          file: Dockerfile
           push: true
           tags: ghcr.io/${{ env.OWNER }}/performer:${{ github.sha }}
           ssh: default
