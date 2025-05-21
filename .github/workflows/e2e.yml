@@ -21,11 +21,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
