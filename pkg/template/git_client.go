@@ -34,7 +34,7 @@ type GitClient interface {
 	StageSubmodule(ctx context.Context, repoDir, path, sha string) error
 	SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error
 	ActivateSubmodule(ctx context.Context, repoDir, name string) error
-	SubmoduleInit(ctx context.Context, repoDir string) error
+	SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error
 }
 
 type CloneOptions struct {
@@ -53,10 +53,11 @@ type Submodule struct {
 	Branch string
 }
 
+/*
 type SubmoduleFailure struct {
 	mod Submodule
 	err error
-}
+}*/
 
 type execGitClient struct {
 	repoLocksMu    sync.Mutex
@@ -131,23 +132,6 @@ func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, 
 func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error {
 	args := []string{"clone"}
 
-	// handle flags for bare, depth, branch, dissociate, and no-hardlinks
-	if opts.Bare {
-		args = append(args, "--bare")
-	}
-	if opts.Depth > 0 {
-		args = append(args, fmt.Sprintf("--depth=%d", opts.Depth))
-	}
-	if opts.Branch != "" {
-		args = append(args, "-b", opts.Branch)
-	}
-	if opts.Dissociate {
-		args = append(args, "--dissociate")
-	}
-	if opts.NoHardlinks {
-		args = append(args, "--no-hardlinks")
-	}
-
 	// add the --progress flag for tracking progress
 	args = append(args, "--progress")
 
@@ -158,6 +142,12 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 	_, err := g.run(ctx, "", opts, args...)
 	if err != nil {
 		return fmt.Errorf("failed to clone into cache: %w", err)
+	}
+
+	checkoutArgs := []string{"checkout", opts.Branch}
+	_, err = g.run(ctx, dest, CloneOptions{}, checkoutArgs...)
+	if err != nil {
+		return fmt.Errorf("failed to checkout ref %s: %w", opts.Branch, err)
 	}
 
 	return nil
@@ -264,8 +254,8 @@ func (g *execGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]Su
 	return subs, nil
 }
 
-func (g *execGitClient) SubmoduleInit(ctx context.Context, repoDir string) error {
-	_, err := g.run(ctx, repoDir, CloneOptions{}, "submodule", "init", "--recursive", "--update")
+func (g *execGitClient) SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error {
+	_, err := g.run(ctx, repoDir, opts, "submodule", "update", "--recursive", "--init", "--progress")
 	return err
 }
 
@@ -281,18 +271,23 @@ func (g *execGitClient) SubmoduleCommit(ctx context.Context, repoDir, path strin
 	return fields[2], nil
 }
 
-func (g *execGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, branch string) (string, error) {
+func (g *execGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, ref string) (string, error) {
 	args := []string{"ls-remote", repoURL}
-	if branch != "" {
-		args = append(args, branch)
+	if ref != "" {
+		args = append(args, ref)
 	} else {
 		args = append(args, "HEAD")
 	}
-	fmt.Printf("Resolving commit for %+v\n", args)
 	out, err := g.run(ctx, "", CloneOptions{}, args...)
 	if err != nil {
 		return "", err
 	}
+	// if len is 0 with no error, we've been provided a commit hash, so let's use it
+	if len(out) == 0 {
+		return ref, nil
+	}
+
+	// otherwise, parse the output and take the first commit hash
 	fields := strings.Fields(string(out))
 	if len(fields) < 1 {
 		return "", fmt.Errorf("unexpected output: %s", out)

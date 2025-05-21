@@ -20,7 +20,7 @@ type MockGitClient struct {
 	mockUpgradeScript string
 }
 
-func (m *MockGitClient) SubmoduleInit(ctx context.Context, repoDir string) error {
+func (m *MockGitClient) SubmoduleInit(ctx context.Context, repoDir string, opts template.CloneOptions) error {
 	return nil
 }
 
