@@ -60,13 +60,10 @@ func GetTemplateInfo() (string, string, string, error) {
 			defaultLang := "go"
 
 			// Look up the default template URL
-			mainBaseURL, mainVersion, _, _, _ := template.GetTemplateURLs(templateConfig, defaultArch, defaultLang)
+			mainBaseURL, _, _, _, _ := template.GetTemplateURLs(templateConfig, defaultArch, defaultLang)
 
 			// Use the default values
 			templateBaseURL = mainBaseURL
-			if templateVersion == "unknown" && mainVersion != "" {
-				templateVersion = mainVersion
-			}
 		}
 
 		// If we still don't have a URL, use a hardcoded fallback
