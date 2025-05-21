@@ -138,12 +138,6 @@ func createUpgradeCommand(
 				return fmt.Errorf("upgrade script not found in template version %s", requestedVersion)
 			}
 
-			// Make sure the script is executable
-			err = os.Chmod(upgradeScriptPath, 0755)
-			if err != nil {
-				return fmt.Errorf("failed to make upgrade script executable: %w", err)
-			}
-
 			log.Info("Running upgrade script...")
 
 			// Execute the upgrade script, passing the project path as an argument
