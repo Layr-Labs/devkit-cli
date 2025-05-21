@@ -2,10 +2,11 @@ package template
 
 import (
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
