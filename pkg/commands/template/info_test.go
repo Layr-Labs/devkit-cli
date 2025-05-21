@@ -26,8 +26,8 @@ func TestInfoCommand(t *testing.T) {
 	configContent := `config:
   project:
     name: template-info-test
-    templateBaseUrl: https://github.com/Layr-Labs/custom-template
-    templateVersion: v1.2.3
+    templateBaseUrl: https://github.com/Layr-Labs/hourglass-avs-template
+    templateVersion: v0.0.3
 `
 	configPath := filepath.Join(configDir, common.BaseConfig)
 	err = os.WriteFile(configPath, []byte(configContent), 0644)

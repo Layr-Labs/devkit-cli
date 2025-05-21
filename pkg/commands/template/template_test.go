@@ -39,8 +39,8 @@ func TestGetTemplateInfo(t *testing.T) {
 		configContent := `config:
   project:
     name: test-project
-    templateBaseUrl: https://github.com/Layr-Labs/custom-template
-    templateVersion: v1.2.3
+    templateBaseUrl: https://github.com/Layr-Labs/hourglass-avs-template
+    templateVersion: v0.0.3
 `
 		configPath := filepath.Join(configDir, common.BaseConfig)
 		err = os.WriteFile(configPath, []byte(configContent), 0644)
@@ -56,11 +56,11 @@ func TestGetTemplateInfo(t *testing.T) {
 		if projectName != "test-project" {
 			t.Errorf("Expected project name 'test-project', got '%s'", projectName)
 		}
-		if templateURL != "https://github.com/Layr-Labs/custom-template" {
-			t.Errorf("Expected template URL 'https://github.com/Layr-Labs/custom-template', got '%s'", templateURL)
+		if templateURL != "https://github.com/Layr-Labs/hourglass-avs-template" {
+			t.Errorf("Expected template URL 'https://github.com/Layr-Labs/hourglass-avs-template', got '%s'", templateURL)
 		}
-		if templateVersion != "v1.2.3" {
-			t.Errorf("Expected template version 'v1.2.3', got '%s'", templateVersion)
+		if templateVersion != "v0.0.3" {
+			t.Errorf("Expected template version 'v0.0.3', got '%s'", templateVersion)
 		}
 	})
 

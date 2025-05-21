@@ -26,8 +26,8 @@ func TestUpgradeCommand(t *testing.T) {
 	configContent := `config:
   project:
     name: template-upgrade-test
-    templateBaseUrl: https://github.com/Layr-Labs/custom-template
-    templateVersion: v1.0.0
+    templateBaseUrl: https://github.com/Layr-Labs/hourglass-avs-template
+    templateVersion: v0.0.3
 `
 	configPath := filepath.Join(configDir, common.BaseConfig)
 	err = os.WriteFile(configPath, []byte(configContent), 0644)
