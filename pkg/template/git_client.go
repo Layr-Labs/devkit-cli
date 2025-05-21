@@ -34,7 +34,7 @@ type GitClient interface {
 	StageSubmodule(ctx context.Context, repoDir, path, sha string) error
 	SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error
 	ActivateSubmodule(ctx context.Context, repoDir, name string) error
-	SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error
+	// SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error
 }
 
 type CloneOptions struct {
@@ -132,6 +132,23 @@ func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, 
 func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error {
 	args := []string{"clone"}
 
+	// handle flags for bare, depth, branch, dissociate, and no-hardlinks
+	if opts.Bare {
+		args = append(args, "--bare")
+	}
+	if opts.Depth > 0 {
+		args = append(args, fmt.Sprintf("--depth=%d", opts.Depth))
+	}
+	if opts.Ref != "" {
+		args = append(args, "-b", opts.Ref)
+	}
+	if opts.Dissociate {
+		args = append(args, "--dissociate")
+	}
+	if opts.NoHardlinks {
+		args = append(args, "--no-hardlinks")
+	}
+
 	// add the --progress flag for tracking progress
 	args = append(args, "--progress")
 
@@ -142,12 +159,6 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 	_, err := g.run(ctx, "", opts, args...)
 	if err != nil {
 		return fmt.Errorf("failed to clone: '%s' '%s' '%s' %w", repoURL, opts.Ref, dest, err)
-	}
-
-	checkoutArgs := []string{"checkout", opts.Ref}
-	_, err = g.run(ctx, dest, CloneOptions{}, checkoutArgs...)
-	if err != nil {
-		return fmt.Errorf("failed to checkout ref %s: %w", opts.Ref, err)
 	}
 
 	return nil
