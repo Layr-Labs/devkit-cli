@@ -33,32 +33,34 @@ type GitMetrics interface {
 	SubmoduleCloneFinished(name string, err error)
 }
 
-func (g *GitFetcher) Fetch(ctx context.Context, templateURL, targetDir string) error {
-	// parse GitHub URL to extract repo URL and branch
-	repoURL, branch := g.Git.ParseGitHubURL(templateURL)
-	templateName := filepath.Base(strings.TrimSuffix(repoURL, ".git"))
-	g.Logger.Info("Cloning repo: %s → %s\n\n", repoURL, targetDir)
+func (g *GitFetcher) Fetch(ctx context.Context, repoBaseUrl, ref, targetDir string) error {
+	if ref == "" {
+		return fmt.Errorf("ref is required")
+	}
+	// parse GitHub URL to extract repo URL and ref
+	templateName := filepath.Base(strings.TrimSuffix(repoBaseUrl, ".git"))
+	g.Logger.Info("Cloning repo: %s → %s\n\n", repoBaseUrl, targetDir)
 
-	// resolve commit (get HEAD commit or a specific one based on the branch)
-	commit, err := g.Git.ResolveRemoteCommit(ctx, repoURL, branch)
+	// resolve commit (get HEAD commit or a specific one based on the ref)
+	commit, err := g.Git.ResolveRemoteCommit(ctx, repoBaseUrl, ref)
 	if err != nil {
 		g.Logger.Warn("Could not resolve remote commit", "error", err)
 		commit = "HEAD"
 	}
 
 	// try fetching the main repository
-	fromCache, err := g.fetchMainRepo(ctx, repoURL, branch, commit, templateName, targetDir)
+	fromCache, err := g.fetchMainRepo(ctx, repoBaseUrl, ref, commit, templateName, targetDir)
 	if err != nil {
 		return err
 	}
 
 	// if not fetched from cache, proceed with fetching submodules
 	if !fromCache {
-		return g.fetchSubmodules(ctx, templateName, repoURL, targetDir, 0)
+		return g.fetchSubmodules(ctx, templateName, repoBaseUrl, targetDir, 0)
 	}
 
 	// clone of template complete
-	g.Logger.Info("Clone repo complete: %s\n\n", repoURL)
+	g.Logger.Info("Clone repo complete: %s\n\n", repoBaseUrl)
 
 	return nil
 }

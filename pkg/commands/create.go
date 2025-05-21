@@ -121,16 +121,8 @@ var CreateCommand = &cli.Command{
 			return err
 		}
 
-		// Construct the full URLs with version information
-		mainFullURL := mainBaseURL
-		if mainVersion != "" {
-			// Ensure URL doesn't end with .git before appending
-			mainBaseURL = strings.TrimSuffix(mainBaseURL, ".git")
-			mainFullURL = fmt.Sprintf("%s/tree/%s", mainBaseURL, mainVersion)
-		}
-
 		if cCtx.Bool("verbose") {
-			log.Info("Using template: %s", mainFullURL)
+			log.Info("Using template: %s", mainBaseURL)
 			if mainVersion != "" {
 				log.Info("Template version: %s", mainVersion)
 			}
@@ -156,8 +148,8 @@ var CreateCommand = &cli.Command{
 				Verbose:        cCtx.Bool("verbose"),
 			},
 		}
-		if err := fetcher.Fetch(cCtx.Context, mainFullURL, targetDir); err != nil {
-			return fmt.Errorf("failed to fetch template from %s: %w", mainFullURL, err)
+		if err := fetcher.Fetch(cCtx.Context, mainBaseURL, mainVersion, targetDir); err != nil {
+			return fmt.Errorf("failed to fetch template from %s: %w", mainBaseURL, err)
 		}
 
 		// Copy DevKit README.md to templates README.md
@@ -228,22 +220,21 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 	templateBaseOverride := cCtx.String("template-url")
 	templateVersionOverride := cCtx.String("template-version")
 
-	if templateBaseOverride != "" {
-		// Use the override values
-		return templateBaseOverride, templateVersionOverride, nil
-	}
-
-	config, err := template.LoadConfig()
+	cfg, err := template.LoadConfig()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to load templates config: %w", err)
+		return "", "", fmt.Errorf("failed to load templates cfg: %w", err)
 	}
 
 	arch := cCtx.String("arch")
 	lang := cCtx.String("lang")
 
-	mainBaseURL, mainVersion, err := template.GetTemplateURLs(config, arch, lang)
+	mainBaseURL, mainVersion, err := template.GetTemplateURLs(cfg, arch, lang)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get template URLs: %w", err)
+	}
+
+	if templateBaseOverride != "" {
+		mainBaseURL = templateBaseOverride
 	}
 
 	if mainBaseURL == "" {

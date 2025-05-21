@@ -132,6 +132,11 @@ func createUpgradeCommand(
 				return fmt.Errorf("failed to checkout version %s: %w", requestedVersion, err)
 			}
 
+			err = gitClient.SubmoduleInit(cCtx.Context, tempDir)
+			if err != nil {
+				return fmt.Errorf("failed to initialize submodules: %w", err)
+			}
+
 			// Check if the upgrade script exists
 			upgradeScriptPath := filepath.Join(tempDir, ".devkit", "scripts", "upgrade")
 			if _, err := os.Stat(upgradeScriptPath); os.IsNotExist(err) {
