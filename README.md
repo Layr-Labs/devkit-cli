@@ -12,13 +12,14 @@ EigenLayer DevKit is currently in a closed alpha stage and is intended strictly 
 
 ## 🌟 Key Commands Overview
 
-| Command      | Description                              |
-| ------------ | ---------------------------------------- |
-| `avs create` | Scaffold a new AVS project               |
-| `avs config` | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...)        |
-| `avs build`  | Compile AVS smart contracts and binaries |
-| `avs devnet` | Manage local development network         |
-| `avs call`   | Simulate AVS task execution locally      |
+| Command        | Description                                                       |
+|----------------|-------------------------------------------------------------------|
+| `avs create`   | Scaffold a new AVS project                                        |
+| `avs config`   | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...) |
+| `avs build`    | Compile AVS smart contracts and binaries                          |
+| `avs devnet`   | Manage local development network                                  |
+| `avs call`     | Simulate AVS task execution locally                               |
+| `avs template` | Manage your project's template                                    |
 
 ---
 
@@ -185,30 +186,6 @@ Optionally, submit tasks directly to the on-chain TaskMailBox contract via a fro
 
 ## Optional Commands
 
-### Template Management (`avs template`)
-
-Manage your project templates to stay up-to-date with the latest features and improvements.
-
-* View current template information
-* Upgrade your project to a newer template version
-
-Subcommands:
-
-| Command | Description |
-| ------- | ----------- |
-| `info` | Display information about the current project template |
-| `upgrade` | Upgrade project to a newer template version |
-
-View template information:
-```bash
-devkit avs template info
-```
-
-Upgrade to a specific template version (tag, branch, or commit hash):
-```bash
-devkit avs template upgrade --version v1.0.0
-```
-
 ### Start offchain AVS infrastructure (`avs run`)
 
 Run your offchain AVS components locally.
@@ -252,6 +229,30 @@ devkit keystore read --path --password
 - **`key`**: Private key in BigInt format . Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
 - **`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
 - **`password`**: Password to encrypt/decrypt the keystore.
+
+### Template Management (`avs template`)
+
+Manage your project templates to stay up-to-date with the latest features and improvements.
+
+* View current template information
+* Upgrade your project to a newer template version
+
+Subcommands:
+
+| Command | Description |
+| ------- | ----------- |
+| `info` | Display information about the current project template |
+| `upgrade` | Upgrade project to a newer template version |
+
+View template information:
+```bash
+devkit avs template info
+```
+
+Upgrade to a specific template version (tag, branch, or commit hash):
+```bash
+devkit avs template upgrade --version v1.0.0
+```
 
 ### 📖 Logging (`--verbose`)
 
