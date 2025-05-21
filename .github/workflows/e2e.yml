@@ -21,6 +21,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -65,11 +70,14 @@ jobs:
 
       - name: Build & push performer image
         uses: docker/build-push-action@v4
+        env:
+          DOCKER_BUILDKIT: 1
         with:
           context: .
           file: ./my-awesome-avs/Dockerfile
           push: true
           tags: ghcr.io/${{ env.OWNER }}/performer:${{ github.sha }}
+          ssh: default
 
       - name: Seed mirror (local pull-through)
         run: |
@@ -78,6 +86,8 @@ jobs:
           && docker push localhost:5000/performer:${{ github.sha }}
 
       - name: Run devkit avs build
+        env:
+            DOCKER_BUILDKIT: 1
         run: |
           eval "$(ssh-agent -s)"
           echo "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-add -
