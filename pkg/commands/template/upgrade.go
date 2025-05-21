@@ -98,11 +98,6 @@ func createUpgradeCommand(
 			// Extract base URL without .git suffix for consistency
 			baseRepoURL := strings.TrimSuffix(templateBaseURL, ".git")
 
-			// Add .git suffix if not present for compatibility with git command
-			if !strings.HasSuffix(baseRepoURL, ".git") {
-				baseRepoURL = baseRepoURL + ".git"
-			}
-
 			// Fetch main template
 			fetcher := &template.GitFetcher{
 				Git:   template.NewGitClient(),
@@ -113,11 +108,12 @@ func createUpgradeCommand(
 				),
 				Config: template.GitFetcherConfig{
 					CacheDir:       tempDir,
-					MaxDepth:       cCtx.Int("depth"),
-					MaxRetries:     cCtx.Int("retries"),
-					MaxConcurrency: cCtx.Int("concurrency"),
+					MaxDepth:       -1,
+					MaxRetries:     3,
+					MaxConcurrency: 8,
 					UseCache:       false,
-					Verbose:        cCtx.Bool("verbose"),
+					// Verbose:        cCtx.Bool("verbose"),
+					Verbose: true,
 				},
 			}
 			log.Info("Cloning template repository...")
