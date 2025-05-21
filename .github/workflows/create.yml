@@ -29,21 +29,12 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
-      
-      - name: Authenticate Go to GitHub private repos
-        run: |
-          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
           
       - name: Install devkit CLI
         run: make install
 
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
-      
-      - name: Configure Git to use GitHub token
-        run: |
-          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:@github.com/".insteadOf "https://github.com/"
         
       - name: Run devkit avs create
         run: |
