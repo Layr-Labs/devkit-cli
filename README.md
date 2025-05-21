@@ -5,13 +5,21 @@ Hourglass is in active development and is not yet audited. Use at your own risk.
 
 # EigenLayer Development Kit (DevKit) 🚀
 
-**A CLI toolkit for developing, testing, and managing EigenLayer Autonomous Verifiable Services (AVS).**
+**A CLI toolkit for scaffolding, developing, and testing EigenLayer Autonomous Verifiable Services (AVS).**
 
-<!-- 
-TODO: Add something about how it's a tool to test your AVS POC...not to manage the day-to-day operations of your existing AVS (yet).
--->
+EigenLayer DevKit streamlines AVS development, enabling you to:
+* Quickly scaffold projects
+* Compile contracts
+* Run local networks
+* Simulate tasks.
 
-EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold projects, compile contracts, run local networks, and simulate tasks with ease.
+Use DevKit to get from AVS idea to Proof of Concept with a local testing environment that includes task simulation.
+
+## Important
+
+The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass framework.
+We're actively expanding capabilities, so if there's a gap for your scenario, check out our roadmap see what's coming, 
+or let us know what would support you in building AVS.
 
 ![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
 
@@ -155,6 +163,20 @@ Alternatively, you can manually edit `config.yaml` or the `contexts/*.yaml` file
 > \[!IMPORTANT]
 > These commands must be run from your AVS project's root directory.
 
+> \[!IMPORTANT]
+> You **must** set valid `*_FORK_URL`s before launching your local devnet.  
+> Add them to your `.env` (copied from `.env.example`) or to `config/context/devnet.yaml`.
+
+> **Note:** Use any popular RPC provider (e.g. QuickNode, Alchemy) for `FORK_URL`.
+
+This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business 
+logic without needing to deploy to testnet/mainnet or coordinate with live operators.
+
+```
+$ cp .env.example .env
+# edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
+```
+
 ### 3️⃣ Build Your AVS
 
 Compiles your AVS contracts and offchain binaries. Required before running a devnet or simulating tasks to ensure all components are built and ready.
@@ -177,21 +199,7 @@ Starts a local devnet to simulate the full AVS environment. This step deploys co
 * Setup required `AVS` contracts.
 * Register `AVS` and `Operators`.
 
-
-> \[!IMPORTANT]
-> You **must** set valid `*_FORK_URL`s before launching your local devnet.  
-> Add them to your `.env` (copied from `.env.example`) or to `config/context/devnet.yaml`.
-
-> **Note:** Use any popular RPC provider (e.g. QuickNode, Alchemy) for `FORK_URL`.
-
-This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
-
-```
-$ cp .env.example .env
-# edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
-```
-
-After adding `*_FORK_URL`s, run this from your project directory:
+In your project directory, run:
 
 ```bash
 devkit avs devnet start
