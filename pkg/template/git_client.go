@@ -48,10 +48,11 @@ type CloneOptions struct {
 }
 
 type Submodule struct {
-	Name   string
-	Path   string
-	URL    string
-	Branch string
+	Name, Path, URL, Branch string
+}
+
+type SubmoduleInfo struct {
+	Name, Path, URL, Commit string
 }
 
 type SubmoduleFailure struct {

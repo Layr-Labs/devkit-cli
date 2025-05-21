@@ -398,6 +398,17 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	// get logger
 	log, _ := common.GetLogger()
 
+	// use gitClient to reinstate git submodules after fresh init
+	git := template.NewGitClient()
+
+	// collect all submodules info
+	submoduleInfos, err := collectSubmoduleInfo(ctx, git, targetDir)
+	// get commit for the submodule
+	if err != nil {
+		return fmt.Errorf("failed list submodules: %w", err)
+	}
+
+	// remove the old .git dir
 	if verbose {
 		log.Info("Removing existing .git directory in %s (if any)...", targetDir)
 	}
@@ -406,10 +417,10 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
 	}
 
+	// init a new .git repo
 	if verbose {
 		log.Info("Initializing Git repository in %s...", targetDir)
 	}
-
 	cmd := exec.CommandContext(ctx.Context, "git", "init")
 	cmd.Dir = targetDir
 	output, err := cmd.CombinedOutput()
@@ -417,9 +428,28 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
 
+	// reinstate gitmodules
+	err = registerSubmodules(ctx, git, targetDir, submoduleInfos)
+	if err != nil {
+		return fmt.Errorf("git submodule registration failed: %w", err)
+	}
+
+	// write a .gitignore into the new dir
 	err = os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(config.GitIgnore), 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write .gitignore: %w", err)
+	}
+
+	// add all changes and commit
+	cmd = exec.CommandContext(ctx.Context, "git", "add", ".")
+	cmd.Dir = targetDir
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+	}
+	cmd = exec.CommandContext(ctx.Context, "git", "commit", "-m", "feat: initial commit")
+	cmd.Dir = targetDir
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 
 	if verbose {
@@ -428,5 +458,49 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 			log.Info("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
 		}
 	}
+	return nil
+}
+
+func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir string) ([]template.SubmoduleInfo, error) {
+	// collect all submodules info
+	var submoduleInfos []template.SubmoduleInfo
+	submodules, err := git.SubmoduleList(ctx.Context, targetDir)
+	// get commit for the submodule
+	if err != nil {
+		return nil, fmt.Errorf("failed list submodules: %w", err)
+	}
+	// collect the referenced commit in the submodule list
+	for _, m := range submodules {
+		commit, err := git.SubmoduleCommit(ctx.Context, targetDir, m.Path)
+		if err != nil {
+			return nil, fmt.Errorf("get commit failed: %w", err)
+		}
+		submoduleInfos = append(submoduleInfos, template.SubmoduleInfo{
+			Name:   m.Name,
+			Path:   m.Path,
+			URL:    m.URL,
+			Commit: commit,
+		})
+	}
+	return submoduleInfos, nil
+}
+
+func registerSubmodules(ctx *cli.Context, git template.GitClient, targetDir string, submoduleInfos []template.SubmoduleInfo) error {
+	// reinstate gitmodules
+	for _, mod := range submoduleInfos {
+		// stage submodule in parent
+		if err := git.StageSubmodule(ctx.Context, targetDir, mod.Path, mod.Commit); err != nil {
+			return fmt.Errorf("stage failed: %w", err)
+		}
+		// set submodule URL
+		if err := git.SetSubmoduleURL(ctx.Context, targetDir, mod.Name, mod.URL); err != nil {
+			return fmt.Errorf("set-url failed: %w", err)
+		}
+		// activate submodule
+		if err := git.ActivateSubmodule(ctx.Context, targetDir, mod.Name); err != nil {
+			return fmt.Errorf("activate failed: %w", err)
+		}
+	}
+
 	return nil
 }
