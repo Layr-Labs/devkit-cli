@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )
@@ -30,10 +31,10 @@ func GetTemplateInfo() (string, string, string, error) {
 		return "", "", "", fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// Extract template info with default values
-	templateBaseURL := "https://github.com/Layr-Labs/hourglass-avs-template" // Default URL
-	templateVersion := "unknown"                                             // Default version
+	// Extract project name and template info
 	projectName := ""
+	templateBaseURL := ""
+	templateVersion := "unknown" // Default version
 
 	if configSection, ok := configMap["config"].(map[string]interface{}); ok {
 		if projectMap, ok := configSection["project"].(map[string]interface{}); ok {
@@ -46,6 +47,31 @@ func GetTemplateInfo() (string, string, string, error) {
 			if version, ok := projectMap["templateVersion"].(string); ok {
 				templateVersion = version
 			}
+		}
+	}
+
+	// If no template URL was found in the config, use the default from templates.yaml
+	if templateBaseURL == "" {
+		// Load templates configuration
+		templateConfig, err := template.LoadConfig()
+		if err == nil {
+			// Default to "task" architecture and "go" language
+			defaultArch := "task"
+			defaultLang := "go"
+
+			// Look up the default template URL
+			mainBaseURL, mainVersion, _, _, _ := template.GetTemplateURLs(templateConfig, defaultArch, defaultLang)
+
+			// Use the default values
+			templateBaseURL = mainBaseURL
+			if templateVersion == "unknown" && mainVersion != "" {
+				templateVersion = mainVersion
+			}
+		}
+
+		// If we still don't have a URL, use a hardcoded fallback
+		if templateBaseURL == "" {
+			templateBaseURL = "https://github.com/Layr-Labs/hourglass-avs-template"
 		}
 	}
 

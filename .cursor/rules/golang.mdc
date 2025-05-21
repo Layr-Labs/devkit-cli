@@ -5,7 +5,13 @@ alwaysApply: true
 ---
 # Go Development Guidelines for devkit-cli
 
-This document outlines coding standards, patterns, and best practices to be followed when developing Go applications and libraries for the `devkit-cli` project. These rules are based on general Go best practices and observed patterns within this codebase.
+This document outlines coding standards, patterns, and best practices to be followed when developing Go applications and libraries for the `devkit-cli` project. These rules are based on general Go best practices and observed patterns within this 
+codebase.
+
+## 0. Always..
+
+- Run `make tests` when completing a task to make sure the entire test suite passes
+- Run `make lint` to lint the code
 
 ## 1. Code Formatting
 

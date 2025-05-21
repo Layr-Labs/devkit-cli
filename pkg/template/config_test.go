@@ -39,7 +39,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	// Test non-existent architecture
-	mainBaseURL, mainVersion, contractsBaseURL, contractsVersion, err = GetTemplateURLs(config, "nonexistent", "go")
+	mainBaseURL, mainVersion, _, _, err = GetTemplateURLs(config, "nonexistent", "go")
 	if err != nil {
 		t.Fatalf("Failed to get template URLs: %v", err)
 	}

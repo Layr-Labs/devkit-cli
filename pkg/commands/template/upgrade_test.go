@@ -48,6 +48,7 @@ func TestUpgradeCommand(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to get current directory: %v", err)
 	}
+	//nolint:errcheck
 	defer os.Chdir(origDir)
 
 	err = os.Chdir(testProjectsDir)
