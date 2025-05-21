@@ -16,9 +16,11 @@ type ConfigBlock struct {
 }
 
 type ProjectConfig struct {
-	Name    string `json:"name" yaml:"name"`
-	Version string `json:"version" yaml:"version"`
-	Context string `json:"context" yaml:"context"`
+	Name            string `json:"name" yaml:"name"`
+	Version         string `json:"version" yaml:"version"`
+	Context         string `json:"context" yaml:"context"`
+	TemplateBaseURL string `json:"templateBaseUrl,omitempty" yaml:"templateBaseUrl,omitempty"`
+	TemplateVersion string `json:"templateVersion,omitempty" yaml:"templateVersion,omitempty"`
 }
 
 type ForkConfig struct {

@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"github.com/Layr-Labs/devkit-cli/pkg/commands/template"
 	"github.com/urfave/cli/v2"
 )
 
@@ -15,5 +16,6 @@ var AVSCommand = &cli.Command{
 		RunCommand,
 		CallCommand,
 		ReleaseCommand,
+		template.Command,
 	},
 }

@@ -12,13 +12,14 @@ EigenLayer DevKit is currently in a closed alpha stage and is intended strictly 
 
 ## 🌟 Key Commands Overview
 
-| Command      | Description                              |
-| ------------ | ---------------------------------------- |
-| `avs create` | Scaffold a new AVS project               |
-| `avs config` | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...)        |
-| `avs build`  | Compile AVS smart contracts and binaries |
-| `avs devnet` | Manage local development network         |
-| `avs call`   | Simulate AVS task execution locally      |
+| Command        | Description                                                       |
+|----------------|-------------------------------------------------------------------|
+| `avs create`   | Scaffold a new AVS project                                        |
+| `avs config`   | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...) |
+| `avs build`    | Compile AVS smart contracts and binaries                          |
+| `avs devnet`   | Manage local development network                                  |
+| `avs call`     | Simulate AVS task execution locally                               |
+
 
 ---
 
@@ -91,12 +92,14 @@ devkit avs create my-avs-project
 cd my-avs-project
 ```
 
+> Note: Projects are created with a specific template version. You can view your current template version with `devkit avs template info` and upgrade later using `devkit avs template upgrade`.
+
 > \[!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
 ### 2️⃣ Configure Your AVS (`avs config`)
 
-Before running your AVS, you’ll need to configure both project-level and environment-specific settings. This is done through two configuration files:
+Before running your AVS, you'll need to configure both project-level and environment-specific settings. This is done through two configuration files:
 
 - **`config.yaml`**: Defines project-wide settings such as AVS name and context names.
 - **`contexts/devnet.yaml`**: Contains environment-specific settings for your a given context (i.e. devnet), including the Ethereum fork url, block height, operator keys, AVS keys, and other runtime parameters.
@@ -212,7 +215,7 @@ devkit avs run
 
 ### Deploy AVS Contracts (`avs deploy-contract`)
 
-Deploy your AVS’s onchain contracts independently of the full devnet setup.
+Deploy your AVS's onchain contracts independently of the full devnet setup.
 
 This step is **optional**. The `devkit avs devnet start` command already handles contract deployment as part of its full setup. However, you may choose to run this command separately if you want to deploy contracts without launching a local devnet — for example, when preparing for a testnet deployment.
 
@@ -239,6 +242,30 @@ devkit keystore read --path --password
 - **`key`**: Private key in BigInt format . Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
 - **`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
 - **`password`**: Password to encrypt/decrypt the keystore.
+
+### Template Management (`avs template`)
+
+Manage your project templates to stay up-to-date with the latest features and improvements.
+
+* View current template information
+* Upgrade your project to a newer template version
+
+Subcommands:
+
+| Command | Description |
+| ------- | ----------- |
+| `info` | Display information about the current project template |
+| `upgrade` | Upgrade project to a newer template version |
+
+View template information:
+```bash
+devkit avs template info
+```
+
+Upgrade to a specific template version (tag, branch, or commit hash):
+```bash
+devkit avs template upgrade --version v1.0.0
+```
 
 ### 📖 Logging (`--verbose`)
 

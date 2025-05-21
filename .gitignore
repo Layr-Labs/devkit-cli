@@ -28,3 +28,6 @@ Thumbs.db
 
 # Release outputs
 temp_external/
+/test-projects
+.cursor/execution-plans
+{$
