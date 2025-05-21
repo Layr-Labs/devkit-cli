@@ -14,7 +14,7 @@ architectures:
       languages:
         solidity:
           baseUrl: "https://github.com/Layr-Labs/hourglass-contracts-template"
-          version: "main"
+          version: "master"
         vyper:
           baseUrl: ""
           version: ""
