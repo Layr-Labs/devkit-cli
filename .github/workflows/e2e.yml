@@ -60,18 +60,21 @@ jobs:
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
 
+      - name: Lowercase owner
+        run: echo "OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Build & push performer image
         uses: docker/build-push-action@v4
         with:
           context: .
           file: ./my-awesome-avs/Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/performer:${{ github.sha }}
+          tags: ghcr.io/${{ env.OWNER }}/performer:${{ github.sha }}
 
       - name: Seed mirror (local pull-through)
         run: |
-          docker pull ghcr.io/${{ github.repository_owner }}/performer:${{ github.sha }} \
-          && docker tag ghcr.io/${{ github.repository_owner }}/performer:${{ github.sha }} localhost:5000/performer:${{ github.sha }} \
+          docker pull ghcr.io/${{ env.OWNER }}/performer:${{ github.sha }} \
+          && docker tag ghcr.io/${{ env.OWNER }}/performer:${{ github.sha }} localhost:5000/performer:${{ github.sha }} \
           && docker push localhost:5000/performer:${{ github.sha }}
 
       - name: Run devkit avs build
