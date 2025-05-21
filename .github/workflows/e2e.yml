@@ -31,6 +31,13 @@ jobs:
           git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
           echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.HOURGLASS_TOKEN }}
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -52,6 +59,20 @@ jobs:
             exit 1
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
+
+      - name: Build & push performer image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./my-awesome-avs/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/performer:${{ github.sha }}
+
+      - name: Seed mirror (local pull-through)
+        run: |
+          docker pull ghcr.io/${{ github.repository_owner }}/performer:${{ github.sha }} \
+          && docker tag ghcr.io/${{ github.repository_owner }}/performer:${{ github.sha }} localhost:5000/performer:${{ github.sha }} \
+          && docker push localhost:5000/performer:${{ github.sha }}
 
       - name: Run devkit avs build
         run: |
