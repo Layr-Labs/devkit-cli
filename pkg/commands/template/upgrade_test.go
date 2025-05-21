@@ -3,18 +3,121 @@ package template
 import (
 	"context"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )
 
+// MockGitClient is a mock implementation of template.GitClient for testing
+type MockGitClient struct {
+	// In-memory mock script content
+	mockUpgradeScript string
+}
+
+func (m *MockGitClient) ParseGitHubURL(url string) (repoURL, branch string) {
+	return url, ""
+}
+
+func (m *MockGitClient) Clone(ctx context.Context, repoURL, dest string, opts template.CloneOptions) error {
+	// Create basic directory structure for a mock git repo
+	return os.MkdirAll(filepath.Join(dest, ".devkit", "scripts"), 0755)
+}
+
+func (m *MockGitClient) Checkout(ctx context.Context, repoDir, commit string) error {
+	// Create upgrade script in the target directory with mock content
+	targetScript := filepath.Join(repoDir, ".devkit", "scripts", "upgrade")
+	return os.WriteFile(targetScript, []byte(m.mockUpgradeScript), 0755)
+}
+
+// Implement other required methods of GitClient with minimal functionality for testing
+func (m *MockGitClient) WorktreeCheckout(ctx context.Context, mirrorPath, commit, worktreePath string) error {
+	return nil
+}
+
+func (m *MockGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]template.Submodule, error) {
+	return nil, nil
+}
+
+func (m *MockGitClient) SubmoduleCommit(ctx context.Context, repoDir, path string) (string, error) {
+	return "", nil
+}
+
+func (m *MockGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, branch string) (string, error) {
+	return "", nil
+}
+
+func (m *MockGitClient) RetryClone(ctx context.Context, repoURL, dest string, opts template.CloneOptions, maxRetries int) error {
+	return nil
+}
+
+func (m *MockGitClient) SubmoduleClone(
+	ctx context.Context,
+	submodule template.Submodule,
+	commit string,
+	repoUrl string,
+	targetDir string,
+	repoDir string,
+	opts template.CloneOptions,
+) error {
+	return nil
+}
+
+func (m *MockGitClient) CheckoutCommit(ctx context.Context, repoDir, commitHash string) error {
+	return nil
+}
+
+func (m *MockGitClient) StageSubmodule(ctx context.Context, repoDir, path, sha string) error {
+	return nil
+}
+
+func (m *MockGitClient) SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error {
+	return nil
+}
+
+func (m *MockGitClient) ActivateSubmodule(ctx context.Context, repoDir, name string) error {
+	return nil
+}
+
+// MockGitClientGetter implements the gitClientGetter interface for testing
+type MockGitClientGetter struct {
+	client template.GitClient
+}
+
+func (m *MockGitClientGetter) GetClient() template.GitClient {
+	return m.client
+}
+
+// MockTemplateInfoGetter implements the templateInfoGetter interface for testing
+type MockTemplateInfoGetter struct {
+	projectName       string
+	templateURL       string
+	templateVersion   string
+	shouldReturnError bool
+}
+
+func (m *MockTemplateInfoGetter) GetInfo() (string, string, string, error) {
+	if m.shouldReturnError {
+		return "", "", "", fmt.Errorf("config/config.yaml not found")
+	}
+	return m.projectName, m.templateURL, m.templateVersion, nil
+}
+
+func (m *MockTemplateInfoGetter) GetInfoDefault() (string, string, string, error) {
+	if m.shouldReturnError {
+		return "", "", "", fmt.Errorf("config/config.yaml not found")
+	}
+	return m.projectName, m.templateURL, m.templateVersion, nil
+}
+
 func TestUpgradeCommand(t *testing.T) {
 	// Create a temporary directory for testing
-	testProjectsDir, err := filepath.Abs(filepath.Join("../../..", "test-projects", "template-upgrade-test"))
+	testProjectsDir, err := filepath.Abs(filepath.Join(os.TempDir(), "devkit-template-upgrade-test"))
 	if err != nil {
 		t.Fatalf("Failed to get absolute path: %v", err)
 	}
@@ -30,7 +133,7 @@ func TestUpgradeCommand(t *testing.T) {
 		t.Fatalf("Failed to create config directory: %v", err)
 	}
 
-	// Create config with template information
+	// Create config with template information - using inline yaml
 	configContent := `config:
   project:
     name: template-upgrade-test
@@ -43,35 +146,35 @@ func TestUpgradeCommand(t *testing.T) {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
-	// Create a mock template directory
-	mockTemplate := filepath.Join(testProjectsDir, "template-repo")
-	err = os.MkdirAll(filepath.Join(mockTemplate, ".devkit", "scripts"), 0755)
-	if err != nil {
-		t.Fatalf("Failed to create mock template directory: %v", err)
-	}
-
-	// Create a mock upgrade script in the mock template
-	upgradeScript := `#!/bin/bash
+	// Create mock upgrade script content inline
+	mockUpgradeScript := `#!/bin/bash
 echo "Running upgrade script for project at: $1"
 exit 0
 `
-	upgradeScriptPath := filepath.Join(mockTemplate, ".devkit", "scripts", "upgrade")
-	err = os.WriteFile(upgradeScriptPath, []byte(upgradeScript), 0755)
-	if err != nil {
-		t.Fatalf("Failed to create mock upgrade script: %v", err)
+
+	// Create mock git client and getter
+	mockGitClient := &MockGitClient{
+		mockUpgradeScript: mockUpgradeScript,
+	}
+	mockGitClientGetter := &MockGitClientGetter{
+		client: mockGitClient,
 	}
 
-	// Make sure the script is executable
-	err = os.Chmod(upgradeScriptPath, 0755)
-	if err != nil {
-		t.Fatalf("Failed to make upgrade script executable: %v", err)
+	// Create mock template info getter
+	mockTemplateInfoGetter := &MockTemplateInfoGetter{
+		projectName:     "template-upgrade-test",
+		templateURL:     "https://github.com/Layr-Labs/hourglass-avs-template",
+		templateVersion: "v0.0.3",
 	}
+
+	// Create the test command with mocked dependencies
+	testCmd := createUpgradeCommand(mockTemplateInfoGetter, mockGitClientGetter)
 
 	// Create test context
 	app := &cli.App{
 		Name: "test-app",
 		Commands: []*cli.Command{
-			UpgradeCommand,
+			testCmd,
 		},
 	}
 
@@ -88,48 +191,6 @@ exit 0
 		t.Fatalf("Failed to change to test directory: %v", err)
 	}
 
-	// Override the Git operations for testing
-	origClone := gitCloneRepo
-	origFetch := gitFetch
-	origCheckout := gitCheckout
-	defer func() {
-		gitCloneRepo = origClone
-		gitFetch = origFetch
-		gitCheckout = origCheckout
-	}()
-
-	// Mock git clone
-	gitCloneRepo = func(ctx context.Context, repoURL, targetDir string) error {
-		// Create basic directory structure for a mock git repo
-		err := os.MkdirAll(filepath.Join(targetDir, ".devkit", "scripts"), 0755)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	// Mock git fetch - no-op for tests
-	gitFetch = func(ctx context.Context, repoDir string) error {
-		return nil
-	}
-
-	// Mock git checkout
-	gitCheckout = func(ctx context.Context, repoDir, version string) error {
-		// Copy the upgrade script to simulate successful checkout
-		scriptData, err := os.ReadFile(upgradeScriptPath)
-		if err != nil {
-			return err
-		}
-
-		targetScript := filepath.Join(repoDir, ".devkit", "scripts", "upgrade")
-		err = os.WriteFile(targetScript, scriptData, 0755)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
 	// Test upgrade command with version flag
 	t.Run("Upgrade command with version", func(t *testing.T) {
 		// Create a flag set and context
@@ -137,8 +198,8 @@ exit 0
 		set.String("version", "v2.0.0", "")
 		ctx := cli.NewContext(app, set, nil)
 
-		// Run the upgrade command
-		err := UpgradeCommand.Action(ctx)
+		// Run the upgrade command (which is our test command with mocks)
+		err := app.Commands[0].Action(ctx)
 		if err != nil {
 			t.Errorf("UpgradeCommand action returned error: %v", err)
 		}
@@ -175,7 +236,7 @@ exit 0
 		ctx := cli.NewContext(app, set, nil)
 
 		// Run the upgrade command
-		err := UpgradeCommand.Action(ctx)
+		err := app.Commands[0].Action(ctx)
 		if err == nil {
 			t.Errorf("UpgradeCommand action should return error when version flag is missing")
 		}
@@ -196,13 +257,28 @@ exit 0
 			t.Fatalf("Failed to change to no-config directory: %v", err)
 		}
 
+		// Create mock with error response for GetTemplateInfo
+		errorInfoGetter := &MockTemplateInfoGetter{
+			shouldReturnError: true,
+		}
+
+		// Create command with error getter
+		errorCmd := createUpgradeCommand(errorInfoGetter, mockGitClientGetter)
+
+		errorApp := &cli.App{
+			Name: "test-app",
+			Commands: []*cli.Command{
+				errorCmd,
+			},
+		}
+
 		// Create a flag set and context
 		set := flag.NewFlagSet("test", 0)
 		set.String("version", "v2.0.0", "")
-		ctx := cli.NewContext(app, set, nil)
+		ctx := cli.NewContext(errorApp, set, nil)
 
 		// Run the upgrade command
-		err := UpgradeCommand.Action(ctx)
+		err := errorApp.Commands[0].Action(ctx)
 		if err == nil {
 			t.Errorf("UpgradeCommand action should return error when config file is missing")
 		}

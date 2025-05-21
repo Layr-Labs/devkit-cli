@@ -19,7 +19,7 @@ EigenLayer DevKit is currently in a closed alpha stage and is intended strictly 
 | `avs build`    | Compile AVS smart contracts and binaries                          |
 | `avs devnet`   | Manage local development network                                  |
 | `avs call`     | Simulate AVS task execution locally                               |
-| `avs template` | Manage your project's template                                    |
+
 
 ---
 
