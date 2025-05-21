@@ -184,10 +184,9 @@ var CreateCommand = &cli.Command{
 		// Check for contracts template and fetch if missing
 		if contractsFullURL != "" {
 			contractsDir := filepath.Join(targetDir, common.ContractsDir)
-			contractsDirReadme := filepath.Join(contractsDir, "README.md")
 
 			// Fetch the contracts directory if it does not exist in the template
-			if _, err := os.Stat(contractsDirReadme); os.IsNotExist(err) {
+			if _, err := os.Stat(contractsDir); os.IsNotExist(err) {
 				if err := fetcher.Fetch(cCtx.Context, contractsFullURL, contractsDir); err != nil {
 					log.Warn("Failed to fetch contracts template: %v", err)
 				}
