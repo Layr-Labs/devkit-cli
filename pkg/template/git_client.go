@@ -141,7 +141,7 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 	// call run to execute the command and capture progress
 	_, err := g.run(ctx, "", opts, args...)
 	if err != nil {
-		return fmt.Errorf("failed to clone into cache: %w", err)
+		return fmt.Errorf("failed to clone: '%s' '%s' '%s' %w", repoURL, opts.Ref, dest, err)
 	}
 
 	checkoutArgs := []string{"checkout", opts.Ref}
