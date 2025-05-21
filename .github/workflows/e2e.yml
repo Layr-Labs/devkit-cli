@@ -36,13 +36,6 @@ jobs:
           git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
           echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: grezle
-          password: ${{ secrets.GHCR_PAT_TOKEN }}
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
@@ -65,19 +58,6 @@ jobs:
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
 
-      - name: Lowercase owner
-        run: echo "OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
-      - name: Build & push performer image
-        uses: docker/build-push-action@v4
-        env:
-          DOCKER_BUILDKIT: 1
-        with:
-          context: ./my-awesome-avs
-          push: true
-          tags: ghcr.io/${{ env.OWNER }}/performer:${{ github.sha }}
-          ssh: default
-
       - name: Run devkit avs build
         env:
             DOCKER_BUILDKIT: 1
@@ -93,7 +73,7 @@ jobs:
       - name: Start devnet
         run: |
           cd ./my-awesome-avs/
-          devkit avs devnet start
+          DOCKERS_HOST=localhost devkit avs devnet start --skip-avs-run
           sleep 10
 
       - name: Check devnet RPC is live
