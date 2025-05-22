@@ -136,7 +136,11 @@ func TestCreateCommand(t *testing.T) {
 build:
 	@echo "Mock build executed"
 	`
-	if err := os.WriteFile(filepath.Join(projectPath, "contracts", common.Makefile), []byte(mockMakefile), 0644); err != nil {
+	t.Logf("Creating makefile path: %s", filepath.Join(projectPath, contractsBasePath))
+	if err := os.MkdirAll(filepath.Join(projectPath, contractsBasePath), 0775); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectPath, contractsBasePath, common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 

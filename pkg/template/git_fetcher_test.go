@@ -130,7 +130,7 @@ func TestGitFetcher_MaxDepth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo with depth: %v", err)
 	}
-	visited := filepath.Join(tempDir, "contracts")
+	visited := filepath.Join(tempDir, ".devkit/contracts")
 	if _, err := os.Stat(visited); err != nil {
 		t.Fatalf("expected top-level submodule not found")
 	}

@@ -35,7 +35,7 @@ type GitClient interface {
 	SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error
 	ActivateSubmodule(ctx context.Context, repoDir, name string) error
 	AddSubmodule(ctx context.Context, repoDir, url, path string) error
-	// SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error
+	SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error
 }
 
 type CloneOptions struct {
@@ -130,22 +130,27 @@ func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, 
 func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error {
 	args := []string{"clone"}
 
+	// TODO(seanmcgary): commented this out since this breaks when passing a commit hash
+	// since a commit hash is not a branch.
+	//
+	// the other flags also break the case of passing a commit hash
+
 	// handle flags for bare, depth, branch, dissociate, and no-hardlinks
-	if opts.Bare {
-		args = append(args, "--bare")
-	}
-	if opts.Depth > 0 {
-		args = append(args, fmt.Sprintf("--depth=%d", opts.Depth))
-	}
-	if opts.Ref != "" {
-		args = append(args, "-b", opts.Ref)
-	}
-	if opts.Dissociate {
-		args = append(args, "--dissociate")
-	}
-	if opts.NoHardlinks {
-		args = append(args, "--no-hardlinks")
-	}
+	//if opts.Bare {
+	//	args = append(args, "--bare")
+	//}
+	// if opts.Depth > 0 {
+	// 	args = append(args, fmt.Sprintf("--depth=%d", opts.Depth))
+	// }
+	// if opts.Ref != "" {
+	// 	args = append(args, "-b", opts.Ref)
+	// }
+	// if opts.Dissociate {
+	// 	args = append(args, "--dissociate")
+	// }
+	// if opts.NoHardlinks {
+	// 	args = append(args, "--no-hardlinks")
+	// }
 
 	// add the --progress flag for tracking progress
 	args = append(args, "--progress")
@@ -230,7 +235,7 @@ func (g *execGitClient) WorktreeCheckout(ctx context.Context, mirrorPath, commit
 }
 
 func (g *execGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]Submodule, error) {
-	out, err := g.run(ctx, repoDir, CloneOptions{}, "config", "-f", ".gitmodules", "--get-regexp", "^submodule\\..*\\.path$")
+	out, err := g.run(ctx, repoDir, CloneOptions{}, "--no-pager", "config", "-f", ".gitmodules", "--get-regexp", `^submodule\..*\.path$`)
 	if err != nil {
 		return nil, err
 	}
