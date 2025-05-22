@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	project "github.com/Layr-Labs/devkit-cli"
@@ -394,8 +393,6 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 	return nil
 }
 
-const contractsBasePath = ".devkit/contracts"
-
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	// get logger
@@ -405,7 +402,7 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	git := template.NewGitClient()
 
 	// collect all submodules info
-	submoduleInfos, err := collectSubmoduleInfo(ctx, git, filepath.Join(targetDir, contractsBasePath), contractsBasePath)
+	submoduleInfos, err := collectSubmoduleInfo(ctx, git, targetDir)
 	// get commit for the submodule
 	if err != nil {
 		return fmt.Errorf("failed list submodules: %w", err)
@@ -420,23 +417,12 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
 	}
 
-	// remove the old contracts .git dir
-	contractsDir := filepath.Join(targetDir, contractsBasePath)
-	if verbose {
-		log.Info("Removing existing .git directory in %s (if any)...", contractsDir)
-	}
-	contractsgGitDir := filepath.Join(contractsDir, ".git")
-	if err := os.RemoveAll(contractsgGitDir); err != nil {
-		return fmt.Errorf("failed to remove existing .git directory: %w", err)
-	}
-
 	// remove the old .gitmodules file
 	if verbose {
-		log.Info("Removing existing .gitmodules file in %s (if any)...", targetDir)
+		log.Info("rm %s/.gitmodules", targetDir)
 	}
-	err = replaceGitmodules(targetDir, verbose)
-	if err != nil {
-		return fmt.Errorf("failed to replace existing .gitmodules: %w", err)
+	if err := os.Remove(filepath.Join(targetDir, ".gitmodules")); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("rm old .gitmodules: %w", err)
 	}
 
 	// init a new .git repo
@@ -483,7 +469,7 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	return nil
 }
 
-func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir, pathPrefix string) ([]template.Submodule, error) {
+func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir string) ([]template.Submodule, error) {
 	// collect all submodules info
 	var submoduleInfos []template.Submodule
 	submodules, err := git.SubmoduleList(ctx.Context, targetDir)
@@ -493,10 +479,16 @@ func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir, p
 	}
 	// collect the referenced commit in the submodule list
 	for _, m := range submodules {
+		commit, err := git.SubmoduleCommit(ctx.Context, targetDir, m.Path)
+		if err != nil {
+			return nil, fmt.Errorf("get commit failed: %w", err)
+		}
+		fmt.Println(commit)
 		submoduleInfos = append(submoduleInfos, template.Submodule{
-			Name: m.Name,
-			Path: fmt.Sprintf("%s/%s", pathPrefix, m.Path),
-			URL:  m.URL,
+			Name:   m.Name,
+			Path:   m.Path,
+			URL:    m.URL,
+			Commit: commit,
 		})
 	}
 	return submoduleInfos, nil
@@ -505,54 +497,18 @@ func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir, p
 func registerSubmodules(ctx *cli.Context, git template.GitClient, targetDir string, submoduleInfos []template.Submodule) error {
 	// reinstate gitmodules
 	for _, mod := range submoduleInfos {
-		// init the submodule at path in parent
-		if err := git.AddSubmodule(ctx.Context, targetDir, mod.URL, mod.Path); err != nil {
-			return fmt.Errorf("failed to init submodule: %w", err)
+		// stage submodule in parent
+		if err := git.StageSubmodule(ctx.Context, targetDir, mod.Path, mod.Commit); err != nil {
+			return fmt.Errorf("stage failed: %w", err)
 		}
-	}
-
-	return nil
-}
-
-// replaceGitmodules replaces root .gitmodules with the one under ./contracts
-func replaceGitmodules(targetDir string, verbose bool) error {
-	log, _ := common.GetLogger()
-
-	// Remove old root file
-	if verbose {
-		log.Info("rm %s/.gitmodules", targetDir)
-	}
-	if err := os.Remove(filepath.Join(targetDir, ".gitmodules")); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("rm old .gitmodules: %w", err)
-	}
-
-	// Load contracts/.gitmodules
-	src := filepath.Join(targetDir, contractsBasePath, ".gitmodules")
-	raw, err := os.ReadFile(src)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", src, err)
-	}
-
-	// Prefix section names: [submodule "X"] → [submodule "contracts/X"]
-	reSection := regexp.MustCompile(`(?m)^\[submodule\s+"([^"]+)"\]`)
-	out := reSection.ReplaceAll(raw, []byte(`[submodule "contracts/$1"]`))
-
-	// Prefix path = X → path = contracts/X
-	rePath := regexp.MustCompile(`(?m)^(\s*path\s*=\s*)(.+)$`)
-	out = rePath.ReplaceAll(out, []byte(`${1}contracts/${2}`))
-
-	// Write to root
-	dest := filepath.Join(targetDir, ".gitmodules")
-	if verbose {
-		log.Info("write %s", dest)
-	}
-	if err := os.WriteFile(dest, out, 0644); err != nil {
-		return fmt.Errorf("write %s: %w", dest, err)
-	}
-
-	// Remove from contracts
-	if err := os.Remove(filepath.Join(targetDir, contractsBasePath, ".gitmodules")); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("rm old .gitmodules: %w", err)
+		// set submodule URL
+		if err := git.SetSubmoduleURL(ctx.Context, targetDir, mod.Name, mod.URL); err != nil {
+			return fmt.Errorf("set-url failed: %w", err)
+		}
+		// activate submodule
+		if err := git.ActivateSubmodule(ctx.Context, targetDir, mod.Name); err != nil {
+			return fmt.Errorf("activate failed: %w", err)
+		}
 	}
 
 	return nil
