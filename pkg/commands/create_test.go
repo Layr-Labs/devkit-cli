@@ -93,7 +93,7 @@ func TestCreateCommand(t *testing.T) {
 		}
 
 		// Create config.yaml
-		return copyDefaultConfigToProject(targetDir, projectName, "https://github.com/Layr-Labs/hourglass-avs-template", "v0.0.7", false)
+		return copyDefaultConfigToProject(targetDir, projectName, "https://github.com/Layr-Labs/hourglass-avs-template", "v0.0.8", false)
 	}
 
 	app := &cli.App{
