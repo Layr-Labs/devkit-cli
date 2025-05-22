@@ -2,14 +2,16 @@ package contextMigrations
 
 import (
 	"os"
-	"path/filepath"
 
+	"github.com/Layr-Labs/devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
 	"gopkg.in/yaml.v3"
 )
 
 func Migration_0_0_3_to_0_0_4(user, old, new *yaml.Node) (*yaml.Node, error) {
+	log, _ := common.GetLogger()
 	// Extract eigenlayer section from new default
 	eigenlayerNode := migration.ResolveNode(new, []string{"context", "eigenlayer"})
 
@@ -35,22 +37,13 @@ func Migration_0_0_3_to_0_0_4(user, old, new *yaml.Node) (*yaml.Node, error) {
 		contextNode.Content = append(contextNode.Content, keyNode, valueNode)
 	}
 
-	// Copy Zeus config for projects created before Zeus integration
-	zeusConfigSrc := filepath.Join("config", ".zeus")
-	zeusConfigDst := ".zeus"
-
-	// Check if source Zeus config exists
-	if _, err := os.Stat(zeusConfigSrc); err == nil {
-		// Read Zeus config content
-		content, err := os.ReadFile(zeusConfigSrc)
-		if err == nil {
-			// Write Zeus config to project root if it doesn't exist already
-			if _, err := os.Stat(zeusConfigDst); os.IsNotExist(err) {
-				_ = os.WriteFile(zeusConfigDst, content, 0644)
-			}
-		}
+	// Write Zeus config to project root if it doesn't exist already
+	zeusConfigDst := common.ZeusConfig
+	if _, err := os.Stat(zeusConfigDst); os.IsNotExist(err) {
+		_ = os.WriteFile(zeusConfigDst, []byte(config.ZeusConfig), 0644)
 	}
 
+	log.Info("Copied .zeus config to project root")
 	// bump version node
 	if v := migration.ResolveNode(user, []string{"version"}); v != nil {
 		v.Value = "0.0.4"
