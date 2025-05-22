@@ -450,7 +450,7 @@ func copyZeusFileToProject(targetDir string, verbose bool) error {
 	}
 
 	if verbose {
-		log.Info("Copied keystore: %s", common.ZeusConfig)
+		log.Info("Copied zeus config: %s", common.ZeusConfig)
 	}
 	return nil
 }

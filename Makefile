@@ -37,6 +37,13 @@ lint: ## Run linter
 install: build ## Install binary to ~/bin
 	@mkdir -p ~/bin
 	@cp $(BIN)/$(APP_NAME) ~/bin/
+	@if ! which zeus > /dev/null 2>&1; then \
+		echo "Installing @layr-labs/zeus..."; \
+		npm install -g @layr-labs/zeus; \
+	else \
+		echo "Installed binary to ~/bin"; \
+		echo "@layr-labs/zeus is already installed"; \
+	fi
 
 clean: ## Remove binary
 	@rm -f $(APP_NAME) ~/bin/$(APP_NAME) 

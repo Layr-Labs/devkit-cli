@@ -34,6 +34,7 @@ Before you begin, ensure you have:
 * [make](https://formulae.brew.sh/formula/make)
 * [Foundry](https://book.getfoundry.sh/getting-started/installation)
 * [yq](https://github.com/mikefarah/yq/#install)
+* [zeus](https://github.com/Layr-Labs/zeus)
 
 ### 📦 Installation
 
