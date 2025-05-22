@@ -446,12 +446,12 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	cmd = exec.CommandContext(ctx.Context, "git", "add", ".")
 	cmd.Dir = targetDir
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+		log.Warn("failed to stage initial commit")
 	}
 	cmd = exec.CommandContext(ctx.Context, "git", "commit", "-m", "feat: initial commit")
 	cmd.Dir = targetDir
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+		log.Warn("failed initial commit", err)
 	}
 
 	if verbose {
