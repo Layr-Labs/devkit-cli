@@ -97,10 +97,27 @@ cd my-avs-project
 > \[!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
-<!-- Put in section about editing main.go file to replace comments with your actual business logic
--->
 
-### 2️⃣ Configure Your AVS (`avs config` & `avs context`)
+### 2️⃣ Implement Your AVS Task Logic (`main.go`)
+After scaffolding your project, navigate into the project directory and begin implementing your AVS-specific logic. The core logic for task validation and execution lives in the `main.go` file inside the cmd folder:
+
+```bash
+cd my-avs-project/cmd
+```
+
+Within `main.go`, you'll find two critical methods on the `TaskWorker` type:
+- **`HandleTask(*TaskRequest)`**  
+  This is where you implement your AVS's core business logic. It processes an incoming task and returns a `TaskResponse`. Replace the placeholder comment with the actual logic you want to run during task execution.
+
+- **`ValidateTask(*TaskRequest)`**  
+  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS’s criteria (e.g., argument format, access control, etc.).
+
+These functions will be invoked automatically when using `devkit avs call`, enabling you to quickly test and iterate on your AVS logic.
+
+> **💡 Tip:**  
+> You can add logging inside these methods using the `tw.logger.Sugar().Infow(...)` lines to debug and inspect task input and output during development.
+
+### 3️⃣ Configure Your AVS (`avs config` & `avs context`)
 
 <!-- TODO: Make it very clear and very specific that the one field we need to change is the fork_url and that they are in charge of supplying this.
 Also, keep stuff at the top about introducing config yaml files and what they do.
@@ -175,7 +192,7 @@ $ cp .env.example .env
 # edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
 ```
 
-### 3️⃣ Build Your AVS
+### 4️⃣ Build Your AVS
 
 Compiles your AVS contracts and offchain binaries. Required before running a devnet or simulating tasks to ensure all components are built and ready.
 
@@ -188,7 +205,7 @@ Ensure you're in your project directory before running:
 devkit avs build
 ```
 
-### 4️⃣ Launch Local DevNet
+### 5️⃣ Launch Local DevNet
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
@@ -217,7 +234,7 @@ DevNet management commands:
 | `stop --project.name`  | Stops the specific project's devnet                                  |
 | `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
 
-### 5️⃣ Simulate Task Execution (`avs call`)
+### 6️⃣ Simulate Task Execution (`avs call`)
 
 Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
 
