@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	project "github.com/Layr-Labs/devkit-cli"
@@ -464,6 +463,7 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	return nil
 }
 
+/*
 func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir, pathPrefix string) ([]template.Submodule, error) {
 	// collect all submodules info
 	var submoduleInfos []template.Submodule
@@ -537,4 +537,4 @@ func replaceGitmodules(targetDir string, verbose bool) error {
 	}
 
 	return nil
-}
+}*/
