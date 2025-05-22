@@ -274,6 +274,49 @@ devkit avs build --verbose
 ```
 
 ---
+## Upgrade process
+
+
+### Upgrading the Devkit CLI
+
+To upgrade the Devkit CLI to the latest version, find the [latest release](releases) you want to download and re-run the curl install command:
+
+```bash
+VERSION=v0.0.6
+ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+curl -s -L "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | sudo tar xvz -C /usr/local/bin
+```
+
+### Upgrading your template
+
+To upgrade the template you created your project with (by calling `devkit avs create`) you can use the `devkit avs template` subcommands.
+
+**_View which version you're currently using_**
+
+```bash
+devkit avs template info
+
+2025/05/22 14:42:36 Project template information:
+2025/05/22 14:42:36   Project name: <your project>
+2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
+2025/05/22 14:42:36   Version: v0.0.9
+```
+
+**_Upgrade to a newer version_**
+
+To upgrade to a newer version you can run:
+
+```bash
+devkit avs template upgrade --version <version>
+```
+
+More often than not, you'll want to use tag corresponding to your template's release. You may also provide a branch name or commit hash to upgrade to.
+
+_Please consult your template's docs for further information on how the upgrade process works._
+
+---
 
 ## 🤝 Contributing
 
