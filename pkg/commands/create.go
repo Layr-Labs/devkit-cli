@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -395,6 +394,8 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 	return nil
 }
 
+const contractsBasePath = ".devkit/contracts"
+
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	// get logger
@@ -404,7 +405,7 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	git := template.NewGitClient()
 
 	// collect all submodules info
-	submoduleInfos, err := collectSubmoduleInfo(ctx, git, filepath.Join(targetDir, "contracts"), "contracts")
+	submoduleInfos, err := collectSubmoduleInfo(ctx, git, filepath.Join(targetDir, contractsBasePath), contractsBasePath)
 	// get commit for the submodule
 	if err != nil {
 		return fmt.Errorf("failed list submodules: %w", err)
@@ -423,7 +424,7 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	if verbose {
 		log.Info("Removing existing .git directory in %s (if any)...", targetDir)
 	}
-	contractsgGitDir := filepath.Join(targetDir, "contracts", ".git")
+	contractsgGitDir := filepath.Join(targetDir, contractsBasePath, ".git")
 	if err := os.RemoveAll(contractsgGitDir); err != nil {
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
 	}
@@ -525,8 +526,8 @@ func replaceGitmodules(targetDir string, verbose bool) error {
 	}
 
 	// Load contracts/.gitmodules
-	src := filepath.Join(targetDir, "contracts", ".gitmodules")
-	raw, err := ioutil.ReadFile(src)
+	src := filepath.Join(targetDir, contractsBasePath, ".gitmodules")
+	raw, err := os.ReadFile(src)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", src, err)
 	}
@@ -549,7 +550,7 @@ func replaceGitmodules(targetDir string, verbose bool) error {
 	}
 
 	// Remove from contracts
-	if err := os.Remove(filepath.Join(targetDir, "contracts", ".gitmodules")); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(filepath.Join(targetDir, contractsBasePath, ".gitmodules")); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("rm old .gitmodules: %w", err)
 	}
 
