@@ -34,6 +34,7 @@ type GitClient interface {
 	StageSubmodule(ctx context.Context, repoDir, path, sha string) error
 	SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error
 	ActivateSubmodule(ctx context.Context, repoDir, name string) error
+	AddSubmodule(ctx context.Context, repoDir, url, path string) error
 	// SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error
 }
 
@@ -49,10 +50,6 @@ type CloneOptions struct {
 
 type Submodule struct {
 	Name, Path, URL, Branch string
-}
-
-type SubmoduleInfo struct {
-	Name, Path, URL, Commit string
 }
 
 type SubmoduleFailure struct {
@@ -324,6 +321,11 @@ func (g *execGitClient) SetSubmoduleURL(ctx context.Context, repoDir, name, url 
 
 func (g *execGitClient) ActivateSubmodule(ctx context.Context, repoDir, name string) error {
 	_, err := g.run(ctx, repoDir, CloneOptions{}, "config", "--local", fmt.Sprintf("submodule.%s.active", name), "true")
+	return err
+}
+
+func (g *execGitClient) AddSubmodule(ctx context.Context, repoDir, url, path string) error {
+	_, err := g.run(ctx, repoDir, CloneOptions{}, "submodule", "add", url, path)
 	return err
 }
 
