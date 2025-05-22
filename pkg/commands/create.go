@@ -213,7 +213,7 @@ var CreateCommand = &cli.Command{
 
 		// Initialize git repository in the project directory
 		if err := initGitRepo(cCtx, targetDir, cCtx.Bool("verbose")); err != nil {
-			log.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
+			return fmt.Errorf("failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
 		log.Info("\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
