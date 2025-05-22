@@ -5,7 +5,7 @@ context:
   name: "devnet"
   # Chains available to this context
   chains:
-    l1: 
+    l1:
       chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
