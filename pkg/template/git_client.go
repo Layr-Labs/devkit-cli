@@ -269,7 +269,7 @@ func (g *execGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]Su
 }
 
 func (g *execGitClient) SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error {
-	_, err := g.run(ctx, repoDir, opts, "submodule", "update", "--recursive", "--init", "--progress")
+	_, err := g.run(ctx, repoDir, opts, "submodule", "update", "--recursive", "--depth", "2", "--init", "--progress")
 	return err
 }
 

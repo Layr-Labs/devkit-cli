@@ -402,14 +402,14 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	log, _ := common.GetLogger()
 
 	// use gitClient to reinstate git submodules after fresh init
-	git := template.NewGitClient()
+	// git := template.NewGitClient()
 
 	// collect all submodules info
-	submoduleInfos, err := collectSubmoduleInfo(ctx, git, filepath.Join(targetDir, contractsBasePath), contractsBasePath)
-	// get commit for the submodule
-	if err != nil {
-		return fmt.Errorf("failed list submodules: %w", err)
-	}
+	// submoduleInfos, err := collectSubmoduleInfo(ctx, git, filepath.Join(targetDir, contractsBasePath), contractsBasePath)
+	// // get commit for the submodule
+	// if err != nil {
+	// 	return fmt.Errorf("failed list submodules: %w", err)
+	// }
 
 	// remove the old .git dir
 	if verbose {
@@ -418,24 +418,6 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	gitDir := filepath.Join(targetDir, ".git")
 	if err := os.RemoveAll(gitDir); err != nil {
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
-	}
-
-	// remove the old contracts .git dir
-	if verbose {
-		log.Info("Removing existing .git directory in %s (if any)...", targetDir)
-	}
-	contractsgGitDir := filepath.Join(targetDir, contractsBasePath, ".git")
-	if err := os.RemoveAll(contractsgGitDir); err != nil {
-		return fmt.Errorf("failed to remove existing .git directory: %w", err)
-	}
-
-	// remove the old .gitmodules file
-	if verbose {
-		log.Info("Removing existing .gitmodules file in %s (if any)...", targetDir)
-	}
-	err = replaceGitmodules(targetDir, verbose)
-	if err != nil {
-		return fmt.Errorf("failed to replace existing .gitmodules: %w", err)
 	}
 
 	// init a new .git repo
@@ -450,10 +432,10 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	}
 
 	// reinstate gitmodules
-	err = registerSubmodules(ctx, git, targetDir, submoduleInfos)
-	if err != nil {
-		return fmt.Errorf("git submodule registration failed: %w", err)
-	}
+	// err = registerSubmodules(ctx, git, targetDir, submoduleInfos)
+	// if err != nil {
+	// 	return fmt.Errorf("git submodule registration failed: %w", err)
+	// }
 
 	// write a .gitignore into the new dir
 	err = os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(config.GitIgnore), 0644)
