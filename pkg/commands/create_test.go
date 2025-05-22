@@ -93,7 +93,7 @@ func TestCreateCommand(t *testing.T) {
 		}
 
 		// Create config.yaml
-		return copyDefaultConfigToProject(targetDir, projectName, "https://github.com/Layr-Labs/hourglass-avs-template", "v0.0.9", false)
+		return copyDefaultConfigToProject(targetDir, projectName, "https://github.com/Layr-Labs/hourglass-avs-template", "v0.0.7", false)
 	}
 
 	app := &cli.App{
@@ -136,11 +136,11 @@ func TestCreateCommand(t *testing.T) {
 build:
 	@echo "Mock build executed"
 	`
-	t.Logf("Creating makefile path: %s", filepath.Join(projectPath, contractsBasePath))
-	if err := os.MkdirAll(filepath.Join(projectPath, contractsBasePath), 0775); err != nil {
+	t.Logf("Creating makefile path: %s", filepath.Join(projectPath, ".devkit", "contracts"))
+	if err := os.MkdirAll(filepath.Join(projectPath, ".devkit", "contracts"), 0775); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(projectPath, contractsBasePath, common.Makefile), []byte(mockMakefile), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(projectPath, ".devkit", "contracts", common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 

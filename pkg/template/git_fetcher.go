@@ -110,13 +110,13 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, templateNa
 	g.Logger.ClearProgress()
 
 	// always process submodules after cloning or copying from cache
-	// if err := g.fetchSubmodules(ctx, templateName, repoURL, targetDir, 0); err != nil {
-	// 	return false, fmt.Errorf("failed to fetch submodules: %w", err)
-	// }
-
-	if err := g.vanillaFetchSubmodules(ctx, targetDir); err != nil {
+	if err := g.fetchSubmodules(ctx, templateName, repoURL, targetDir, 0); err != nil {
 		return false, fmt.Errorf("failed to fetch submodules: %w", err)
 	}
+
+	// if err := g.vanillaFetchSubmodules(ctx, targetDir); err != nil {
+	// 	return false, fmt.Errorf("failed to fetch submodules: %w", err)
+	// }
 
 	return true, nil
 }
