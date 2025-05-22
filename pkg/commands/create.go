@@ -214,7 +214,7 @@ var CreateCommand = &cli.Command{
 
 		// Initialize git repository in the project directory
 		if err := initGitRepo(cCtx, targetDir, cCtx.Bool("verbose")); err != nil {
-			log.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
+			return fmt.Errorf("failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
 		log.Info("\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
@@ -421,10 +421,11 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	}
 
 	// remove the old contracts .git dir
+	contractsDir := filepath.Join(targetDir, contractsBasePath)
 	if verbose {
-		log.Info("Removing existing .git directory in %s (if any)...", targetDir)
+		log.Info("Removing existing .git directory in %s (if any)...", contractsDir)
 	}
-	contractsgGitDir := filepath.Join(targetDir, contractsBasePath, ".git")
+	contractsgGitDir := filepath.Join(contractsDir, ".git")
 	if err := os.RemoveAll(contractsgGitDir); err != nil {
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
 	}
