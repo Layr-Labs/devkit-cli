@@ -25,6 +25,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	"gopkg.in/yaml.v3"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
@@ -34,6 +35,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Extract vars
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+	useZeus := cCtx.Bool("use-zeus")
 
 	// Migrate config
 	configMigrated, err := migrateConfig()
@@ -61,6 +63,32 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return err
+	}
+
+	// Fetch EigenLayer addresses using Zeus if requested
+	if useZeus {
+		log.Info("Fetching EigenLayer core addresses from Zeus...")
+		err = common.UpdateContextWithZeusAddresses(config, devnet.CONTEXT)
+		if err != nil {
+			log.Warn("Failed to fetch addresses from Zeus: %v", err)
+			log.Info("Continuing with addresses from config...")
+		} else {
+			log.Info("Successfully updated context with addresses from Zeus")
+
+			// Save the updated context to disk
+			contextFile := filepath.Join("config", "contexts", devnet.CONTEXT+".yaml")
+			yamlData, err := yaml.Marshal(map[string]interface{}{
+				"version": "0.0.4", // This should ideally use the latest version dynamically
+				"context": config.Context[devnet.CONTEXT],
+			})
+			if err != nil {
+				log.Warn("Failed to save updated context: %v", err)
+			} else {
+				if err = os.WriteFile(contextFile, yamlData, 0644); err != nil {
+					log.Warn("Failed to write context file: %v", err)
+				}
+			}
+		}
 	}
 	port := cCtx.Int("port")
 	if !devnet.IsPortAvailable(port) {
@@ -851,4 +879,51 @@ func migrateContexts() (int, error) {
 	}
 
 	return contextsMigrated, nil
+}
+
+func FetchZeusAddressesAction(cCtx *cli.Context) error {
+	log, _ := common.GetLogger()
+	contextName := cCtx.String("context")
+
+	// Load config for the specified context
+	config, err := common.LoadConfigWithContextConfig(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to load config for context %s: %w", contextName, err)
+	}
+
+	// Fetch addresses from Zeus
+	log.Info("Fetching EigenLayer core addresses from Zeus...")
+	addresses, err := common.GetZeusAddresses()
+	if err != nil {
+		return fmt.Errorf("failed to get addresses from Zeus: %w", err)
+	}
+
+	// Print the fetched addresses
+	log.Info("Found addresses:")
+	log.Info("AllocationManager: %s", addresses.AllocationManager)
+	log.Info("DelegationManager: %s", addresses.DelegationManager)
+
+	// Update the context with the fetched addresses
+	err = common.UpdateContextWithZeusAddresses(config, contextName)
+	if err != nil {
+		return fmt.Errorf("failed to update context with Zeus addresses: %w", err)
+	}
+
+	// Write the updated config to disk
+	contextFile := filepath.Join("config", "contexts", contextName+".yaml")
+	yamlData, err := yaml.Marshal(map[string]interface{}{
+		"version": "0.0.4", // This should ideally use the latest version dynamically
+		"context": config.Context[contextName],
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated context: %w", err)
+	}
+
+	err = os.WriteFile(contextFile, yamlData, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write updated context file: %w", err)
+	}
+
+	log.Info("Successfully updated %s context with EigenLayer core addresses", contextName)
+	return nil
 }
