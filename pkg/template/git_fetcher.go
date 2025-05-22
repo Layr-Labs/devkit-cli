@@ -77,10 +77,8 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, commit, te
 	if g.Config.UseCache && commit != "HEAD" {
 		if _, ok := g.Cache.Get(repoURL, commit); !ok {
 			// call Clone with progress tracking
-			err := g.Git.RetryClone(ctx, repoURL, cachePath, CloneOptions{
-				Ref:   ref,
-				Depth: 1,
-				Bare:  true,
+			err := g.Git.RetryMainRepoClone(ctx, repoURL, cachePath, CloneOptions{
+				Ref: ref,
 				ProgressCB: func(p int) {
 					g.Logger.SetProgress(cachePath, p, templateName)
 					g.Logger.PrintProgress()
@@ -98,8 +96,6 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, commit, te
 
 	// call Clone to copy cached repo to targetDir
 	err := g.Git.Clone(ctx, repoURL, targetDir, CloneOptions{
-		Ref:         ref,
-		Depth:       1,
 		Dissociate:  true,
 		NoHardlinks: true,
 		ProgressCB: func(p int) {

@@ -15,12 +15,14 @@ import (
 
 type GitClient interface {
 	Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error
+	MainRepoClone(ctx context.Context, repoURL, dest string, opts CloneOptions) error
 	Checkout(ctx context.Context, repoDir, commit string) error
 	WorktreeCheckout(ctx context.Context, mirrorPath, commit, worktreePath string) error
 	SubmoduleList(ctx context.Context, repoDir string) ([]Submodule, error)
 	SubmoduleCommit(ctx context.Context, repoDir, path string) (string, error)
 	ResolveRemoteCommit(ctx context.Context, repoURL, branch string) (string, error)
 	RetryClone(ctx context.Context, repoURL, dest string, opts CloneOptions, maxRetries int) error
+	RetryMainRepoClone(ctx context.Context, repoURL, dest string, opts CloneOptions, maxRetries int) error
 	SubmoduleClone(
 		ctx context.Context,
 		submodule Submodule,
@@ -41,7 +43,6 @@ type GitClient interface {
 type CloneOptions struct {
 	// Ref is the branch, commit or tag to checkout after cloning
 	Ref         string
-	Depth       int
 	Bare        bool
 	Dissociate  bool
 	NoHardlinks bool
@@ -130,27 +131,16 @@ func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, 
 func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error {
 	args := []string{"clone"}
 
-	// TODO(seanmcgary): commented this out since this breaks when passing a commit hash
-	// since a commit hash is not a branch.
-	//
-	// the other flags also break the case of passing a commit hash
-
-	// handle flags for bare, depth, branch, dissociate, and no-hardlinks
-	//if opts.Bare {
-	//	args = append(args, "--bare")
-	//}
-	// if opts.Depth > 0 {
-	// 	args = append(args, fmt.Sprintf("--depth=%d", opts.Depth))
-	// }
-	// if opts.Ref != "" {
-	// 	args = append(args, "-b", opts.Ref)
-	// }
-	// if opts.Dissociate {
-	// 	args = append(args, "--dissociate")
-	// }
-	// if opts.NoHardlinks {
-	// 	args = append(args, "--no-hardlinks")
-	// }
+	// handle flags for bare, depth, dissociate, and no-hardlinks
+	if opts.Bare {
+		args = append(args, "--bare")
+	}
+	if opts.Dissociate {
+		args = append(args, "--dissociate")
+	}
+	if opts.NoHardlinks {
+		args = append(args, "--no-hardlinks")
+	}
 
 	// add the --progress flag for tracking progress
 	args = append(args, "--progress")
@@ -171,6 +161,44 @@ func (g *execGitClient) RetryClone(ctx context.Context, repoURL, dest string, op
 	var err error
 	for attempt := 0; attempt+1 <= maxRetries; attempt++ {
 		err = g.Clone(ctx, repoURL, dest, opts)
+		if err == nil {
+			return nil
+		}
+		time.Sleep(time.Duration(attempt+1) * 250 * time.Millisecond)
+	}
+	return fmt.Errorf("failed after %d retries: %w", maxRetries, err)
+}
+
+func (g *execGitClient) MainRepoClone(ctx context.Context, repoURL, dest string, opts CloneOptions) error {
+	// mkdir and cd
+	if err := os.MkdirAll(dest, 0755); err != nil {
+		return fmt.Errorf("mkdir %s: %v", dest, err)
+	}
+	// init bare repo
+	if out, err := g.run(ctx, dest, CloneOptions{}, "init", "--bare"); err != nil {
+		return fmt.Errorf("git init --bare: %s", out)
+	}
+	// add remote
+	if _, err := g.run(ctx, dest, CloneOptions{}, "remote", "add", "origin", repoURL); err != nil {
+		return fmt.Errorf("git remote add origin failed: %w", err)
+	}
+	// fetch only the exact ref shallowly
+	refspec := fmt.Sprintf("%s:refs/heads/tmp", opts.Ref)
+	if _, err := g.run(ctx, dest, CloneOptions{}, "fetch", "--depth", "1", "origin", refspec, "--progress"); err != nil {
+		return fmt.Errorf("git fetch %s failed: %w", refspec, err)
+	}
+	// set HEAD to tmp
+	if _, err := g.run(ctx, dest, CloneOptions{}, "symbolic-ref", "HEAD", "refs/heads/tmp"); err != nil {
+		return fmt.Errorf("git symbolic-ref HEAD failed: %w", err)
+	}
+
+	return nil
+}
+
+func (g *execGitClient) RetryMainRepoClone(ctx context.Context, repoURL, dest string, opts CloneOptions, maxRetries int) error {
+	var err error
+	for attempt := 0; attempt+1 <= maxRetries; attempt++ {
+		err = g.MainRepoClone(ctx, repoURL, dest, opts)
 		if err == nil {
 			return nil
 		}
