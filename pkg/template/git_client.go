@@ -143,9 +143,17 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 		return fmt.Errorf("git init --bare: %s", out)
 	}
 
-	// add remote
-	if _, err := g.run(ctx, dest, CloneOptions{}, "remote", "add", "origin", repoURL); err != nil {
-		return fmt.Errorf("git remote add origin failed: %w", err)
+	// ensure origin is set idempotently
+	if _, err := g.run(ctx, dest, CloneOptions{}, "remote", "get-url", "origin"); err != nil {
+		// origin not present - add it
+		if _, err2 := g.run(ctx, dest, CloneOptions{}, "remote", "add", "origin", repoURL); err2 != nil {
+			return fmt.Errorf("git remote add origin failed: %w", err2)
+		}
+	} else {
+		// origin already exists - update URL to the one we want
+		if _, err2 := g.run(ctx, dest, CloneOptions{}, "remote", "set-url", "origin", repoURL); err2 != nil {
+			return fmt.Errorf("git remote set-url origin failed: %w", err2)
+		}
 	}
 
 	// pull the sha for the ref using a local rev-parse after fetching heads and tags
