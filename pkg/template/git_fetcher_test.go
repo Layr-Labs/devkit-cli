@@ -2,11 +2,12 @@ package template
 
 import (
 	"context"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
 )
 
 func TestGitFetcher_InvalidURL(t *testing.T) {
@@ -126,11 +127,11 @@ func TestGitFetcher_MaxDepth(t *testing.T) {
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, "master", tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "v0.0.8", tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo with depth: %v", err)
 	}
-	visited := filepath.Join(tempDir, ".devkit/contracts")
+	visited := filepath.Join(tempDir, ".devkit", "contracts")
 	if _, err := os.Stat(visited); err != nil {
 		t.Fatalf("expected top-level submodule not found")
 	}
