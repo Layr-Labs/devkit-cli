@@ -58,12 +58,14 @@ type execGitClient struct {
 	repoLocksMu    sync.Mutex
 	repoLocks      map[string]*sync.Mutex
 	receivingRegex *regexp.Regexp
+	isSHA          *regexp.Regexp
 }
 
 func NewGitClient() GitClient {
 	return &execGitClient{
 		repoLocks:      make(map[string]*sync.Mutex),
 		receivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
+		isSHA:          regexp.MustCompile(`^[0-9a-f]{40}$`),
 	}
 }
 
@@ -129,6 +131,7 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 	if err := os.MkdirAll(dest, 0755); err != nil {
 		return fmt.Errorf("mkdir %s: %v", dest, err)
 	}
+
 	// init bare repo
 	args := []string{"init"}
 	if opts.Bare {
@@ -137,20 +140,63 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 	if out, err := g.run(ctx, dest, CloneOptions{}, args...); err != nil {
 		return fmt.Errorf("git init --bare: %s", out)
 	}
+
 	// add remote
 	if _, err := g.run(ctx, dest, CloneOptions{}, "remote", "add", "origin", repoURL); err != nil {
 		return fmt.Errorf("git remote add origin failed: %w", err)
 	}
-	// fetch only the exact ref shallowly
-	refspec := fmt.Sprintf("%s:refs/heads/tmp", opts.Ref)
-	// always fetch with depth of 1 to keep the bare repo shallow
-	args = []string{"fetch", "--depth", "1", "origin", refspec, "--progress"}
-	if _, err := g.run(ctx, dest, CloneOptions{}, args...); err != nil {
-		return fmt.Errorf("git fetch %s failed: %w", refspec, err)
+
+	// pull the sha for the ref using a local rev-parse after fetching heads and tags
+	var sha string
+	destRef := "refs/heads/tmp"
+
+	// if we're provided a commit, just fetch that
+	if g.isSHA.MatchString(opts.Ref) {
+		if out, err := g.run(ctx, dest, CloneOptions{ProgressCB: opts.ProgressCB},
+			"fetch", "--depth=1", "origin", opts.Ref,
+		); err != nil {
+			return fmt.Errorf("git fetch commit %s failed: %s", opts.Ref, out)
+		}
+		sha = opts.Ref
+	} else {
+		// prepare ref candidates
+		fetchArgs := []string{
+			"fetch", "--depth=1", "origin",
+			"+refs/heads/*:refs/heads/*",
+			"+refs/tags/*:refs/tags/*",
+			"--progress",
+		}
+		if out, err := g.run(ctx, dest, CloneOptions{ProgressCB: opts.ProgressCB}, fetchArgs...); err != nil {
+			return fmt.Errorf("git fetch all refs failed: %s", out)
+		}
+
+		// rev-parse the sha
+		if g.isSHA.MatchString(opts.Ref) {
+			sha = opts.Ref
+		} else if out, err := g.run(ctx, dest, CloneOptions{}, "rev-parse", "--verify", "refs/heads/"+opts.Ref); err == nil {
+			sha = strings.TrimSpace(string(out))
+		} else if out, err := g.run(ctx, dest, CloneOptions{}, "rev-parse", "--verify", "refs/tags/"+opts.Ref+"^{}"); err == nil {
+			sha = strings.TrimSpace(string(out))
+		} else {
+			return fmt.Errorf("ref %q not found locally after fetch", opts.Ref)
+		}
 	}
+
+	// update the ref to point to sha
+	if _, err := g.run(ctx, dest, CloneOptions{}, "update-ref", destRef, sha); err != nil {
+		return fmt.Errorf("git update-ref %s %s: %w", destRef, sha, err)
+	}
+
 	// set HEAD to tmp
-	if _, err := g.run(ctx, dest, CloneOptions{}, "symbolic-ref", "HEAD", "refs/heads/tmp"); err != nil {
+	if _, err := g.run(ctx, dest, CloneOptions{}, "symbolic-ref", "HEAD", destRef); err != nil {
 		return fmt.Errorf("git symbolic-ref HEAD failed: %w", err)
+	}
+
+	// populate work-tree
+	if !opts.Bare {
+		if _, err := g.run(ctx, dest, CloneOptions{}, "checkout", "-f", "HEAD"); err != nil {
+			return fmt.Errorf("git checkout -f HEAD: %w", err)
+		}
 	}
 
 	return nil

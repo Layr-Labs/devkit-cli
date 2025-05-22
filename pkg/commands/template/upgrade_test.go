@@ -138,7 +138,7 @@ func TestUpgradeCommand(t *testing.T) {
   project:
     name: template-upgrade-test
     templateBaseUrl: https://github.com/Layr-Labs/hourglass-avs-template
-    templateVersion: v0.0.3
+    templateVersion: v0.0.5
 `
 	configPath := filepath.Join(configDir, common.BaseConfig)
 	err = os.WriteFile(configPath, []byte(configContent), 0644)
@@ -150,7 +150,7 @@ func TestUpgradeCommand(t *testing.T) {
 	mockTemplateInfoGetter := &MockTemplateInfoGetter{
 		projectName:     "template-upgrade-test",
 		templateURL:     "https://github.com/Layr-Labs/hourglass-avs-template",
-		templateVersion: "v0.0.3",
+		templateVersion: "v0.0.5",
 	}
 
 	// Create the test command with mocked dependencies
@@ -181,7 +181,7 @@ func TestUpgradeCommand(t *testing.T) {
 	t.Run("Upgrade command with version", func(t *testing.T) {
 		// Create a flag set and context
 		set := flag.NewFlagSet("test", 0)
-		set.String("version", "v0.0.4", "")
+		set.String("version", "v0.0.6", "")
 		ctx := cli.NewContext(app, set, nil)
 
 		// Run the upgrade command (which is our test command with mocks)
@@ -210,8 +210,8 @@ func TestUpgradeCommand(t *testing.T) {
 			}
 		}
 
-		if templateVersion != "v0.0.4" {
-			t.Errorf("Template version not updated. Expected 'v0.0.4', got '%s'", templateVersion)
+		if templateVersion != "v0.0.6" {
+			t.Errorf("Template version not updated. Expected 'v0.0.6', got '%s'", templateVersion)
 		}
 	})
 

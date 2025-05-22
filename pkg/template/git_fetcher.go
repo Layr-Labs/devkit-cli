@@ -42,16 +42,8 @@ func (g *GitFetcher) Fetch(ctx context.Context, repoBaseUrl, ref, targetDir stri
 	templateName := filepath.Base(strings.TrimSuffix(repoBaseUrl, ".git"))
 	g.Logger.Info("Cloning repo: %s → %s\n\n", repoBaseUrl, targetDir)
 
-	// resolve commit (get HEAD commit or a specific one based on the ref)
-	commit, err := g.Git.ResolveRemoteCommit(ctx, repoBaseUrl, ref)
-	if err != nil {
-		g.Logger.Warn("Could not resolve remote commit", "commit", ref, "error", err)
-		// take commit from head, don't bail out
-		commit = "HEAD"
-	}
-
 	// try fetching the main repository
-	fromCache, err := g.fetchMainRepo(ctx, repoBaseUrl, ref, commit, templateName, targetDir)
+	fromCache, err := g.fetchMainRepo(ctx, repoBaseUrl, ref, templateName, targetDir)
 	if err != nil {
 		return err
 	}
@@ -67,15 +59,19 @@ func (g *GitFetcher) Fetch(ctx context.Context, repoBaseUrl, ref, targetDir stri
 	return nil
 }
 
-func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, commit, templateName, targetDir string) (bool, error) {
+func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, templateName, targetDir string) (bool, error) {
 	// define cache paths
 	cacheDir := g.Config.CacheDir
-	cacheKey := g.Cache.CacheKey(repoURL, commit)
+	cacheKey := g.Cache.CacheKey(repoURL, ref)
 	cachePath := filepath.Join(cacheDir, cacheKey)
 
 	// if cache is missing or UseCache is false, perform a bare clone into the cache
-	if g.Config.UseCache && commit != "HEAD" {
-		if _, ok := g.Cache.Get(repoURL, commit); !ok {
+	if g.Config.UseCache {
+		if _, ok := g.Cache.Get(repoURL, ref); !ok {
+			// initial print of progress
+			g.Logger.SetProgress(cachePath, 0, templateName)
+			g.Logger.PrintProgress()
+
 			// call Clone with progress tracking
 			err := g.Git.RetryClone(ctx, repoURL, cachePath, CloneOptions{
 				Ref: ref,
@@ -104,11 +100,6 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, commit, te
 	})
 	if err != nil {
 		return false, fmt.Errorf("failed to clone into cache: %w", err)
-	}
-
-	// Checkout after cloning completes
-	if err := g.Git.Checkout(ctx, targetDir, ref); err != nil {
-		return false, fmt.Errorf("failed to checkout ref: %w", err)
 	}
 
 	// set progress to complete in logger if we cloned fresh
@@ -166,6 +157,7 @@ func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoU
 		g.Logger.SetProgress(mod.Path, 0, mod.Path)
 	}
 	g.Logger.Info("")
+	g.Logger.PrintProgress()
 
 	// define cache paths
 	cacheDir := g.Config.CacheDir
@@ -186,6 +178,7 @@ func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoU
 			g.Logger.SetProgress(f.mod.Path, 0, f.mod.Path)
 			retrySubs = append(retrySubs, f.mod)
 		}
+		g.Logger.PrintProgress()
 
 		// on subsequent attempts, skip cache and attempt full clone
 		failures = g.cloneSubmodules(ctx, retrySubs, repoDir, cacheDir)
