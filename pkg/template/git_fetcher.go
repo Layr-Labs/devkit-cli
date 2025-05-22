@@ -111,13 +111,13 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, commit, te
 		return false, fmt.Errorf("failed to clone into cache: %w", err)
 	}
 
+	// Checkout after cloning completes
 	if err := g.Git.Checkout(ctx, targetDir, ref); err != nil {
 		return false, fmt.Errorf("failed to checkout ref: %w", err)
 	}
-	g.Logger.Info("Checked out ref %s\n", ref)
 
 	// set progress to complete in logger if we cloned fresh
-	g.Logger.SetProgress(cachePath, 100, templateName)
+	g.Logger.SetProgress(cachePath, 100, fmt.Sprintf("%s - Checked out ref %s", templateName, ref))
 	g.Logger.PrintProgress()
 
 	// clear progress reporting
