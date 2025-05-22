@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
 )
 
 type GitClient interface {
@@ -152,20 +154,33 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 
 	// if we're provided a commit, just fetch that
 	if g.isSHA.MatchString(opts.Ref) {
-		if out, err := g.run(ctx, dest, CloneOptions{ProgressCB: opts.ProgressCB},
+		// prepare fetch of sha
+		fetchArgs := []string{
 			"fetch", "--depth=1", "origin", opts.Ref,
+		}
+		// conditionally append --progress
+		if opts.ProgressCB != nil && progress.IsTTY() {
+			fetchArgs = append(fetchArgs, "--progress")
+		}
+		// run the fetch with a single commit
+		if out, err := g.run(ctx, dest, CloneOptions{ProgressCB: opts.ProgressCB},
+			fetchArgs...,
 		); err != nil {
 			return fmt.Errorf("git fetch commit %s failed: %s", opts.Ref, out)
 		}
 		sha = opts.Ref
 	} else {
-		// prepare ref candidates
+		// prepare fetch of all heads and tags
 		fetchArgs := []string{
 			"fetch", "--depth=1", "origin",
 			"+refs/heads/*:refs/heads/*",
 			"+refs/tags/*:refs/tags/*",
-			"--progress",
 		}
+		// conditionally append --progress
+		if opts.ProgressCB != nil && progress.IsTTY() {
+			fetchArgs = append(fetchArgs, "--progress")
+		}
+		// execute fetch for all refs
 		if out, err := g.run(ctx, dest, CloneOptions{ProgressCB: opts.ProgressCB}, fetchArgs...); err != nil {
 			return fmt.Errorf("git fetch all refs failed: %s", out)
 		}
