@@ -1,7 +1,5 @@
-## ⚠️ Warning: This is Alpha, non audited code ⚠️
-Hourglass is in active development and is not yet audited. Use at your own risk.
-
----
+## ⚠️ Disclaimer: Closed Alpha Not Production Ready
+EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used for use in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
 
 # EigenLayer Development Kit (DevKit) 🚀
 
@@ -17,7 +15,7 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 
 ## Important
 
-The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass framework.
+The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass task-based framework.
 We're actively expanding capabilities, so if there's a gap for your scenario, check out our roadmap see what's coming, 
 or let us know what would support you in building AVS.
 
@@ -27,11 +25,11 @@ or let us know what would support you in building AVS.
 
 | Command        | Description                                                       |
 |----------------|-------------------------------------------------------------------|
-| `avs create`   | Scaffold a new AVS project                                        |
-| `avs config`   | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...) |
-| `avs build`    | Compile AVS smart contracts and binaries                          |
-| `avs devnet`   | Manage local development network                                  |
-| `avs call`     | Simulate AVS task execution locally                               |
+| `devkit avs create`   | Scaffold a new AVS project                                        |
+| `devkit avs config`   | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...) |
+| `devkit avs build`    | Compile AVS smart contracts and binaries                          |
+| `devkit avs devnet`   | Manage local development network                                  |
+| `devkit avs call`     | Simulate AVS task execution locally                               |
 
 
 ---
@@ -51,7 +49,7 @@ Before you begin, ensure you have:
 
 ### 📦 Installation
 
-To download a binary for the latest release, run:
+To download the MacOS binary for the latest release, run:
 ```bash
 sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-darwin-arm64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
 ```
@@ -90,7 +88,7 @@ Sets up a new AVS project with the recommended structure, configuration files, a
 Projects are created by default in the current directory from where the below command is called.
 
 ```bash
-devkit avs create my-avs-project
+devkit avs create my-avs-project ./
 cd my-avs-project
 ```
 
