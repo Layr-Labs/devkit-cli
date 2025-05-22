@@ -646,15 +646,15 @@ func TestStartDevnet_UseZeus(t *testing.T) {
 	os.Stderr = w
 
 	err = app.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts", "--use-zeus"})
+	// Check error is nil
+	assert.NoError(t, err, "Running devnet with --use-zeus flag should not produce an error")
 
 	w.Close()
 	os.Stdout = originalStdout
 	os.Stderr = originalStderr
 
-	io.Copy(&stdOut, r)
-
-	// Check error is nil
-	assert.NoError(t, err, "Running devnet with --use-zeus flag should not produce an error")
+	_, err = io.Copy(&stdOut, r)
+	assert.NoError(t, err)
 
 	// Check output
 	output := stdOut.String()
