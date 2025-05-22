@@ -181,7 +181,7 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 		// prepare fetch of all heads and tags
 		fetchArgs := []string{
 			"fetch", "--depth=1", "origin",
-			"+refs/heads/*:refs/heads/*",
+			"+refs/heads/*:refs/remotes/origin/*",
 			"+refs/tags/*:refs/tags/*",
 		}
 		// conditionally append --progress
@@ -196,7 +196,7 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 		// rev-parse the sha
 		if g.isSHA.MatchString(opts.Ref) {
 			sha = opts.Ref
-		} else if out, err := g.run(ctx, dest, CloneOptions{}, "rev-parse", "--verify", "refs/heads/"+opts.Ref); err == nil {
+		} else if out, err := g.run(ctx, dest, CloneOptions{}, "rev-parse", "--verify", "refs/remotes/origin/"+opts.Ref); err == nil {
 			sha = strings.TrimSpace(string(out))
 		} else if out, err := g.run(ctx, dest, CloneOptions{}, "rev-parse", "--verify", "refs/tags/"+opts.Ref+"^{}"); err == nil {
 			sha = strings.TrimSpace(string(out))
