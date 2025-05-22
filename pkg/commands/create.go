@@ -466,12 +466,12 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	cmd = exec.CommandContext(ctx.Context, "git", "add", ".")
 	cmd.Dir = targetDir
 	if err := cmd.Run(); err != nil {
-		log.Warn("failed to stage initial commit")
+		log.Warn("failed to stage initial commit: %w", err)
 	}
 	cmd = exec.CommandContext(ctx.Context, "git", "commit", "-m", "feat: initial commit")
 	cmd.Dir = targetDir
 	if err := cmd.Run(); err != nil {
-		log.Warn("failed initial commit", err)
+		log.Warn("failed initial commit: %w", err)
 	}
 
 	if verbose {
