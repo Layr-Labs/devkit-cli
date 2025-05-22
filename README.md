@@ -97,6 +97,8 @@ cd my-avs-project
 > \[!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
+<!-- Put in section about editing main.go file to replace comments with your actual business logic
+-->
 
 ### 2️⃣ Implement Your AVS Task Logic (`main.go`)
 After scaffolding your project, navigate into the project directory and begin implementing your AVS-specific logic. The core logic for task validation and execution lives in the `main.go` file inside the cmd folder:
@@ -128,7 +130,7 @@ Before running your AVS, you’ll need to configure both project-level and conte
 - **`config.yaml`**  
   Defines project-wide settings such as AVS name, version, and available context names.  
 - **`contexts/<context>.yaml`**  
-  Contains environment-specific settings for each context (for example, `devnet.yaml`), including the Ethereum fork URL, block height, operator keys, AVS keys, and other runtime parameters.
+  Contains environment-specific settings for a given context (e.g., `devnet`), including the Ethereum fork URL, block height, operator keys, AVS keys, and other runtime parameters.
 
 You can view or modify these configurations using the DevKit CLI or by editing the files manually.
 
@@ -175,22 +177,21 @@ You can view or modify these configurations using the DevKit CLI or by editing t
 
 Alternatively, you can manually edit `config.yaml` or the `contexts/*.yaml` files in the text editor of your choice.
 
-> \[!IMPORTANT]
-> These commands must be run from your AVS project's root directory.
+> [!IMPORTANT]  
+> All `devkit avs` commands must be run from the **root of your AVS project** — the directory containing the `config` folder.
 
-> \[!IMPORTANT]
-> You **must** set valid `*_FORK_URL`s before launching your local devnet.  
-> Add them to your `.env` (copied from `.env.example`) or to `config/context/devnet.yaml`.
+Before launching your local devnet, you must set valid Ethereum fork URLs to define the chain state your AVS will simulate against. These values are loaded from your `.env` file and automatically applied to your environment.
 
-> **Note:** Use any popular RPC provider (e.g. QuickNode, Alchemy) for `FORK_URL`.
+To configure them:
 
-This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business 
-logic without needing to deploy to testnet/mainnet or coordinate with live operators.
-
-```
-$ cp .env.example .env
+```bash
+cp .env.example .env
 # edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
 ```
+
+Use any popular RPC provider (e.g., QuickNode, Alchemy) to obtain the URLs.
+
+This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
 
 ### 4️⃣ Build Your AVS
 
