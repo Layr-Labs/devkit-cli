@@ -57,7 +57,7 @@ jobs:
       - name: Start devnet
         run: |
           cd ./my-awesome-avs/
-          DOCKERS_HOST=localhost devkit avs devnet start --skip-avs-run
+          devkit avs devnet start
           sleep 10
 
       - name: Check devnet RPC is live

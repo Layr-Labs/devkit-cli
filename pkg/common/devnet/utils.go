@@ -104,10 +104,11 @@ func EnsureDockerHost(inputUrl string) string {
 // ensureDockerHostRegex provides regex-based fallback for malformed URLs
 func ensureDockerHostRegex(inputUrl string, dockerHost string) string {
 	// Pattern to match localhost or 127.0.0.1 as hostname (not substring)
-	// Matches: localhost:8545, localhost/, localhost, 127.0.0.1:8545, etc.
-	// Doesn't match: my-localhost.com, localhost.domain.com, etc.
-	localhostPattern := regexp.MustCompile(`\blocalhost(:[0-9]+)?(/|$|\?)`)
-	ipPattern := regexp.MustCompile(`\b127\.0\.0\.1(:[0-9]+)?(/|$|\?)`)
+	// Matches localhost:port followed by safe separators, or standalone localhost
+	// Matches: localhost:8545, localhost/path, localhost?param, localhost (at end), localhost with space, etc.
+	// Doesn't match: localhost.domain.com, my-localhost-service.com, etc.
+	localhostPattern := regexp.MustCompile(`\blocalhost(:[0-9]+)?(?:[\s/=?#]|$)`)
+	ipPattern := regexp.MustCompile(`\b127\.0\.0\.1(:[0-9]+)?(?:[\s/=?#]|$)`)
 
 	// Replace localhost patterns
 	result := localhostPattern.ReplaceAllStringFunc(inputUrl, func(match string) string {
