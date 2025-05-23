@@ -3,6 +3,6 @@ services:
     image: ${FOUNDRY_IMAGE}
     container_name: ${AVS_CONTAINER_NAME} 
     entrypoint: anvil
-    command: "--host 0.0.0.0 --fork-url ${FORK_RPC_URL} --fork-block-number ${FORK_BLOCK_NUMBER}  ${ANVIL_ARGS}"
+    command: "--host 0.0.0.0 --fork-url ${FORK_RPC_URL} --fork-block-number ${FORK_BLOCK_NUMBER} ${ANVIL_ARGS}"
     ports:
       - "${DEVNET_PORT}:8545"

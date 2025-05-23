@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ import (
 
 type GitClient interface {
 	Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error
+	CloneFromCache(ctx context.Context, cacheDir, dest string, opts CloneOptions) error
 	RetryClone(ctx context.Context, repoURL, dest string, opts CloneOptions, maxRetries int) error
 	Checkout(ctx context.Context, repoDir, commit string) error
 	WorktreeCheckout(ctx context.Context, mirrorPath, commit, worktreePath string) error
@@ -128,97 +130,77 @@ func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, 
 	return out.Bytes(), nil
 }
 
-func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error {
-	// mkdir and cd
+func (g *execGitClient) Clone(ctx context.Context, repoURL, cacheDir string, opts CloneOptions) error {
+	// make or reuse a bare repo in cacheDir
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return fmt.Errorf("mkdir %s: %v", cacheDir, err)
+	}
+	// if not already initialized as bare, do it
+	if _, err := os.Stat(filepath.Join(cacheDir, "HEAD")); os.IsNotExist(err) {
+		if out, err := g.run(ctx, cacheDir, CloneOptions{}, "init", "--bare"); err != nil {
+			return fmt.Errorf("git init --bare: %s", out)
+		}
+		if out, err := g.run(ctx, cacheDir, CloneOptions{}, "remote", "add", "origin", repoURL); err != nil {
+			return fmt.Errorf("git remote add origin: %s", out)
+		}
+	}
+	// always fetch all branches+tags into proper refs
+	fetchArgs := []string{
+		"fetch", "--prune", "origin",
+		"+refs/heads/*:refs/heads/*",
+		"+refs/tags/*:refs/tags/*",
+	}
+	// conditionally append --progress
+	if opts.ProgressCB != nil && progress.IsTTY() {
+		fetchArgs = append(fetchArgs, "--progress")
+	}
+	// run the fetch to pull the refs
+	if out, err := g.run(ctx, cacheDir, opts, fetchArgs...); err != nil {
+		return fmt.Errorf("git fetch cache update failed: %s", out)
+	}
+	return nil
+}
+
+func (g *execGitClient) CloneFromCache(ctx context.Context, cacheDir, dest string, opts CloneOptions) error {
+	// clean and mkdir dest
+	if err := os.RemoveAll(dest); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(dest, 0755); err != nil {
 		return fmt.Errorf("mkdir %s: %v", dest, err)
 	}
 
-	// init bare repo
-	args := []string{"init"}
-	if opts.Bare {
-		args = append(args, "--bare")
+	// do a shallow, single-branch copy from the bare cache works for branches or tags; for SHA we fetch after
+	cloneArgs := []string{
+		"clone", "--no-checkout", "--depth=1",
+		"--shared", cacheDir,
+		dest,
 	}
-	if out, err := g.run(ctx, dest, CloneOptions{}, args...); err != nil {
-		return fmt.Errorf("git init --bare: %s", out)
+	// conditionally append --progress
+	if opts.ProgressCB != nil && progress.IsTTY() {
+		cloneArgs = append(cloneArgs, "--progress")
 	}
-
-	// ensure origin is set idempotently
-	if _, err := g.run(ctx, dest, CloneOptions{}, "remote", "get-url", "origin"); err != nil {
-		// origin not present - add it
-		if _, err2 := g.run(ctx, dest, CloneOptions{}, "remote", "add", "origin", repoURL); err2 != nil {
-			return fmt.Errorf("git remote add origin failed: %w", err2)
-		}
-	} else {
-		// origin already exists - update URL to the one we want
-		if _, err2 := g.run(ctx, dest, CloneOptions{}, "remote", "set-url", "origin", repoURL); err2 != nil {
-			return fmt.Errorf("git remote set-url origin failed: %w", err2)
-		}
+	// if ref is a branch or tag name, pass --branch
+	if !g.isSHA.MatchString(opts.Ref) {
+		cloneArgs = append(cloneArgs, "--branch", opts.Ref)
+	}
+	if out, err := g.run(ctx, "", opts, cloneArgs...); err != nil {
+		return fmt.Errorf("git clone from cache failed: %s", out)
 	}
 
-	// pull the sha for the ref using a local rev-parse after fetching heads and tags
-	var sha string
-	destRef := "refs/heads/tmp"
-
-	// if we're provided a commit, just fetch that
+	// check for provided sha
 	if g.isSHA.MatchString(opts.Ref) {
-		// prepare fetch of sha
-		fetchArgs := []string{
-			"fetch", "--depth=1", "origin", opts.Ref,
+		// detached‐head checkout of the SHA
+		if out, err := g.run(ctx, dest, opts, "fetch", "--depth=1", "origin", opts.Ref); err != nil {
+			return fmt.Errorf("git fetch sha %s: %s", opts.Ref, out)
 		}
-		// conditionally append --progress
-		if opts.ProgressCB != nil && progress.IsTTY() {
-			fetchArgs = append(fetchArgs, "--progress")
+		if _, err := g.run(ctx, dest, CloneOptions{}, "checkout", opts.Ref); err != nil {
+			return fmt.Errorf("git checkout %s: %w", opts.Ref, err)
 		}
-		// run the fetch with a single commit
-		if out, err := g.run(ctx, dest, CloneOptions{ProgressCB: opts.ProgressCB},
-			fetchArgs...,
-		); err != nil {
-			return fmt.Errorf("git fetch commit %s failed: %s", opts.Ref, out)
-		}
-		sha = opts.Ref
 	} else {
-		// prepare fetch of all heads and tags
-		fetchArgs := []string{
-			"fetch", "--depth=1", "origin",
-			"+refs/heads/*:refs/remotes/origin/*",
-			"+refs/tags/*:refs/tags/*",
-		}
-		// conditionally append --progress
-		if opts.ProgressCB != nil && progress.IsTTY() {
-			fetchArgs = append(fetchArgs, "--progress")
-		}
-		// execute fetch for all refs
-		if out, err := g.run(ctx, dest, CloneOptions{ProgressCB: opts.ProgressCB}, fetchArgs...); err != nil {
-			return fmt.Errorf("git fetch all refs failed: %s", out)
-		}
-
-		// rev-parse the sha
-		if g.isSHA.MatchString(opts.Ref) {
-			sha = opts.Ref
-		} else if out, err := g.run(ctx, dest, CloneOptions{}, "rev-parse", "--verify", "refs/remotes/origin/"+opts.Ref); err == nil {
-			sha = strings.TrimSpace(string(out))
-		} else if out, err := g.run(ctx, dest, CloneOptions{}, "rev-parse", "--verify", "refs/tags/"+opts.Ref+"^{}"); err == nil {
-			sha = strings.TrimSpace(string(out))
-		} else {
-			return fmt.Errorf("ref %q not found locally after fetch", opts.Ref)
-		}
-	}
-
-	// update the ref to point to sha
-	if _, err := g.run(ctx, dest, CloneOptions{}, "update-ref", destRef, sha); err != nil {
-		return fmt.Errorf("git update-ref %s %s: %w", destRef, sha, err)
-	}
-
-	// set HEAD to tmp
-	if _, err := g.run(ctx, dest, CloneOptions{}, "symbolic-ref", "HEAD", destRef); err != nil {
-		return fmt.Errorf("git symbolic-ref HEAD failed: %w", err)
-	}
-
-	// populate work-tree
-	if !opts.Bare {
+		// just checkout the branch/tag
 		if _, err := g.run(ctx, dest, CloneOptions{}, "checkout", "-f", "HEAD"); err != nil {
-			return fmt.Errorf("git checkout -f HEAD: %w", err)
+			return fmt.Errorf("git checkout HEAD: %w", err)
 		}
 	}
 
@@ -250,13 +232,8 @@ func (g *execGitClient) SubmoduleClone(
 	_ = os.RemoveAll(targetDir)
 
 	// clone from provided repoUrl (cachePath or URL)
-	if err := g.Clone(ctx, repoUrl, targetDir, opts); err != nil {
+	if err := g.CloneFromCache(ctx, repoUrl, targetDir, opts); err != nil {
 		return fmt.Errorf("clone failed: %w", err)
-	}
-
-	// checkout to commit
-	if err := g.Checkout(ctx, targetDir, commit); err != nil {
-		return fmt.Errorf("checkout failed: %w", err)
 	}
 
 	// lock against repoDir to guard global state

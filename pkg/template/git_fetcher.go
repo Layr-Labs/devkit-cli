@@ -90,8 +90,8 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, templateNa
 		repoURL = cachePath
 	}
 
-	// call Clone to copy cached repo to targetDir
-	err := g.Git.Clone(ctx, repoURL, targetDir, CloneOptions{
+	// call CloneFromCache to copy cached repo to targetDir (or clone fresh if !UseCache)
+	err := g.Git.CloneFromCache(ctx, repoURL, targetDir, CloneOptions{
 		Ref: ref,
 		ProgressCB: func(p int) {
 			g.Logger.SetProgress(cachePath, p, templateName)
@@ -99,7 +99,7 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, templateNa
 		},
 	})
 	if err != nil {
-		return false, fmt.Errorf("failed to clone into cache: %w", err)
+		return false, fmt.Errorf("failed to clone from cache: %w", err)
 	}
 
 	// set progress to complete in logger if we cloned fresh
@@ -261,8 +261,7 @@ func (g *GitFetcher) cloneSubmodules(
 				// call RetryClone with progress tracking
 				if _, ok := g.Cache.Get(submoduleUrl, commit); !ok {
 					err = g.Git.RetryClone(ctx, submoduleUrl, cachePath, CloneOptions{
-						Ref:  commit,
-						Bare: true,
+						Ref: commit,
 						ProgressCB: func(p int) {
 							g.Logger.SetProgress(mod.Path, p, mod.Path)
 							g.Logger.PrintProgress()
@@ -295,7 +294,6 @@ func (g *GitFetcher) cloneSubmodules(
 					// clone to cache location as bare
 					if err := g.Git.RetryClone(ctx, mod.URL, cachePath, CloneOptions{
 						Ref:        commit,
-						Bare:       true,
 						ProgressCB: cloneOpts.ProgressCB,
 					}, g.Config.MaxRetries); err != nil {
 						failures = append(failures, SubmoduleFailure{mod: mod, err: err})
