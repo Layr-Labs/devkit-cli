@@ -19,7 +19,6 @@ const DELEGATION_MANAGER_ADDRESS = "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A"
 
 // GetDefaultRPCURL returns the default RPC URL with platform-aware host
 func GetDefaultRPCURL() string {
-	// Use same logic as GetDockerHost but inline to avoid circular import
 	host := "localhost"
 	if dockersHost := os.Getenv("DOCKERS_HOST"); dockersHost != "" {
 		host = dockersHost
@@ -28,6 +27,3 @@ func GetDefaultRPCURL() string {
 	}
 	return fmt.Sprintf("http://%s:8545", host)
 }
-
-// Legacy constant for backward compatibility
-const RPC_URL = "http://localhost:8545"
