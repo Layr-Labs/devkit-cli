@@ -3,11 +3,12 @@ package template
 import (
 	"context"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 )
 
 type GitFetcher struct {
@@ -33,37 +34,40 @@ type GitMetrics interface {
 	SubmoduleCloneFinished(name string, err error)
 }
 
-func (g *GitFetcher) Fetch(ctx context.Context, templateURL, targetDir string) error {
-	// parse GitHub URL to extract repo URL and branch
-	repoURL, branch := g.Git.ParseGitHubURL(templateURL)
-	templateName := filepath.Base(strings.TrimSuffix(repoURL, ".git"))
-	g.Logger.Info("Cloning repo: %s → %s\n\n", repoURL, targetDir)
+func (g *GitFetcher) Fetch(ctx context.Context, repoBaseUrl, ref, targetDir string) error {
+	if ref == "" {
+		return fmt.Errorf("ref is required")
+	}
+	// parse GitHub URL to extract repo URL and ref
+	templateName := filepath.Base(strings.TrimSuffix(repoBaseUrl, ".git"))
+	g.Logger.Info("Cloning repo: %s → %s\n\n", repoBaseUrl, targetDir)
 
-	// resolve commit (get HEAD commit or a specific one based on the branch)
-	commit, err := g.Git.ResolveRemoteCommit(ctx, repoURL, branch)
+	// resolve commit (get HEAD commit or a specific one based on the ref)
+	commit, err := g.Git.ResolveRemoteCommit(ctx, repoBaseUrl, ref)
 	if err != nil {
-		g.Logger.Warn("Could not resolve remote commit", "error", err)
+		g.Logger.Warn("Could not resolve remote commit", "commit", ref, "error", err)
+		// take commit from head, don't bail out
 		commit = "HEAD"
 	}
 
 	// try fetching the main repository
-	fromCache, err := g.fetchMainRepo(ctx, repoURL, branch, commit, templateName, targetDir)
+	fromCache, err := g.fetchMainRepo(ctx, repoBaseUrl, ref, commit, templateName, targetDir)
 	if err != nil {
 		return err
 	}
 
 	// if not fetched from cache, proceed with fetching submodules
 	if !fromCache {
-		return g.fetchSubmodules(ctx, templateName, repoURL, targetDir, 0)
+		return g.fetchSubmodules(ctx, templateName, repoBaseUrl, targetDir, 0)
 	}
 
 	// clone of template complete
-	g.Logger.Info("Clone repo complete: %s\n\n", repoURL)
+	g.Logger.Info("Clone repo complete: %s\n\n", repoBaseUrl)
 
 	return nil
 }
 
-func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, branch, commit, templateName, targetDir string) (bool, error) {
+func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, ref, commit, templateName, targetDir string) (bool, error) {
 	// define cache paths
 	cacheDir := g.Config.CacheDir
 	cacheKey := g.Cache.CacheKey(repoURL, commit)
@@ -74,9 +78,9 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, branch, commit,
 		if _, ok := g.Cache.Get(repoURL, commit); !ok {
 			// call Clone with progress tracking
 			err := g.Git.RetryClone(ctx, repoURL, cachePath, CloneOptions{
-				Branch: branch,
-				Depth:  1,
-				Bare:   true,
+				Ref:   ref,
+				Depth: 1,
+				Bare:  true,
 				ProgressCB: func(p int) {
 					g.Logger.SetProgress(cachePath, p, templateName)
 					g.Logger.PrintProgress()
@@ -94,7 +98,7 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, branch, commit,
 
 	// call Clone to copy cached repo to targetDir
 	err := g.Git.Clone(ctx, repoURL, targetDir, CloneOptions{
-		Branch:      branch,
+		Ref:         ref,
 		Depth:       1,
 		Dissociate:  true,
 		NoHardlinks: true,
@@ -107,6 +111,11 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, branch, commit,
 		return false, fmt.Errorf("failed to clone into cache: %w", err)
 	}
 
+	if err := g.Git.Checkout(ctx, targetDir, ref); err != nil {
+		return false, fmt.Errorf("failed to checkout ref: %w", err)
+	}
+	g.Logger.Info("Checked out ref %s\n", ref)
+
 	// set progress to complete in logger if we cloned fresh
 	g.Logger.SetProgress(cachePath, 100, templateName)
 	g.Logger.PrintProgress()
@@ -115,11 +124,26 @@ func (g *GitFetcher) fetchMainRepo(ctx context.Context, repoURL, branch, commit,
 	g.Logger.ClearProgress()
 
 	// always process submodules after cloning or copying from cache
-	if err := g.fetchSubmodules(ctx, templateName, repoURL, targetDir, 0); err != nil {
-		return false, err
+	// if err := g.fetchSubmodules(ctx, templateName, repoURL, targetDir, 0); err != nil {
+	// 	return false, fmt.Errorf("failed to fetch submodules: %w", err)
+	// }
+
+	if err := g.vanillaFetchSubmodules(ctx, targetDir); err != nil {
+		return false, fmt.Errorf("failed to fetch submodules: %w", err)
 	}
 
 	return true, nil
+}
+
+//nolint:unused
+func (g *GitFetcher) vanillaFetchSubmodules(ctx context.Context, repoDir string) error {
+	g.Logger.Info("Fetching submodules for %s\n", repoDir)
+	return g.Git.SubmoduleInit(ctx, repoDir, CloneOptions{
+		ProgressCB: func(p int) {
+			g.Logger.SetProgress(repoDir, p, repoDir)
+			g.Logger.PrintProgress()
+		},
+	})
 }
 
 func (g *GitFetcher) fetchSubmodules(ctx context.Context, repoName string, repoURL string, repoDir string, depth int) error {

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
 	"github.com/urfave/cli/v2"
@@ -29,22 +31,9 @@ func (g *defaultTemplateInfoGetter) GetInfoDefault() (string, string, string, er
 	return GetTemplateInfoDefault()
 }
 
-// gitClientGetter is an interface for getting GitClient instances
-type gitClientGetter interface {
-	GetClient() template.GitClient
-}
-
-// defaultGitClientGetter implements gitClientGetter using the real function
-type defaultGitClientGetter struct{}
-
-func (g *defaultGitClientGetter) GetClient() template.GitClient {
-	return template.NewGitClient()
-}
-
 // createUpgradeCommand creates an upgrade command with the given dependencies
 func createUpgradeCommand(
 	infoGetter templateInfoGetter,
-	clientGetter gitClientGetter,
 ) *cli.Command {
 	return &cli.Command{
 		Name:  "upgrade",
@@ -58,7 +47,7 @@ func createUpgradeCommand(
 		},
 		Action: func(cCtx *cli.Context) error {
 			// Get logger
-			log, _ := common.GetLogger()
+			log, tracker := common.GetLogger()
 
 			// Get the requested version
 			requestedVersion := cCtx.String("version")
@@ -94,6 +83,12 @@ func createUpgradeCommand(
 			}
 			defer os.RemoveAll(tempDir) // Clean up on exit
 
+			tempCacheDir, err := os.MkdirTemp("", "devkit-template-cache-*")
+			if err != nil {
+				return fmt.Errorf("failed to create temporary cache directory: %w", err)
+			}
+			defer os.RemoveAll(tempCacheDir) // Clean up on exit
+
 			log.Info("Upgrading project template:")
 			log.Info("  Project: %s", projectName)
 			log.Info("  Template URL: %s", templateBaseURL)
@@ -104,32 +99,26 @@ func createUpgradeCommand(
 			// Extract base URL without .git suffix for consistency
 			baseRepoURL := strings.TrimSuffix(templateBaseURL, ".git")
 
-			// Add .git suffix if not present for compatibility with git command
-			if !strings.HasSuffix(baseRepoURL, ".git") {
-				baseRepoURL = baseRepoURL + ".git"
-			}
-
-			// Initialize GitClient
-			gitClient := clientGetter.GetClient()
-
-			log.Info("Cloning template repository...")
-			// Clone the repository without specifying a branch (we'll checkout after)
-			err = gitClient.Clone(cCtx.Context, baseRepoURL, tempDir, template.CloneOptions{
-				ProgressCB: func(progress int) {
-					if progress%20 == 0 { // Log every 20% progress
-						log.Info("Cloning progress: %d%%", progress)
-					}
+			// Fetch main template
+			fetcher := &template.GitFetcher{
+				Git:   template.NewGitClient(),
+				Cache: template.NewGitRepoCache(tempCacheDir),
+				Logger: *logger.NewProgressLogger(
+					log,
+					tracker,
+				),
+				Config: template.GitFetcherConfig{
+					CacheDir:       tempDir,
+					MaxDepth:       -1,
+					MaxRetries:     3,
+					MaxConcurrency: 8,
+					UseCache:       false,
+					Verbose:        cCtx.Bool("verbose"),
 				},
-			})
-			if err != nil {
-				return fmt.Errorf("failed to clone template repository: %w", err)
 			}
-
-			log.Info("Checking out version: %s", requestedVersion)
-			// Checkout the requested version
-			err = gitClient.Checkout(cCtx.Context, tempDir, requestedVersion)
-			if err != nil {
-				return fmt.Errorf("failed to checkout version %s: %w", requestedVersion, err)
+			log.Info("Cloning template repository...")
+			if err := fetcher.Fetch(cCtx.Context, baseRepoURL, requestedVersion, tempDir); err != nil {
+				return fmt.Errorf("failed to fetch template from %s with version %s: %w", baseRepoURL, requestedVersion, err)
 			}
 
 			// Check if the upgrade script exists
@@ -196,5 +185,4 @@ func createUpgradeCommand(
 // UpgradeCommand defines the "template upgrade" subcommand
 var UpgradeCommand = createUpgradeCommand(
 	&defaultTemplateInfoGetter{},
-	&defaultGitClientGetter{},
 )

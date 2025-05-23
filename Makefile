@@ -25,7 +25,7 @@ build: ## Build the binary
 	@go build $(GO_FLAGS) -o $(BIN)/$(APP_NAME) cmd/$(APP_NAME)/main.go
 
 tests: ## Run tests
-	$(GO) test -v ./...
+	$(GO) test -v ./... -p 1
 
 fmt: ## Format code
 	@go fmt $(GO_PACKAGES)

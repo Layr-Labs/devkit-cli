@@ -1,3 +1,8 @@
+## ⚠️ Warning: This is Alpha, non audited code ⚠️
+Hourglass is in active development and is not yet audited. Use at your own risk.
+
+---
+
 # EigenLayer Development Kit (DevKit) 🚀
 
 **A CLI toolkit for developing, testing, and managing EigenLayer Autonomous Verifiable Services (AVS).**
@@ -5,10 +10,6 @@
 EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold projects, compile contracts, run local networks, and simulate tasks with ease.
 
 ![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
-
-## ⚠️ Disclaimer: Closed Alpha Not Production Ready
-EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used for use in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
-
 
 ## 🌟 Key Commands Overview
 
@@ -40,7 +41,7 @@ Before you begin, ensure you have:
 
 To download a binary for the latest release, run:
 ```bash
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.2/devkit-darwin-arm64-v0.0.2.tar.gz | sudo tar xvz -C /usr/local/bin
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-darwin-arm64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
 ```
 
 The binary will be installed inside the ~/bin directory.
@@ -62,18 +63,6 @@ Verify your installation:
 ```bash
 devkit --help
 ```
-
-### 🔑 Setup for Private Go Modules
-
-During this Private Preview, you'll need access to private Go modules hosted on GitHub:
-
-1. **Add SSH Key to GitHub:** Ensure your SSH key is associated with your GitHub account ([instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
-2. **Verify Repository Access:** Confirm with EigenLabs support that your account has access to necessary private repositories.
-3. **ssh-agent:** Make sure your ssh-agent is running and your SSH key is added. You can do this by running:
-   ```bash
-   [[ -z $(pgrep -f ssh-agent) ]] && eval "$(ssh-agent -s)"
-   ssh-add ~/.ssh/<your github private key>
-   ```
 
 ---
 
@@ -286,6 +275,49 @@ devkit avs build --verbose
 ```
 
 ---
+## Upgrade process
+
+
+### Upgrading the Devkit CLI
+
+To upgrade the Devkit CLI to the latest version, find the [latest release](releases) you want to download and re-run the curl install command:
+
+```bash
+VERSION=v0.0.6
+ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+curl -s -L "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | sudo tar xvz -C /usr/local/bin
+```
+
+### Upgrading your template
+
+To upgrade the template you created your project with (by calling `devkit avs create`) you can use the `devkit avs template` subcommands.
+
+**_View which version you're currently using_**
+
+```bash
+devkit avs template info
+
+2025/05/22 14:42:36 Project template information:
+2025/05/22 14:42:36   Project name: <your project>
+2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
+2025/05/22 14:42:36   Version: v0.0.9
+```
+
+**_Upgrade to a newer version_**
+
+To upgrade to a newer version you can run:
+
+```bash
+devkit avs template upgrade --version <version>
+```
+
+More often than not, you'll want to use tag corresponding to your template's release. You may also provide a branch name or commit hash to upgrade to.
+
+_Please consult your template's docs for further information on how the upgrade process works._
+
+---
 
 ## 🤝 Contributing
 
@@ -297,10 +329,10 @@ Contributions are welcome! Please open an issue to discuss significant changes b
 To release a new version of the CLI, follow the steps below:
 > Note: You need to have write permission to this repo to release new version
 
-1. Checkout the master branch and pull the latest changes:
+1. Checkout the main branch and pull the latest changes:
     ```bash
-    git checkout master
-    git pull origin master
+    git checkout main
+    git pull origin main
     ```
 2. In your local clone, create a new release tag using the following command:
     ```bash
