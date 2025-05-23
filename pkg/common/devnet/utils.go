@@ -76,6 +76,12 @@ func GetDockerHost() string {
 func EnsureDockerHost(inputUrl string) string {
 	dockerHost := GetDockerHost()
 
+	// Handle edge cases first: bare localhost/127.0.0.1 strings
+	trimmed := strings.TrimSpace(inputUrl)
+	if trimmed == "localhost" || trimmed == "127.0.0.1" {
+		return dockerHost
+	}
+
 	// Parse the URL to work with components safely
 	parsedUrl, err := url.Parse(inputUrl)
 	if err != nil {
@@ -85,6 +91,22 @@ func EnsureDockerHost(inputUrl string) string {
 
 	// Extract hostname (without port)
 	hostname := parsedUrl.Hostname()
+
+	// Handle the case where URL parsing succeeded but hostname is empty
+	// This happens with strings like "localhost:8545" (parsed as scheme:opaque)
+	if hostname == "" {
+		// Check if the scheme is localhost or 127.0.0.1 (meaning it was parsed as scheme:opaque)
+		if parsedUrl.Scheme == "localhost" || parsedUrl.Scheme == "127.0.0.1" {
+			// Reconstruct as host:port format
+			if parsedUrl.Opaque != "" {
+				return fmt.Sprintf("%s:%s", dockerHost, parsedUrl.Opaque)
+			} else {
+				return dockerHost
+			}
+		}
+		// If hostname is empty but it's not the scheme:opaque case, fall back to regex
+		return ensureDockerHostRegex(inputUrl, dockerHost)
+	}
 
 	// Only replace if hostname is exactly localhost or 127.0.0.1
 	if hostname == "localhost" || hostname == "127.0.0.1" {
