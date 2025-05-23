@@ -135,7 +135,7 @@ ENV L2_FORK_URL="https://ethereum-rpc.publicnode.com"
 WORKDIR /home/devuser/workspace/linux-test-basic
 RUN cp .env.example .env || echo ".env.example not found, continuing..."
 RUN echo "Testing devnet start..."
-RUN timeout 30s devkit avs devnet start || echo "Devnet test completed (may timeout or fail due to network)"
+RUN timeout 5m devkit avs devnet start || echo "Devnet test completed (may timeout or fail due to network)"
 
 WORKDIR /home/devuser/workspace
 RUN echo "✅ Devnet functionality tests completed"
