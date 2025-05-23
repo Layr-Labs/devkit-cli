@@ -17,7 +17,6 @@ type model struct {
 	Choices  []string
 	cursor   int
 	selected int
-	done     bool
 }
 
 func (m model) Init() tea.Cmd { return nil }

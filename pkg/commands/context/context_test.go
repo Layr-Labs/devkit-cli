@@ -16,7 +16,9 @@ import (
 func setupCLIContext(cmd *cli.Command, args []string, flags map[string]string) *cli.Context {
 	fs := flag.NewFlagSet("test", 0)
 	for _, f := range cmd.Flags {
-		require.NoError(&testing.T{}, f.Apply(fs))
+		if err := f.Apply(fs); err != nil {
+			panic(err)
+		}
 	}
 	// build args slice: first positional args, then flag pairs
 	var argv []string
@@ -24,7 +26,9 @@ func setupCLIContext(cmd *cli.Command, args []string, flags map[string]string) *
 	for k, v := range flags {
 		argv = append(argv, "--"+k, v)
 	}
-	require.NoError(&testing.T{}, fs.Parse(argv))
+	if err := fs.Parse(argv); err != nil {
+		panic(err)
+	}
 	app := &cli.App{}
 	return cli.NewContext(app, fs, nil)
 }
@@ -51,7 +55,15 @@ func TestCreateContextCommand_CreatesFile(t *testing.T) {
 	ctx := setupCLIContext(CreateContextCommand, nil, map[string]string{"context": "bar"})
 
 	orig, err := os.Getwd()
-	defer func() { require.NoError(t, os.Chdir(orig)) }()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if ch := os.Chdir(orig); ch != nil {
+			t.Fatal(ch)
+		}
+	}()
+
 	require.NoError(t, os.Chdir(tmp))
 
 	err = CreateContextCommand.Action(ctx)
@@ -122,7 +134,15 @@ context:
 	})
 
 	orig, err := os.Getwd()
-	defer func() { require.NoError(t, os.Chdir(orig)) }()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if ch := os.Chdir(orig); ch != nil {
+			t.Fatal(ch)
+		}
+	}()
+
 	require.NoError(t, os.Chdir(tmp))
 
 	// execute
@@ -156,6 +176,7 @@ context:
 	}
 	require.Equal(t, "new", found)
 }
+
 func TestContextSetsGlobalContext(t *testing.T) {
 	// prepare temp config/config.yaml and a dummy context file
 	tmp := t.TempDir()
@@ -182,7 +203,15 @@ config:
 	})
 
 	orig, err := os.Getwd()
-	defer func() { require.NoError(t, os.Chdir(orig)) }()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if ch := os.Chdir(orig); ch != nil {
+			t.Fatal(ch)
+		}
+	}()
+
 	require.NoError(t, os.Chdir(tmp))
 
 	// execute
@@ -240,7 +269,15 @@ config:
 
 	// Switch into tmp so relative paths resolve
 	orig, err := os.Getwd()
-	defer func() { require.NoError(t, os.Chdir(orig)) }()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if ch := os.Chdir(orig); ch != nil {
+			t.Fatal(ch)
+		}
+	}()
+
 	require.NoError(t, os.Chdir(tmp))
 
 	// Execute
