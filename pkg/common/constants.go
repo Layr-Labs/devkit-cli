@@ -17,5 +17,5 @@ const (
 	// Filename for the config
 	BaseConfig = "config.yaml"
 
-	ZeusConfig = ",zeus"
+	ZeusConfig = ".zeus"
 )
