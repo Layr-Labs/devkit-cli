@@ -13,11 +13,7 @@ EigenLayer DevKit streamlines AVS development, enabling you to:
 
 Use DevKit to get from AVS idea to Proof of Concept with a local testing environment that includes task simulation.
 
-## Important
-
-The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass task-based framework.
-We're actively expanding capabilities, so if there's a gap for your scenario, check out our roadmap see what's coming, 
-or let us know what would support you in building AVS.
+> **Note:** The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass task-based framework. We're actively expanding capabilities, so if there's a gap for your scenario, check out our roadmap see what's coming, or let us know what would support you in building AVS.
 
 ![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
 
@@ -88,7 +84,7 @@ devkit --help
 
 ## 🚧 Step-by-Step Guide
 
-### 1️⃣ Create a New AVS Project (`avs create`)
+### 1️⃣ Create a New AVS Project (`devkit avs create`)
 
 Sets up a new AVS project with the recommended structure, configuration files, and boilerplate code. This helps you get started quickly without needing to manually organize files or determine a layout. Details:
 
@@ -203,7 +199,7 @@ Use any popular RPC provider (e.g., QuickNode, Alchemy) to obtain the URLs.
 
 This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
 
-### 4️⃣ Build Your AVS
+### 4️⃣ Build Your AVS (`devkit avs build`)
 
 Compiles your AVS contracts and offchain binaries. Required before running a devnet or simulating tasks to ensure all components are built and ready.
 
@@ -216,7 +212,7 @@ Ensure you're in your project directory before running:
 devkit avs build
 ```
 
-### 5️⃣ Launch Local DevNet
+### 5️⃣ Launch Local DevNet (`devkit avs devnet`)
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
@@ -245,7 +241,7 @@ DevNet management commands:
 | `stop --project.name`  | Stops the specific project's devnet                                  |
 | `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
 
-### 6️⃣ Simulate Task Execution (`avs call`)
+### 6️⃣ Simulate Task Execution (`devkit avs call`)
 
 Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
 
@@ -265,7 +261,7 @@ Optionally, submit tasks directly to the on-chain TaskMailBox contract via a fro
 
 ## Optional Commands
 
-### Start offchain AVS infrastructure (`avs run`)
+### Start offchain AVS infrastructure (`devkit avs run`)
 
 Run your offchain AVS components locally.
 
@@ -279,7 +275,7 @@ This step is optional. The devkit `devkit avs devnet start` command already star
 devkit avs run
 ```
 
-### Deploy AVS Contracts (`avs deploy-contract`)
+### Deploy AVS Contracts (`devkit avs deploy-contract`)
 
 Deploy your AVS's onchain contracts independently of the full devnet setup.
 
@@ -291,7 +287,7 @@ This step is **optional**. The `devkit avs devnet start` command already handles
 devkit avs deploy-contract
 ```
 
-### Create Operator Keys (`avs keystore`)
+### Create Operator Keys (`devkit avs keystore`)
 Create and read keystores for bn254 private keys using the CLI. 
 
 - To create a keystore
@@ -309,7 +305,7 @@ devkit keystore read --path --password
 - **`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
 - **`password`**: Password to encrypt/decrypt the keystore.
 
-### Template Management (`avs template`)
+### Template Management (`devkit avs template`)
 
 Manage your project templates to stay up-to-date with the latest features and improvements.
 
