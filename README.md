@@ -50,11 +50,11 @@ To add the binary to your path, run:
 export PATH=$PATH:~/bin
 ```
 
-To build and install the devkit cli locally:
+To build and install the devkit cli from source:
 ```bash
 git clone https://github.com/Layr-Labs/devkit-cli
 cd devkit-cli
-go build -o devkit ./cmd/devkit
+make install
 export PATH=$PATH:~/bin
 ```
 
