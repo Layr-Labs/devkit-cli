@@ -272,7 +272,6 @@ func TestEnsureDockerHostRegexFallback(t *testing.T) {
 	}
 }
 
-
 // TestDockerNetworkingEdgeCases tests edge cases in URL parsing and transformation
 func TestDockerNetworkingEdgeCases(t *testing.T) {
 	// Save original environment
