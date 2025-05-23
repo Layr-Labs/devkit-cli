@@ -16,7 +16,7 @@ import (
 func setupCLIContext(cmd *cli.Command, args []string, flags map[string]string) *cli.Context {
 	fs := flag.NewFlagSet("test", 0)
 	for _, f := range cmd.Flags {
-		f.Apply(fs)
+		require.NoError(&testing.T{}, f.Apply(fs))
 	}
 	// build args slice: first positional args, then flag pairs
 	var argv []string
@@ -50,11 +50,11 @@ func TestCreateContextCommand_CreatesFile(t *testing.T) {
 	tmp := t.TempDir()
 	ctx := setupCLIContext(CreateContextCommand, nil, map[string]string{"context": "bar"})
 
-	orig, _ := os.Getwd()
-	defer os.Chdir(orig)
+	orig, err := os.Getwd()
+	defer func() { require.NoError(t, os.Chdir(orig)) }()
 	require.NoError(t, os.Chdir(tmp))
 
-	err := CreateContextCommand.Action(ctx)
+	err = CreateContextCommand.Action(ctx)
 	require.NoError(t, err)
 
 	want := filepath.Join("config", "contexts", "bar.yaml")
@@ -121,12 +121,12 @@ context:
 		"set":     "project.name=new",
 	})
 
-	orig, _ := os.Getwd()
-	defer os.Chdir(orig)
+	orig, err := os.Getwd()
+	defer func() { require.NoError(t, os.Chdir(orig)) }()
 	require.NoError(t, os.Chdir(tmp))
 
 	// execute
-	err := Command.Action(ctx)
+	err = Command.Action(ctx)
 	require.NoError(t, err)
 
 	// verify YAML updated
@@ -181,12 +181,12 @@ config:
 		"context": "prod",
 	})
 
-	orig, _ := os.Getwd()
-	defer os.Chdir(orig)
+	orig, err := os.Getwd()
+	defer func() { require.NoError(t, os.Chdir(orig)) }()
 	require.NoError(t, os.Chdir(tmp))
 
 	// execute
-	err := Command.Action(ctx)
+	err = Command.Action(ctx)
 	require.NoError(t, err)
 
 	// verify config.yaml has project.context=prod
@@ -239,12 +239,12 @@ config:
 	})
 
 	// Switch into tmp so relative paths resolve
-	orig, _ := os.Getwd()
-	defer os.Chdir(orig)
+	orig, err := os.Getwd()
+	defer func() { require.NoError(t, os.Chdir(orig)) }()
 	require.NoError(t, os.Chdir(tmp))
 
 	// Execute
-	err := Command.Action(ctx)
+	err = Command.Action(ctx)
 	require.Error(t, err)
 	// Check the error message suggests creating the context
 	require.Contains(t, err.Error(),
