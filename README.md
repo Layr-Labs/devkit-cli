@@ -50,11 +50,11 @@ To add the binary to your path, run:
 export PATH=$PATH:~/bin
 ```
 
-To build and install the devkit cli locally:
+To build and install the devkit cli from source:
 ```bash
 git clone https://github.com/Layr-Labs/devkit-cli
 cd devkit-cli
-go build -o devkit ./cmd/devkit
+make install
 export PATH=$PATH:~/bin
 ```
 
@@ -328,10 +328,10 @@ Contributions are welcome! Please open an issue to discuss significant changes b
 To release a new version of the CLI, follow the steps below:
 > Note: You need to have write permission to this repo to release new version
 
-1. Checkout the master branch and pull the latest changes:
+1. Checkout the main branch and pull the latest changes:
     ```bash
-    git checkout master
-    git pull origin master
+    git checkout main
+    git pull origin main
     ```
 2. In your local clone, create a new release tag using the following command:
     ```bash
