@@ -170,62 +170,8 @@ RUN devkit --verbose --help >/dev/null
 
 RUN echo "✅ Environment tests passed"
 
-# Stage 9: Test Docker networking fixes (REGRESSION PROTECTION)
-FROM permissions-test AS docker-networking-test
-RUN echo "🔌 Testing Docker networking fixes (regression protection)..."
-
-# Test 1: Verify GetRPCURL returns localhost (not host.docker.internal)
-RUN echo "Testing RPC URL generation..."
-WORKDIR /home/devuser/workspace/linux-test-basic
-RUN timeout 10s devkit avs devnet start --skip-deploy-contracts --skip-avs-run || true
-RUN sleep 2
-# Check that devnet.yaml contains localhost:8545, not host.docker.internal:8545
-RUN if grep -q "host\.docker\.internal:8545" config/contexts/devnet.yaml; then \
-        echo "❌ REGRESSION: RPC URL uses host.docker.internal instead of localhost!"; \
-        echo "This means GetRPCURL() was reverted to old behavior"; \
-        cat config/contexts/devnet.yaml; \
-        exit 1; \
-    fi
-RUN if ! grep -q "localhost:8545" config/contexts/devnet.yaml; then \
-        echo "❌ REGRESSION: RPC URL doesn't use localhost!"; \
-        echo "Expected localhost:8545 in devnet.yaml"; \
-        cat config/contexts/devnet.yaml; \
-        exit 1; \
-    fi
-RUN echo "✅ RPC URL correctly uses localhost"
-
-# Test 2: Verify docker-compose.yaml has host.docker.internal mapping
-RUN echo "Testing docker-compose.yaml networking..."
-RUN if ! grep -q "host.docker.internal:host-gateway" /tmp/devkit-compose/docker-compose.yaml; then \
-        echo "❌ REGRESSION: docker-compose.yaml missing extra_hosts mapping!"; \
-        echo "This means the docker networking fix was reverted"; \
-        cat /tmp/devkit-compose/docker-compose.yaml; \
-        exit 1; \
-    fi
-RUN echo "✅ docker-compose.yaml has correct host mapping"
-
-# Test 3: Verify fork URL gets converted for container use (EnsureDockerHost)
-RUN echo "Testing fork URL conversion..."
-# Set a localhost fork URL and verify it gets converted
-ENV L1_FORK_URL="http://localhost:8545/test"
-RUN timeout 10s devkit avs devnet start --skip-deploy-contracts --skip-avs-run || true
-# Check docker-compose environment shows converted URL (should be host.docker.internal on macOS runner)
-# In Linux container, it should remain localhost, but the mechanism should work
-RUN echo "✅ Fork URL conversion mechanism works"
-
-# Test 4: Test OS detection logic
-RUN echo "Testing OS detection in GetDockerHost..."
-# Test that the binary behaves correctly on Linux (simpler approach)
-RUN echo "Testing that devkit uses localhost URLs on Linux..."
-# This test is implicitly covered by Test 1 above
-RUN echo "✅ OS detection logic works (verified by localhost URL test)"
-
-RUN devkit avs devnet stop || true
-WORKDIR /home/devuser/workspace
-RUN echo "✅ Docker networking regression tests passed"
-
 # Final stage: Summary and interactive shell
-FROM docker-networking-test AS final
+FROM permissions-test AS final
 
 # Create a summary of what was tested
 RUN echo "🎉 All Linux compatibility tests passed!" > /home/devuser/workspace/test-results.txt
@@ -238,7 +184,7 @@ RUN echo "✅ Devnet functionality: TESTED" >> /home/devuser/workspace/test-resu
 RUN echo "✅ Template functionality: TESTED" >> /home/devuser/workspace/test-results.txt
 RUN echo "✅ File permissions: PASSED" >> /home/devuser/workspace/test-results.txt
 RUN echo "✅ Environment handling: PASSED" >> /home/devuser/workspace/test-results.txt
-RUN echo "✅ Docker networking fixes: PASSED (regression protection)" >> /home/devuser/workspace/test-results.txt
+RUN echo "ℹ️  Docker networking: Tested separately in networking-regression.yml" >> /home/devuser/workspace/test-results.txt
 
 # Show final summary
 RUN cat /home/devuser/workspace/test-results.txt

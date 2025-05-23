@@ -1,0 +1,57 @@
+name: Networking Regression Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: ["**"]
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  networking-regression:
+    name: Docker Networking Regression Protection
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Free up disk space
+        run: |
+          docker system prune -f
+          df -h
+
+      - name: Make script executable
+        run: chmod +x ./scripts/test-networking-regression.sh
+
+      - name: Run networking regression tests
+        run: ./scripts/test-networking-regression.sh
+
+      - name: Archive test artifacts on failure
+        if: failure()
+        run: |
+          echo "📁 Collecting debug information..."
+          docker images | grep devkit || echo "No devkit images found"
+          docker ps -a | grep devkit || echo "No devkit containers found"
+          docker system df
+          echo "📂 Test project contents:"
+          ls -la test-networking-regression/ || echo "No test project found"
+          echo "📋 Devnet.yaml contents:"
+          cat test-networking-regression/config/contexts/devnet.yaml || echo "No devnet.yaml found"
+
+      - name: Cleanup Docker resources
+        if: always()
+        run: |
+          docker container prune -f || true
+          docker image prune -f || true 
