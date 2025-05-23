@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -261,4 +263,45 @@ func DeepMerge(dst, src *yaml.Node) *yaml.Node {
 		}
 	}
 	return dst
+}
+
+// ListYaml prints the contents of a YAML file to stdout, preserving order and comments.
+// It rejects non-.yaml/.yml extensions and surfaces precise errors.
+func ListYaml(filePath string) error {
+	log, _ := GetLogger()
+
+	// verify file exists and is regular
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("cannot stat %s: %w", filePath, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file", filePath)
+	}
+
+	// ensure extension is .yaml or .yml
+	ext := strings.ToLower(filepath.Ext(filePath))
+	if ext != ".yaml" && ext != ".yml" {
+		return fmt.Errorf("unsupported extension %q: only .yaml/.yml allowed", ext)
+	}
+
+	// load the raw YAML node tree so we preserve ordering
+	rootNode, err := LoadYAML(filePath)
+	if err != nil {
+		return fmt.Errorf("❌ Failed to read or parse %s: %v\n\n", filePath, err)
+	}
+
+	// header
+	log.Info("--- %s ---", filePath)
+
+	// encode the node back to YAML on stdout, preserving order & comments
+	enc := yaml.NewEncoder(os.Stdout)
+	enc.SetIndent(2)
+	if err := enc.Encode(rootNode); err != nil {
+		enc.Close()
+		return fmt.Errorf("Failed to emit %s: %v\n\n", filePath, err)
+	}
+	enc.Close()
+
+	return nil
 }

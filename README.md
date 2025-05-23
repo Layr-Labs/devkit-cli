@@ -87,33 +87,59 @@ cd my-avs-project
 > \[!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
-### 2️⃣ Configure Your AVS (`avs config`)
+### 2️⃣ Configure Your AVS (`avs config` & `avs context`)
 
-Before running your AVS, you'll need to configure both project-level and environment-specific settings. This is done through two configuration files:
+Before running your AVS, you’ll need to configure both project-level and context-specific settings. This is done through two configuration files:
 
-- **`config.yaml`**: Defines project-wide settings such as AVS name and context names.
-- **`contexts/devnet.yaml`**: Contains environment-specific settings for your a given context (i.e. devnet), including the Ethereum fork url, block height, operator keys, AVS keys, and other runtime parameters.
+- **`config.yaml`**  
+  Defines project-wide settings such as AVS name, version, and available context names.  
+- **`contexts/<context>.yaml`**  
+  Contains environment-specific settings for each context (for example, `devnet.yaml`), including the Ethereum fork URL, block height, operator keys, AVS keys, and other runtime parameters.
 
 You can view or modify these configurations using the DevKit CLI or by editing the files manually.
 
-View current settings via CLI:
+---
 
-```bash
-devkit avs config
-```
+#### View current settings
 
-Edit settings directly via CLI:
+- **Project-level**  
+  ```bash  
+  devkit avs config --list
+  ```
 
-```bash
-devkit avs config --edit
-```
+- **Context-specific**  
+  ```bash  
+  devkit avs context --list  
+  devkit avs context --context devnet --list  
+  ```
 
-Set values directly into the `config.yaml`
-```bash
-devkit avs config --set project.name="My new name" project.version="0.0.2"
-```
+#### Edit settings directly via CLI
 
-Alternatively, manually edit the config files in the text editor of your choice.
+- **Project-level**  
+  ```bash  
+  devkit avs config --edit  
+  ```
+
+- **Context-specific**  
+  ```bash  
+  devkit avs context --edit  
+  devkit avs context --context devnet --edit  
+  ```
+
+#### Set values via CLI flags
+
+- **Project-level**  
+  ```bash  
+  devkit avs config --set project.name="My new name" project.version="0.0.2"  
+  ```
+
+- **Context-specific**  
+  ```bash  
+  devkit avs context --set operator.key="0xabc…" context.timeout=30  
+  devkit avs context --context devnet --set operator.key="0xabc…" context.timeout=30  
+  ```
+
+Alternatively, you can manually edit `config.yaml` or the `contexts/*.yaml` files in the text editor of your choice.
 
 > \[!IMPORTANT]
 > These commands must be run from your AVS project's root directory.

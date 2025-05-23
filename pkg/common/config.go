@@ -99,6 +99,35 @@ type ChainContextConfig struct {
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 }
 
+func LoadBaseConfig() (*ConfigWithContextConfig, error) {
+	path := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read base config: %w", err)
+	}
+	var cfg *ConfigWithContextConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse base config: %w", err)
+	}
+	return cfg, nil
+}
+
+func LoadContextConfig(ctxName string) (*ChainContextConfig, error) {
+	path := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", ctxName+".yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read context %q: %w", ctxName, err)
+	}
+	var wrapper struct {
+		Version string              `yaml:"version"`
+		Context *ChainContextConfig `yaml:"context"`
+	}
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		return nil, fmt.Errorf("parse context %q: %w", ctxName, err)
+	}
+	return wrapper.Context, nil
+}
+
 func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {
 	// Load base config
 	configPath := filepath.Join(DefaultConfigWithContextConfigPath, BaseConfig)
@@ -135,20 +164,7 @@ func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, 
 	return &cfg, nil
 }
 
-func LoadConfigWithContextConfigWithoutContext() (*ConfigWithContextConfig, error) {
-	configPath := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read base config: %w", err)
-	}
-	var cfg ConfigWithContextConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse base config: %w", err)
-	}
-	return &cfg, nil
-}
-
-func LoadContext(yamlPath string) ([]byte, error) {
+func LoadRawContext(yamlPath string) ([]byte, error) {
 	rootNode, err := LoadYAML(yamlPath)
 	if err != nil {
 		return nil, err

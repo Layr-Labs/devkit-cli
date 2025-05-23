@@ -1,4 +1,4 @@
-package commands
+package config
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var ConfigCommand = &cli.Command{
+var Command = &cli.Command{
 	Name:  "config",
 	Usage: "Views or manages project-specific configuration (stored in config directory)",
 	Flags: append([]cli.Flag{
@@ -31,20 +31,24 @@ var ConfigCommand = &cli.Command{
 	Action: func(cCtx *cli.Context) error {
 		logger := common.LoggerFromContext(cCtx.Context)
 
+		// Identify the top level config .yaml
+		cfgPath := filepath.Join("config", common.BaseConfig)
+
 		// Open editor for the project level config
 		if cCtx.Bool("edit") {
 			logger.Info("Opening config file for editing...")
-			return editConfig(cCtx, filepath.Join("config", common.BaseConfig))
+			return EditConfig(cCtx, cfgPath, Config, "")
 		}
 
 		// Get the sets
 		items := cCtx.StringSlice("set")
-		// Slice any position args to the items list
-		items = append(items, cCtx.Args().Slice()...)
 
 		// Set values using dot.delim to navigate keys
 		if len(items) > 0 {
-			cfgPath := filepath.Join("config", common.BaseConfig)
+			// Slice any position args to the items list
+			items = append(items, cCtx.Args().Slice()...)
+
+			// Load the config yaml
 			rootDoc, err := common.LoadYAML(cfgPath)
 			if err != nil {
 				return fmt.Errorf("read config YAML: %w", err)
@@ -84,19 +88,26 @@ var ConfigCommand = &cli.Command{
 		}
 
 		// list by default, if no flags are provided
-		projectSetting, err := common.LoadProjectSettings()
+		projectSettings, err := common.LoadProjectSettings()
 
 		if err != nil {
 			return fmt.Errorf("failed to load project settings to get telemetry status: %v", err)
 		}
 
 		// Load config
-		config, err := common.LoadConfigWithContextConfigWithoutContext()
+		config, err := common.LoadBaseConfig()
 		if err != nil {
 			return fmt.Errorf("failed to load config and context config: %w", err)
 		}
 
-		err = listConfig(config, projectSetting)
+		// Log top level details
+		logger.Info("Displaying current configuration... \n\n")
+		logger.Info("Telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
+		logger.Info("Project: %s\n", config.Config.Project.Name)
+		logger.Info("Version: %s\n\n", config.Config.Project.Version)
+
+		// err = listConfig(config, projectSetting)
+		err = common.ListYaml(cfgPath)
 		if err != nil {
 			return fmt.Errorf("failed to list config %w", err)
 		}

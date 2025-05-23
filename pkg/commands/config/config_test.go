@@ -1,16 +1,85 @@
-package commands
+package config
 
 import (
 	"bytes"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+
 	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 )
+
+func TestConfigCommand_ListOutput(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	defaultConfigFile := configs.ConfigYamls[configs.LatestVersion]
+	defaultDevnetConfigFile := contexts.ContextYamls[contexts.LatestVersion]
+
+	configPath := filepath.Join(tmpDir, "config")
+	require.NoError(t, os.MkdirAll(configPath, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(configPath, common.BaseConfig), defaultConfigFile, 0644))
+	contextsPath := filepath.Join(configPath, "contexts")
+	require.NoError(t, os.MkdirAll(contextsPath, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(contextsPath, "devnet.yaml"), defaultDevnetConfigFile, 0644))
+
+	mockTelemteryContent :=
+		`
+project_uuid: d7598c91-2ec4-4751-b0ab-bc848f73d58e
+telemetry_enabled: true
+`
+
+	require.NoError(t, os.WriteFile(
+		filepath.Join(tmpDir, common.DevkitConfigFile),
+		[]byte(mockTelemteryContent),
+		0644,
+	))
+	// 🔁 Change into the test directory
+	originalWD, _ := os.Getwd()
+	defer func() {
+		if err := os.Chdir(originalWD); err != nil {
+			t.Logf("Failed to return to original directory: %v", err)
+		}
+	}()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	// 🧪 Capture os.Stdout
+	var buf bytes.Buffer
+	stdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// ⚙️ Run the CLI app with nested subcommands
+	app := &cli.App{
+		Commands: []*cli.Command{
+			{
+				Name: "avs",
+				Subcommands: []*cli.Command{
+					Command,
+				},
+			},
+		},
+	}
+	err := app.Run([]string{"devkit", "avs", "config", "--list"})
+	require.NoError(t, err)
+
+	// 📤 Finish capturing output
+	w.Close()
+	os.Stdout = stdout
+	_, _ = buf.ReadFrom(r)
+	// output := stripANSI(buf.String())
+
+	// ✅ Validating output
+	// require.Contains(t, output, "[project]")
+	// require.Contains(t, output, "[operator]")
+	// require.Contains(t, output, "[env]")
+}
 
 // TestEditorDetection tests the logic of detecting available editors
 func TestEditorDetection(t *testing.T) {
@@ -96,10 +165,10 @@ config:
 	require.NoError(t, os.WriteFile(validPath, []byte(validYAML), 0644))
 	require.NoError(t, os.WriteFile(invalidPath, []byte(invalidYAML), 0644))
 
-	_, err := validateConfig(validPath)
+	_, err := ValidateConfig(validPath)
 	require.NoError(t, err)
 
-	_, err = validateConfig(invalidPath)
+	_, err = ValidateConfig(invalidPath)
 	require.Error(t, err)
 	t.Logf("Expected YAML parse error: %v", err)
 }

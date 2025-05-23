@@ -1,4 +1,4 @@
-package commands
+package config
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -21,9 +22,17 @@ import (
 	"golang.org/x/text/language"
 )
 
+type EditTarget int
+
+const (
+	Config EditTarget = iota
+	Context
+)
+
 // editConfig is the main entry point for the edit config functionality
-func editConfig(cCtx *cli.Context, configPath string) error {
+func EditConfig(cCtx *cli.Context, configPath string, editTarget EditTarget, context string) error {
 	logger := common.LoggerFromContext(cCtx.Context)
+
 	// Find an available editor
 	editor, err := findEditor()
 	if err != nil {
@@ -31,7 +40,7 @@ func editConfig(cCtx *cli.Context, configPath string) error {
 	}
 
 	// Create a backup of the current config
-	originalConfig, backupData, err := backupConfig(configPath)
+	originalConfig, backupData, err := backupConfig(configPath, editTarget, context)
 	if err != nil {
 		return err
 	}
@@ -42,7 +51,7 @@ func editConfig(cCtx *cli.Context, configPath string) error {
 	}
 
 	// Validate the edited config
-	newConfig, err := validateConfig(configPath)
+	newConfig, err := ValidateConfig(configPath)
 	if err != nil {
 		logger.Error("Error validating config: %v", err)
 		logger.Info("Reverting changes...")
@@ -53,7 +62,7 @@ func editConfig(cCtx *cli.Context, configPath string) error {
 	}
 
 	// Collect changes
-	changes := collectConfigChanges(originalConfig, newConfig, logger)
+	changes := collectConfigChanges(originalConfig, newConfig, editTarget, logger)
 
 	// Log changes
 	logConfigChanges(changes, logger)
@@ -84,18 +93,32 @@ func findEditor() (string, error) {
 	return "", fmt.Errorf("no suitable text editor found. Please install nano or vi, or set the EDITOR environment variable")
 }
 
+var DefaultConfigPath = filepath.Join("config")
+
 // backupConfig creates a backup of the current config
-func backupConfig(configPath string) (*common.ConfigWithContextConfig, []byte, error) {
-	// 	// Load the current config to compare later
-	currentConfig, err := common.LoadConfigWithContextConfig("devnet") // TODO hardcode for now. figure out how exactly we will pass context
+func backupConfig(configPath string, editTarget EditTarget, context string) (interface{}, []byte, error) {
+	// Load the current config to compare later
+	var (
+		currentConfig interface{}
+		err           error
+	)
+
+	// select the interface based on target
+	switch editTarget {
+	case Config:
+		currentConfig, err = common.LoadBaseConfig()
+	case Context:
+		currentConfig, err = common.LoadContextConfig(context)
+	}
+
 	if err != nil {
-		return nil, nil, fmt.Errorf("error loading current config: %w", err)
+		return nil, nil, fmt.Errorf("error loading yaml: %w", err)
 	}
 
 	// Read the raw file data
 	file, err := os.Open(configPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error opening config file: %w", err)
+		return nil, nil, fmt.Errorf("error opening yaml file: %w", err)
 	}
 	defer file.Close()
 
@@ -120,8 +143,8 @@ func openEditor(editorPath, filePath string, logger iface.Logger) error {
 	return cmd.Run()
 }
 
-// validateConfig checks if the edited config file is valid
-func validateConfig(configPath string) (interface{}, error) {
+// ValidateConfig checks if the edited config file is valid
+func ValidateConfig(configPath string) (interface{}, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -157,31 +180,71 @@ type ConfigChange struct {
 	NewValue interface{}
 }
 
-// collectConfigChanges collects all changes between two configs
-func collectConfigChanges(original, updated interface{}, logger iface.Logger) []ConfigChange {
+// collectConfigChanges compares the original and updated configurations
+// and returns a slice of ConfigChange entries for all detected differences.
+// It handles two edit targets: Config (base project config) and Context (chain context config).
+func collectConfigChanges(original, updated interface{}, editTarget EditTarget, logger iface.Logger) []ConfigChange {
 	var changes []ConfigChange
 
-	switch oldCfg := original.(type) {
-	case *common.ConfigWithContextConfig:
-		newCfg, ok := updated.(*common.ConfigWithContextConfig)
-		if !ok {
-			logger.Info("Mismatched types for %s comparison", common.BaseConfig)
+	switch editTarget {
+	case Config:
+		// Assert both original and updated to *ConfigWithContextConfig
+		oldCfg, ok1 := original.(*common.ConfigWithContextConfig)
+		newCfg, ok2 := updated.(*common.ConfigWithContextConfig)
+		if !ok1 || !ok2 {
+			// Log type mismatch and abort diff
+			logger.Info("Mismatched types for Config comparison: %T vs %T", original, updated)
 			return nil
 		}
-		// Compare project block
-		changes = append(changes, getFieldChangesDetailed("project", oldCfg.Config.Project, newCfg.Config.Project)...)
+		// Compare only the Project block fields
+		changes = getFieldChangesDetailed(
+			"project",
+			oldCfg.Config.Project,
+			newCfg.Config.Project,
+		)
 
-	case *common.ChainContextConfig:
-		newCfg, ok := updated.(*common.ChainContextConfig)
+	case Context:
+		// Extract original ChainContextConfig pointer
+		oldPtr, ok := original.(*common.ChainContextConfig)
 		if !ok {
-			logger.Info("Mismatched types for context.yaml comparison")
+			logger.Info("Mismatched types for context.yaml comparison: %T", original)
 			return nil
 		}
-		// Compare context fields
-		changes = append(changes, getFieldChangesDetailed("context", *oldCfg, *newCfg)...)
+
+		// Resolve updated ChainContextConfig pointer
+		var newPtr *common.ChainContextConfig
+
+		// Updated is directly *common.ChainContextConfig
+		if nc, ok := updated.(*common.ChainContextConfig); ok {
+			newPtr = nc
+		} else {
+			// Updated is an anonymous wrapper struct with a 'Context' field
+			rv := reflect.ValueOf(updated)
+			if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct {
+				// Look for a field named 'Context'
+				fv := rv.Elem().FieldByName("Context")
+				if fv.IsValid() && fv.Type() == reflect.TypeOf(common.ChainContextConfig{}) {
+					// Extract the inner ChainContextConfig value
+					temp := fv.Interface().(common.ChainContextConfig)
+					newPtr = &temp
+				}
+			}
+		}
+		if newPtr == nil {
+			logger.Info("Mismatched updated type for Context: %T", updated)
+			return nil
+		}
+
+		// Compare the flat fields on the ChainContextConfig
+		changes = getFieldChangesDetailed(
+			"context",
+			*oldPtr,
+			*newPtr,
+		)
 
 	default:
-		logger.Info("Unsupported config type for change tracking")
+		// Unsupported edit target
+		logger.Info("Unsupported edit target: %v", editTarget)
 	}
 
 	return changes
