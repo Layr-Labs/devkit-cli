@@ -417,6 +417,7 @@ func copyZeusFileToProject(targetDir string, verbose bool) error {
 	}
 	return nil
 }
+
 const contractsBasePath = ".devkit/contracts"
 
 // initGitRepo initializes a new Git repository in the target directory.
