@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  devkit-linux-test:
+    build:
+      context: ../../
+      dockerfile: docker/linux-test/Dockerfile
+    container_name: devkit-linux-test
+    volumes:
+      - ../../:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /workspace
+    environment:
+      - GOOS=linux
+      - GOARCH=amd64
+    stdin_open: true
+    tty: true 

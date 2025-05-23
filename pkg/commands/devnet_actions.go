@@ -99,6 +99,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("fork-url not set; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
 	}
 
+	// Ensure fork URL uses appropriate Docker host for container environments
+	dockerForkUrl := devnet.EnsureDockerHost(forkUrl)
+
 	// Get the block_time from env/config
 	blockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L1)
 	if err != nil {
@@ -119,14 +122,14 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		"FOUNDRY_IMAGE="+chainImage,
 		"ANVIL_ARGS="+chainArgs,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
-		"FORK_RPC_URL="+forkUrl,
+		"FORK_RPC_URL="+dockerForkUrl,
 		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
 		"AVS_CONTAINER_NAME="+containerName,
 	)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
-	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
+	rpcUrl := devnet.GetRPCURL(port)
 	log.Info("Waiting for devnet to be ready...")
 
 	// Set path for context yamls
@@ -175,7 +178,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 4 second to ensure the devnet is fully started
 	time.Sleep(4 * time.Second)
-
+	log.Info("Funding wallets... %s", rpcUrl)
 	// Fund the wallets defined in config
 	err = devnet.FundWalletsDevnet(config, rpcUrl)
 	if err != nil {
