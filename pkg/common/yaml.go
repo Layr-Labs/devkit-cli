@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -146,6 +147,74 @@ func CloneNode(n *yaml.Node) *yaml.Node {
 		}
 	}
 	return &c
+}
+
+// WriteToPath navigates the given YAML node tree according to the dot-delimited
+// path segments in `path`, creating intermediate mapping nodes as needed, and
+// sets or overwrites the final key to the provided string value. Returns the
+// original root node for chaining or further use.
+func WriteToPath(root *yaml.Node, path []string, val string) (*yaml.Node, error) {
+	// workingNode is our cursor as we descend the tree
+	workingNode := root
+
+	// move through the path segment at a time
+	for i, seg := range path {
+		last := i == len(path)-1
+
+		// look for an existing child mapping key under workingNode
+		child := GetChildByKey(workingNode, seg)
+
+		// if no child exists, create or append
+		if child == nil {
+			if last {
+				// final segment missing—append key + scalar value,
+				// tagging as int if possible, else as quoted string
+				valNode := &yaml.Node{Kind: yaml.ScalarNode}
+				if _, err := strconv.Atoi(val); err == nil {
+					// integer literal
+					valNode.Value = val
+				} else {
+					// explicit string
+					valNode.Tag = "!!str"
+					valNode.Style = yaml.DoubleQuotedStyle
+					valNode.Value = val
+				}
+				workingNode.Content = append(workingNode.Content,
+					&yaml.Node{Kind: yaml.ScalarNode, Value: seg},
+					valNode,
+				)
+				break
+			}
+			// intermediate segment missing—create nested map
+			newMap := &yaml.Node{Kind: yaml.MappingNode}
+			workingNode.Content = append(workingNode.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: seg},
+				newMap,
+			)
+			workingNode = newMap
+			continue
+		}
+
+		if last {
+			// final segment exists—overwrite its scalar value,
+			// preserving int if possible, else using quoted string
+			child.Kind = yaml.ScalarNode
+			if _, err := strconv.Atoi(val); err == nil {
+				child.Tag = "" // let YAML infer !!int
+				child.Style = 0
+				child.Value = val
+			} else {
+				child.Tag = "!!str"
+				child.Style = yaml.DoubleQuotedStyle
+				child.Value = val
+			}
+		} else {
+			// descend into existing mapping node
+			workingNode = child
+		}
+	}
+
+	return root, nil
 }
 
 // DeepMerge merges two *yaml.Node trees recursively

@@ -105,7 +105,12 @@ devkit avs config
 Edit settings directly via CLI:
 
 ```bash
-devkit avs config --edit --path <path to the config.yaml or contexts/devnet.yaml file>
+devkit avs config --edit
+```
+
+Set values directly into the `config.yaml`
+```bash
+devkit avs config --set project.name="My new name" project.version="0.0.2"
 ```
 
 Alternatively, manually edit the config files in the text editor of your choice.

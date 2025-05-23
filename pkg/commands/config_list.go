@@ -2,59 +2,81 @@ package commands
 
 import (
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+
+	"gopkg.in/yaml.v3"
 )
 
 func listConfig(config *common.ConfigWithContextConfig, projectSettings *common.ProjectSettings) error {
-	fmt.Printf("Displaying current configuration... \n\n")
-	fmt.Printf("Telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
+	log, _ := common.GetLogger()
 
-	fmt.Printf("Project: %s\n", config.Config.Project.Name)
-	fmt.Printf("Version: %s\n\n", config.Config.Project.Version)
+	log.Info("Displaying current configuration... \n\n")
+	log.Info("Telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
 
-	contextDir := filepath.Join("config", "contexts")
-	entries, err := os.ReadDir(contextDir)
+	log.Info("Project: %s\n", config.Config.Project.Name)
+	log.Info("Version: %s\n\n", config.Config.Project.Version)
+
+	// set the config location
+	configDir := filepath.Join("config")
+	filePath := filepath.Join(configDir, common.BaseConfig)
+
+	// load the raw YAML node tree so we preserve ordering
+	rootNode, err := common.LoadYAML(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to read contexts directory: %w", err)
+		return fmt.Errorf("❌ Failed to read or parse %s: %v\n\n", common.BaseConfig, err)
 	}
 
-	fmt.Println("Available Contexts:")
+	// mark what is being printed
+	log.Info("%s\n", filePath)
+	log.Info(strings.Repeat("-", len(filePath)+2))
 
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
-			continue
-		}
-
-		filePath := filepath.Join(contextDir, entry.Name())
-		data, err := os.ReadFile(filePath)
-		if err != nil {
-			fmt.Printf("❌ Failed to read %s: %v\n\n", entry.Name(), err)
-			continue
-		}
-
-		var content map[string]interface{}
-		if err := yaml.Unmarshal(data, &content); err != nil {
-			fmt.Printf("Failed to parse %s: %v\n\n", entry.Name(), err)
-			continue
-		}
-
-		fmt.Printf("%s\n", entry.Name())
-		fmt.Println(strings.Repeat("-", len(entry.Name())+2))
-
-		yamlContent, err := yaml.Marshal(content)
-		if err != nil {
-			fmt.Printf("Failed to marshal %s: %v\n\n", entry.Name(), err)
-			continue
-		}
-
-		fmt.Println(string(yamlContent))
-		fmt.Println()
+	// encode the node back to YAML on stdout, preserving order & comments
+	enc := yaml.NewEncoder(os.Stdout)
+	enc.SetIndent(2)
+	if err := enc.Encode(rootNode); err != nil {
+		enc.Close()
+		return fmt.Errorf("Failed to emit %s: %v\n\n", common.BaseConfig, err)
 	}
+	enc.Close()
+	log.Info("")
+
+	// @TODO: This needs to be moved into a seperate context_list.go
+	// // display contexts in original order, with comments
+	// contextDir := filepath.Join("config", "contexts")
+	// entries, err := os.ReadDir(contextDir)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to read contexts directory: %w", err)
+	// }
+
+	// log.Info("Available Contexts:\n")
+	// for _, entry := range entries {
+	// 	if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
+	// 		continue
+	// 	}
+	// 	filePath := filepath.Join(contextDir, entry.Name())
+	// 	rootNode, err := common.LoadYAML(filePath)
+	// 	if err != nil {
+	// 		log.Info("❌ Failed to load %s: %v\n\n", entry.Name(), err)
+	// 		continue
+	// 	}
+
+	// 	log.Info("%s\n", filePath)
+	// 	log.Info(strings.Repeat("-", len(filePath)+2))
+
+	// 	enc := yaml.NewEncoder(os.Stdout)
+	// 	enc.SetIndent(2)
+	// 	if err := enc.Encode(rootNode); err != nil {
+	// 		log.Info("Failed to emit %s: %v\n\n", filePath, err)
+	// 		enc.Close()
+	// 		continue
+	// 	}
+	// 	enc.Close()
+	// 	log.Info("")
+	// }
 
 	return nil
 }
