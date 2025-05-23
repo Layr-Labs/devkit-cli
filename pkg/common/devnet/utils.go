@@ -123,7 +123,7 @@ func ensureDockerHostRegex(inputUrl string, dockerHost string) string {
 }
 
 // GetRPCURL returns the RPC URL for accessing the devnet container from the host.
-// Always uses localhost since Docker maps container ports to localhost on all platforms.
+// This should always use localhost since it's for host→container communication
 func GetRPCURL(port int) string {
 	return fmt.Sprintf("http://localhost:%d", port)
 }
