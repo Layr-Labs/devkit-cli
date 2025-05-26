@@ -57,26 +57,6 @@ var CreateCommand = &cli.Command{
 			Name:  "overwrite",
 			Usage: "Force overwrite if project directory already exists",
 		},
-		&cli.BoolFlag{
-			Name:  "no-cache",
-			Usage: "Disable the use of caching mechanisms",
-			Value: false,
-		},
-		&cli.IntFlag{
-			Name:  "depth",
-			Usage: "Maximum submodule recursion depth",
-			Value: -1,
-		},
-		&cli.IntFlag{
-			Name:  "retries",
-			Usage: "Maximum number of retries on submodule clone failure",
-			Value: 3,
-		},
-		&cli.IntFlag{
-			Name:  "concurrency",
-			Usage: "Maximum number of concurrent submodule clones",
-			Value: 8,
-		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		// exit early if no project name is provided
@@ -133,24 +113,15 @@ var CreateCommand = &cli.Command{
 			}
 		}
 
-		// Set Cache location as ~/.devkit
-		basePath := filepath.Join(os.Getenv("HOME"), ".devkit")
-
 		// Fetch main template
 		fetcher := &template.GitFetcher{
-			Git:   template.NewGitClient(),
-			Cache: template.NewGitRepoCache(basePath),
+			Client: template.NewGitClient(),
 			Logger: *logger.NewProgressLogger(
 				log,
 				tracker,
 			),
 			Config: template.GitFetcherConfig{
-				CacheDir:       basePath,
-				MaxDepth:       cCtx.Int("depth"),
-				MaxRetries:     cCtx.Int("retries"),
-				MaxConcurrency: cCtx.Int("concurrency"),
-				UseCache:       !cCtx.Bool("no-cache"),
-				Verbose:        cCtx.Bool("verbose"),
+				Verbose: cCtx.Bool("verbose"),
 			},
 		}
 		if err := fetcher.Fetch(cCtx.Context, mainBaseURL, mainVersion, targetDir); err != nil {

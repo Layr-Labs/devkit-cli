@@ -2,355 +2,230 @@ package template
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
-	"time"
 )
 
-type GitClient interface {
-	Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error
-	Checkout(ctx context.Context, repoDir, commit string) error
-	WorktreeCheckout(ctx context.Context, mirrorPath, commit, worktreePath string) error
-	SubmoduleList(ctx context.Context, repoDir string) ([]Submodule, error)
-	SubmoduleCommit(ctx context.Context, repoDir, path string) (string, error)
-	ResolveRemoteCommit(ctx context.Context, repoURL, branch string) (string, error)
-	RetryClone(ctx context.Context, repoURL, dest string, opts CloneOptions, maxRetries int) error
-	SubmoduleClone(
-		ctx context.Context,
-		submodule Submodule,
-		commit string,
-		repoUrl string,
-		targetDir string,
-		repoDir string,
-		opts CloneOptions,
-	) error
-	CheckoutCommit(ctx context.Context, repoDir, commitHash string) error
-	StageSubmodule(ctx context.Context, repoDir, path, sha string) error
-	SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error
-	ActivateSubmodule(ctx context.Context, repoDir, name string) error
-	AddSubmodule(ctx context.Context, repoDir, url, path string) error
-	SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error
+// CloneEventType enumerates the kinds of things git clone can tell us.
+type CloneEventType int
+
+const (
+	EventSubmoduleDiscovered CloneEventType = iota
+	EventSubmoduleCloneStart
+	EventProgress
+	EventCloneComplete
+	EventCloneFailed
+)
+
+// CloneEvent is a single “thing happened” during clone.
+type CloneEvent struct {
+	Type     CloneEventType
+	Parent   string // for submodule events
+	Name     string // submodule name or module path
+	URL      string // for discovery
+	Ref      string // current ref we are cloning from
+	Progress int    // 0–100
+	Module   string // current module path
 }
 
-type CloneOptions struct {
-	// Ref is the branch, commit or tag to checkout after cloning
-	Ref         string
-	Depth       int
-	Bare        bool
-	Dissociate  bool
-	NoHardlinks bool
-	ProgressCB  func(int)
+// Reporter consumes CloneEvents
+type Reporter interface {
+	Report(CloneEvent)
 }
 
-type Submodule struct {
-	Name, Path, URL, Branch string
+// Runner lets us inject/mock command execution in tests
+type Runner interface {
+	// CommandContext mirrors exec.CommandContext
+	CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd
 }
 
-type SubmoduleFailure struct {
-	mod Submodule
-	err error
+// execRunner is the real-world Runner
+type execRunner struct{}
+
+func (execRunner) CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, name, args...)
 }
 
-type execGitClient struct {
-	repoLocksMu    sync.Mutex
-	repoLocks      map[string]*sync.Mutex
+// GitClient does our actual clone + parsing.
+type GitClient struct {
+	runner         Runner
 	receivingRegex *regexp.Regexp
+	cloningRegex   *regexp.Regexp
+	submoduleRegex *regexp.Regexp
 }
 
-func NewGitClient() GitClient {
-	return &execGitClient{
-		repoLocks:      make(map[string]*sync.Mutex),
+// NewGitClient builds a GitClient using the real exec.
+func NewGitClient() *GitClient {
+	return &GitClient{
+		runner:         execRunner{},
 		receivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
+		cloningRegex:   regexp.MustCompile(`Cloning into ['"]?(.+?)['"]?\.{3}`),
+		submoduleRegex: regexp.MustCompile(
+			`^Submodule ['"]?([^'"]+)['"]? \(([^)]+)\) registered for path ['"]?(.+?)['"]?$`,
+		),
 	}
 }
 
-func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, args ...string) ([]byte, error) {
-	cmdCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
+// Clone runs the following to enable clones from SHAs, tags and branches:
+//   - git clone --no-checkout --depth 1 <repoURL> <dest>
+//   - git -C <dest> checkout --quiet <ref>
+//   - git -C <dest> submodule update --init --recursive --progress
+func (g *GitClient) Clone(
+	ctx context.Context,
+	repoURL, ref, dest string,
+	config GitFetcherConfig,
+	reporter Reporter,
+) error {
+	// Derive a short name for the top-level module
+	repoName := filepath.Base(strings.TrimSuffix(repoURL, ".git"))
 
-	cmd := exec.CommandContext(cmdCtx, "git", args...)
-	if dir != "" {
-		cmd.Dir = dir
+	// Plain clone (no --depth, no parsing)
+	cloneArgs := []string{"clone", "--no-checkout", "--progress", repoURL, dest}
+	cloneCmd := g.runner.CommandContext(ctx, "git", cloneArgs...)
+
+	// In verbose mode print git logs directly
+	if config.Verbose {
+		cloneCmd.Stdout, cloneCmd.Stderr = os.Stdout, os.Stderr
+		if err := cloneCmd.Run(); err != nil {
+			if reporter != nil {
+				reporter.Report(CloneEvent{Type: EventCloneFailed})
+			}
+			return fmt.Errorf("git clone: %w", err)
+		}
+	} else {
+		// Report progress to reporter to handle structured logging
+		stderr, err := cloneCmd.StderrPipe()
+		if err != nil {
+			reporter.Report(CloneEvent{Type: EventCloneFailed})
+			return fmt.Errorf("stderr pipe: %w", err)
+		}
+		if err := cloneCmd.Start(); err != nil {
+			reporter.Report(CloneEvent{Type: EventCloneFailed})
+			return fmt.Errorf("start clone: %w", err)
+		}
+		// parse the initial clone progress into events
+		if err := g.parseCloneOutput(stderr, reporter, dest, ref); err != nil {
+			return fmt.Errorf("parsing clone output: %w", err)
+		}
+		if err := cloneCmd.Wait(); err != nil {
+			reporter.Report(CloneEvent{Type: EventCloneFailed})
+			return fmt.Errorf("git clone: %w", err)
+		}
 	}
 
-	// capture stdout
-	var out bytes.Buffer
-	cmd.Stdout = &out
-
-	// capture stderr
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return nil, err
+	// Checkout the desired ref after cloning to pull submodules from the correct refs
+	coCmd := g.runner.CommandContext(ctx,
+		"git", "-C", dest, "checkout", "--quiet", ref,
+	)
+	if config.Verbose {
+		coCmd.Stdout, coCmd.Stderr = os.Stdout, os.Stderr
+	}
+	if err := coCmd.Run(); err != nil {
+		// Report failure
+		if reporter != nil {
+			reporter.Report(CloneEvent{Type: EventCloneFailed})
+		}
+		// If checkout fails, remove the .git folder so user isn't left in a broken state.
+		err = os.RemoveAll(filepath.Join(dest, ".git"))
+		if err != nil {
+			return fmt.Errorf("removing .git dir after git checkout %q failed: %w", ref, err)
+		}
+		// return err
+		return fmt.Errorf("git checkout %q failed: %w", ref, err)
 	}
 
-	// start the command
-	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("git %v failed to start: %w", args, err)
+	// Force a 100% report for the top-level repo (in case parse missed it)
+	if reporter != nil {
+		reporter.Report(CloneEvent{Type: EventProgress, Module: repoName, Ref: ref, Progress: 100})
 	}
 
-	// read stderr for progress
-	scanner := bufio.NewScanner(stderr)
-	var lastReportedProgress int
+	// Recursive submodule update with progress
+	smArgs := []string{"-C", dest, "submodule", "update", "--init", "--recursive", "--depth=1", "--progress"}
+	smCmd := g.runner.CommandContext(ctx, "git", smArgs...)
+	// If verbose, print git logs directly
+	if config.Verbose {
+		smCmd.Stdout, smCmd.Stderr = os.Stdout, os.Stderr
+		if err := smCmd.Run(); err != nil {
+			return fmt.Errorf("git submodule update: %w", err)
+		}
+	} else {
+		// Report progress to reporter to handle structured logging
+		stderr, err := smCmd.StderrPipe()
+		if err != nil {
+			return fmt.Errorf("stderr pipe: %w", err)
+		}
+		if err := smCmd.Start(); err != nil {
+			return fmt.Errorf("start submodule update: %w", err)
+		}
+		// this will emit EventProgress etc. as submodules download
+		if err := g.parseCloneOutput(stderr, reporter, dest, ref); err != nil {
+			return fmt.Errorf("parsing clone output: %w", err)
+		}
+		if err := smCmd.Wait(); err != nil {
+			return fmt.Errorf("git submodule update: %w", err)
+		}
+	}
+
+	// Notify done
+	if reporter != nil {
+		reporter.Report(CloneEvent{Type: EventCloneComplete})
+	}
+	return nil
+}
+
+// parseCloneOutput scans git’s progress output and emits events
+func (g *GitClient) parseCloneOutput(r io.Reader, rep Reporter, dest string, ref string) error {
+	scanner := bufio.NewScanner(r)
+	parent, module := ".", ""
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		// look for progress line with percentage (e.g., receiving objects: 100%)
-		if match := g.receivingRegex.FindStringSubmatch(line); match != nil {
-			pct := percentToInt(match[1])
-			// only report progress if the percentage has changed
-			if pct != lastReportedProgress {
-				if opts.ProgressCB != nil {
-					// call ProgressCB with updated progress
-					opts.ProgressCB(pct)
-				}
-				lastReportedProgress = pct
-			}
-		}
-	}
-
-	// handle any errors encountered in stderr
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("stderr scan error: %w", err)
-	}
-
-	// wait for the command to complete
-	if err := cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("git %v failed: %w\nOutput:\n%s", args, err, out.String())
-	}
-
-	return out.Bytes(), nil
-}
-
-func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error {
-	args := []string{"clone"}
-
-	// TODO(seanmcgary): commented this out since this breaks when passing a commit hash
-	// since a commit hash is not a branch.
-	//
-	// the other flags also break the case of passing a commit hash
-
-	// handle flags for bare, depth, branch, dissociate, and no-hardlinks
-	//if opts.Bare {
-	//	args = append(args, "--bare")
-	//}
-	// if opts.Depth > 0 {
-	// 	args = append(args, fmt.Sprintf("--depth=%d", opts.Depth))
-	// }
-	// if opts.Ref != "" {
-	// 	args = append(args, "-b", opts.Ref)
-	// }
-	// if opts.Dissociate {
-	// 	args = append(args, "--dissociate")
-	// }
-	// if opts.NoHardlinks {
-	// 	args = append(args, "--no-hardlinks")
-	// }
-
-	// add the --progress flag for tracking progress
-	args = append(args, "--progress")
-
-	// add the repository URL and destination path
-	args = append(args, repoURL, dest)
-
-	// call run to execute the command and capture progress
-	_, err := g.run(ctx, "", opts, args...)
-	if err != nil {
-		return fmt.Errorf("failed to clone: '%s' '%s' '%s' %w", repoURL, opts.Ref, dest, err)
-	}
-
-	return nil
-}
-
-func (g *execGitClient) RetryClone(ctx context.Context, repoURL, dest string, opts CloneOptions, maxRetries int) error {
-	var err error
-	for attempt := 0; attempt+1 <= maxRetries; attempt++ {
-		err = g.Clone(ctx, repoURL, dest, opts)
-		if err == nil {
-			return nil
-		}
-		time.Sleep(time.Duration(attempt+1) * 250 * time.Millisecond)
-	}
-	return fmt.Errorf("failed after %d retries: %w", maxRetries, err)
-}
-
-func (g *execGitClient) SubmoduleClone(
-	ctx context.Context,
-	submodule Submodule,
-	commit string,
-	repoUrl string,
-	targetDir string,
-	repoDir string,
-	opts CloneOptions,
-) error {
-	// clean up target
-	_ = os.RemoveAll(targetDir)
-
-	// clone from provided repoUrl (cachePath or URL)
-	if err := g.Clone(ctx, repoUrl, targetDir, opts); err != nil {
-		return fmt.Errorf("clone failed: %w", err)
-	}
-
-	// checkout to commit
-	if err := g.Checkout(ctx, targetDir, commit); err != nil {
-		return fmt.Errorf("checkout failed: %w", err)
-	}
-
-	// lock against repoDir to guard global state
-	repoLock := g.lockForRepo(repoDir)
-	repoLock.Lock()
-	defer repoLock.Unlock()
-
-	// stage submodule in parent
-	if err := g.StageSubmodule(ctx, repoDir, submodule.Path, commit); err != nil {
-		return fmt.Errorf("stage failed: %w", err)
-	}
-
-	// set submodule URL
-	if err := g.SetSubmoduleURL(ctx, repoDir, submodule.Name, submodule.URL); err != nil {
-		return fmt.Errorf("set-url failed: %w", err)
-	}
-
-	// activate submodule
-	if err := g.ActivateSubmodule(ctx, repoDir, submodule.Name); err != nil {
-		return fmt.Errorf("activate failed: %w", err)
-	}
-
-	return nil
-}
-
-func (g *execGitClient) Checkout(ctx context.Context, repoDir, commit string) error {
-	_, err := g.run(ctx, repoDir, CloneOptions{}, "checkout", commit)
-	return err
-}
-
-func (g *execGitClient) WorktreeCheckout(ctx context.Context, mirrorPath, commit, worktreePath string) error {
-	_, err := g.run(ctx, mirrorPath, CloneOptions{}, "worktree", "add", "--detach", worktreePath, commit)
-	return err
-}
-
-func (g *execGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]Submodule, error) {
-	out, err := g.run(ctx, repoDir, CloneOptions{}, "--no-pager", "config", "-f", ".gitmodules", "--get-regexp", `^submodule\..*\.path$`)
-	if err != nil {
-		return nil, err
-	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	var subs []Submodule
-	for _, line := range lines {
-		parts := strings.Fields(line)
-		if len(parts) != 2 {
+		// Submodule discovery
+		if m := g.submoduleRegex.FindStringSubmatch(line); len(m) == 4 {
+			name, url, full := m[1], m[2], m[3]
+			parent = strings.TrimSuffix(full, name)
+			rep.Report(CloneEvent{
+				Type:   EventSubmoduleDiscovered,
+				Parent: parent,
+				Name:   name,
+				URL:    url,
+				Ref:    ref,
+			})
 			continue
 		}
-		name := strings.TrimPrefix(parts[0], "submodule.")
-		name = strings.TrimSuffix(name, ".path")
-		path := parts[1]
-		urlOut, err := g.run(ctx, repoDir, CloneOptions{}, "config", "-f", ".gitmodules", "--get", fmt.Sprintf("submodule.%s.url", name))
-		if err != nil {
-			return nil, err
+
+		// New clone path
+		if m := g.cloningRegex.FindStringSubmatch(line); len(m) == 2 {
+			// Finish previous module
+			if module != "" {
+				rep.Report(CloneEvent{Type: EventProgress, Module: module, Ref: ref, Progress: 100})
+			}
+			raw := m[1]
+			parts := strings.Split(raw, filepath.Join(dest, parent))
+			if len(parts) > 1 {
+				raw = strings.TrimPrefix(parts[len(parts)-1], string(os.PathSeparator))
+			}
+			module = raw
+			rep.Report(CloneEvent{Type: EventSubmoduleCloneStart, Parent: parent, Module: module, Ref: ref})
+			rep.Report(CloneEvent{Type: EventProgress, Module: module, Ref: ref, Progress: 0})
+			continue
 		}
-		branchOut, err := g.run(ctx, repoDir, CloneOptions{}, "config", "-f", ".gitmodules", "--get", fmt.Sprintf("submodule.%s.branch", name))
-		branch := ""
-		if err == nil {
-			branch = strings.TrimSpace(string(branchOut))
+
+		// Percent progress
+		if m := g.receivingRegex.FindStringSubmatch(line); len(m) == 2 {
+			var pct int
+			fmt.Sscanf(m[1], "%d", &pct)
+			rep.Report(CloneEvent{Type: EventProgress, Module: module, Progress: pct, Ref: ref})
 		}
-		subs = append(subs, Submodule{
-			Name:   name,
-			Path:   path,
-			URL:    strings.TrimSpace(string(urlOut)),
-			Branch: branch,
-		})
 	}
-	return subs, nil
-}
-
-func (g *execGitClient) SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error {
-	_, err := g.run(ctx, repoDir, opts, "submodule", "update", "--recursive", "--depth", "2", "--init", "--progress")
-	return err
-}
-
-func (g *execGitClient) SubmoduleCommit(ctx context.Context, repoDir, path string) (string, error) {
-	out, err := g.run(ctx, repoDir, CloneOptions{}, "ls-tree", "HEAD", path)
-	if err != nil {
-		return "", err
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("scan stderr: %w", err)
 	}
-	fields := strings.Fields(string(out))
-	if len(fields) < 3 {
-		return "", fmt.Errorf("unexpected ls-tree output: %s", out)
-	}
-	return fields[2], nil
-}
-
-func (g *execGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, ref string) (string, error) {
-	args := []string{"ls-remote", repoURL}
-	if ref != "" {
-		args = append(args, ref)
-	} else {
-		args = append(args, "HEAD")
-	}
-	out, err := g.run(ctx, "", CloneOptions{}, args...)
-	if err != nil {
-		return "", err
-	}
-	// if len is 0 with no error, we've been provided a commit hash, so let's use it
-	if len(out) == 0 {
-		return ref, nil
-	}
-
-	// otherwise, parse the output and take the first commit hash
-	fields := strings.Fields(string(out))
-	if len(fields) < 1 {
-		return "", fmt.Errorf("unexpected output: %s", out)
-	}
-	return fields[0], nil
-}
-
-func (g *execGitClient) CheckoutCommit(ctx context.Context, repoDir, commitHash string) error {
-	_, err := g.run(ctx, repoDir, CloneOptions{}, "checkout", commitHash)
-	return err
-}
-
-func (g *execGitClient) StageSubmodule(ctx context.Context, repoDir, path, sha string) error {
-	_, err := g.run(ctx, repoDir, CloneOptions{}, "update-index", "--add", "--cacheinfo", "160000", sha, path)
-	return err
-}
-
-func (g *execGitClient) SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error {
-	_, err := g.run(ctx, repoDir, CloneOptions{}, "config", "--local", fmt.Sprintf("submodule.%s.url", name), url)
-	return err
-}
-
-func (g *execGitClient) ActivateSubmodule(ctx context.Context, repoDir, name string) error {
-	_, err := g.run(ctx, repoDir, CloneOptions{}, "config", "--local", fmt.Sprintf("submodule.%s.active", name), "true")
-	return err
-}
-
-func (g *execGitClient) AddSubmodule(ctx context.Context, repoDir, url, path string) error {
-	_, err := g.run(ctx, repoDir, CloneOptions{}, "submodule", "add", url, path)
-	return err
-}
-
-// Helper to return a per-repo mutex to synchronise operations on the same repo
-func (g *execGitClient) lockForRepo(repo string) *sync.Mutex {
-	g.repoLocksMu.Lock()
-	defer g.repoLocksMu.Unlock()
-	mu, ok := g.repoLocks[repo]
-	if !ok {
-		mu = &sync.Mutex{}
-		g.repoLocks[repo] = mu
-	}
-	return mu
-}
-
-// Helper function to convert the percentage from string to int
-func percentToInt(s string) int {
-	var i int
-	if _, err := fmt.Sscanf(s, "%d", &i); err != nil {
-		return 0
-	}
-	return i
+	return nil
 }

@@ -2,156 +2,105 @@ package template
 
 import (
 	"context"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
 )
 
-func TestGitFetcher_InvalidURL(t *testing.T) {
-	fetcher := getFetcher(1)
-	tempDir := t.TempDir()
-
-	cmdCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Test with an invalid URL (should fail)
-	err := fetcher.Fetch(cmdCtx, "invalid-url", "", tempDir)
-	if err == nil {
-		t.Error("expected error for invalid URL")
-	}
-
-	// Verify .git directory is not present (since Fetch failed)
-	gitDir := filepath.Join(tempDir, ".git")
-	if _, err := os.Stat(gitDir); !os.IsNotExist(err) {
-		t.Error("expected no .git directory after failed fetch")
-	}
-}
-
-func TestGitFetcher_InvalidVersion(t *testing.T) {
-	fetcher := getFetcher(1)
-	tempDir := t.TempDir()
-
-	cmdCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Test with an invalid URL (should fail)
-	err := fetcher.Fetch(cmdCtx, "https://github.com/Layr-labs/hourglass-avs-template", "", tempDir)
-	if err == nil {
-		t.Error("expected error for invalid URL")
-	}
-
-	// Verify .git directory is not present (since Fetch failed)
-	gitDir := filepath.Join(tempDir, ".git")
-	if _, err := os.Stat(gitDir); !os.IsNotExist(err) {
-		t.Error("expected no .git directory after failed fetch")
-	}
-}
-
-func getFetcher(maxDepth int) *GitFetcher {
-	// Set Cache location as ~/.devkit
-	basePath := filepath.Join(os.Getenv("HOME"), ".devkit")
-	// Set logger
+func getFetcher() *GitFetcher {
 	log := logger.NewZapLogger()
-	// Set fetcher
-	fetcher := &GitFetcher{
-		Git:   NewGitClient(),
-		Cache: NewGitRepoCache(basePath),
+	return &GitFetcher{
+		Client: NewGitClient(),
 		Logger: *logger.NewProgressLogger(
 			log,
 			progress.NewLogProgressTracker(10, log),
 		),
-		Config: GitFetcherConfig{
-			CacheDir:       basePath,
-			MaxDepth:       maxDepth,
-			MaxRetries:     3,
-			MaxConcurrency: 8,
-		},
 	}
-	return fetcher
 }
 
-func TestGitFetcher_ValidRepo(t *testing.T) {
-	// Set fetcher
-	fetcher := getFetcher(1)
-	tempDir := t.TempDir()
+func TestGitFetcher_InvalidURL(t *testing.T) {
+	f := getFetcher()
+	tmp := t.TempDir()
 
-	repo := "https://github.com/Layr-labs/hourglass-avs-template"
+	err := f.Fetch(context.Background(), "not-a-url", "master", tmp)
+	if err == nil {
+		t.Fatal("expected error for invalid URL")
+	}
+	if _, err := os.Stat(filepath.Join(tmp, ".git")); !os.IsNotExist(err) {
+		t.Error("expected no .git directory after failure")
+	}
+}
 
-	cmdCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+func TestGitFetcher_InvalidRef(t *testing.T) {
+	f := getFetcher()
+	tmp := t.TempDir()
 
-	err := fetcher.Fetch(cmdCtx, repo, "master", tempDir)
+	err := f.Fetch(context.Background(),
+		"https://github.com/Layr-Labs/hourglass-avs-template",
+		"no-such-branch",
+		tmp,
+	)
+	if err == nil {
+		t.Fatal("expected error for invalid ref")
+	}
+	if _, err := os.Stat(filepath.Join(tmp, ".git")); !os.IsNotExist(err) {
+		t.Error("expected no .git directory after failure")
+	}
+}
+
+func TestGitFetcher_ValidClone(t *testing.T) {
+	f := getFetcher()
+	tmp := t.TempDir()
+
+	err := f.Fetch(context.Background(),
+		"https://github.com/Layr-Labs/hourglass-avs-template",
+		"master",
+		tmp,
+	)
 	if err != nil {
-		t.Fatalf("unexpected error fetching repo: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
-
-	if _, err := os.Stat(filepath.Join(tempDir, ".git")); err != nil {
-		t.Errorf(".git not found after clone: %v", err)
+	if _, err := os.Stat(filepath.Join(tmp, ".git")); err != nil {
+		t.Errorf(".git missing: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(tempDir, "README.md")); err != nil {
-		t.Log("README file not found — still valid but may have changed")
+	if _, err := os.Stat(filepath.Join(tmp, "README.md")); os.IsNotExist(err) {
+		t.Log("warning: README.md not found")
 	}
 }
 
 func TestGitFetcher_Submodules(t *testing.T) {
-	fetcher := getFetcher(1)
-	tempDir := t.TempDir()
+	f := getFetcher()
+	tmp := t.TempDir()
 
-	// Includes submodules: simple example with known submodule
-	repo := "https://github.com/Layr-labs/hourglass-avs-template"
-
-	cmdCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	err := fetcher.Fetch(cmdCtx, repo, "master", tempDir)
+	err := f.Fetch(context.Background(),
+		"https://github.com/Layr-Labs/hourglass-avs-template",
+		"master",
+		tmp,
+	)
 	if err != nil {
-		t.Fatalf("unexpected error cloning repo with submodules: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
-
-	// Example path — verify at least one known submodule folder exists
-	expectedSubmodule := filepath.Join(tempDir, "lib", "forge-std")
-	if _, err := os.Stat(expectedSubmodule); os.IsNotExist(err) {
-		t.Log("submodule not found — this may vary based on repo")
-	}
-}
-
-func TestGitFetcher_MaxDepth(t *testing.T) {
-	fetcher := getFetcher(0)
-	tempDir := t.TempDir()
-
-	repo := "https://github.com/Layr-labs/hourglass-avs-template"
-
-	cmdCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	err := fetcher.Fetch(cmdCtx, repo, "master", tempDir)
-	if err != nil {
-		t.Fatalf("unexpected error fetching repo with depth: %v", err)
-	}
-	visited := filepath.Join(tempDir, ".devkit/contracts")
-	if _, err := os.Stat(visited); err != nil {
-		t.Fatalf("expected top-level submodule not found")
-	}
-
-	contractsGitmodules := filepath.Join(tempDir, "lib", "forge-std", ".gitmodules")
-	if _, err := os.Stat(contractsGitmodules); err == nil {
-		t.Errorf("lib/forge-std/.gitmodules parsed despite MaxDepth=1")
+	// check for at least one submodule directory
+	// adjust the path based on the repo’s actual layout
+	sub := filepath.Join(tmp, ".devkit", "contracts")
+	if _, err := os.Stat(sub); os.IsNotExist(err) {
+		t.Logf("submodule directory %q not found (repo layout may have changed)", sub)
 	}
 }
 
 func TestGitFetcher_NonexistentBranch(t *testing.T) {
-	fetcher := getFetcher(0)
-	tempDir := t.TempDir()
+	f := getFetcher()
+	tmp := t.TempDir()
 
-	repo := "https://github.com/Layr-labs/hourglass-avs-template"
-
-	cmdCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	err := fetcher.Fetch(cmdCtx, repo, "lol-fake", tempDir)
+	err := f.Fetch(context.Background(),
+		"https://github.com/Layr-Labs/hourglass-avs-template",
+		"lol-fake",
+		tmp,
+	)
 	if err == nil {
-		t.Error("expected error for nonexistent branch")
+		t.Fatal("expected error on nonexistent branch")
 	}
 }

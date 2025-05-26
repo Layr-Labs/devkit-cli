@@ -1,10 +1,11 @@
 package common
 
 import (
+	"os"
+
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
-	"os"
 
 	"github.com/urfave/cli/v2"
 )
