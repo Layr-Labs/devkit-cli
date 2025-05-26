@@ -18,7 +18,7 @@ type GitMetrics interface {
 	CloneFinished(repo string, err error)
 }
 
-// GitFetcher ties the pieces together.
+// GitFetcher wraps clone with metrics and reporting
 type GitFetcher struct {
 	Client  *GitClient
 	Metrics GitMetrics

@@ -1,14 +1,16 @@
-package template
+package template_test
 
 import (
 	"strings"
 	"testing"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 )
 
 type mockTracker struct {
-	// percentage by module
+	// Percentage by module
 	perc   map[string]int
 	label  map[string]string
 	clears int
@@ -38,22 +40,25 @@ func (f *mockTracker) Clear() {
 	f.clears++
 }
 
+// ProgressRows is a no-op here
+func (s *mockTracker) ProgressRows() []iface.ProgressRow { return make([]iface.ProgressRow, 0) }
+
 func TestCloneReporterEndToEnd(t *testing.T) {
 	baseLogger := logger.NewZapLogger()
 	mock := newMockTracker()
 	progLogger := *logger.NewProgressLogger(baseLogger, mock)
 
 	// Create the reporter for a repo named "foo"
-	rep := NewCloneReporter("https://example.com/foo.git", progLogger, nil)
+	rep := template.NewCloneReporter("https://example.com/foo.git", progLogger, nil)
 
 	// Simulate events
-	events := []CloneEvent{
-		{Type: EventProgress, Module: "foo", Progress: 100, Ref: "main"},
-		{Type: EventSubmoduleDiscovered, Parent: ".", Name: "modA", URL: "uA", Ref: "main"},
-		{Type: EventSubmoduleCloneStart, Parent: ".", Module: "modA", Ref: "main"},
-		{Type: EventProgress, Parent: ".", Module: "modA", Progress: 50, Ref: "main"},
-		{Type: EventProgress, Parent: ".", Module: "modA", Progress: 75, Ref: "main"},
-		{Type: EventCloneComplete},
+	events := []template.CloneEvent{
+		{Type: template.EventProgress, Module: "foo", Progress: 100, Ref: "main"},
+		{Type: template.EventSubmoduleDiscovered, Parent: ".", Name: "modA", URL: "uA", Ref: "main"},
+		{Type: template.EventSubmoduleCloneStart, Parent: ".", Module: "modA", Ref: "main"},
+		{Type: template.EventProgress, Parent: ".", Module: "modA", Progress: 50, Ref: "main"},
+		{Type: template.EventProgress, Parent: ".", Module: "modA", Progress: 75, Ref: "main"},
+		{Type: template.EventCloneComplete},
 	}
 	for _, ev := range events {
 		rep.Report(ev)
@@ -85,13 +90,13 @@ func TestCloneReporterSubmoduleDiscoveryGrouping(t *testing.T) {
 	mock := newMockTracker()
 	progLogger := *logger.NewProgressLogger(baseLogger, mock)
 
-	rep := NewCloneReporter("https://example.com/bar.git", progLogger, nil)
+	rep := template.NewCloneReporter("https://example.com/bar.git", progLogger, nil)
 
 	// Two discoveries under same parent, then start
-	rep.Report(CloneEvent{Type: EventSubmoduleDiscovered, Parent: "p1/", Name: "a", URL: "uA"})
-	rep.Report(CloneEvent{Type: EventSubmoduleDiscovered, Parent: "p1/", Name: "b", URL: "uB"})
+	rep.Report(template.CloneEvent{Type: template.EventSubmoduleDiscovered, Parent: "p1/", Name: "a", URL: "uA"})
+	rep.Report(template.CloneEvent{Type: template.EventSubmoduleDiscovered, Parent: "p1/", Name: "b", URL: "uB"})
 	// Now trigger the clone start: should flush both
-	rep.Report(CloneEvent{Type: EventSubmoduleCloneStart, Parent: "p1/", Module: "a"})
+	rep.Report(template.CloneEvent{Type: template.EventSubmoduleCloneStart, Parent: "p1/", Module: "a"})
 
 	// That flush should have called Clear() once
 	if mock.clears != 1 {
@@ -104,10 +109,10 @@ func TestCloneReporterFallbackRootProgress(t *testing.T) {
 	mock := newMockTracker()
 	progLogger := *logger.NewProgressLogger(baseLogger, mock)
 
-	rep := NewCloneReporter("https://example.com/baz.git", progLogger, nil)
+	rep := template.NewCloneReporter("https://example.com/baz.git", progLogger, nil)
 
 	// Emit a Progress event with Module=""
-	rep.Report(CloneEvent{Type: EventProgress, Module: "", Progress: 33, Ref: "dev"})
+	rep.Report(template.CloneEvent{Type: template.EventProgress, Module: "", Progress: 33, Ref: "dev"})
 
 	// We should have seen update to 33%
 	if pct, ok := mock.perc["baz"]; !ok || pct != 33 {

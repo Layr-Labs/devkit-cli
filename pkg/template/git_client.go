@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-// CloneEventType enumerates the kinds of things git clone can tell us.
+// CloneEventType enumerates the kinds of things git clone can tell us
 type CloneEventType int
 
 const (
@@ -23,15 +23,15 @@ const (
 	EventCloneFailed
 )
 
-// CloneEvent is a single “thing happened” during clone.
+// CloneEvent is a single “thing that happened” during clone
 type CloneEvent struct {
 	Type     CloneEventType
 	Parent   string // for submodule events
+	Module   string // current module path
 	Name     string // submodule name or module path
 	URL      string // for discovery
 	Ref      string // current ref we are cloning from
 	Progress int    // 0–100
-	Module   string // current module path
 }
 
 // Reporter consumes CloneEvents
@@ -52,24 +52,31 @@ func (execRunner) CommandContext(ctx context.Context, name string, args ...strin
 	return exec.CommandContext(ctx, name, args...)
 }
 
-// GitClient does our actual clone + parsing.
+// GitClient does our actual clone + parsing
 type GitClient struct {
-	runner         Runner
-	receivingRegex *regexp.Regexp
-	cloningRegex   *regexp.Regexp
-	submoduleRegex *regexp.Regexp
+	Runner         Runner
+	ReceivingRegex *regexp.Regexp
+	CloningRegex   *regexp.Regexp
+	SubmoduleRegex *regexp.Regexp
 }
 
-// NewGitClient builds a GitClient using the real exec.
+// NewGitClient builds a GitClient using the real exec
 func NewGitClient() *GitClient {
 	return &GitClient{
-		runner:         execRunner{},
-		receivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
-		cloningRegex:   regexp.MustCompile(`Cloning into ['"]?(.+?)['"]?\.{3}`),
-		submoduleRegex: regexp.MustCompile(
+		Runner:         execRunner{},
+		ReceivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
+		CloningRegex:   regexp.MustCompile(`Cloning into ['"]?(.+?)['"]?\.{3}`),
+		SubmoduleRegex: regexp.MustCompile(
 			`^Submodule ['"]?([^'"]+)['"]? \(([^)]+)\) registered for path ['"]?(.+?)['"]?$`,
 		),
 	}
+}
+
+// NewGitClientWithRunner enables injecting a custom Runner (e.g. in tests)
+func NewGitClientWithRunner(r Runner) *GitClient {
+	g := NewGitClient()
+	g.Runner = r
+	return g
 }
 
 // Clone runs the following to enable clones from SHAs, tags and branches:
@@ -87,7 +94,7 @@ func (g *GitClient) Clone(
 
 	// Plain clone (no --depth, no parsing)
 	cloneArgs := []string{"clone", "--no-checkout", "--progress", repoURL, dest}
-	cloneCmd := g.runner.CommandContext(ctx, "git", cloneArgs...)
+	cloneCmd := g.Runner.CommandContext(ctx, "git", cloneArgs...)
 
 	// In verbose mode print git logs directly
 	if config.Verbose {
@@ -110,7 +117,7 @@ func (g *GitClient) Clone(
 			return fmt.Errorf("start clone: %w", err)
 		}
 		// parse the initial clone progress into events
-		if err := g.parseCloneOutput(stderr, reporter, dest, ref); err != nil {
+		if err := g.ParseCloneOutput(stderr, reporter, dest, ref); err != nil {
 			return fmt.Errorf("parsing clone output: %w", err)
 		}
 		if err := cloneCmd.Wait(); err != nil {
@@ -120,7 +127,7 @@ func (g *GitClient) Clone(
 	}
 
 	// Checkout the desired ref after cloning to pull submodules from the correct refs
-	coCmd := g.runner.CommandContext(ctx,
+	coCmd := g.Runner.CommandContext(ctx,
 		"git", "-C", dest, "checkout", "--quiet", ref,
 	)
 	if config.Verbose {
@@ -131,7 +138,7 @@ func (g *GitClient) Clone(
 		if reporter != nil {
 			reporter.Report(CloneEvent{Type: EventCloneFailed})
 		}
-		// If checkout fails, remove the .git folder so user isn't left in a broken state.
+		// If checkout fails, remove the .git folder so user isn't left in a broken state
 		err = os.RemoveAll(filepath.Join(dest, ".git"))
 		if err != nil {
 			return fmt.Errorf("removing .git dir after git checkout %q failed: %w", ref, err)
@@ -147,7 +154,7 @@ func (g *GitClient) Clone(
 
 	// Recursive submodule update with progress
 	smArgs := []string{"-C", dest, "submodule", "update", "--init", "--recursive", "--depth=1", "--progress"}
-	smCmd := g.runner.CommandContext(ctx, "git", smArgs...)
+	smCmd := g.Runner.CommandContext(ctx, "git", smArgs...)
 	// If verbose, print git logs directly
 	if config.Verbose {
 		smCmd.Stdout, smCmd.Stderr = os.Stdout, os.Stderr
@@ -164,7 +171,7 @@ func (g *GitClient) Clone(
 			return fmt.Errorf("start submodule update: %w", err)
 		}
 		// this will emit EventProgress etc. as submodules download
-		if err := g.parseCloneOutput(stderr, reporter, dest, ref); err != nil {
+		if err := g.ParseCloneOutput(stderr, reporter, dest, ref); err != nil {
 			return fmt.Errorf("parsing clone output: %w", err)
 		}
 		if err := smCmd.Wait(); err != nil {
@@ -179,15 +186,15 @@ func (g *GitClient) Clone(
 	return nil
 }
 
-// parseCloneOutput scans git’s progress output and emits events
-func (g *GitClient) parseCloneOutput(r io.Reader, rep Reporter, dest string, ref string) error {
+// ParseCloneOutput scans git’s progress output and emits events
+func (g *GitClient) ParseCloneOutput(r io.Reader, rep Reporter, dest string, ref string) error {
 	scanner := bufio.NewScanner(r)
 	parent, module := ".", ""
 	for scanner.Scan() {
 		line := scanner.Text()
 
 		// Submodule discovery
-		if m := g.submoduleRegex.FindStringSubmatch(line); len(m) == 4 {
+		if m := g.SubmoduleRegex.FindStringSubmatch(line); len(m) == 4 {
 			name, url, full := m[1], m[2], m[3]
 			parent = strings.TrimSuffix(full, name)
 			rep.Report(CloneEvent{
@@ -201,7 +208,7 @@ func (g *GitClient) parseCloneOutput(r io.Reader, rep Reporter, dest string, ref
 		}
 
 		// New clone path
-		if m := g.cloningRegex.FindStringSubmatch(line); len(m) == 2 {
+		if m := g.CloningRegex.FindStringSubmatch(line); len(m) == 2 {
 			// Finish previous module
 			if module != "" {
 				rep.Report(CloneEvent{Type: EventProgress, Module: module, Ref: ref, Progress: 100})
@@ -218,7 +225,7 @@ func (g *GitClient) parseCloneOutput(r io.Reader, rep Reporter, dest string, ref
 		}
 
 		// Percent progress
-		if m := g.receivingRegex.FindStringSubmatch(line); len(m) == 2 {
+		if m := g.ReceivingRegex.FindStringSubmatch(line); len(m) == 2 {
 			var pct int
 			fmt.Sscanf(m[1], "%d", &pct)
 			rep.Report(CloneEvent{Type: EventProgress, Module: module, Progress: pct, Ref: ref})

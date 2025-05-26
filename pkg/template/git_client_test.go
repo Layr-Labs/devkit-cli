@@ -1,105 +1,197 @@
-package template
+package template_test
 
 import (
 	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 )
 
-// testReporter collects events for inspection.
-type testReporter struct {
-	events []CloneEvent
+// RunnerFunc is an adapter to let us define Runner inline
+type RunnerFunc func(ctx context.Context, name string, args ...string) *exec.Cmd
+
+func (f RunnerFunc) CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
+	return f(ctx, name, args...)
 }
 
-func (r *testReporter) Report(ev CloneEvent) {
+// errReader always returns an error on Read
+type errReader struct{}
+
+func (errReader) Read(_ []byte) (int, error) { return 0, errors.New("read failed") }
+
+// In-memory reporter for assertions
+type recordingReporter struct {
+	events []template.CloneEvent
+}
+
+func (r *recordingReporter) Report(ev template.CloneEvent) {
 	r.events = append(r.events, ev)
 }
 
-func makeClient() *GitClient {
-	return &GitClient{
-		receivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
-		cloningRegex:   regexp.MustCompile(`Cloning into ['"]?(.+?)['"]?\.{3}`),
-		submoduleRegex: regexp.MustCompile(
+// makeClientWithOutput gives us a real GitClient with default regexps and a mock Runner
+func makeClientWithOutput(output string) *template.GitClient {
+	cli := &template.GitClient{
+		// stub Runner: any CommandContext returns a Cmd that just writes `output` to stderr
+		Runner: RunnerFunc(func(_ context.Context, name string, args ...string) *exec.Cmd {
+			script := fmt.Sprintf(">&2 printf %q; exit 0\n", output)
+			return exec.Command("bash", "-c", script)
+		}),
+		ReceivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
+		CloningRegex:   regexp.MustCompile(`Cloning into ['"]?(.+?)['"]?\.{3}`),
+		SubmoduleRegex: regexp.MustCompile(
 			`^Submodule ['"]?([^'"]+)['"]? \(([^)]+)\) registered for path ['"]?(.+?)['"]?$`,
 		),
 	}
+	return cli
 }
 
-func TestParseCloneOutput(t *testing.T) {
+func TestParseCloneOutput_AllEvents(t *testing.T) {
 	stub := strings.Join([]string{
-		// Initial top-level clone
-		`Cloning into '/tmp/foo'...`,
-		`Receiving objects:   10% (5/50)`,
-		// Submodule discovery
+		// top-level progress
+		`Receiving objects:  10% (5/50)`,
+		// submodule discovery
 		`Submodule 'bar' (https://example.com/bar.git) registered for path 'lib/bar'`,
-		// Entering submodule
+		// enter submodule
 		`Cloning into '/tmp/foo/lib/bar'...`,
-		`Receiving objects:   50% (25/50)`,
+		`Receiving objects: 100% (25/25)`,
 	}, "\n")
 
-	var rep testReporter
-	client := makeClient()
-	err := client.parseCloneOutput(bytes.NewBufferString(stub), &rep, "/tmp/foo", "myref")
-	assert.NoError(t, err)
-
-	// We expect at least these three types of events in order:
-	// - EventProgress for top-level (10%)
-	// - EventSubmoduleDiscovered
-	// - EventSubmoduleCloneStart for 'bar'
-	// - EventProgress for 'bar' at 50%
-	found := map[CloneEventType]bool{}
-	for _, ev := range rep.events {
-		found[ev.Type] = true
+	rep := &recordingReporter{}
+	client := makeClientWithOutput(stub)
+	err := client.ParseCloneOutput(bytes.NewBufferString(stub), rep, "/tmp/foo", "myref")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	for _, want := range []CloneEventType{
-		EventProgress,
-		EventSubmoduleDiscovered,
-		EventSubmoduleCloneStart,
-	} {
-		if !found[want] {
-			t.Errorf("missing event type %v", want)
-		}
+	// We expect exactly 5 events in sequence:
+	// - top-level progress 10%
+	// - submodule discovered
+	// - submodule clone start
+	// - submodule progress 0%
+	// - submodule progress 100%
+	if len(rep.events) != 5 {
+		t.Fatalf("got %d events; want 5", len(rep.events))
 	}
 
-	// Check that the discovered URL and parent are correct
-	var foundDiscovery bool
+	var (
+		foundTop10      bool
+		foundDiscovery  bool
+		foundCloneStart bool
+		foundSubm0      bool
+		foundSubm100    bool
+	)
 	for _, ev := range rep.events {
-		if ev.Type == EventSubmoduleDiscovered {
-			if ev.URL != "https://example.com/bar.git" {
-				t.Errorf("got URL %q; want %q", ev.URL, "https://example.com/bar.git")
-			}
-			if ev.Parent != "lib/" {
-				t.Errorf("got Parent %q; want %q", ev.Parent, "lib/")
-			}
+		switch {
+		case ev.Type == template.EventProgress && ev.Progress == 10 && !foundTop10:
+			foundTop10 = true
+
+		case ev.Type == template.EventSubmoduleDiscovered && foundTop10 && !foundDiscovery:
 			foundDiscovery = true
+
+		case ev.Type == template.EventSubmoduleCloneStart && foundDiscovery && !foundCloneStart:
+			wantMod := "bar"
+			if ev.Module != wantMod {
+				t.Errorf("clone start module = %q; want %q", ev.Module, wantMod)
+			}
+			foundCloneStart = true
+
+		case ev.Type == template.EventProgress && ev.Progress == 0 && foundCloneStart && !foundSubm0:
+			foundSubm0 = true
+
+		case ev.Type == template.EventProgress && ev.Progress == 100 && foundSubm0 && !foundSubm100:
+			foundSubm100 = true
 		}
+	}
+
+	if !foundTop10 {
+		t.Error("did not see top-level 10% progress")
 	}
 	if !foundDiscovery {
-		t.Fatal("did not find submodule discovery event")
+		t.Error("did not see submodule discovery")
+	}
+	if !foundCloneStart {
+		t.Error("did not see submodule clone start")
+	}
+	if !foundSubm0 {
+		t.Error("did not see submodule 0% progress")
+	}
+	if !foundSubm100 {
+		t.Error("did not see submodule 100% progress")
 	}
 }
 
 func TestParseCloneOutput_TrimPath(t *testing.T) {
-	// ensure that filepath.Rel works as intended
 	stub := `Cloning into '/home/user/proj/lib/submod'...`
-	var rep testReporter
-	client := makeClient()
-	err := client.parseCloneOutput(strings.NewReader(stub+"\n"), &rep, "/home/user/proj", "r")
-	assert.NoError(t, err)
+	rep := &recordingReporter{}
+	client := makeClientWithOutput(stub)
+	err := client.ParseCloneOutput(strings.NewReader(stub+"\n"), rep, "/home/user/proj", "r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Should have one SubmoduleCloneStart event and progress set to 0
+	if len(rep.events) != 2 {
+		t.Fatalf("got %d events; want 2", len(rep.events))
+	}
+	if ev := rep.events[0]; ev.Type != template.EventSubmoduleCloneStart || ev.Module != filepath.Join("lib", "submod") {
+		t.Errorf("got module %q; want %q", ev.Module, filepath.Join("lib", "submod"))
+	}
+	if ev := rep.events[1]; ev.Type != template.EventProgress && ev.Progress == 0 {
+		t.Errorf("progress report was not initiated")
+	}
+}
 
-	var start CloneEvent
-	for _, ev := range rep.events {
-		if ev.Type == EventSubmoduleCloneStart {
-			start = ev
-			break
+func TestParseCloneOutput_ScanError(t *testing.T) {
+	// Simulate a reader that fails mid-scan
+	reader := &errReader{}
+	rep := &recordingReporter{}
+	client := makeClientWithOutput("")
+	err := client.ParseCloneOutput(reader, rep, "/tmp/foo", "r")
+	if err == nil || !strings.Contains(err.Error(), "scan stderr") {
+		t.Fatalf("expected scan stderr error, got %v", err)
+	}
+	if len(rep.events) != 0 {
+		t.Error("expected no events on scan error")
+	}
+}
+
+func TestClone_WithMockProgress(t *testing.T) {
+	// Make a Runner that prints two progress lines then succeeds
+	mock := RunnerFunc(func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		script := `
+		  >&2 echo "Cloning into 'dest'..."
+		  >&2 echo "Receiving objects:  42%"
+		  >&2 echo "Receiving objects: 100%"
+		  exit 0
+		`
+		return exec.CommandContext(ctx, "bash", "-c", script)
+	})
+	client := template.NewGitClientWithRunner(mock)
+	rep := &recordingReporter{}
+	err := client.Clone(context.Background(),
+		"https://example.com/foo.git", "main", "/tmp/foo",
+		template.GitFetcherConfig{Verbose: false}, rep,
+	)
+	if err != nil {
+		t.Fatalf("unexpected clone error: %v", err)
+	}
+	// Ensure we saw progress event at 42% and final 100% for top-level
+	found42, found100 := false, false
+	for _, e := range rep.events {
+		if e.Type == template.EventProgress && e.Progress == 42 {
+			found42 = true
+		}
+		if e.Type == template.EventProgress && e.Progress == 100 && e.Module == "foo" {
+			found100 = true
 		}
 	}
-	if start.Module != "lib/submod" {
-		t.Errorf("got Module %q; want %q", start.Module, filepath.Join("lib", "submod"))
+	if !found42 || !found100 {
+		t.Errorf("progress events missing; saw %+v", rep.events)
 	}
 }

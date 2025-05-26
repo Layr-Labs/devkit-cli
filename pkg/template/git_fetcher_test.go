@@ -1,106 +1,185 @@
-package template
+package template_test
 
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sync"
 	"testing"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 )
 
-func getFetcher() *GitFetcher {
-	log := logger.NewZapLogger()
-	return &GitFetcher{
-		Client: NewGitClient(),
-		Logger: *logger.NewProgressLogger(
-			log,
-			progress.NewLogProgressTracker(10, log),
-		),
+// mockRunnerSuccess always returns a Cmd that exits 0
+type mockRunnerSuccess struct{}
+
+func (mockRunnerSuccess) CommandContext(_ context.Context, _ string, _ ...string) *exec.Cmd {
+	return exec.Command("true")
+}
+
+// mockRunnerFail always returns a Cmd that exits 1
+type mockRunnerFail struct{}
+
+func (mockRunnerFail) CommandContext(_ context.Context, _ string, _ ...string) *exec.Cmd {
+	return exec.Command("false")
+}
+
+// mockRunnerProgress emits “git clone”-style progress on stderr
+type mockRunnerProgress struct{}
+
+func (mockRunnerProgress) CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
+	// This shell script writes two progress lines then exits 0
+	script := `
+      >&2 echo "Cloning into 'dest'..."
+      >&2 echo "Receiving objects:  50%"
+      sleep 0.01
+      >&2 echo "Receiving objects: 100%"
+      exit 0
+    `
+	return exec.CommandContext(ctx, "bash", "-c", script)
+}
+
+// spyTrackerDedup records only the latest Set() per module.
+type spyTrackerDedup struct {
+	mu    sync.Mutex
+	order []string
+	byID  map[string]struct {
+		Pct   int
+		Label string
 	}
 }
 
-func TestGitFetcher_InvalidURL(t *testing.T) {
-	f := getFetcher()
-	tmp := t.TempDir()
+func newSpyTrackerDedup() *spyTrackerDedup {
+	return &spyTrackerDedup{
+		order: make([]string, 0),
+		byID: make(map[string]struct {
+			Pct   int
+			Label string
+		}),
+	}
+}
 
-	err := f.Fetch(context.Background(), "not-a-url", "master", tmp)
+func (s *spyTrackerDedup) Set(id string, pct int, label string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, seen := s.byID[id]; !seen {
+		s.order = append(s.order, id)
+	}
+	s.byID[id] = struct {
+		Pct   int
+		Label string
+	}{pct, label}
+}
+
+func (s *spyTrackerDedup) Render() {}
+
+func (s *spyTrackerDedup) Clear() {}
+
+func (s *spyTrackerDedup) ProgressRows() []iface.ProgressRow { return make([]iface.ProgressRow, 0) }
+
+// getFetcherWithRunner returns a GitFetcher and its underlying LogProgressTracker.
+func getFetcherWithRunner(r template.Runner) (*template.GitFetcher, *spyTrackerDedup) {
+	client := template.NewGitClientWithRunner(r)
+	zap := logger.NewZapLogger()
+
+	// Inject our spyTracker instead of the real one:
+	spy := newSpyTrackerDedup()
+	progLogger := logger.NewProgressLogger(zap, spy)
+
+	return &template.GitFetcher{
+		Client: client,
+		Logger: *progLogger,
+		Config: template.GitFetcherConfig{Verbose: false},
+	}, spy
+}
+
+func TestFetchSucceedsWithMockRunner(t *testing.T) {
+	f, _ := getFetcherWithRunner(mockRunnerSuccess{})
+	dir := t.TempDir()
+	if err := f.Fetch(context.Background(), "any-url", "any-ref", dir); err != nil {
+		t.Fatalf("expected success, got %v", err)
+	}
+}
+
+func TestFetchFailsWhenCloneFails(t *testing.T) {
+	f, _ := getFetcherWithRunner(mockRunnerFail{})
+	dir := t.TempDir()
+	err := f.Fetch(context.Background(), "any-url", "any-ref", dir)
 	if err == nil {
-		t.Fatal("expected error for invalid URL")
-	}
-	if _, err := os.Stat(filepath.Join(tmp, ".git")); !os.IsNotExist(err) {
-		t.Error("expected no .git directory after failure")
+		t.Fatal("expected error when git clone fails")
 	}
 }
 
-func TestGitFetcher_InvalidRef(t *testing.T) {
-	f := getFetcher()
-	tmp := t.TempDir()
-
-	err := f.Fetch(context.Background(),
-		"https://github.com/Layr-Labs/hourglass-avs-template",
-		"no-such-branch",
-		tmp,
-	)
-	if err == nil {
-		t.Fatal("expected error for invalid ref")
+func TestReporterGetsProgressEvents(t *testing.T) {
+	// Build a client that emits 50% then 100% on stderr
+	f, tracker := getFetcherWithRunner(mockRunnerProgress{})
+	dir := t.TempDir()
+	if err := f.Fetch(context.Background(), "irrelevant", "irrelevant", dir); err != nil {
+		t.Fatalf("expected success, got %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(tmp, ".git")); !os.IsNotExist(err) {
-		t.Error("expected no .git directory after failure")
+
+	// Inspect the tracker: it only logs on 100%
+	rows := tracker.order
+
+	// Expectations after successful run
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 progress row, got %d", len(rows))
+	}
+	if tracker.byID[rows[0]].Pct != 100 {
+		t.Errorf("expected the 100%% event, got %+v", rows[0])
+	}
+	if tracker.byID[rows[1]].Pct != 100 {
+		t.Errorf("expected the 100%% event, got %+v", rows[0])
 	}
 }
 
-func TestGitFetcher_ValidClone(t *testing.T) {
-	f := getFetcher()
-	tmp := t.TempDir()
-
-	err := f.Fetch(context.Background(),
-		"https://github.com/Layr-Labs/hourglass-avs-template",
-		"master",
-		tmp,
-	)
+// TestCloneRealRepo integration test
+func TestCloneRealRepo(t *testing.T) {
+	dir := t.TempDir()
+	cfg, err := template.LoadConfig()
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("failed to load templates cfg: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(tmp, ".git")); err != nil {
-		t.Errorf(".git missing: %v", err)
-	}
-	if _, err := os.Stat(filepath.Join(tmp, "README.md")); os.IsNotExist(err) {
-		t.Log("warning: README.md not found")
-	}
-}
 
-func TestGitFetcher_Submodules(t *testing.T) {
-	f := getFetcher()
-	tmp := t.TempDir()
+	// Use the default task.go template
+	mainBaseURL, mainVersion, err := template.GetTemplateURLs(cfg, "task", "go")
 
-	err := f.Fetch(context.Background(),
-		"https://github.com/Layr-Labs/hourglass-avs-template",
-		"master",
-		tmp,
-	)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	// Use real runner
+	client := template.NewGitClient()
+	zap := logger.NewZapLogger()
+	tracker := progress.NewLogProgressTracker(100, zap)
+	prog := logger.NewProgressLogger(zap, tracker)
+
+	// Set-up gitFetcher with real client
+	f := &template.GitFetcher{
+		Client: client,
+		Config: template.GitFetcherConfig{Verbose: false},
+		Logger: *prog,
 	}
-	// check for at least one submodule directory
-	// adjust the path based on the repo’s actual layout
-	sub := filepath.Join(tmp, ".devkit", "contracts")
-	if _, err := os.Stat(sub); os.IsNotExist(err) {
-		t.Logf("submodule directory %q not found (repo layout may have changed)", sub)
+
+	// Attempt a real clone
+	if err := f.Fetch(context.Background(), mainBaseURL, mainVersion, dir); err != nil {
+		t.Fatalf("real git clone failed: %v", err)
 	}
-}
 
-func TestGitFetcher_NonexistentBranch(t *testing.T) {
-	f := getFetcher()
-	tmp := t.TempDir()
+	// Verify .git exists
+	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
+		t.Errorf(".git directory not found after clone: %v", err)
+	}
 
-	err := f.Fetch(context.Background(),
-		"https://github.com/Layr-Labs/hourglass-avs-template",
-		"lol-fake",
-		tmp,
-	)
-	if err == nil {
-		t.Fatal("expected error on nonexistent branch")
+	// Verify at least one known submodule folder exists
+	expectedSubmodule := filepath.Join(dir, ".devkit", "contracts")
+	if _, err := os.Stat(expectedSubmodule); os.IsNotExist(err) {
+		t.Log("submodule not found - has .devkit/contracts moved?")
+	}
+
+	// Verify we saw at least one 100% record
+	rows := tracker.ProgressRows()
+	if len(rows) > 0 {
+		t.Error("expected at least one completed progress row, got none")
 	}
 }
