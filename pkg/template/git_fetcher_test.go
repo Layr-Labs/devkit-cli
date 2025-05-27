@@ -29,7 +29,7 @@ func (mockRunnerFail) CommandContext(_ context.Context, _ string, _ ...string) *
 	return exec.Command("false")
 }
 
-// mockRunnerProgress emits “git clone”-style progress on stderr
+// mockRunnerProgress emits "git clone"-style progress on stderr
 type mockRunnerProgress struct{}
 
 func (mockRunnerProgress) CommandContext(ctx context.Context, name string, args ...string) *exec.Cmd {
@@ -85,12 +85,11 @@ func (s *spyTrackerDedup) ProgressRows() []iface.ProgressRow { return make([]ifa
 // getFetcherWithRunner returns a GitFetcher and its underlying LogProgressTracker.
 func getFetcherWithRunner(r template.Runner) (*template.GitFetcher, *spyTrackerDedup) {
 	client := template.NewGitClientWithRunner(r)
-	log, tracker := common.GetLogger(false)
-
-	progressLogger := logger.NewProgressLogger(log, tracker)
+	log, _ := common.GetLogger(false)
 
 	// Inject our spyTracker instead of the real one:
 	spy := newSpyTrackerDedup()
+	progressLogger := logger.NewProgressLogger(log, spy)
 
 	return &template.GitFetcher{
 		Client: client,
@@ -184,7 +183,7 @@ func TestCloneRealRepo(t *testing.T) {
 
 	// Verify we saw at least one 100% record
 	rows := tracker.ProgressRows()
-	if len(rows) > 0 {
+	if len(rows) == 0 {
 		t.Error("expected at least one completed progress row, got none")
 	}
 }
