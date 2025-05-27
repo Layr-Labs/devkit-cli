@@ -78,9 +78,9 @@ var Command = &cli.Command{
 		// Path to the context.yaml file
 		contextPath := filepath.Join(contextDir, fmt.Sprintf("%s.yaml", context))
 
-		// Open editor for the project level config
+		// Open editor for the context level config
 		if cCtx.Bool("edit") {
-			log.Info("Opening config file for editing...")
+			log.Info("Opening context file for editing...")
 			return config.EditConfig(cCtx, contextPath, config.Context, context)
 		}
 
@@ -128,28 +128,27 @@ var Command = &cli.Command{
 			return nil
 		}
 
-		// Persist the chosen context into config.yaml
+		// Persist the chosen context into <context>.yaml
 		if !cCtx.Bool("list") {
 			// Verify context file exists
 			if _, err := os.Stat(contextPath); os.IsNotExist(err) {
 				return fmt.Errorf("this context does not exist, create it with `devkit avs context create %s`", context)
 			}
-
 			cfgPath := filepath.Join("config", common.BaseConfig)
+
 			// synthesize a single project.context assignment
 			items := []string{"project.context=" + context}
-
 			doc, err := common.LoadYAML(cfgPath)
 			if err != nil {
 				return fmt.Errorf("read base config: %w", err)
 			}
 			root := doc.Content[0]
-			cfgNode := common.GetChildByKey(root, "config")
+			cfgNode := common.GetChildByKey(root, "context")
 			if cfgNode == nil {
 				cfgNode = &yaml.Node{Kind: yaml.MappingNode}
 				root.Content = append(
 					root.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "config"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "context"},
 					cfgNode,
 				)
 			}
@@ -160,9 +159,10 @@ var Command = &cli.Command{
 					return fmt.Errorf("failed to set %s: %w", it, err)
 				}
 			}
-			// Write the config.yaml back to disk
+
+			// Write the <context>.yaml back to disk
 			if err := common.WriteYAML(cfgPath, doc); err != nil {
-				return fmt.Errorf("write base config: %w", err)
+				return fmt.Errorf("write context: %w", err)
 			}
 			log.Info("Global context successfully set to %s", context)
 			return nil
