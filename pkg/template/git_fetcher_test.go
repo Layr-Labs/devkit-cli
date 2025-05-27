@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
@@ -84,15 +85,16 @@ func (s *spyTrackerDedup) ProgressRows() []iface.ProgressRow { return make([]ifa
 // getFetcherWithRunner returns a GitFetcher and its underlying LogProgressTracker.
 func getFetcherWithRunner(r template.Runner) (*template.GitFetcher, *spyTrackerDedup) {
 	client := template.NewGitClientWithRunner(r)
-	zap := logger.NewZapLogger()
+	log, tracker := common.GetLogger(false)
+
+	progressLogger := logger.NewProgressLogger(log, tracker)
 
 	// Inject our spyTracker instead of the real one:
 	spy := newSpyTrackerDedup()
-	progLogger := logger.NewProgressLogger(zap, spy)
 
 	return &template.GitFetcher{
 		Client: client,
-		Logger: *progLogger,
+		Logger: *progressLogger,
 		Config: template.GitFetcherConfig{Verbose: false},
 	}, spy
 }
@@ -153,9 +155,9 @@ func TestCloneRealRepo(t *testing.T) {
 
 	// Use real runner
 	client := template.NewGitClient()
-	zap := logger.NewZapLogger()
-	tracker := progress.NewLogProgressTracker(100, zap)
-	prog := logger.NewProgressLogger(zap, tracker)
+	log, _ := common.GetLogger(false)
+	tracker := progress.NewLogProgressTracker(100, log)
+	prog := logger.NewProgressLogger(log, tracker)
 
 	// Set-up gitFetcher with real client
 	f := &template.GitFetcher{
