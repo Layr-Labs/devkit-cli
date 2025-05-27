@@ -2,9 +2,10 @@ package commands
 
 import (
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"path"
 	"path/filepath"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/urfave/cli/v2"
 )
@@ -22,12 +23,10 @@ var RunCommand = &cli.Command{
 
 func AVSRun(cCtx *cli.Context) error {
 	// Get logger
-	log, _ := common.GetLogger()
+	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Print task if verbose
-	if cCtx.Bool("verbose") {
-		log.Info("Starting offchain AVS components...")
-	}
+	logger.Debug("Starting offchain AVS components...")
 
 	// Run the script from root of project dir
 	// (@TODO (GD): this should always be the root of the project, but we need to do this everywhere (ie reading ctx/config etc))
@@ -45,11 +44,11 @@ func AVSRun(cCtx *cli.Context) error {
 	}
 
 	// Run init on the template init script
-	if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON); err != nil {
+	if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON); err != nil {
 		return fmt.Errorf("run failed: %w", err)
 	}
 
-	log.Info("Offchain AVS components started successfully!")
+	logger.Info("Offchain AVS components started successfully!")
 
 	return nil
 }

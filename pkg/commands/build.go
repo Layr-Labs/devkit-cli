@@ -27,7 +27,7 @@ var BuildCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		log, _ := common.GetLogger()
+		logger := common.LoggerFromContext(cCtx.Context)
 
 		// Run scriptPath from cwd
 		const dir = ""
@@ -51,21 +51,18 @@ var BuildCommand = &cli.Command{
 			}
 		}
 
-		if common.IsVerboseEnabled(cCtx, cfg) {
-			log.Info("Project Name: %s", cfg.Config.Project.Name)
-			log.Info("Building AVS components...")
-
-		}
+		logger.Debug("Project Name: %s", cfg.Config.Project.Name)
+		logger.Debug("Building AVS components...")
 
 		// All scripts contained here
 		scriptsDir := filepath.Join(".devkit", "scripts")
 
 		// Execute build via .devkit scripts
-		if _, err := common.CallTemplateScript(cCtx.Context, dir, filepath.Join(scriptsDir, "build"), common.ExpectNonJSONResponse); err != nil {
+		if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectNonJSONResponse); err != nil {
 			return fmt.Errorf("build failed: %w", err)
 		}
 
-		log.Info("Build completed successfully")
+		logger.Info("Build completed successfully")
 		return nil
 	},
 }

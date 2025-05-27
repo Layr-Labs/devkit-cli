@@ -17,6 +17,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -29,8 +30,7 @@ import (
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
-	// Get logger
-	log, _ := common.GetLogger()
+	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Extract vars
 	skipAvsRun := cCtx.Bool("skip-avs-run")
@@ -38,25 +38,25 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	useZeus := cCtx.Bool("use-zeus")
 
 	// Migrate config
-	configMigrated, err := migrateConfig()
+	configMigrated, err := migrateConfig(logger)
 	if err != nil {
-		log.Error("config migration failed: %w", err)
+		logger.Error("config migration failed: %w", err)
 	}
 	if configMigrated > 0 {
-		log.Info("Config migration complete")
+		logger.Info("Config migration complete")
 	}
 
 	// Migrate contexts
-	contextsMigrated, err := migrateContexts()
+	contextsMigrated, err := migrateContexts(logger)
 	if err != nil {
-		log.Error("context migrations failed: %w", err)
+		logger.Error("context migrations failed: %w", err)
 	}
 	if contextsMigrated > 0 {
 		suffix := "s"
 		if contextsMigrated == 1 {
 			suffix = ""
 		}
-		log.Info("%d context migration%s complete", contextsMigrated, suffix)
+		logger.Info("%d context migration%s complete", contextsMigrated, suffix)
 	}
 
 	// Load config for devnet
@@ -67,13 +67,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Fetch EigenLayer addresses using Zeus if requested
 	if useZeus {
-		log.Info("Fetching EigenLayer core addresses from Zeus...")
-		err = common.UpdateContextWithZeusAddresses(config, devnet.CONTEXT)
+		logger.Info("Fetching EigenLayer core addresses from Zeus...")
+		err = common.UpdateContextWithZeusAddresses(logger, config, devnet.CONTEXT)
 		if err != nil {
-			log.Warn("Failed to fetch addresses from Zeus: %v", err)
-			log.Info("Continuing with addresses from config...")
+			logger.Warn("Failed to fetch addresses from Zeus: %v", err)
+			logger.Info("Continuing with addresses from config...")
 		} else {
-			log.Info("Successfully updated context with addresses from Zeus")
+			logger.Info("Successfully updated context with addresses from Zeus")
 
 			// Save the updated context to disk
 			contextFile := filepath.Join("config", "contexts", devnet.CONTEXT+".yaml")
@@ -82,10 +82,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 				"context": config.Context[devnet.CONTEXT],
 			})
 			if err != nil {
-				log.Warn("Failed to save updated context: %v", err)
+				logger.Warn("Failed to save updated context: %v", err)
 			} else {
 				if err = os.WriteFile(contextFile, yamlData, 0644); err != nil {
-					log.Warn("Failed to write context file: %v", err)
+					logger.Warn("Failed to write context file: %v", err)
 				}
 			}
 		}
@@ -100,19 +100,16 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Start timer
 	startTime := time.Now()
 
-	// If user gives, say, log = "DEBUG" Or "Debug", we normalize it to lowercase
-	if common.IsVerboseEnabled(cCtx, config) {
-		log.Info("Starting devnet...\n")
+	logger.Info("Starting devnet...\n")
 
-		if cCtx.Bool("reset") {
-			log.Info("Resetting devnet...")
-		}
-		if fork := cCtx.String("fork"); fork != "" {
-			log.Info("Forking from chain: %s", fork)
-		}
-		if cCtx.Bool("headless") {
-			log.Info("Running in headless mode")
-		}
+	if cCtx.Bool("reset") {
+		logger.Debug("Resetting devnet...")
+	}
+	if fork := cCtx.String("fork"); fork != "" {
+		logger.Debug("Forking from chain: %s", fork)
+	}
+	if cCtx.Bool("headless") {
+		logger.Debug("Running in headless mode")
 	}
 
 	// Docker-compose for anvil devnet
@@ -155,7 +152,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
-	log.Info("Waiting for devnet to be ready...")
+	logger.Info("Waiting for devnet to be ready...")
 
 	// Set path for context yamls
 	contextDir := filepath.Join("config", "contexts")
@@ -213,7 +210,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 1 second to make sure wallets are funded
 	time.Sleep(1 * time.Second)
-	log.Info("\nDevnet started successfully in %s", elapsed)
+	logger.Info("\nDevnet started successfully in %s", elapsed)
 
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
@@ -224,25 +221,25 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		// Sleep for 1 second to make sure new context values have been written
 		time.Sleep(1 * time.Second)
 
-		log.Info("Registering AVS with EigenLayer...")
+		logger.Info("Registering AVS with EigenLayer...")
 
 		if !cCtx.Bool("skip-setup") {
-			if err := UpdateAVSMetadataAction(cCtx); err != nil {
+			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
 				return fmt.Errorf("updating AVS metadata failed: %w", err)
 			}
-			if err := SetAVSRegistrarAction(cCtx); err != nil {
+			if err := SetAVSRegistrarAction(cCtx, logger); err != nil {
 				return fmt.Errorf("setting AVS registrar failed: %w", err)
 			}
-			if err := CreateAVSOperatorSetsAction(cCtx); err != nil {
+			if err := CreateAVSOperatorSetsAction(cCtx, logger); err != nil {
 				return fmt.Errorf("creating AVS operator sets failed: %w", err)
 			}
-			log.Info("AVS registered with EigenLayer successfully.")
+			logger.Info("AVS registered with EigenLayer successfully.")
 
-			if err := RegisterOperatorsFromConfigAction(cCtx); err != nil {
+			if err := RegisterOperatorsFromConfigAction(cCtx, logger); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
 		} else {
-			log.Info("Skipping AVS setup steps...")
+			logger.Info("Skipping AVS setup steps...")
 		}
 	}
 
@@ -258,7 +255,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 func DeployContractsAction(cCtx *cli.Context) error {
 	// Get logger
-	log, _ := common.GetLogger()
+	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Start timing execution runtime
 	startTime := time.Now()
@@ -302,8 +299,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Loop scripts with cloned context
 	for _, name := range scriptNames {
 		// Log the script name that's about to be executed
-		log, _ := common.GetLogger()
-		log.Info("Executing script: %s", name)
+		logger.Info("Executing script: %s", name)
 		// Clone context node and convert to map
 		clonedCtxNode := common.CloneNode(contextNode)
 		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
@@ -326,7 +322,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		// Set path in scriptsDir
 		scriptPath := filepath.Join(scriptsDir, name)
 		// Expect a JSON response which we will curry to the next call and later save to context
-		outMap, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, common.ExpectJSONResponse, inputJSON)
+		outMap, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectJSONResponse, inputJSON)
 		if err != nil {
 			return fmt.Errorf("%s failed: %w", name, err)
 		}
@@ -348,13 +344,13 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Measure how long we ran for
 	elapsed := time.Since(startTime).Round(time.Second)
-	log.Info("\nDevnet contracts deployed successfully in %s", elapsed)
+	logger.Info("\nDevnet contracts deployed successfully in %s", elapsed)
 	return nil
 }
 
 func StopDevnetAction(cCtx *cli.Context) error {
 	// Get logger
-	log, _ := common.GetLogger()
+	log := common.LoggerFromContext(cCtx.Context)
 
 	// Read flags
 	stopAllContainers := cCtx.Bool("all")
@@ -498,13 +494,12 @@ func extractHostPort(portStr string) string {
 	return portStr
 }
 
-func UpdateAVSMetadataAction(cCtx *cli.Context) error {
+func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
 	uri := cCtx.String("uri")
-
 	envCtx, ok := cfg.Context[devnet.CONTEXT]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
@@ -528,6 +523,7 @@ func UpdateAVSMetadataAction(cCtx *cli.Context) error {
 		client,
 		allocationManagerAddr,
 		delegationManagerAddr,
+		logger,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create contract caller: %w", err)
@@ -537,13 +533,12 @@ func UpdateAVSMetadataAction(cCtx *cli.Context) error {
 	return contractCaller.UpdateAVSMetadata(cCtx.Context, avsAddr, uri)
 }
 
-func SetAVSRegistrarAction(cCtx *cli.Context) error {
+func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
 
-	log, _ := common.GetLogger()
 	envCtx, ok := cfg.Context[devnet.CONTEXT]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
@@ -567,6 +562,7 @@ func SetAVSRegistrarAction(cCtx *cli.Context) error {
 		client,
 		allocationManagerAddr,
 		delegationManagerAddr,
+		logger,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create contract caller: %w", err)
@@ -574,12 +570,12 @@ func SetAVSRegistrarAction(cCtx *cli.Context) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	var registrarAddr ethcommon.Address
-	log.Info("Attempting to find AvsRegistrar in deployed contracts...")
+	logger.Info("Attempting to find AvsRegistrar in deployed contracts...")
 	foundInDeployed := false
 	for _, contract := range envCtx.DeployedContracts {
 		if strings.Contains(strings.ToLower(contract.Name), "avsregistrar") {
 			registrarAddr = ethcommon.HexToAddress(contract.Address)
-			log.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
+			logger.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
 			foundInDeployed = true
 			break
 		}
@@ -591,13 +587,12 @@ func SetAVSRegistrarAction(cCtx *cli.Context) error {
 	return contractCaller.SetAVSRegistrar(cCtx.Context, avsAddr, registrarAddr)
 }
 
-func CreateAVSOperatorSetsAction(cCtx *cli.Context) error {
+func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
 
-	log, _ := common.GetLogger()
 	envCtx, ok := cfg.Context[devnet.CONTEXT]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
@@ -621,6 +616,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context) error {
 		client,
 		allocationManagerAddr,
 		delegationManagerAddr,
+		logger,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create contract caller: %w", err)
@@ -628,7 +624,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	if len(envCtx.OperatorSets) == 0 {
-		log.Info("No operator sets to create.")
+		logger.Info("No operator sets to create.")
 		return nil
 	}
 	createSetParams := make([]allocationmanager.IAllocationManagerTypesCreateSetParams, len(envCtx.OperatorSets))
@@ -646,8 +642,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context) error {
 	return contractCaller.CreateOperatorSets(cCtx.Context, avsAddr, createSetParams)
 }
 
-func RegisterOperatorsFromConfigAction(cCtx *cli.Context) error {
-	log, _ := common.GetLogger()
+func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
@@ -657,29 +652,29 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context) error {
 		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
 	}
 
-	log.Info("Registering operators with EigenLayer...")
+	logger.Info("Registering operators with EigenLayer...")
 	if len(envCtx.OperatorRegistrations) == 0 {
-		log.Info("No operator registrations found in context, skipping operator registration.")
+		logger.Info("No operator registrations found in context, skipping operator registration.")
 		return nil
 	}
 
 	for _, opReg := range envCtx.OperatorRegistrations {
-		log.Info("Processing registration for operator at address %s", opReg.Address)
-		if err := registerOperatorEL(cCtx, opReg.Address); err != nil {
-			log.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
+		logger.Info("Processing registration for operator at address %s", opReg.Address)
+		if err := registerOperatorEL(cCtx, opReg.Address, logger); err != nil {
+			logger.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
 			continue
 		}
-		if err := registerOperatorAVS(cCtx, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
-			log.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
+		if err := registerOperatorAVS(cCtx, logger, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
+			logger.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
 			continue
 		}
-		log.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
+		logger.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
 	}
-	log.Info("Operator registration with EigenLayer completed.")
+	logger.Info("Operator registration with EigenLayer completed.")
 	return nil
 }
 
-func registerOperatorEL(cCtx *cli.Context, operatorAddress string) error {
+func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.Logger) error {
 	if operatorAddress == "" {
 		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
 	}
@@ -728,6 +723,7 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string) error {
 		client,
 		allocationManagerAddr,
 		delegationManagerAddr,
+		logger,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create contract caller: %w", err)
@@ -736,7 +732,7 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string) error {
 	return contractCaller.RegisterAsOperator(cCtx.Context, ethcommon.HexToAddress(operatorAddress), 0, "test")
 }
 
-func registerOperatorAVS(cCtx *cli.Context, operatorAddress string, operatorSetID uint32, payloadHex string) error {
+func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress string, operatorSetID uint32, payloadHex string) error {
 	if operatorAddress == "" {
 		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
 	}
@@ -787,6 +783,7 @@ func registerOperatorAVS(cCtx *cli.Context, operatorAddress string, operatorSetI
 		client,
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
+		logger,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create contract caller: %w", err)
@@ -806,16 +803,14 @@ func registerOperatorAVS(cCtx *cli.Context, operatorAddress string, operatorSetI
 	)
 }
 
-func migrateConfig() (int, error) {
-	// Get logger
-	log, _ := common.GetLogger()
+func migrateConfig(logger iface.Logger) (int, error) {
 
 	// Set path for context yamls
 	configDir := filepath.Join("config")
 	configPath := filepath.Join(configDir, "config.yaml")
 
 	// Migrate the config
-	err := migration.MigrateYaml(configPath, configs.LatestVersion, configs.MigrationChain)
+	err := migration.MigrateYaml(logger, configPath, configs.LatestVersion, configs.MigrationChain)
 	// Check for already upto date and ignore
 	alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
 
@@ -826,7 +821,7 @@ func migrateConfig() (int, error) {
 
 	// If config was migrated
 	if !alreadyUptoDate {
-		log.Info("Migrated %s\n", configPath)
+		logger.Info("Migrated %s\n", configPath)
 
 		return 1, nil
 	}
@@ -834,9 +829,7 @@ func migrateConfig() (int, error) {
 	return 0, nil
 }
 
-func migrateContexts() (int, error) {
-	// Get logger
-	log, _ := common.GetLogger()
+func migrateContexts(logger iface.Logger) (int, error) {
 
 	// Count the number of contexts we migrate
 	contextsMigrated := 0
@@ -858,13 +851,13 @@ func migrateContexts() (int, error) {
 		contextPath := filepath.Join(contextDir, e.Name())
 
 		// Migrate the context
-		err := migration.MigrateYaml(contextPath, contexts.LatestVersion, contexts.MigrationChain)
+		err := migration.MigrateYaml(logger, contextPath, contexts.LatestVersion, contexts.MigrationChain)
 		// Check for already upto date and ignore
 		alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
 
 		// For every other error, migration failed
 		if err != nil && !alreadyUptoDate {
-			log.Error("failed to migrate: %v", err)
+			logger.Error("failed to migrate: %v", err)
 			continue
 		}
 
@@ -874,7 +867,7 @@ func migrateContexts() (int, error) {
 			contextsMigrated += 1
 
 			// If migration succeeds
-			log.Info("Migrated %s\n", contextPath)
+			logger.Info("Migrated %s\n", contextPath)
 		}
 	}
 
@@ -882,7 +875,7 @@ func migrateContexts() (int, error) {
 }
 
 func FetchZeusAddressesAction(cCtx *cli.Context) error {
-	log, _ := common.GetLogger()
+	logger, _ := common.GetLoggerFromCLIContext(cCtx)
 	contextName := cCtx.String("context")
 
 	// Load config for the specified context
@@ -892,19 +885,19 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 	}
 
 	// Fetch addresses from Zeus
-	log.Info("Fetching EigenLayer core addresses from Zeus...")
-	addresses, err := common.GetZeusAddresses()
+	logger.Info("Fetching EigenLayer core addresses from Zeus...")
+	addresses, err := common.GetZeusAddresses(logger)
 	if err != nil {
 		return fmt.Errorf("failed to get addresses from Zeus: %w", err)
 	}
 
 	// Print the fetched addresses
-	log.Info("Found addresses:")
-	log.Info("AllocationManager: %s", addresses.AllocationManager)
-	log.Info("DelegationManager: %s", addresses.DelegationManager)
+	logger.Info("Found addresses:")
+	logger.Info("AllocationManager: %s", addresses.AllocationManager)
+	logger.Info("DelegationManager: %s", addresses.DelegationManager)
 
 	// Update the context with the fetched addresses
-	err = common.UpdateContextWithZeusAddresses(config, contextName)
+	err = common.UpdateContextWithZeusAddresses(logger, config, contextName)
 	if err != nil {
 		return fmt.Errorf("failed to update context with Zeus addresses: %w", err)
 	}
@@ -924,6 +917,6 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to write updated context file: %w", err)
 	}
 
-	log.Info("Successfully updated %s context with EigenLayer core addresses", contextName)
+	logger.Info("Successfully updated %s context with EigenLayer core addresses", contextName)
 	return nil
 }

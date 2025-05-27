@@ -2,8 +2,9 @@ package progress
 
 import (
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"sync"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 )
 
 type LogProgressTracker struct {
@@ -21,6 +22,25 @@ func NewLogProgressTracker(max int, logger iface.Logger) *LogProgressTracker {
 		order:      make([]string, 0, max),
 		maxTracked: max,
 	}
+}
+
+// ProgressRows returns all progress entries, in the order they completed.
+// It is safe to call from multiple goroutines.
+func (s *LogProgressTracker) ProgressRows() []iface.ProgressRow {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rows := make([]iface.ProgressRow, 0, len(s.order))
+	for _, id := range s.order {
+		info := s.progress[id]
+		rows = append(rows, iface.ProgressRow{
+			Module: id,
+			Pct:    info.Percentage,
+			Label:  info.DisplayText,
+		})
+
+	}
+	return rows
 }
 
 func (s *LogProgressTracker) Set(id string, pct int, label string) {

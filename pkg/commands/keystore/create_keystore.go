@@ -3,9 +3,11 @@ package keystore
 import (
 	"errors"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"path/filepath"
 	"strings"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
@@ -38,26 +40,22 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		log, _ := common.GetLogger()
+		logger := common.LoggerFromContext(cCtx.Context)
 
 		privateKey := cCtx.String("key")
 		path := cCtx.String("path")
 		curve := cCtx.String("type")
 		password := cCtx.String("password")
-		verbose := cCtx.Bool("verbose")
 
-		if verbose {
-			log.Info("🔐 Starting Bls keystore creation")
-			log.Info("• Curve: %s", curve)
-			log.Info("• Output Path: %s", path)
-		}
+		logger.Debug("🔐 Starting Bls keystore creation")
+		logger.Debug("• Curve: %s", curve)
+		logger.Debug("• Output Path: %s", path)
 
-		return CreateBLSKeystore(privateKey, path, password, curve, verbose)
+		return CreateBLSKeystore(logger, privateKey, path, password, curve)
 	},
 }
 
-func CreateBLSKeystore(privateKey, path, password, curve string, verbose bool) error {
-	log, _ := common.GetLogger()
+func CreateBLSKeystore(logger iface.Logger, privateKey, path, password, curve string) error {
 
 	if filepath.Ext(path) != ".json" {
 		return errors.New("invalid path: must include full file name ending in .json")
@@ -67,11 +65,9 @@ func CreateBLSKeystore(privateKey, path, password, curve string, verbose bool) e
 		return fmt.Errorf("unsupported curve: %s", curve)
 	}
 
-	if verbose {
-		log.Info("🔐 Starting Bls keystore creation")
-		log.Info("• Curve: %s", curve)
-		log.Info("• Output Path: %s", path)
-	}
+	logger.Debug("🔐 Starting Bls keystore creation")
+	logger.Debug("• Curve: %s", curve)
+	logger.Debug("• Output Path: %s", path)
 
 	scheme := bn254.NewScheme()
 	cleanedKey := strings.TrimPrefix(privateKey, "0x")
@@ -95,9 +91,9 @@ func CreateBLSKeystore(privateKey, path, password, curve string, verbose bool) e
 		return errors.New("failed to extract the private key from the keystore file")
 	}
 
-	log.Info("✅ Keystore generated successfully")
-	log.Info("🔑 Save this BLS private key in a secure location:")
-	log.Info("    %s\n", privateKeyData.Bytes())
+	logger.Info("✅ Keystore generated successfully")
+	logger.Info("🔑 Save this BLS private key in a secure location:")
+	logger.Info("    %s\n", privateKeyData.Bytes())
 
 	return nil
 }

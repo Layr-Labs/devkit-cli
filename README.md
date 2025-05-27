@@ -51,11 +51,11 @@ To add the binary to your path, run:
 export PATH=$PATH:~/bin
 ```
 
-To build and install the devkit cli locally:
+To build and install the devkit cli from source:
 ```bash
 git clone https://github.com/Layr-Labs/devkit-cli
 cd devkit-cli
-go build -o devkit ./cmd/devkit
+make install
 export PATH=$PATH:~/bin
 ```
 
@@ -72,7 +72,7 @@ devkit --help
 
 Sets up a new AVS project with the recommended structure, configuration files, and boilerplate code. This helps you get started quickly without needing to manually organize files or determine a layout. Details:
 
-* Initializes a new project based on the default Hourglass task-based architecture in Go.
+* Initializes a new project based on the default Hourglass task-based architecture in Go. Refer to [here](https://github.com/Layr-Labs/hourglass-avs-template?tab=readme-ov-file#what-is-hourglass) for details on the Hourglass architecture.
 * Generates boilerplate code and default configuration.
 
 Projects are created by default in the current directory from where the below command is called.

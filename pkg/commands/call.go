@@ -19,12 +19,9 @@ var CallCommand = &cli.Command{
 	Flags: common.GlobalFlags,
 	Action: func(cCtx *cli.Context) error {
 		// Get logger
-		log, _ := common.GetLogger()
+		logger := common.LoggerFromContext(cCtx.Context)
 
-		// Print task if verbose
-		if cCtx.Bool("verbose") {
-			log.Info("Testing AVS tasks...")
-		}
+		logger.Debug("Testing AVS tasks...")
 
 		// Set path for context yaml
 		contextDir := filepath.Join("config", "contexts")
@@ -57,11 +54,11 @@ var CallCommand = &cli.Command{
 		}
 
 		// Run init on the template init script
-		if _, err := common.CallTemplateScript(cCtx.Context, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON, paramsJSON); err != nil {
+		if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON, paramsJSON); err != nil {
 			return fmt.Errorf("call failed: %w", err)
 		}
 
-		log.Info("Task execution completed successfully")
+		logger.Info("Task execution completed successfully")
 		return nil
 	},
 }
