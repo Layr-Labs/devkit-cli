@@ -128,7 +128,7 @@ var Command = &cli.Command{
 			return nil
 		}
 
-		// Persist the chosen context into <context>.yaml
+		// Persist the chosen context into base config.yaml
 		if !cCtx.Bool("list") {
 			// Verify context file exists
 			if _, err := os.Stat(contextPath); os.IsNotExist(err) {
@@ -143,12 +143,12 @@ var Command = &cli.Command{
 				return fmt.Errorf("read base config: %w", err)
 			}
 			root := doc.Content[0]
-			cfgNode := common.GetChildByKey(root, "context")
+			cfgNode := common.GetChildByKey(root, "config")
 			if cfgNode == nil {
 				cfgNode = &yaml.Node{Kind: yaml.MappingNode}
 				root.Content = append(
 					root.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: "context"},
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "config"},
 					cfgNode,
 				)
 			}
@@ -160,9 +160,9 @@ var Command = &cli.Command{
 				}
 			}
 
-			// Write the <context>.yaml back to disk
+			// Write the base config.yaml back to disk
 			if err := common.WriteYAML(cfgPath, doc); err != nil {
-				return fmt.Errorf("write context: %w", err)
+				return fmt.Errorf("write config: %w", err)
 			}
 			log.Info("Global context successfully set to %s", context)
 			return nil
