@@ -9,6 +9,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/keystore"
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/version"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/hooks"
 
 	"github.com/urfave/cli/v2"
@@ -21,13 +22,27 @@ func main() {
 		Name:  "devkit",
 		Usage: "EigenLayer Development Kit",
 		Flags: common.GlobalFlags,
-		Before: func(ctx *cli.Context) error {
-			err := hooks.LoadEnvFile(ctx)
+		Before: func(cCtx *cli.Context) error {
+			err := hooks.LoadEnvFile(cCtx)
 			if err != nil {
 				return err
 			}
-			common.WithAppEnvironment(ctx)
-			return hooks.WithCommandMetricsContext(ctx)
+			common.WithAppEnvironment(cCtx)
+
+			// Check verbose flag and set appropriate logger in context
+			var logger iface.Logger
+			var tracker iface.ProgressTracker
+			if cCtx.Bool("verbose") {
+				logger, tracker = common.GetVerboseLogger()
+			} else {
+				logger, tracker = common.GetLogger(false)
+			}
+
+			// Store logger and tracker in the context
+			cCtx.Context = common.WithLogger(cCtx.Context, logger)
+			cCtx.Context = common.WithProgressTracker(cCtx.Context, tracker)
+
+			return hooks.WithCommandMetricsContext(cCtx)
 		},
 		Commands: []*cli.Command{
 			commands.AVSCommand,

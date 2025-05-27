@@ -27,7 +27,7 @@ var BuildCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		logger, _ := common.GetLogger(cCtx.Bool("verbose"))
+		logger := common.LoggerFromContext(cCtx.Context)
 
 		// Run scriptPath from cwd
 		const dir = ""

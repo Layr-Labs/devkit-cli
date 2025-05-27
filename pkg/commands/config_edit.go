@@ -23,7 +23,7 @@ import (
 
 // editConfig is the main entry point for the edit config functionality
 func editConfig(cCtx *cli.Context, configPath string) error {
-	logger, _ := common.GetLogger(cCtx.Bool("verbose"))
+	logger := common.LoggerFromContext(cCtx.Context)
 	// Find an available editor
 	editor, err := findEditor()
 	if err != nil {

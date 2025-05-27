@@ -12,6 +12,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	progresslogger "github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
 
@@ -87,7 +88,8 @@ var CreateCommand = &cli.Command{
 		dest := cCtx.Args().Get(1)
 
 		// get logger
-		logger, tracker := common.GetLogger(cCtx.Bool("verbose"))
+		logger := common.LoggerFromContext(cCtx.Context)
+		tracker := common.ProgressTrackerFromContext(cCtx.Context)
 
 		// use dest from dir flag or positional
 		var targetDir string
@@ -120,13 +122,13 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Create project directories
-		if err := createProjectDir(targetDir, cCtx.Bool("overwrite"), cCtx.Bool("verbose")); err != nil {
+		if err := createProjectDir(logger, targetDir, cCtx.Bool("overwrite"), cCtx.Bool("verbose")); err != nil {
 			return err
 		}
 
 		logger.Debug("Using template: %s", mainBaseURL)
 		if mainVersion != "" {
-				logger.Info("Template version: %s", mainVersion)
+			logger.Info("Template version: %s", mainVersion)
 		}
 
 		// Set Cache location as ~/.devkit
@@ -152,7 +154,6 @@ var CreateCommand = &cli.Command{
 		if err := fetcher.Fetch(cCtx.Context, mainBaseURL, mainVersion, targetDir); err != nil {
 			return fmt.Errorf("failed to fetch template from %s: %w", mainBaseURL, err)
 		}
-
 
 		// Copy DevKit README.md to templates README.md
 		readMePath := filepath.Join(targetDir, "README.md")
@@ -182,12 +183,12 @@ var CreateCommand = &cli.Command{
 		logger.Debug("\nFinalising new project\n\n")
 
 		// Copy config.yaml to the project directory
-		if err := copyDefaultConfigToProject(targetDir, projectName, mainBaseURL, mainVersion, cCtx.Bool("verbose")); err != nil {
+		if err := copyDefaultConfigToProject(logger, targetDir, projectName, mainBaseURL, mainVersion); err != nil {
 			return fmt.Errorf("failed to initialize %s: %w", common.BaseConfig, err)
 		}
 
 		// Copies the default keystore json files in the keystores/ directory
-		if err := copyDefaultKeystoresToProject(targetDir, cCtx.Bool("verbose")); err != nil {
+		if err := copyDefaultKeystoresToProject(logger, targetDir); err != nil {
 			return fmt.Errorf("failed to initialize keystores: %w", err)
 		}
 
@@ -207,7 +208,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Initialize git repository in the project directory
-		if err := initGitRepo(cCtx, targetDir, cCtx.Bool("verbose")); err != nil {
+		if err := initGitRepo(cCtx, targetDir, logger); err != nil {
 			logger.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
@@ -249,9 +250,7 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 	return mainBaseURL, mainVersion, nil
 }
 
-func createProjectDir(targetDir string, overwrite, verbose bool) error {
-	// get logger
-	logger, _ := common.GetLogger(verbose)
+func createProjectDir(logger iface.Logger, targetDir string, overwrite, verbose bool) error {
 
 	// Check if directory exists and handle overwrite
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
@@ -274,9 +273,7 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 }
 
 // copyDefaultConfigToProject copies config to the project directory with updated project name
-func copyDefaultConfigToProject(targetDir, projectName string, templateBaseURL, templateVersion string, verbose bool) error {
-	// get logger
-	logger, _ := common.GetLogger(verbose)
+func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName string, templateBaseURL, templateVersion string) error {
 
 	// Create and ensure target config directory exists
 	destConfigDir := filepath.Join(targetDir, "config")
@@ -345,9 +342,7 @@ func copyDefaultConfigToProject(targetDir, projectName string, templateBaseURL, 
 }
 
 // / Creates a keystores directory with default keystore json files
-func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
-	logger, _ := common.GetLogger(verbose)
-
+func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string, verbose bool) error {
 	// Construct keystore dest
 	destKeystoreDir := filepath.Join(targetDir, "keystores")
 
@@ -383,12 +378,9 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 const contractsBasePath = ".devkit/contracts"
 
 // initGitRepo initializes a new Git repository in the target directory.
-func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
-	// get logger
-	logger, _ := common.GetLogger(verbose)
+func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error {
 
 	logger.Debug("Removing existing .git directory in %s (if any)...", targetDir)
-
 
 	// use gitClient to reinstate git submodules after fresh init
 	// git := template.NewGitClient()
@@ -428,7 +420,6 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 		return fmt.Errorf("failed to write .gitignore: %w", err)
 	}
 
-
 	// add all changes and commit
 	cmd = exec.CommandContext(ctx.Context, "git", "add", ".")
 	cmd.Dir = targetDir
@@ -441,10 +432,10 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 
-		logger.Debug("Git repository initialized successfully.")
-		if len(output) > 0 {
-			logger.Debug("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
-		}
+	logger.Debug("Git repository initialized successfully.")
+	if len(output) > 0 {
+		logger.Debug("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
+	}
 	return nil
 }
 

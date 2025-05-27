@@ -2,9 +2,10 @@ package commands
 
 import (
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"path"
 	"path/filepath"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/urfave/cli/v2"
 )
@@ -22,7 +23,7 @@ var RunCommand = &cli.Command{
 
 func AVSRun(cCtx *cli.Context) error {
 	// Get logger
-	logger, _ := common.GetLogger(cCtx.Bool("verbose"))
+	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Print task if verbose
 	logger.Debug("Starting offchain AVS components...")

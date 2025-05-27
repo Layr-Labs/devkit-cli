@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
 	"github.com/urfave/cli/v2"
@@ -21,7 +22,7 @@ var ConfigCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		logger, _ := common.GetLogger(cCtx.Bool("verbose"))
+		logger := common.LoggerFromContext(cCtx.Context)
 
 		if path := cCtx.String("edit"); path != "" {
 			logger.Info("Opening config file for editing...")

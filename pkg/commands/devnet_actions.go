@@ -29,7 +29,7 @@ import (
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
-	logger, _ := common.GetLogger(cCtx.Bool("verbose"))
+	logger := common.LoggerFromContext(cCtx.Context)
 	// Get logger
 
 	// Extract vars
@@ -231,7 +231,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 func DeployContractsAction(cCtx *cli.Context) error {
 	// Get logger
-	logger, _ := common.GetLogger(cCtx.Bool("verbose"))
+	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Start timing execution runtime
 	startTime := time.Now()
@@ -326,7 +326,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 func StopDevnetAction(cCtx *cli.Context) error {
 	// Get logger
-	log, _ := common.GetLogger(cCtx.Bool("verbose"))
+	log := common.LoggerFromContext(cCtx.Context)
 
 	// Read flags
 	stopAllContainers := cCtx.Bool("all")

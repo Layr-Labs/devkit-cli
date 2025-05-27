@@ -51,7 +51,7 @@ func CallTemplateScript(cmdCtx context.Context, logger iface.Logger, dir string,
 	if expect == ExpectJSONResponse {
 		// End early for empty response
 		if len(raw) == 0 {
-			log.Warn("Empty output from %s; returning empty result", scriptPath)
+			logger.Warn("Empty output from %s; returning empty result", scriptPath)
 			return map[string]interface{}{}, nil
 		}
 
