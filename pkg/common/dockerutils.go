@@ -26,12 +26,12 @@ func EnsureDockerIsRunning(ctx *cli.Context) error {
 
 	switch runtime.GOOS {
 	case "darwin":
-		err := exec.Command("open", "-a", "Docker").Start()
+		err := exec.CommandContext(ctx.Context, "open", "-a", "Docker").Start()
 		if err != nil {
 			return fmt.Errorf("failed to launch Docker Desktop: %w", err)
 		}
 	case "windows":
-		err := exec.Command("powershell", "Start-Process", "Docker Desktop").Start()
+		err := exec.CommandContext(ctx.Context, "powershell", "Start-Process", "Docker Desktop").Start()
 		if err != nil {
 			return fmt.Errorf("failed to launch Docker Desktop: %w", err)
 		}
@@ -41,7 +41,7 @@ func EnsureDockerIsRunning(ctx *cli.Context) error {
 			return nil
 		} else {
 
-			err := exec.Command("systemctl", "start", "docker").Start()
+			err := exec.CommandContext(ctx.Context, "systemctl", "start", "docker").Start()
 			if err != nil {
 				return fmt.Errorf("failed to launch Docker Desktop: %w", err)
 			}
