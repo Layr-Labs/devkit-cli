@@ -3,13 +3,15 @@ package commands
 import (
 	"context"
 	"errors"
-	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 )
 
@@ -38,7 +40,7 @@ func TestCallCommand_ExecutesSuccessfully(t *testing.T) {
 	_, restore, app := setupCallApp(t)
 	defer restore()
 
-	err := app.Run([]string{"app", "call", "--params", "payload=0x1"})
+	err := app.Run([]string{"app", "call", "--", "payload=0x1"})
 	assert.NoError(t, err)
 }
 
@@ -48,7 +50,7 @@ func TestCallCommand_MissingDevnetYAML(t *testing.T) {
 
 	os.Remove(filepath.Join(tmpDir, "config", "contexts", "devnet.yaml"))
 
-	err := app.Run([]string{"app", "call", "--params", "payload=0x1"})
+	err := app.Run([]string{"app", "call", "--", "payload=0x1"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load context")
 }
@@ -59,14 +61,22 @@ func TestCallCommand_MissingParams(t *testing.T) {
 
 	err := app.Run([]string{"app", "call"})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), `Required flag "params"`)
+	assert.Contains(t, err.Error(), "no parameters supplied")
+}
+
+func TestParseParams_MultipleParams(t *testing.T) {
+	input := `signature="(uint256,string)" args='(5,"hello")'`
+	m, err := parseParams(input)
+	require.NoError(t, err)
+	assert.Equal(t, "(uint256,string)", m["signature"])
+	assert.Equal(t, `(5,"hello")`, m["args"])
 }
 
 func TestCallCommand_MalformedParams(t *testing.T) {
 	_, restore, app := setupCallApp(t)
 	defer restore()
 
-	err := app.Run([]string{"app", "call", "--params", "badparam"})
+	err := app.Run([]string{"app", "call", "--", "badparam"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid param")
 }
@@ -79,7 +89,7 @@ func TestCallCommand_MalformedYAML(t *testing.T) {
 	err := os.WriteFile(yamlPath, []byte(":\n  - bad"), 0644)
 	assert.NoError(t, err)
 
-	err = app.Run([]string{"app", "call", "--params", "payload=0x1"})
+	err = app.Run([]string{"app", "call", "--", "payload=0x1"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load context")
 }
@@ -91,7 +101,7 @@ func TestCallCommand_MissingScript(t *testing.T) {
 	err := os.Remove(filepath.Join(tmpDir, ".devkit", "scripts", "call"))
 	assert.NoError(t, err)
 
-	err = app.Run([]string{"app", "call", "--params", "payload=0x1"})
+	err = app.Run([]string{"app", "call", "--", "payload=0x1"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no such file or directory")
 }
@@ -105,7 +115,7 @@ func TestCallCommand_ScriptReturnsNonZero(t *testing.T) {
 	err := os.WriteFile(scriptPath, []byte(failScript), 0755)
 	assert.NoError(t, err)
 
-	err = app.Run([]string{"app", "call", "--params", "payload=0x1"})
+	err = app.Run([]string{"app", "call", "--", "payload=0x1"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "call failed")
 }
@@ -120,7 +130,7 @@ func TestCallCommand_ScriptOutputsInvalidJSON(t *testing.T) {
 	assert.NoError(t, err)
 
 	stdout, stderr := testutils.CaptureOutput(func() {
-		err := app.Run([]string{"app", "call", "--params", "payload=0x1"})
+		err := app.Run([]string{"app", "call", "--", "payload=0x1"})
 		assert.NoError(t, err)
 	})
 
@@ -135,7 +145,7 @@ func TestCallCommand_Cancelled(t *testing.T) {
 	result := make(chan error)
 
 	go func() {
-		result <- app.RunContext(ctx, []string{"app", "call", "--params", "payload=0x1"})
+		result <- app.RunContext(ctx, []string{"app", "call", "--", "payload=0x1"})
 	}()
 	cancel()
 

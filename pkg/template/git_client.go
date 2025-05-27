@@ -14,7 +14,6 @@ import (
 )
 
 type GitClient interface {
-	ParseGitHubURL(url string) (repoURL, branch string)
 	Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error
 	Checkout(ctx context.Context, repoDir, commit string) error
 	WorktreeCheckout(ctx context.Context, mirrorPath, commit, worktreePath string) error
@@ -35,10 +34,13 @@ type GitClient interface {
 	StageSubmodule(ctx context.Context, repoDir, path, sha string) error
 	SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error
 	ActivateSubmodule(ctx context.Context, repoDir, name string) error
+	AddSubmodule(ctx context.Context, repoDir, url, path string) error
+	SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error
 }
 
 type CloneOptions struct {
-	Branch      string
+	// Ref is the branch, commit or tag to checkout after cloning
+	Ref         string
 	Depth       int
 	Bare        bool
 	Dissociate  bool
@@ -47,10 +49,7 @@ type CloneOptions struct {
 }
 
 type Submodule struct {
-	Name   string
-	Path   string
-	URL    string
-	Branch string
+	Name, Path, URL, Branch string
 }
 
 type SubmoduleFailure struct {
@@ -69,18 +68,6 @@ func NewGitClient() GitClient {
 		repoLocks:      make(map[string]*sync.Mutex),
 		receivingRegex: regexp.MustCompile(`Receiving objects:\s+(\d+)%`),
 	}
-}
-
-func (g *execGitClient) ParseGitHubURL(url string) (repoURL, branch string) {
-	if strings.Contains(url, "/tree/") {
-		parts := strings.Split(url, "/tree/")
-		if len(parts) == 2 {
-			repoURL = parts[0] + ".git"
-			branch = parts[1]
-			return
-		}
-	}
-	return url, ""
 }
 
 func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, args ...string) ([]byte, error) {
@@ -143,22 +130,27 @@ func (g *execGitClient) run(ctx context.Context, dir string, opts CloneOptions, 
 func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts CloneOptions) error {
 	args := []string{"clone"}
 
+	// TODO(seanmcgary): commented this out since this breaks when passing a commit hash
+	// since a commit hash is not a branch.
+	//
+	// the other flags also break the case of passing a commit hash
+
 	// handle flags for bare, depth, branch, dissociate, and no-hardlinks
-	if opts.Bare {
-		args = append(args, "--bare")
-	}
-	if opts.Depth > 0 {
-		args = append(args, fmt.Sprintf("--depth=%d", opts.Depth))
-	}
-	if opts.Branch != "" {
-		args = append(args, "-b", opts.Branch)
-	}
-	if opts.Dissociate {
-		args = append(args, "--dissociate")
-	}
-	if opts.NoHardlinks {
-		args = append(args, "--no-hardlinks")
-	}
+	//if opts.Bare {
+	//	args = append(args, "--bare")
+	//}
+	// if opts.Depth > 0 {
+	// 	args = append(args, fmt.Sprintf("--depth=%d", opts.Depth))
+	// }
+	// if opts.Ref != "" {
+	// 	args = append(args, "-b", opts.Ref)
+	// }
+	// if opts.Dissociate {
+	// 	args = append(args, "--dissociate")
+	// }
+	// if opts.NoHardlinks {
+	// 	args = append(args, "--no-hardlinks")
+	// }
 
 	// add the --progress flag for tracking progress
 	args = append(args, "--progress")
@@ -169,7 +161,7 @@ func (g *execGitClient) Clone(ctx context.Context, repoURL, dest string, opts Cl
 	// call run to execute the command and capture progress
 	_, err := g.run(ctx, "", opts, args...)
 	if err != nil {
-		return fmt.Errorf("failed to clone into cache: %w", err)
+		return fmt.Errorf("failed to clone: '%s' '%s' '%s' %w", repoURL, opts.Ref, dest, err)
 	}
 
 	return nil
@@ -243,7 +235,7 @@ func (g *execGitClient) WorktreeCheckout(ctx context.Context, mirrorPath, commit
 }
 
 func (g *execGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]Submodule, error) {
-	out, err := g.run(ctx, repoDir, CloneOptions{}, "config", "-f", ".gitmodules", "--get-regexp", "^submodule\\..*\\.path$")
+	out, err := g.run(ctx, repoDir, CloneOptions{}, "--no-pager", "config", "-f", ".gitmodules", "--get-regexp", `^submodule\..*\.path$`)
 	if err != nil {
 		return nil, err
 	}
@@ -276,6 +268,11 @@ func (g *execGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]Su
 	return subs, nil
 }
 
+func (g *execGitClient) SubmoduleInit(ctx context.Context, repoDir string, opts CloneOptions) error {
+	_, err := g.run(ctx, repoDir, opts, "submodule", "update", "--recursive", "--depth", "2", "--init", "--progress")
+	return err
+}
+
 func (g *execGitClient) SubmoduleCommit(ctx context.Context, repoDir, path string) (string, error) {
 	out, err := g.run(ctx, repoDir, CloneOptions{}, "ls-tree", "HEAD", path)
 	if err != nil {
@@ -288,10 +285,10 @@ func (g *execGitClient) SubmoduleCommit(ctx context.Context, repoDir, path strin
 	return fields[2], nil
 }
 
-func (g *execGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, branch string) (string, error) {
+func (g *execGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, ref string) (string, error) {
 	args := []string{"ls-remote", repoURL}
-	if branch != "" {
-		args = append(args, branch)
+	if ref != "" {
+		args = append(args, ref)
 	} else {
 		args = append(args, "HEAD")
 	}
@@ -299,6 +296,12 @@ func (g *execGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, branch
 	if err != nil {
 		return "", err
 	}
+	// if len is 0 with no error, we've been provided a commit hash, so let's use it
+	if len(out) == 0 {
+		return ref, nil
+	}
+
+	// otherwise, parse the output and take the first commit hash
 	fields := strings.Fields(string(out))
 	if len(fields) < 1 {
 		return "", fmt.Errorf("unexpected output: %s", out)
@@ -323,6 +326,11 @@ func (g *execGitClient) SetSubmoduleURL(ctx context.Context, repoDir, name, url 
 
 func (g *execGitClient) ActivateSubmodule(ctx context.Context, repoDir, name string) error {
 	_, err := g.run(ctx, repoDir, CloneOptions{}, "config", "--local", fmt.Sprintf("submodule.%s.active", name), "true")
+	return err
+}
+
+func (g *execGitClient) AddSubmodule(ctx context.Context, repoDir, url, path string) error {
+	_, err := g.run(ctx, repoDir, CloneOptions{}, "submodule", "add", url, path)
 	return err
 }
 

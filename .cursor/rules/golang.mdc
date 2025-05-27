@@ -1,0 +1,126 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Go Development Guidelines for devkit-cli
+
+This document outlines coding standards, patterns, and best practices to be followed when developing Go applications and libraries for the `devkit-cli` project. These rules are based on general Go best practices and observed patterns within this 
+codebase.
+
+## 0. Always..
+
+- Run `make tests` when completing a task to make sure the entire test suite passes
+- Run `make lint` to lint the code
+
+## 1. Code Formatting
+
+- **`gofmt`/`goimports`**: All Go code **MUST** be formatted using `gofmt` or `goimports` before committing. This ensures consistent code style across the project. `goimports` is preferred as it also manages import statements.
+    - Configure your IDE to format on save.
+    - This is likely enforced by pre-commit hooks.
+
+## 2. Naming Conventions
+
+- **Packages**:
+    - Package names **SHOULD** be short, concise, and all lowercase.
+    - Avoid overly generic names like `util` or `common` unless the package truly contains cross-cutting concerns. If so, sub-packages within `common` (e.g., `common/httputil`) are preferred.
+    - The project uses `pkg/common` for shared utilities (e.g., `logger`, context management), which is acceptable.
+- **Variables**:
+    - Local variables and function parameters **SHOULD** use `camelCase` (e.g., `myVariable`).
+    - Exported variables **MUST** use `PascalCase` (e.g., `ExportedVariable`).
+- **Functions and Methods**:
+    - Function and method names **SHOULD** use `camelCase` for unexported identifiers (e.g., `calculateValue`).
+    - Exported functions and methods **MUST** use `PascalCase` (e.g., `CalculateValue`).
+- **Interfaces**:
+    - Interfaces **SHOULD** be named with the `-er` suffix if they have only one method (e.g., `Reader`, `Writer`).
+    - For more complex interfaces, choose a name that describes its purpose (e.g., `DataStore`).
+- **Avoid Stutter**: Do not repeat package names in identifiers. For example, in package `logger`, prefer `logger.New()` over `logger.NewLogger()`.
+- **Acronyms**: Acronyms like HTTP, ID, URL **SHOULD** be consistently cased (e.g., `serveHTTP`, `userID`, `parseURL`). `PascalCase` for exported acronyms (e.g., `ServeHTTP`, `UserID`, `ParseURL`).
+
+## 3. Packages and Project Structure
+
+- **`cmd/`**: Main application(s). Each subdirectory in `cmd/` is a separate executable.
+- **`pkg/`**: Library code that can be used by other applications or projects. Code here should be designed to be reusable.
+    - CLI command logic is well-organized under `pkg/commands`.
+- **`internal/`**: Private application and library code. This is the ideal place for code that is specific to this project and should not be imported by other projects.
+    - The `internal/version` pattern for build-time variable injection is good.
+- **Clarity**: Package structure should clearly communicate the purpose and separation of concerns.
+- **Circular Dependencies**: Avoid circular dependencies between packages.
+
+## 4. Error Handling
+
+- **Explicit Handling**: Errors **MUST** be handled explicitly. Do not ignore errors using the blank identifier (`_`) unless there is a very specific and documented reason.
+- **Return Errors**: Functions that can fail **MUST** return an `error` as their last return value.
+- **Error Wrapping**: When an error is propagated up the call stack, it **SHOULD** be wrapped with additional context using `fmt.Errorf("operation X failed: %w", err)`. This preserves the original error and adds a stack of contextual information.
+    - Use `errors.Is()` and `errors.As()` from the standard `errors` package to inspect wrapped errors.
+- **Error Messages**: Error messages should be lowercase and not end with punctuation, as they are often combined with other context.
+- **Top-Level Handling**: In `main()` or top-level HTTP handlers, errors should be logged appropriately, and the program/request should terminate gracefully (e.g., `log.Fatal(err)` in `main.go` is acceptable for CLI startup).
+
+## 5. Comments and Documentation
+
+- **Godoc**: All exported identifiers (variables, constants, functions, types) **MUST** have Godoc comments.
+    - Comments should start with the name of the identifier they describe.
+    - Provide clear, concise explanations of what the identifier does, its parameters, and return values.
+- **Non-Obvious Code**: Add comments to explain complex, non-obvious, or surprising logic.
+- **TODOs**: Use `// TODO:` comments to mark areas that need future attention. Include context or a reference if possible.
+
+## 6. Logging
+
+- **Structured Logging**: Use a structured logging library like `zap` (as currently used in `pkg/common/logger/zap_logger.go`).
+- **Log Levels**: Use appropriate log levels (e.g., DEBUG, INFO, WARN, ERROR, FATAL).
+- **Contextual Information**: Include relevant contextual information in log messages (e.g., request IDs, user IDs) to aid debugging.
+- **Avoid Logging and Returning Errors**: Generally, a function should either log an error and handle it, or return the error to the caller to handle. Avoid doing both unless there's a specific reason. The caller is usually better positioned to decide if logging is appropriate.
+
+## 7. Concurrency
+
+- **Goroutines**: Use goroutines for concurrent operations. Ensure they are managed correctly (e.g., using `sync.WaitGroup` to wait for completion).
+- **Channels**: Prefer channels for communication between goroutines and for synchronization.
+- **`context.Context`**:
+    - Pass `context.Context` as the first argument to functions that perform I/O, long-running computations, or need to support cancellation or deadlines.
+    - The project correctly uses `context.Context` (e.g., `common.WithShutdown(context.Background())`).
+- **Race Conditions**: Be mindful of race conditions. Use the Go race detector (`go test -race`) during testing. Protect shared mutable state using mutexes (`sync.Mutex`, `sync.RWMutex`) or channels.
+
+## 8. Testing
+
+- **File Naming**: Test files **MUST** be named `*_test.go`.
+- **Function Naming**: Test functions **MUST** be named `TestXxx` (where `Xxx` starts with an uppercase letter) and take `*testing.T` as a parameter.
+- **Coverage**: Strive for high test coverage. Use `go test -coverprofile=coverage.out && go tool cover -html=coverage.out` to inspect coverage.
+- **Table-Driven Tests**: Use table-driven tests for testing multiple scenarios of the same function with different inputs and expected outputs.
+- **Subtests**: Use `t.Run` to create subtests for better organization and output.
+- **Assertions**: Use standard library features or well-known assertion libraries if necessary. Avoid overly complex custom assertion logic.
+- **Mocks/Fakes**: Use fakes or mocks for dependencies, especially for external services or components that are hard to set up in a test environment.
+
+## 9. API Design
+
+- **Interfaces**: Define interfaces on the consumer side where appropriate. This promotes loose coupling and makes code easier to test and mock.
+- **Simplicity**: Strive for simple and clear API designs. Avoid overly complex or numerous parameters.
+- **Return Values**: Be consistent with return value patterns (e.g., `(value, error)` or `(value, bool)`).
+
+## 10. Dependency Management
+
+- **Go Modules**: Use Go Modules (`go.mod`, `go.sum`) for dependency management.
+- **Tidy Modules**: Keep `go.mod` and `go.sum` tidy by running `go mod tidy` regularly.
+- **Dependency Updates**: Regularly review and update dependencies to incorporate security patches and bug fixes.
+
+## 11. Linters and Static Analysis
+
+- **`golangci-lint`**: Use `golangci-lint` or a similar comprehensive linter tool.
+    - A `.golangci.yml` configuration file should be present in the repository to define enabled linters and settings.
+    - Integrate linters into pre-commit hooks (as suggested by `.pre-commit-config.yaml`).
+
+## 12. CLI Specific (using `urfave/cli/v2`)
+
+- **Command Structure**: Define commands and subcommands clearly, following the patterns in `pkg/commands/devnet.go`.
+- **Flags**: Use descriptive names and usage messages for flags. Provide sensible default values.
+- **Actions**: Command actions should encapsulate the logic for that command. Delegate complex logic to other packages/functions.
+- **Context Usage**: Utilize the `cli.Context` for accessing flags, arguments, and application-level values.
+- **Hooks**: Leverage hooks (e.g., `Before`, `After`) for common setup/teardown tasks, as seen with `hooks.LoadEnvFile` and `hooks.WithCommandMetricsContext`.
+
+## 13. General Best Practices
+
+- **Keep it Simple (KISS)**: Prefer simple, readable code over overly clever or complex solutions.
+- **Don't Repeat Yourself (DRY)**: Avoid code duplication by abstracting common logic into functions or methods.
+- **Single Responsibility Principle (SRP)**: Functions and types should have a single, well-defined responsibility.
+- **Avoid `init()`**: Use `init()` functions sparingly. Explicit initialization in `main()` or via factory functions is often clearer.
+- **Avoid Global Variables**: Minimize the use of global variables. If used, ensure they are concurrency-safe. The version variables in `internal/version` are a common exception, typically set at build time.
+- **Resource Management**: Ensure resources like file handles, network connections, etc., are properly closed (e.g., using `defer`).

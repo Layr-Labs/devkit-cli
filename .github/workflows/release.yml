@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - "*"
-env:
-  GOPRIVATE: github.com/Layr-Labs/*
 
 jobs:
   lint:
@@ -21,10 +19,7 @@ jobs:
           go-version: '1.24.2'
 
       - name: Install dependencies
-        env:
-          HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
         run: |
-          git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
           go mod tidy
 
       - name: Run golangci-lint
@@ -45,10 +40,7 @@ jobs:
           go-version: '1.24.2'
 
       - name: run tests
-        env:
-          HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
         run: |
-          git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
           go mod tidy
           make tests
   build-create-release:
@@ -65,13 +57,12 @@ jobs:
           ./scripts/version.sh $REF
       - name: Build binary
         env:
-          HOURGLASS_TOKEN: ${{ secrets.HOURGLASS_TOKEN }}
           RELEASE_BUCKET_NAME: ${{ secrets.RELEASE_BUCKET_NAME }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
+          TELEMETRY_TOKEN: ${{ secrets.TELEMETRY_TOKEN }}
         run: |
-          git config --global url."https://${HOURGLASS_TOKEN}@github.com/".insteadOf "https://github.com/"
           go mod tidy
           
           VERSION=$(cat VERSION | tr -d '[:space:]')

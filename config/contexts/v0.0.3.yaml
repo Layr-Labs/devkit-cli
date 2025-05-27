@@ -1,11 +1,11 @@
 # Devnet context to be used for local deployments against Anvil chain
-version: 0.0.2
+version: 0.0.3
 context:
   # Name of the context
   name: "devnet"
   # Chains available to this context
   chains:
-    l1: 
+    l1:
       chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:

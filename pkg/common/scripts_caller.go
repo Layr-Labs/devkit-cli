@@ -46,13 +46,16 @@ func CallTemplateScript(cmdCtx context.Context, logger iface.Logger, dir string,
 
 	// Clean and validate stdout
 	raw := bytes.TrimSpace(stdout.Bytes())
-	if len(raw) == 0 {
-		logger.Warn("Empty output from %s; returning empty result", scriptPath)
-		return map[string]interface{}{}, nil
-	}
 
 	// Return the result as JSON if expected
 	if expect == ExpectJSONResponse {
+		// End early for empty response
+		if len(raw) == 0 {
+			log.Warn("Empty output from %s; returning empty result", scriptPath)
+			return map[string]interface{}{}, nil
+		}
+
+		// Unmarshal response and return unless err
 		var result map[string]interface{}
 		if err := json.Unmarshal(raw, &result); err != nil {
 			logger.Warn("Invalid or non-JSON script output: %s; returning empty result: %v", string(raw), err)
@@ -62,7 +65,9 @@ func CallTemplateScript(cmdCtx context.Context, logger iface.Logger, dir string,
 	}
 
 	// Log the raw stdout
-	logger.Info("%s", string(raw))
+	if len(raw) > 0 {
+		logger.Info("%s", string(raw))
+	}
 
 	return nil, nil
 }

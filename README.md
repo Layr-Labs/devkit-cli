@@ -1,3 +1,8 @@
+## ⚠️ Warning: This is Alpha, non audited code ⚠️
+Hourglass is in active development and is not yet audited. Use at your own risk.
+
+---
+
 # EigenLayer Development Kit (DevKit) 🚀
 
 **A CLI toolkit for developing, testing, and managing EigenLayer Autonomous Verifiable Services (AVS).**
@@ -6,19 +11,16 @@ EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold 
 
 ![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
 
-## ⚠️ Disclaimer: Closed Alpha Not Production Ready
-EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used for use in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
-
-
 ## 🌟 Key Commands Overview
 
-| Command      | Description                              |
-| ------------ | ---------------------------------------- |
-| `avs create` | Scaffold a new AVS project               |
-| `avs config` | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...)        |
-| `avs build`  | Compile AVS smart contracts and binaries |
-| `avs devnet` | Manage local development network         |
-| `avs call`   | Simulate AVS task execution locally      |
+| Command        | Description                                                       |
+|----------------|-------------------------------------------------------------------|
+| `avs create`   | Scaffold a new AVS project                                        |
+| `avs config`   | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...) |
+| `avs build`    | Compile AVS smart contracts and binaries                          |
+| `avs devnet`   | Manage local development network                                  |
+| `avs call`     | Simulate AVS task execution locally                               |
+
 
 ---
 
@@ -36,32 +38,30 @@ Before you begin, ensure you have:
 
 ### 📦 Installation
 
-Clone and build the DevKit CLI:
+To download a binary for the latest release, run:
+```bash
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-darwin-arm64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
+```
 
+The binary will be installed inside the ~/bin directory.
+
+To add the binary to your path, run:
+```bash
+export PATH=$PATH:~/bin
+```
+
+To build and install the devkit cli from source:
 ```bash
 git clone https://github.com/Layr-Labs/devkit-cli
 cd devkit-cli
-go build -o devkit ./cmd/devkit
+make install
 export PATH=$PATH:~/bin
 ```
 
 Verify your installation:
-
 ```bash
 devkit --help
 ```
-
-### 🔑 Setup for Private Go Modules
-
-During this Private Preview, you'll need access to private Go modules hosted on GitHub:
-
-1. **Add SSH Key to GitHub:** Ensure your SSH key is associated with your GitHub account ([instructions](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account)).
-2. **Verify Repository Access:** Confirm with EigenLabs support that your account has access to necessary private repositories.
-3. **ssh-agent:** Make sure your ssh-agent is running and your SSH key is added. You can do this by running:
-   ```bash
-   [[ -z $(pgrep -f ssh-agent) ]] && eval "$(ssh-agent -s)"
-   ssh-add ~/.ssh/<your github private key>
-   ```
 
 ---
 
@@ -71,7 +71,7 @@ During this Private Preview, you'll need access to private Go modules hosted on 
 
 Sets up a new AVS project with the recommended structure, configuration files, and boilerplate code. This helps you get started quickly without needing to manually organize files or determine a layout. Details:
 
-* Initializes a new project based on the default Hourglass task-based architecture in Go.
+* Initializes a new project based on the default Hourglass task-based architecture in Go. Refer to [here](https://github.com/Layr-Labs/hourglass-avs-template?tab=readme-ov-file#what-is-hourglass) for details on the Hourglass architecture.
 * Generates boilerplate code and default configuration.
 
 Projects are created by default in the current directory from where the below command is called.
@@ -81,12 +81,14 @@ devkit avs create my-avs-project
 cd my-avs-project
 ```
 
+> Note: Projects are created with a specific template version. You can view your current template version with `devkit avs template info` and upgrade later using `devkit avs template upgrade`.
+
 > \[!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
 ### 2️⃣ Configure Your AVS (`avs config`)
 
-Before running your AVS, you’ll need to configure both project-level and environment-specific settings. This is done through two configuration files:
+Before running your AVS, you'll need to configure both project-level and environment-specific settings. This is done through two configuration files:
 
 - **`config.yaml`**: Defines project-wide settings such as AVS name and context names.
 - **`contexts/devnet.yaml`**: Contains environment-specific settings for your a given context (i.e. devnet), including the Ethereum fork url, block height, operator keys, AVS keys, and other runtime parameters.
@@ -177,7 +179,7 @@ Triggers task execution through your AVS, simulating how a task would be submitt
 Run this from your project directory:
 
 ```bash
-devkit avs call
+devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
 ```
 
 Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
@@ -202,7 +204,7 @@ devkit avs run
 
 ### Deploy AVS Contracts (`avs deploy-contract`)
 
-Deploy your AVS’s onchain contracts independently of the full devnet setup.
+Deploy your AVS's onchain contracts independently of the full devnet setup.
 
 This step is **optional**. The `devkit avs devnet start` command already handles contract deployment as part of its full setup. However, you may choose to run this command separately if you want to deploy contracts without launching a local devnet — for example, when preparing for a testnet deployment.
 
@@ -230,6 +232,30 @@ devkit keystore read --path --password
 - **`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
 - **`password`**: Password to encrypt/decrypt the keystore.
 
+### Template Management (`avs template`)
+
+Manage your project templates to stay up-to-date with the latest features and improvements.
+
+* View current template information
+* Upgrade your project to a newer template version
+
+Subcommands:
+
+| Command | Description |
+| ------- | ----------- |
+| `info` | Display information about the current project template |
+| `upgrade` | Upgrade project to a newer template version |
+
+View template information:
+```bash
+devkit avs template info
+```
+
+Upgrade to a specific template version (tag, branch, or commit hash):
+```bash
+devkit avs template upgrade --version v1.0.0
+```
+
 ### 📖 Logging (`--verbose`)
 
 <!-- 
@@ -248,6 +274,49 @@ devkit avs build --verbose
 ```
 
 ---
+## Upgrade process
+
+
+### Upgrading the Devkit CLI
+
+To upgrade the Devkit CLI to the latest version, find the [latest release](releases) you want to download and re-run the curl install command:
+
+```bash
+VERSION=v0.0.6
+ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+curl -s -L "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | sudo tar xvz -C /usr/local/bin
+```
+
+### Upgrading your template
+
+To upgrade the template you created your project with (by calling `devkit avs create`) you can use the `devkit avs template` subcommands.
+
+**_View which version you're currently using_**
+
+```bash
+devkit avs template info
+
+2025/05/22 14:42:36 Project template information:
+2025/05/22 14:42:36   Project name: <your project>
+2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
+2025/05/22 14:42:36   Version: v0.0.9
+```
+
+**_Upgrade to a newer version_**
+
+To upgrade to a newer version you can run:
+
+```bash
+devkit avs template upgrade --version <version>
+```
+
+More often than not, you'll want to use tag corresponding to your template's release. You may also provide a branch name or commit hash to upgrade to.
+
+_Please consult your template's docs for further information on how the upgrade process works._
+
+---
 
 ## 🤝 Contributing
 
@@ -259,10 +328,10 @@ Contributions are welcome! Please open an issue to discuss significant changes b
 To release a new version of the CLI, follow the steps below:
 > Note: You need to have write permission to this repo to release new version
 
-1. Checkout the master branch and pull the latest changes:
+1. Checkout the main branch and pull the latest changes:
     ```bash
-    git checkout master
-    git pull origin master
+    git checkout main
+    git pull origin main
     ```
 2. In your local clone, create a new release tag using the following command:
     ```bash

@@ -2,22 +2,11 @@ architectures:
   task:
     languages:
       go:
-        template: "https://github.com/Layr-Labs/hourglass-avs-template/tree/v0.0.2"
+        baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
+        version: "v0.0.9"
       ts:
-        template: ""
+        baseUrl: ""
+        version: ""
       rust:
-        template: ""
-    contracts:
-      languages:
-        solidity:
-          template: "https://github.com/Layr-Labs/hourglass-contracts-template"
-        vyper:
-          template: ""
-  hello-world-avs:
-    languages:
-      go:
-        template: "https://github.com/Layr-Labs/hello-world-avs"
-      ts:
-        template: ""
-      rust:
-        template: ""
+        baseUrl: ""
+        version: ""

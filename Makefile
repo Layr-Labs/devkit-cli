@@ -4,30 +4,28 @@ APP_NAME=devkit
 
 VERSION_PKG=github.com/Layr-Labs/devkit-cli/internal/version
 TELEMETRY_PKG=github.com/Layr-Labs/devkit-cli/pkg/telemetry
-CONTEXT_PKG=github.com/Layr-Labs/devkit-cli/pkg/context
+COMMON_PKG=github.com/Layr-Labs/devkit-cli/pkg/common
 
 LD_FLAGS=\
   -X '$(VERSION_PKG).Version=$(shell cat VERSION)' \
   -X '$(VERSION_PKG).Commit=$(shell git rev-parse --short HEAD)' \
-  -X '$(TELEMETRY_PKG).embeddedTelemetryApiKey={{ .Env.TELEMETRY_TOKEN }}' \
-  -X '$(CONTEXT_PKG).embeddedDevkitReleaseVersion={{.Version}}'
+  -X '$(TELEMETRY_PKG).embeddedTelemetryApiKey=$${TELEMETRY_TOKEN}' \
+  -X '$(COMMON_PKG).embeddedDevkitReleaseVersion=$(shell cat VERSION)'
 
 GO_PACKAGES=./pkg/... ./cmd/...
 ALL_FLAGS=
 GO_FLAGS=-ldflags "$(LD_FLAGS)"
 GO=$(shell which go)
+BIN=./bin
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 build: ## Build the binary
-	@go build $(GO_FLAGS) -o $(APP_NAME) cmd/$(APP_NAME)/main.go
+	@go build $(GO_FLAGS) -o $(BIN)/$(APP_NAME) cmd/$(APP_NAME)/main.go
 
 tests: ## Run tests
-	@go test $(GO_PACKAGES)
-
-test-telemetry: ## Run telemetry tests
-	@go test ./pkg/telemetry/...
+	$(GO) test -v ./... -p 1
 
 fmt: ## Format code
 	@go fmt $(GO_PACKAGES)
@@ -38,7 +36,7 @@ lint: ## Run linter
 
 install: build ## Install binary to ~/bin
 	@mkdir -p ~/bin
-	@mv $(APP_NAME) ~/bin/
+	@cp $(BIN)/$(APP_NAME) ~/bin/
 
 clean: ## Remove binary
 	@rm -f $(APP_NAME) ~/bin/$(APP_NAME) 
