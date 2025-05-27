@@ -244,7 +244,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Get logger
 	logger := common.LoggerFromContext(cCtx.Context)
 	// Check if docker is running, else try to start it
-	err := common.EnsureDockerIsRunning(cCtx.Context)
+	err := common.EnsureDockerIsRunning(cCtx)
 	if err != nil {
 		return cli.Exit(err.Error(), 1)
 	}
