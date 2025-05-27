@@ -58,26 +58,6 @@ var CreateCommand = &cli.Command{
 			Name:  "overwrite",
 			Usage: "Force overwrite if project directory already exists",
 		},
-		&cli.BoolFlag{
-			Name:  "no-cache",
-			Usage: "Disable the use of caching mechanisms",
-			Value: false,
-		},
-		&cli.IntFlag{
-			Name:  "depth",
-			Usage: "Maximum submodule recursion depth",
-			Value: -1,
-		},
-		&cli.IntFlag{
-			Name:  "retries",
-			Usage: "Maximum number of retries on submodule clone failure",
-			Value: 3,
-		},
-		&cli.IntFlag{
-			Name:  "concurrency",
-			Usage: "Maximum number of concurrent submodule clones",
-			Value: 8,
-		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		// exit early if no project name is provided
@@ -131,24 +111,16 @@ var CreateCommand = &cli.Command{
 			logger.Info("Template version: %s", mainVersion)
 		}
 
-		// Set Cache location as ~/.devkit
-		basePath := filepath.Join(os.Getenv("HOME"), ".devkit")
-
 		// Fetch main template
 		fetcher := &template.GitFetcher{
-			Git:   template.NewGitClient(),
-			Cache: template.NewGitRepoCache(basePath),
+
+			Client: template.NewGitClient(),
 			Logger: *progresslogger.NewProgressLogger(
 				logger,
 				tracker,
 			),
 			Config: template.GitFetcherConfig{
-				CacheDir:       basePath,
-				MaxDepth:       cCtx.Int("depth"),
-				MaxRetries:     cCtx.Int("retries"),
-				MaxConcurrency: cCtx.Int("concurrency"),
-				UseCache:       !cCtx.Bool("no-cache"),
-				Verbose:        cCtx.Bool("verbose"),
+				Verbose: cCtx.Bool("verbose"),
 			},
 		}
 		if err := fetcher.Fetch(cCtx.Context, mainBaseURL, mainVersion, targetDir); err != nil {
@@ -233,11 +205,9 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get template URLs: %w", err)
 	}
-
 	if templateBaseOverride != "" {
 		mainBaseURL = templateBaseOverride
 	}
-
 	if mainBaseURL == "" {
 		return "", "", fmt.Errorf("no template found for architecture %s and language %s", arch, lang)
 	}
@@ -382,16 +352,6 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 
 	logger.Debug("Removing existing .git directory in %s (if any)...", targetDir)
 
-	// use gitClient to reinstate git submodules after fresh init
-	// git := template.NewGitClient()
-
-	// collect all submodules info
-	// submoduleInfos, err := collectSubmoduleInfo(ctx, git, filepath.Join(targetDir, contractsBasePath), contractsBasePath)
-	// // get commit for the submodule
-	// if err != nil {
-	// 	return fmt.Errorf("failed list submodules: %w", err)
-	// }
-
 	// remove the old .git dir
 	gitDir := filepath.Join(targetDir, ".git")
 	if err := os.RemoveAll(gitDir); err != nil {
@@ -406,12 +366,6 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 	if err != nil {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
-
-	// reinstate gitmodules
-	// err = registerSubmodules(ctx, git, targetDir, submoduleInfos)
-	// if err != nil {
-	// 	return fmt.Errorf("git submodule registration failed: %w", err)
-	// }
 
 	// write a .gitignore into the new dir
 	err = os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(config.GitIgnore), 0644)
@@ -437,79 +391,3 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 	}
 	return nil
 }
-
-/*
-func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir, pathPrefix string) ([]template.Submodule, error) {
-	// collect all submodules info
-	var submoduleInfos []template.Submodule
-	submodules, err := git.SubmoduleList(ctx.Context, targetDir)
-	// get commit for the submodule
-	if err != nil {
-		return nil, fmt.Errorf("failed list submodules: %w", err)
-	}
-	// collect the referenced commit in the submodule list
-	for _, m := range submodules {
-		submoduleInfos = append(submoduleInfos, template.Submodule{
-			Name: m.Name,
-			Path: fmt.Sprintf("%s/%s", pathPrefix, m.Path),
-			URL:  m.URL,
-		})
-	}
-	return submoduleInfos, nil
-}
-
-func registerSubmodules(ctx *cli.Context, git template.GitClient, targetDir string, submoduleInfos []template.Submodule) error {
-	// reinstate gitmodules
-	for _, mod := range submoduleInfos {
-		// init the submodule at path in parent
-		if err := git.AddSubmodule(ctx.Context, targetDir, mod.URL, mod.Path); err != nil {
-			return fmt.Errorf("failed to init submodule: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// replaceGitmodules replaces root .gitmodules with the one under ./contracts
-func replaceGitmodules(targetDir string, verbose bool) error {
-	log, _ := common.GetLogger()
-
-	// Remove old root file
-	if verbose {
-		log.Info("rm %s/.gitmodules", targetDir)
-	}
-	if err := os.Remove(filepath.Join(targetDir, ".gitmodules")); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("rm old .gitmodules: %w", err)
-	}
-
-	// Load contracts/.gitmodules
-	src := filepath.Join(targetDir, contractsBasePath, ".gitmodules")
-	raw, err := os.ReadFile(src)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", src, err)
-	}
-
-	// Prefix section names: [submodule "X"] → [submodule "contracts/X"]
-	reSection := regexp.MustCompile(`(?m)^\[submodule\s+"([^"]+)"\]`)
-	out := reSection.ReplaceAll(raw, []byte(`[submodule "contracts/$1"]`))
-
-	// Prefix path = X → path = contracts/X
-	rePath := regexp.MustCompile(`(?m)^(\s*path\s*=\s*)(.+)$`)
-	out = rePath.ReplaceAll(out, []byte(`${1}contracts/${2}`))
-
-	// Write to root
-	dest := filepath.Join(targetDir, ".gitmodules")
-	if verbose {
-		log.Info("write %s", dest)
-	}
-	if err := os.WriteFile(dest, out, 0644); err != nil {
-		return fmt.Errorf("write %s: %w", dest, err)
-	}
-
-	// Remove from contracts
-	if err := os.Remove(filepath.Join(targetDir, contractsBasePath, ".gitmodules")); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("rm old .gitmodules: %w", err)
-	}
-
-	return nil
-}*/

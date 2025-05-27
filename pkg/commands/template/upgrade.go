@@ -102,19 +102,13 @@ func createUpgradeCommand(
 
 			// Fetch main template
 			fetcher := &template.GitFetcher{
-				Git:   template.NewGitClient(),
-				Cache: template.NewGitRepoCache(tempCacheDir),
+				Client: template.NewGitClient(),
 				Logger: *progresslogger.NewProgressLogger(
 					logger,
 					tracker,
 				),
 				Config: template.GitFetcherConfig{
-					CacheDir:       tempDir,
-					MaxDepth:       -1,
-					MaxRetries:     3,
-					MaxConcurrency: 8,
-					UseCache:       false,
-					Verbose:        cCtx.Bool("verbose"),
+					Verbose: cCtx.Bool("verbose"),
 				},
 			}
 			logger.Info("Cloning template repository...")
