@@ -11,8 +11,8 @@ import (
 )
 
 // EnsureDockerIsRunning checks if Docker is running and attempts to launch Docker Desktop if not.
-func EnsureDockerIsRunning(ctx cli.Context) error {
-	logger, _ := GetLogger(true)
+func EnsureDockerIsRunning(ctx *cli.Context) error {
+	logger, _ := GetLoggerFromCLIContext(ctx)
 	dockerPingTimeout := 2 * time.Second
 	if !isDockerInstalled() {
 		return fmt.Errorf("docker is not installed. Please install Docker Desktop from https://www.docker.com/products/docker-desktop")
