@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"os/exec"
 )
 
@@ -13,8 +14,7 @@ type ZeusAddressData struct {
 }
 
 // GetZeusAddresses runs the zeus env show mainnet command and extracts core EigenLayer addresses
-func GetZeusAddresses() (*ZeusAddressData, error) {
-	log, _ := GetLogger()
+func GetZeusAddresses(logger iface.Logger) (*ZeusAddressData, error) {
 	// Run the zeus command with JSON output
 	cmd := exec.Command("zeus", "env", "show", "mainnet", "--json")
 	output, err := cmd.CombinedOutput()
@@ -22,7 +22,7 @@ func GetZeusAddresses() (*ZeusAddressData, error) {
 		return nil, fmt.Errorf("failed to execute zeus env show mainnet --json: %w - output: %s", err, string(output))
 	}
 
-	log.Info("Parsing Zeus JSON output")
+	logger.Info("Parsing Zeus JSON output")
 
 	// Parse the JSON output
 	var zeusData map[string]interface{}
@@ -56,9 +56,8 @@ func GetZeusAddresses() (*ZeusAddressData, error) {
 }
 
 // UpdateContextWithZeusAddresses updates the context configuration with addresses from Zeus
-func UpdateContextWithZeusAddresses(ctx *ConfigWithContextConfig, contextName string) error {
-	log, _ := GetLogger()
-	addresses, err := GetZeusAddresses()
+func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *ConfigWithContextConfig, contextName string) error {
+	addresses, err := GetZeusAddresses(logger)
 	if err != nil {
 		return err
 	}
@@ -74,9 +73,9 @@ func UpdateContextWithZeusAddresses(ctx *ConfigWithContextConfig, contextName st
 		envCtx.EigenLayer = &EigenLayerConfig{}
 	}
 
-	log.Info("Updating context with addresses:")
-	log.Info("AllocationManager: %s", addresses.AllocationManager)
-	log.Info("DelegationManager: %s", addresses.DelegationManager)
+	logger.Info("Updating context with addresses:")
+	logger.Info("AllocationManager: %s", addresses.AllocationManager)
+	logger.Info("DelegationManager: %s", addresses.DelegationManager)
 
 	// Update addresses
 	envCtx.EigenLayer.AllocationManager = addresses.AllocationManager

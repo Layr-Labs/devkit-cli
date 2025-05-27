@@ -11,7 +11,7 @@ import (
 )
 
 func Migration_0_0_3_to_0_0_4(user, old, new *yaml.Node) (*yaml.Node, error) {
-	log, _ := common.GetLogger()
+	log, _ := common.GetLogger(true) // We don't have context for logger here. So using verbose logs as default for migrations.
 	// Extract eigenlayer section from new default
 	eigenlayerNode := migration.ResolveNode(new, []string{"context", "eigenlayer"})
 
