@@ -66,24 +66,24 @@ func (cc *ContractCaller) SendAndWaitForTransaction(
 	ctx context.Context,
 	txDescription string,
 	fn func() (*types.Transaction, error),
-) (string, error) {
+) error {
 
 	tx, err := fn()
 	if err != nil {
 		cc.logger.Error("%s failed during execution: %v", txDescription, err)
-		return "", fmt.Errorf("%s execution: %w", txDescription, err)
+		return fmt.Errorf("%s execution: %w", txDescription, err)
 	}
 
 	receipt, err := bind.WaitMined(ctx, cc.ethclient, tx)
 	if err != nil {
 		cc.logger.Error("Waiting for %s transaction (hash: %s) failed: %v", txDescription, tx.Hash().Hex(), err)
-		return "", fmt.Errorf("waiting for %s transaction (hash: %s): %w", txDescription, tx.Hash().Hex(), err)
+		return fmt.Errorf("waiting for %s transaction (hash: %s): %w", txDescription, tx.Hash().Hex(), err)
 	}
 	if receipt.Status == 0 {
 		cc.logger.Error("%s transaction (hash: %s) reverted", txDescription, tx.Hash().Hex())
-		return "", fmt.Errorf("%s transaction (hash: %s) reverted", txDescription, tx.Hash().Hex())
+		return fmt.Errorf("%s transaction (hash: %s) reverted", txDescription, tx.Hash().Hex())
 	}
-	return tx.Hash().Hex(), nil
+	return nil
 }
 
 func (cc *ContractCaller) UpdateAVSMetadata(ctx context.Context, avsAddress common.Address, metadataURI string) error {
@@ -92,17 +92,20 @@ func (cc *ContractCaller) UpdateAVSMetadata(ctx context.Context, avsAddress comm
 		return fmt.Errorf("failed to build transaction options: %w", err)
 	}
 
-	txHash, err := cc.SendAndWaitForTransaction(ctx, "UpdateAVSMetadataURI", func() (*types.Transaction, error) {
-		return cc.allocationManager.UpdateAVSMetadataURI(opts, avsAddress, metadataURI)
+	err = cc.SendAndWaitForTransaction(ctx, "UpdateAVSMetadataURI", func() (*types.Transaction, error) {
+		tx, err := cc.allocationManager.UpdateAVSMetadataURI(opts, avsAddress, metadataURI)
+		if err == nil && tx != nil {
+			cc.logger.Debug(
+				"Transaction hash for UpdateAVSMetadata: %s\n"+
+					"avsAddress: %s\n"+
+					"metadataURI: %s",
+				tx.Hash().Hex(),
+				avsAddress,
+				metadataURI,
+			)
+		}
+		return tx, err
 	})
-	cc.logger.Debug(
-		"Transaction hash for UpdateAVSMetadata: %s\n"+
-			"avsAddress: %s\n"+
-			"metadataURI: %s",
-		txHash,
-		avsAddress,
-		metadataURI,
-	)
 
 	return err
 }
@@ -114,15 +117,20 @@ func (cc *ContractCaller) SetAVSRegistrar(ctx context.Context, avsAddress, regis
 		return fmt.Errorf("failed to build transaction options: %w", err)
 	}
 
-	txHash, err := cc.SendAndWaitForTransaction(ctx, "SetAVSRegistrar", func() (*types.Transaction, error) {
-		return cc.allocationManager.SetAVSRegistrar(opts, avsAddress, registrarAddress)
+	err = cc.SendAndWaitForTransaction(ctx, "SetAVSRegistrar", func() (*types.Transaction, error) {
+		tx, err := cc.allocationManager.SetAVSRegistrar(opts, avsAddress, registrarAddress)
+		if err == nil && tx != nil {
+			cc.logger.Debug(
+				"Transaction hash for SetAVSRegistrar: %s\n"+
+					"avsAddress: %s\n"+
+					"registrarAddress: %s",
+				tx.Hash().Hex(),
+				avsAddress,
+				registrarAddress,
+			)
+		}
+		return tx, err
 	})
-	cc.logger.Debug("Transaction hash for SetAVSRegistrar :%s\n"+
-		"avsAddress :%s\n"+
-		"registrarAddress :%s\n",
-		txHash,
-		avsAddress,
-		registrarAddress)
 	return err
 }
 
@@ -133,17 +141,20 @@ func (cc *ContractCaller) CreateOperatorSets(ctx context.Context, avsAddress com
 		return fmt.Errorf("failed to build transaction options: %w", err)
 	}
 
-	txHash, err := cc.SendAndWaitForTransaction(ctx, "CreateOperatorSets", func() (*types.Transaction, error) {
-		return cc.allocationManager.CreateOperatorSets(opts, avsAddress, sets)
+	err = cc.SendAndWaitForTransaction(ctx, "CreateOperatorSets", func() (*types.Transaction, error) {
+		tx, err := cc.allocationManager.CreateOperatorSets(opts, avsAddress, sets)
+		if err == nil && tx != nil {
+			cc.logger.Debug(
+				"Transaction hash for CreateOperatorSets: %s\n"+
+					"avsAddress: %s\n"+
+					"IAllocationManagerTypesCreateSetParams[]: %s",
+				tx.Hash().Hex(),
+				avsAddress,
+				sets,
+			)
+		}
+		return tx, err
 	})
-
-	cc.logger.Debug(
-		"Transaction hash for CreateOperatorSets :%s\n"+
-			"avsAddress :%s\n"+
-			"IAllocationManagerTypesCreateSetParams[] :%s\n",
-		txHash,
-		avsAddress,
-		sets)
 
 	return err
 }
@@ -154,17 +165,23 @@ func (cc *ContractCaller) RegisterAsOperator(ctx context.Context, operatorAddres
 		return fmt.Errorf("failed to build transaction options: %w", err)
 	}
 
-	txHash, err := cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterAsOperator for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
-		return cc.delegationManager.RegisterAsOperator(opts, operatorAddress, allocationDelay, metadataURI)
+	err = cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterAsOperator for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
+		tx, err := cc.delegationManager.RegisterAsOperator(opts, operatorAddress, allocationDelay, metadataURI)
+		if err == nil && tx != nil {
+			cc.logger.Debug(
+				"Transaction hash for RegisterAsOperator: %s\n"+
+					"operatorAddress: %s\n"+
+					"allocationDelay: %d\n"+
+					"metadataURI: %s",
+				tx.Hash().Hex(),
+				operatorAddress,
+				allocationDelay,
+				metadataURI,
+			)
+		}
+		return tx, err
 	})
-	cc.logger.Debug(
-		"Transaction hash for RegisterAsOperator :%s\n"+
-			" operatorAddress :%s \n"+"allocationDelay :%s\n"+
-			" metadataURI :%s\n",
-		txHash,
-		operatorAddress,
-		allocationDelay,
-		metadataURI)
+
 	return err
 }
 
@@ -180,20 +197,23 @@ func (cc *ContractCaller) RegisterForOperatorSets(ctx context.Context, operatorA
 		Data:           payload,
 	}
 
-	txHash, err := cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterForOperatorSets for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
-		return cc.allocationManager.RegisterForOperatorSets(opts, operatorAddress, params)
+	err = cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterForOperatorSets for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
+		tx, err := cc.allocationManager.RegisterForOperatorSets(opts, operatorAddress, params)
+		if err == nil && tx != nil {
+			cc.logger.Debug(
+				"Transaction hash for RegisterForOperatorSets: %s\n"+
+					"  operatorAddress: %s\n"+
+					"  avsAddress: %s\n"+
+					"  operatorSetIDs: %v\n"+
+					"  payload: %v\n",
+				tx.Hash().Hex(),
+				operatorAddress.Hex(),
+				avsAddress.Hex(),
+				operatorSetIDs,
+				"0x"+hex.EncodeToString(payload),
+			)
+		}
+		return tx, err
 	})
-	cc.logger.Debug(
-		"Transaction hash for RegisterForOperatorSets: %s\n"+
-			"  operatorAddress: %s\n"+
-			"  avsAddress: %s\n"+
-			"  operatorSetIDs: %v\n"+
-			"  payload: %v\n",
-		txHash,
-		operatorAddress.Hex(),
-		avsAddress.Hex(),
-		operatorSetIDs,
-		"0x"+hex.EncodeToString(payload),
-	)
 	return err
 }

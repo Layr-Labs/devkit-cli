@@ -31,9 +31,11 @@ func IsVerboseEnabled(cCtx *cli.Context, cfg *ConfigWithContextConfig) bool {
 	return true
 }
 
-// GetVerboseLogger creates a verbose logger with progress tracker
-func GetVerboseLogger() (iface.Logger, iface.ProgressTracker) {
-	return GetLogger(true)
+// GetLoggerFromCLIContext creates a logger based on the CLI context
+// It checks the verbose flag and returns the appropriate logger
+func GetLoggerFromCLIContext(cCtx *cli.Context) (iface.Logger, iface.ProgressTracker) {
+	verbose := cCtx.Bool("verbose")
+	return GetLogger(verbose)
 }
 
 // Get logger for the env we're in

@@ -9,7 +9,6 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/keystore"
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/version"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/hooks"
 
 	"github.com/urfave/cli/v2"
@@ -29,14 +28,8 @@ func main() {
 			}
 			common.WithAppEnvironment(cCtx)
 
-			// Check verbose flag and set appropriate logger in context
-			var logger iface.Logger
-			var tracker iface.ProgressTracker
-			if cCtx.Bool("verbose") {
-				logger, tracker = common.GetVerboseLogger()
-			} else {
-				logger, tracker = common.GetLogger(false)
-			}
+			// Get logger based on CLI context (handles verbosity internally)
+			logger, tracker := common.GetLoggerFromCLIContext(cCtx)
 
 			// Store logger and tracker in the context
 			cCtx.Context = common.WithLogger(cCtx.Context, logger)
