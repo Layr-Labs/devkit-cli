@@ -21,6 +21,23 @@ func LoadYAML(path string) (*yaml.Node, error) {
 	return &node, nil
 }
 
+// LoadMap loads the YAML file at path into a map[string]interface{}
+func LoadMap(path string) (map[string]interface{}, error) {
+	node, err := LoadYAML(path)
+	if err != nil {
+		return nil, err
+	}
+	iface, err := NodeToInterface(node)
+	if err != nil {
+		return nil, err
+	}
+	m, ok := iface.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("expected map at top level, got %T", iface)
+	}
+	return m, nil
+}
+
 // WriteYAML encodes a *yaml.Node to YAML and writes it to the specified file path
 func WriteYAML(path string, node *yaml.Node) error {
 	buf := &bytes.Buffer{}
@@ -31,6 +48,15 @@ func WriteYAML(path string, node *yaml.Node) error {
 	}
 	enc.Close()
 	return os.WriteFile(path, buf.Bytes(), 0644)
+}
+
+// WriteMap takes a map[string]interface{} and writes it back to a file
+func WriteMap(path string, m map[string]interface{}) error {
+	node, err := InterfaceToNode(m)
+	if err != nil {
+		return err
+	}
+	return WriteYAML(path, node)
 }
 
 // InterfaceToNode converts a Go value (typically map[string]interface{}) into a *yaml.Node

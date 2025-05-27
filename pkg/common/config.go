@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,17 +16,21 @@ type ConfigBlock struct {
 }
 
 type ProjectConfig struct {
-	Name    string `json:"name" yaml:"name"`
-	Version string `json:"version" yaml:"version"`
-	Context string `json:"context" yaml:"context"`
+	Name            string `json:"name" yaml:"name"`
+	Version         string `json:"version" yaml:"version"`
+	Context         string `json:"context" yaml:"context"`
+	TemplateBaseURL string `json:"templateBaseUrl,omitempty" yaml:"templateBaseUrl,omitempty"`
+	TemplateVersion string `json:"templateVersion,omitempty" yaml:"templateVersion,omitempty"`
 }
 
 type ForkConfig struct {
-	Block int    `json:"block" yaml:"block"`
-	Url   string `json:"url" yaml:"url"`
+	Url       string `json:"url" yaml:"url"`
+	Block     int    `json:"block" yaml:"block"`
+	BlockTime int    `json:"block_time" yaml:"block_time"`
 }
 
 type OperatorSpec struct {
+	Address             string `json:"address" yaml:"address"`
 	ECDSAKey            string `json:"ecdsa_key" yaml:"ecdsa_key"`
 	BlsKeystorePath     string `json:"bls_keystore_path" yaml:"bls_keystore_path"`
 	BlsKeystorePassword string `json:"bls_keystore_password" yaml:"bls_keystore_password"`
@@ -40,6 +45,8 @@ type ChainContextConfig struct {
 	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
 	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
 	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
+	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
+	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 }
 
 type AvsConfig struct {
@@ -58,7 +65,9 @@ type ChainConfig struct {
 type DeployedContract struct {
 	Name    string `json:"name" yaml:"name"`
 	Address string `json:"address" yaml:"address"`
+	Abi     string `json:"abi" yaml:"abi"`
 }
+
 type ConfigWithContextConfig struct {
 	Config  ConfigBlock                   `json:"config" yaml:"config"`
 	Context map[string]ChainContextConfig `json:"context" yaml:"context"`
@@ -67,6 +76,21 @@ type ConfigWithContextConfig struct {
 type ContextConfig struct {
 	Version string             `json:"version" yaml:"version"`
 	Context ChainContextConfig `json:"context" yaml:"context"`
+}
+
+type OperatorSet struct {
+	OperatorSetID uint64     `json:"operator_set_id" yaml:"operator_set_id"`
+	Strategies    []Strategy `json:"strategies" yaml:"strategies"`
+}
+
+type Strategy struct {
+	StrategyAddress string `json:"strategy" yaml:"strategy"`
+}
+
+type OperatorRegistration struct {
+	Address       string `json:"address" yaml:"address"`
+	OperatorSetID uint64 `json:"operator_set_id" yaml:"operator_set_id"`
+	Payload       string `json:"payload" yaml:"payload"`
 }
 
 func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {
@@ -116,4 +140,31 @@ func LoadConfigWithContextConfigWithoutContext() (*ConfigWithContextConfig, erro
 		return nil, fmt.Errorf("failed to parse base config: %w", err)
 	}
 	return &cfg, nil
+}
+
+func LoadContext(yamlPath string) ([]byte, error) {
+	rootNode, err := LoadYAML(yamlPath)
+	if err != nil {
+		return nil, err
+	}
+	if len(rootNode.Content) == 0 {
+		return nil, fmt.Errorf("empty YAML root node")
+	}
+
+	contextNode := GetChildByKey(rootNode.Content[0], "context")
+	if contextNode == nil {
+		return nil, fmt.Errorf("missing 'context' key in %s", yamlPath)
+	}
+
+	var ctxMap map[string]interface{}
+	if err := contextNode.Decode(&ctxMap); err != nil {
+		return nil, fmt.Errorf("decode context node: %w", err)
+	}
+
+	context, err := json.Marshal(map[string]interface{}{"context": ctxMap})
+	if err != nil {
+		return nil, fmt.Errorf("marshal context: %w", err)
+	}
+
+	return context, nil
 }

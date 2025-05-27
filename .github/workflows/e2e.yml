@@ -1,4 +1,4 @@
-name: Devkit AVS Create Test
+name: Devkit E2E Test
 
 on:
   push:
@@ -8,9 +8,8 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
-  GOPRIVATE: github.com/Layr-Labs/*
-  L1_FORK_URL: ${{ vars.L1_FORK_URL }}
-  L2_FORK_URL: ${{ vars.L2_FORK_URL }}
+  L1_FORK_URL: ${{ secrets.L1_FORK_URL }}
+  L2_FORK_URL: ${{ secrets.L2_FORK_URL }}
 
 jobs:
   e2e:
@@ -25,11 +24,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-
-      - name: Authenticate Go to GitHub private repos
-        run: |
-          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -54,6 +48,8 @@ jobs:
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
 
       - name: Run devkit avs build
+        env:
+            DOCKER_BUILDKIT: 1
         run: |
           cd ./my-awesome-avs/
           devkit avs build
@@ -61,7 +57,7 @@ jobs:
       - name: Start devnet
         run: |
           cd ./my-awesome-avs/
-          devkit avs devnet start
+          DOCKERS_HOST=localhost devkit avs devnet start --skip-avs-run
           sleep 10
 
       - name: Check devnet RPC is live

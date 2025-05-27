@@ -1,0 +1,37 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+devkit
+
+# Build outputs
+/bin/
+/out/
+*.test
+
+# Dependency directories (if you're not committing vendor)
+vendor/
+
+# Go module caches (optional, as these are local)
+# /go/pkg/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+
+# Release outputs
+temp_external/
+
+# DevKit context configurations (only devnet.yaml is indexed)
+config/contexts/**/*
+!config/contexts/devnet.yaml
+
+# Environment
+.env

@@ -1,7 +1,7 @@
 package progress
 
 import (
-	"devkit-cli/pkg/common/iface"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"time"
 
 	"fmt"

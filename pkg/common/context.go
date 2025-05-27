@@ -1,10 +1,13 @@
-package context
+package common
 
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/urfave/cli/v2"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 )
 
@@ -45,7 +48,23 @@ func NewAppEnvironment(os string, arch string, projectUuid string) *AppEnvironme
 	}
 }
 
-func WithAppEnvironment(ctx context.Context, appEnvironment *AppEnvironment) context.Context {
+func WithAppEnvironment(ctx *cli.Context) {
+	withAppEnvironmentFromLocation(ctx, DevkitConfigFile)
+}
+
+func withAppEnvironmentFromLocation(ctx *cli.Context, location string) {
+	id := getProjectUUIDFromLocation(location)
+	if id == "" {
+		id = uuid.New().String()
+	}
+	ctx.Context = withAppEnvironment(ctx.Context, NewAppEnvironment(
+		runtime.GOOS,
+		runtime.GOARCH,
+		id,
+	))
+}
+
+func withAppEnvironment(ctx context.Context, appEnvironment *AppEnvironment) context.Context {
 	return context.WithValue(ctx, appEnvironmentContextKey{}, appEnvironment)
 }
 

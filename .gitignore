@@ -26,8 +26,8 @@ Thumbs.db
 .idea/
 *.swp
 
-.git-submodule-cache
-.git-template-cache
-
 # Release outputs
 temp_external/
+/test-projects
+.cursor/execution-plans
+{$

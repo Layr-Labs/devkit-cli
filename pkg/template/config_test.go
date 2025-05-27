@@ -11,21 +11,31 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	// Test template URL lookup
-	url, _, err := GetTemplateURLs(config, "task", "go")
+	mainBaseURL, mainVersion, err := GetTemplateURLs(config, "task", "go")
 	if err != nil {
-		t.Fatalf("Failed to get template URL: %v", err)
+		t.Fatalf("Failed to get template URLs: %v", err)
 	}
-	expected := "https://github.com/Layr-Labs/hourglass-avs-template/tree/pinned-may-16"
-	if url != expected {
-		t.Errorf("Unexpected template URL: got %s, want %s", url, expected)
+
+	expectedBaseURL := "https://github.com/Layr-Labs/hourglass-avs-template"
+	expectedVersion := "v0.0.9"
+
+	if mainBaseURL != expectedBaseURL {
+		t.Errorf("Unexpected main template base URL: got %s, want %s", mainBaseURL, expectedBaseURL)
+	}
+
+	if mainVersion != expectedVersion {
+		t.Errorf("Unexpected main template version: got %s, want %s", mainVersion, expectedVersion)
 	}
 
 	// Test non-existent architecture
-	url, _, err = GetTemplateURLs(config, "nonexistent", "go")
+	mainBaseURL, mainVersion, err = GetTemplateURLs(config, "nonexistent", "go")
 	if err != nil {
-		t.Fatalf("Failed to get template URL: %v", err)
+		t.Fatalf("Failed to get template URLs: %v", err)
 	}
-	if url != "" {
-		t.Errorf("Expected empty URL for nonexistent architecture, got %s", url)
+	if mainBaseURL != "" {
+		t.Errorf("Expected empty URL for nonexistent architecture, got %s", mainBaseURL)
+	}
+	if mainVersion != "" {
+		t.Errorf("Expected empty version for nonexistent architecture, got %s", mainVersion)
 	}
 }

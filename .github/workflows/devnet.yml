@@ -8,6 +8,9 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
+  L1_FORK_URL: ${{ secrets.L1_FORK_URL }}
+  L2_FORK_URL: ${{ secrets.L2_FORK_URL }}
+
 jobs:
   devnet-test:
     strategy:
@@ -24,20 +27,10 @@ jobs:
         with:
           go-version: '1.24'
 
-      - name: Authenticate Go to GitHub private repos
-        run: |
-          git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-          echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
-
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
-      
-      - name: Authenticate Go to GitHub private repos
-        run: |
-            git config --global url."https://${{ secrets.HOURGLASS_TOKEN }}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
-            echo "machine github.com login ${{ secrets.HOURGLASS_TOKEN }}" > ~/.netrc
 
       - name: Install devkit CLI
         run: make install

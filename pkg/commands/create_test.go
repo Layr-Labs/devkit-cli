@@ -2,15 +2,18 @@ package commands
 
 import (
 	"context"
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/testutils"
+
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
@@ -19,7 +22,7 @@ import (
 func TestCreateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	mockConfigYaml := config.DefaultConfigYaml
+	mockConfigYaml := configs.ConfigYamls[configs.LatestVersion]
 	configDir := filepath.Join("config")
 	err := os.MkdirAll(configDir, 0755)
 	assert.NoError(t, err)
@@ -34,7 +37,7 @@ func TestCreateCommand(t *testing.T) {
 		}
 	}()
 
-	devnetYaml := config.ContextYamls["devnet"]
+	devnetYaml := contexts.ContextYamls[contexts.LatestVersion]
 	contextsDir := filepath.Join(configDir, "contexts")
 	err = os.MkdirAll(contextsDir, 0755)
 	assert.NoError(t, err)
@@ -58,7 +61,7 @@ func TestCreateCommand(t *testing.T) {
 			Value: tmpDir,
 		},
 		&cli.StringFlag{
-			Name:  "template-path",
+			Name:  "template-url",
 			Value: "https://github.com/Layr-Labs/teal",
 		},
 	}
@@ -90,7 +93,7 @@ func TestCreateCommand(t *testing.T) {
 		}
 
 		// Create config.yaml
-		return copyDefaultConfigToProject(targetDir, projectName, false)
+		return copyDefaultConfigToProject(targetDir, projectName, "https://github.com/Layr-Labs/hourglass-avs-template", "v0.0.9", false)
 	}
 
 	app := &cli.App{
@@ -133,7 +136,11 @@ func TestCreateCommand(t *testing.T) {
 build:
 	@echo "Mock build executed"
 	`
-	if err := os.WriteFile(filepath.Join(projectPath, "contracts", common.Makefile), []byte(mockMakefile), 0644); err != nil {
+	t.Logf("Creating makefile path: %s", filepath.Join(projectPath, contractsBasePath))
+	if err := os.MkdirAll(filepath.Join(projectPath, contractsBasePath), 0775); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectPath, contractsBasePath, common.Makefile), []byte(mockMakefile), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -208,7 +215,7 @@ func TestCreateCommand_WithTemplates(t *testing.T) {
 }
 
 func TestCreateCommand_ContextCancellation(t *testing.T) {
-	mockYaml := config.DefaultConfigYaml
+	mockYaml := configs.ConfigYamls[configs.LatestVersion]
 	if err := os.WriteFile("config.yaml", []byte(mockYaml), 0644); err != nil {
 		t.Fatal(err)
 	}

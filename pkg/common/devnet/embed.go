@@ -3,7 +3,7 @@ package devnet
 import (
 	"log"
 
-	"devkit-cli/docker/anvil"
+	"github.com/Layr-Labs/devkit-cli/docker/anvil"
 )
 
 // WriteEmbeddedArtifacts writes the embedded docker-compose.yaml.

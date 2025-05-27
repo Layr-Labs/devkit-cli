@@ -2,8 +2,8 @@ package template
 
 import (
 	"context"
-	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/common/progress"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,7 +17,27 @@ func TestGitFetcher_InvalidURL(t *testing.T) {
 	defer cancel()
 
 	// Test with an invalid URL (should fail)
-	err := fetcher.Fetch(cmdCtx, "invalid-url", tempDir)
+	err := fetcher.Fetch(cmdCtx, "invalid-url", "", tempDir)
+	if err == nil {
+		t.Error("expected error for invalid URL")
+	}
+
+	// Verify .git directory is not present (since Fetch failed)
+	gitDir := filepath.Join(tempDir, ".git")
+	if _, err := os.Stat(gitDir); !os.IsNotExist(err) {
+		t.Error("expected no .git directory after failed fetch")
+	}
+}
+
+func TestGitFetcher_InvalidVersion(t *testing.T) {
+	fetcher := getFetcher(1)
+	tempDir := t.TempDir()
+
+	cmdCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Test with an invalid URL (should fail)
+	err := fetcher.Fetch(cmdCtx, "https://github.com/Layr-labs/hourglass-avs-template", "", tempDir)
 	if err == nil {
 		t.Error("expected error for invalid URL")
 	}
@@ -57,12 +77,12 @@ func TestGitFetcher_ValidRepo(t *testing.T) {
 	fetcher := getFetcher(1)
 	tempDir := t.TempDir()
 
-	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
+	repo := "https://github.com/Layr-labs/hourglass-avs-template"
 
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "master", tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo: %v", err)
 	}
@@ -80,12 +100,12 @@ func TestGitFetcher_Submodules(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Includes submodules: simple example with known submodule
-	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
+	repo := "https://github.com/Layr-labs/hourglass-avs-template"
 
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "master", tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error cloning repo with submodules: %v", err)
 	}
@@ -101,16 +121,16 @@ func TestGitFetcher_MaxDepth(t *testing.T) {
 	fetcher := getFetcher(0)
 	tempDir := t.TempDir()
 
-	repo := "https://github.com/Layr-labs/eigenlayer-contracts"
+	repo := "https://github.com/Layr-labs/hourglass-avs-template"
 
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "master", tempDir)
 	if err != nil {
 		t.Fatalf("unexpected error fetching repo with depth: %v", err)
 	}
-	visited := filepath.Join(tempDir, "lib", "forge-std")
+	visited := filepath.Join(tempDir, ".devkit/contracts")
 	if _, err := os.Stat(visited); err != nil {
 		t.Fatalf("expected top-level submodule not found")
 	}
@@ -125,12 +145,12 @@ func TestGitFetcher_NonexistentBranch(t *testing.T) {
 	fetcher := getFetcher(0)
 	tempDir := t.TempDir()
 
-	repo := "https://github.com/Layr-labs/eigenlayer-contracts/tree/missing-branch"
+	repo := "https://github.com/Layr-labs/hourglass-avs-template"
 
 	cmdCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := fetcher.Fetch(cmdCtx, repo, tempDir)
+	err := fetcher.Fetch(cmdCtx, repo, "lol-fake", tempDir)
 	if err == nil {
 		t.Error("expected error for nonexistent branch")
 	}

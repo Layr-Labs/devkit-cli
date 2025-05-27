@@ -7,12 +7,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	"devkit-cli/config"
-	"devkit-cli/pkg/common"
-	"devkit-cli/pkg/common/logger"
-	"devkit-cli/pkg/template"
+	project "github.com/Layr-Labs/devkit-cli"
+	"github.com/Layr-Labs/devkit-cli/config"
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
 
 // CreateCommand defines the "create" command
@@ -37,8 +41,12 @@ var CreateCommand = &cli.Command{
 			Value: "task",
 		},
 		&cli.StringFlag{
-			Name:  "template-path",
-			Usage: "Direct GitHub URL to use as template (overrides templates.yml)",
+			Name:  "template-url",
+			Usage: "Direct GitHub base URL to use as template (overrides templates.yml)",
+		},
+		&cli.StringFlag{
+			Name:  "template-version",
+			Usage: "Git ref (tag, commit, branch) for the template",
 		},
 		&cli.StringFlag{
 			Name:  "env",
@@ -102,13 +110,13 @@ var CreateCommand = &cli.Command{
 			log.Info("Language: %s", cCtx.String("lang"))
 			log.Info("Architecture: %s", cCtx.String("arch"))
 			log.Info("Environment: %s", cCtx.String("env"))
-			if cCtx.String("template-path") != "" {
-				log.Info("Template Path: %s", cCtx.String("template-path"))
+			if cCtx.String("template-url") != "" {
+				log.Info("Template URL: %s", cCtx.String("template-url"))
 			}
 		}
 
 		// Get template URLs
-		mainURL, contractsURL, err := getTemplateURLs(cCtx)
+		mainBaseURL, mainVersion, err := getTemplateURLs(cCtx)
 		if err != nil {
 			return err
 		}
@@ -119,9 +127,9 @@ var CreateCommand = &cli.Command{
 		}
 
 		if cCtx.Bool("verbose") {
-			log.Info("Using template: %s", mainURL)
-			if contractsURL != "" {
-				log.Info("Using contracts template: %s", contractsURL)
+			log.Info("Using template: %s", mainBaseURL)
+			if mainVersion != "" {
+				log.Info("Template version: %s", mainVersion)
 			}
 		}
 
@@ -145,25 +153,41 @@ var CreateCommand = &cli.Command{
 				Verbose:        cCtx.Bool("verbose"),
 			},
 		}
-		if err := fetcher.Fetch(cCtx.Context, mainURL, targetDir); err != nil {
-			return fmt.Errorf("failed to fetch template from %s: %w", mainURL, err)
+		if err := fetcher.Fetch(cCtx.Context, mainBaseURL, mainVersion, targetDir); err != nil {
+			return fmt.Errorf("failed to fetch template from %s: %w", mainBaseURL, err)
 		}
 
-		// Check for contracts template and fetch if missing
-		if contractsURL != "" {
-			contractsDir := filepath.Join(targetDir, common.ContractsDir)
-			contractsDirReadme := filepath.Join(contractsDir, "README.md")
+		// Copy DevKit README.md to templates README.md
+		readMePath := filepath.Join(targetDir, "README.md")
+		readMeTemplate, err := os.ReadFile(readMePath)
+		if err != nil {
+			log.Warn("Project README.md is missing: %w", err)
+		}
+		readMeTemplate = append(readMeTemplate, project.RawReadme...)
+		err = os.WriteFile(readMePath, readMeTemplate, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write README.md: %w", err)
+		}
 
-			// Fetch the contracts directory if it does not exist in the template
-			if _, err := os.Stat(contractsDirReadme); os.IsNotExist(err) {
-				if err := fetcher.Fetch(cCtx.Context, contractsURL, contractsDir); err != nil {
-					log.Warn("Failed to fetch contracts template: %v", err)
-				}
-			}
+		// Set path for .devkit scripts
+		scriptDir := filepath.Join(".devkit", "scripts")
+		scriptPath := filepath.Join(scriptDir, "init")
+
+		// Run init to install deps
+		log.Info("Installing template dependencies\n\n")
+
+		// Run init on the template init script
+		if _, err = common.CallTemplateScript(cCtx.Context, targetDir, scriptPath, common.ExpectNonJSONResponse, nil); err != nil {
+			return fmt.Errorf("failed to initialize %s: %w", scriptPath, err)
+		}
+
+		// Tidy the logs
+		if cCtx.Bool("verbose") {
+			log.Info("\nFinalising new project\n\n")
 		}
 
 		// Copy config.yaml to the project directory
-		if err := copyDefaultConfigToProject(targetDir, projectName, cCtx.Bool("verbose")); err != nil {
+		if err := copyDefaultConfigToProject(targetDir, projectName, mainBaseURL, mainVersion, cCtx.Bool("verbose")); err != nil {
 			return fmt.Errorf("failed to initialize %s: %w", common.BaseConfig, err)
 		}
 
@@ -172,8 +196,18 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to initialize keystores: %w", err)
 		}
 
+		// Write the example .env file
+		err = os.WriteFile(filepath.Join(targetDir, ".env.example"), []byte(config.EnvExample), 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write .env.example: %w", err)
+		}
+
 		// Save project settings with telemetry preference
-		if err := common.SaveTelemetrySetting(targetDir, true); err != nil {
+		appEnv, ok := common.AppEnvironmentFromContext(cCtx.Context)
+		if !ok {
+			return fmt.Errorf("could not determine application environment")
+		}
+		if err := common.SaveProjectIdAndTelemetryToggle(targetDir, appEnv.ProjectUUID, true); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
@@ -182,34 +216,42 @@ var CreateCommand = &cli.Command{
 			log.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
-		log.Info("Project %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
+		log.Info("\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
 }
 
 func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
-	if templatePath := cCtx.String("template-path"); templatePath != "" {
-		return templatePath, "", nil
-	}
+	templateBaseOverride := cCtx.String("template-url")
+	templateVersionOverride := cCtx.String("template-version")
 
-	config, err := template.LoadConfig()
+	cfg, err := template.LoadConfig()
 	if err != nil {
-		return "", "", fmt.Errorf("failed to load templates config: %w", err)
+		return "", "", fmt.Errorf("failed to load templates cfg: %w", err)
 	}
 
 	arch := cCtx.String("arch")
 	lang := cCtx.String("lang")
 
-	mainURL, contractsURL, err := template.GetTemplateURLs(config, arch, lang)
+	mainBaseURL, mainVersion, err := template.GetTemplateURLs(cfg, arch, lang)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get template URLs: %w", err)
 	}
 
-	if mainURL == "" {
+	if templateBaseOverride != "" {
+		mainBaseURL = templateBaseOverride
+	}
+
+	if mainBaseURL == "" {
 		return "", "", fmt.Errorf("no template found for architecture %s and language %s", arch, lang)
 	}
 
-	return mainURL, contractsURL, nil
+	// If templateVersionOverride is provided, it takes precedence over the version from templates.yaml
+	if templateVersionOverride != "" {
+		mainVersion = templateVersionOverride
+	}
+
+	return mainBaseURL, mainVersion, nil
 }
 
 func createProjectDir(targetDir string, overwrite, verbose bool) error {
@@ -238,7 +280,7 @@ func createProjectDir(targetDir string, overwrite, verbose bool) error {
 }
 
 // copyDefaultConfigToProject copies config to the project directory with updated project name
-func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) error {
+func copyDefaultConfigToProject(targetDir, projectName string, templateBaseURL, templateVersion string, verbose bool) error {
 	// get logger
 	log, _ := common.GetLogger()
 
@@ -248,9 +290,39 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 		return fmt.Errorf("failed to create target config directory: %w", err)
 	}
 
-	// Read config.yaml from config embed and write to target
-	newContent := strings.Replace(config.DefaultConfigYaml, `name: "my-avs"`, fmt.Sprintf(`name: "%s"`, projectName), 1)
-	err := os.WriteFile(filepath.Join(destConfigDir, common.BaseConfig), []byte(newContent), 0644)
+	// Read config.yaml from config embed
+	configContent := configs.ConfigYamls[configs.LatestVersion]
+
+	// Unmarshal the YAML content into a map
+	var configMap map[string]interface{}
+	if err := yaml.Unmarshal([]byte(configContent), &configMap); err != nil {
+		return fmt.Errorf("failed to unmarshal config YAML: %w", err)
+	}
+
+	// Access the project section
+	if configSection, ok := configMap["config"].(map[string]interface{}); ok {
+		if projectMap, ok := configSection["project"].(map[string]interface{}); ok {
+			// Update project name
+			projectMap["name"] = projectName
+
+			// Add template information if provided
+			if templateBaseURL != "" {
+				projectMap["templateBaseUrl"] = templateBaseURL
+			}
+			if templateVersion != "" {
+				projectMap["templateVersion"] = templateVersion
+			}
+		}
+	}
+
+	// Marshal the modified configuration back to YAML
+	newContentBytes, err := yaml.Marshal(configMap)
+	if err != nil {
+		return fmt.Errorf("failed to marshal modified config: %w", err)
+	}
+
+	// Write the updated config
+	err = os.WriteFile(filepath.Join(destConfigDir, common.BaseConfig), newContentBytes, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to write %s: %w", common.BaseConfig, err)
 	}
@@ -264,8 +336,9 @@ func copyDefaultConfigToProject(targetDir, projectName string, verbose bool) err
 	if err := os.MkdirAll(destContextsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target contexts directory: %w", err)
 	}
-	for name, yaml := range config.ContextYamls {
-		content := yaml
+	// copy latest version of context to project for default contexts
+	for _, name := range contexts.DefaultContexts {
+		content := contexts.ContextYamls[contexts.LatestVersion]
 		entryName := fmt.Sprintf("%s.yaml", name)
 
 		err := os.WriteFile(filepath.Join(destContextsDir, entryName), []byte(content), 0644)
@@ -320,11 +393,33 @@ func copyDefaultKeystoresToProject(targetDir string, verbose bool) error {
 	return nil
 }
 
+const contractsBasePath = ".devkit/contracts"
+
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	// get logger
 	log, _ := common.GetLogger()
 
+	// use gitClient to reinstate git submodules after fresh init
+	// git := template.NewGitClient()
+
+	// collect all submodules info
+	// submoduleInfos, err := collectSubmoduleInfo(ctx, git, filepath.Join(targetDir, contractsBasePath), contractsBasePath)
+	// // get commit for the submodule
+	// if err != nil {
+	// 	return fmt.Errorf("failed list submodules: %w", err)
+	// }
+
+	// remove the old .git dir
+	if verbose {
+		log.Info("Removing existing .git directory in %s (if any)...", targetDir)
+	}
+	gitDir := filepath.Join(targetDir, ".git")
+	if err := os.RemoveAll(gitDir); err != nil {
+		return fmt.Errorf("failed to remove existing .git directory: %w", err)
+	}
+
+	// init a new .git repo
 	if verbose {
 		log.Info("Initializing Git repository in %s...", targetDir)
 	}
@@ -334,6 +429,31 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	if err != nil {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
 	}
+
+	// reinstate gitmodules
+	// err = registerSubmodules(ctx, git, targetDir, submoduleInfos)
+	// if err != nil {
+	// 	return fmt.Errorf("git submodule registration failed: %w", err)
+	// }
+
+	// write a .gitignore into the new dir
+	err = os.WriteFile(filepath.Join(targetDir, ".gitignore"), []byte(config.GitIgnore), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write .gitignore: %w", err)
+	}
+
+	// add all changes and commit
+	cmd = exec.CommandContext(ctx.Context, "git", "add", ".")
+	cmd.Dir = targetDir
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+	}
+	cmd = exec.CommandContext(ctx.Context, "git", "commit", "-m", "feat: initial commit")
+	cmd.Dir = targetDir
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+	}
+
 	if verbose {
 		log.Info("Git repository initialized successfully.")
 		if len(output) > 0 {
@@ -342,3 +462,79 @@ func initGitRepo(ctx *cli.Context, targetDir string, verbose bool) error {
 	}
 	return nil
 }
+
+/*
+func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir, pathPrefix string) ([]template.Submodule, error) {
+	// collect all submodules info
+	var submoduleInfos []template.Submodule
+	submodules, err := git.SubmoduleList(ctx.Context, targetDir)
+	// get commit for the submodule
+	if err != nil {
+		return nil, fmt.Errorf("failed list submodules: %w", err)
+	}
+	// collect the referenced commit in the submodule list
+	for _, m := range submodules {
+		submoduleInfos = append(submoduleInfos, template.Submodule{
+			Name: m.Name,
+			Path: fmt.Sprintf("%s/%s", pathPrefix, m.Path),
+			URL:  m.URL,
+		})
+	}
+	return submoduleInfos, nil
+}
+
+func registerSubmodules(ctx *cli.Context, git template.GitClient, targetDir string, submoduleInfos []template.Submodule) error {
+	// reinstate gitmodules
+	for _, mod := range submoduleInfos {
+		// init the submodule at path in parent
+		if err := git.AddSubmodule(ctx.Context, targetDir, mod.URL, mod.Path); err != nil {
+			return fmt.Errorf("failed to init submodule: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// replaceGitmodules replaces root .gitmodules with the one under ./contracts
+func replaceGitmodules(targetDir string, verbose bool) error {
+	log, _ := common.GetLogger()
+
+	// Remove old root file
+	if verbose {
+		log.Info("rm %s/.gitmodules", targetDir)
+	}
+	if err := os.Remove(filepath.Join(targetDir, ".gitmodules")); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("rm old .gitmodules: %w", err)
+	}
+
+	// Load contracts/.gitmodules
+	src := filepath.Join(targetDir, contractsBasePath, ".gitmodules")
+	raw, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", src, err)
+	}
+
+	// Prefix section names: [submodule "X"] → [submodule "contracts/X"]
+	reSection := regexp.MustCompile(`(?m)^\[submodule\s+"([^"]+)"\]`)
+	out := reSection.ReplaceAll(raw, []byte(`[submodule "contracts/$1"]`))
+
+	// Prefix path = X → path = contracts/X
+	rePath := regexp.MustCompile(`(?m)^(\s*path\s*=\s*)(.+)$`)
+	out = rePath.ReplaceAll(out, []byte(`${1}contracts/${2}`))
+
+	// Write to root
+	dest := filepath.Join(targetDir, ".gitmodules")
+	if verbose {
+		log.Info("write %s", dest)
+	}
+	if err := os.WriteFile(dest, out, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", dest, err)
+	}
+
+	// Remove from contracts
+	if err := os.Remove(filepath.Join(targetDir, contractsBasePath, ".gitmodules")); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("rm old .gitmodules: %w", err)
+	}
+
+	return nil
+}*/
