@@ -88,3 +88,4 @@ func ProgressTrackerFromContext(ctx context.Context) iface.ProgressTracker {
 	// Fallback to non-verbose tracker if not found in context
 	_, tracker := GetLogger(false)
 	return tracker
+}

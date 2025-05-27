@@ -3,26 +3,26 @@ package common
 import (
 	"context"
 	"fmt"
+	"github.com/docker/docker/client"
+	"github.com/urfave/cli/v2"
 	"os/exec"
 	"runtime"
 	"time"
-
-	"github.com/docker/docker/client"
 )
 
 // EnsureDockerIsRunning checks if Docker is running and attempts to launch Docker Desktop if not.
-func EnsureDockerIsRunning(ctx context.Context) error {
-	log, _ := GetLogger()
+func EnsureDockerIsRunning(ctx cli.Context) error {
+	logger, _ := GetLogger(true)
 	dockerPingTimeout := 2 * time.Second
 	if !isDockerInstalled() {
 		return fmt.Errorf("docker is not installed. Please install Docker Desktop from https://www.docker.com/products/docker-desktop")
 	}
 
-	if err := isDockerRunning(ctx, dockerPingTimeout); err == nil {
+	if err := isDockerRunning(ctx.Context, dockerPingTimeout); err == nil {
 		return nil
 	}
 
-	log.Info(" Docker is installed but not running. Attempting to start Docker Desktop...")
+	logger.Info(" Docker is installed but not running. Attempting to start Docker Desktop...")
 
 	switch runtime.GOOS {
 	case "darwin":
@@ -50,7 +50,7 @@ func EnsureDockerIsRunning(ctx context.Context) error {
 		return fmt.Errorf("unsupported OS for automatic Docker launch! please start Docker manually")
 	}
 
-	log.Info("⏳ Waiting for Docker to start")
+	logger.Info("⏳ Waiting for Docker to start")
 	ticker := time.NewTicker(DockerOpenRetryIntervalMilliseconds * time.Millisecond)
 	defer ticker.Stop()
 
@@ -66,8 +66,8 @@ func EnsureDockerIsRunning(ctx context.Context) error {
 			return fmt.Errorf("timed out waiting for Docker to start after %s: error: %v",
 				time.Since(start).Round(time.Millisecond), lastErr)
 		case <-ticker.C:
-			if err := isDockerRunning(ctx, dockerPingTimeout); err == nil {
-				log.Info("\n✅ Docker is now running.")
+			if err := isDockerRunning(ctx.Context, dockerPingTimeout); err == nil {
+				logger.Info("\n✅ Docker is now running.")
 				return nil
 			} else {
 				lastErr = err
