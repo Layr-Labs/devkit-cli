@@ -227,7 +227,10 @@ func (g *GitClient) ParseCloneOutput(r io.Reader, rep Reporter, dest string, ref
 		// Percent progress
 		if m := g.ReceivingRegex.FindStringSubmatch(line); len(m) == 2 {
 			var pct int
-			fmt.Sscanf(m[1], "%d", &pct)
+			n, err := fmt.Sscanf(m[1], "%d", &pct)
+			if err != nil || n != 1 {
+				return fmt.Errorf("failed to parse integer from %q: %w", m[1], err)
+			}
 			rep.Report(CloneEvent{Type: EventProgress, Module: module, Progress: pct, Ref: ref})
 		}
 	}

@@ -147,6 +147,9 @@ func TestCloneRealRepo(t *testing.T) {
 
 	// Use the default task.go template
 	mainBaseURL, mainVersion, err := template.GetTemplateURLs(cfg, "task", "go")
+	if err != nil {
+		t.Fatalf("GetTemplateURLs failed: %v", err)
+	}
 
 	// Use real runner
 	client := template.NewGitClient()
