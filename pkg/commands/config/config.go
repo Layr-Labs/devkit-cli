@@ -107,7 +107,7 @@ var Command = &cli.Command{
 		logger.Info("Version: %s\n\n", config.Config.Project.Version)
 
 		// err = listConfig(config, projectSetting)
-		err = common.ListYaml(cfgPath)
+		err = common.ListYaml(cfgPath, logger)
 		if err != nil {
 			return fmt.Errorf("failed to list config %w", err)
 		}

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
 )
 
@@ -267,9 +268,7 @@ func DeepMerge(dst, src *yaml.Node) *yaml.Node {
 
 // ListYaml prints the contents of a YAML file to stdout, preserving order and comments.
 // It rejects non-.yaml/.yml extensions and surfaces precise errors.
-func ListYaml(filePath string) error {
-	log, _ := GetLogger()
-
+func ListYaml(filePath string, logger iface.Logger) error {
 	// verify file exists and is regular
 	info, err := os.Stat(filePath)
 	if err != nil {
@@ -292,7 +291,7 @@ func ListYaml(filePath string) error {
 	}
 
 	// header
-	log.Info("--- %s ---", filePath)
+	logger.Info("--- %s ---", filePath)
 
 	// encode the node back to YAML on stdout, preserving order & comments
 	enc := yaml.NewEncoder(os.Stdout)

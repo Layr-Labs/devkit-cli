@@ -26,7 +26,8 @@ var CreateContextCommand = &cli.Command{
 		},
 	},
 	Action: func(cCtx *cli.Context) error {
-		log, _ := common.GetLogger()
+		logger := common.LoggerFromContext(cCtx.Context)
+
 		ctxName := cCtx.String("context")
 		if args := cCtx.Args().Slice(); len(args) > 0 {
 			ctxName = args[0]
@@ -40,7 +41,7 @@ var CreateContextCommand = &cli.Command{
 
 		// create if missing or forced
 		if _, err := os.Stat(ctxPath); err != nil || cCtx.Bool("force") {
-			log.Info("Creating a new context for %s", ctxName)
+			logger.Info("Creating a new context for %s", ctxName)
 			if err := CreateContext(ctxPath, ctxName); err != nil {
 				return fmt.Errorf("failed to create new context: %w", err)
 			}
@@ -48,11 +49,11 @@ var CreateContextCommand = &cli.Command{
 			return fmt.Errorf("context already exists, if you want to recreate try `devkit avs context create --force %s`", ctxName)
 		}
 
-		log.Info("Context successfully created at %s", ctxPath)
-		log.Info("")
-		log.Info("  - To view your new context call: `devkit avs context --list %s`", ctxName)
-		log.Info("  - To edit your new context call: `devkit avs context --edit %s`", ctxName)
-		log.Info("")
+		logger.Info("Context successfully created at %s", ctxPath)
+		logger.Info("")
+		logger.Info("  - To view your new context call: `devkit avs context --list %s`", ctxName)
+		logger.Info("  - To edit your new context call: `devkit avs context --edit %s`", ctxName)
+		logger.Info("")
 		return nil
 	},
 }

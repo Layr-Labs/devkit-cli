@@ -38,7 +38,7 @@ var Command = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		log, _ := common.GetLogger()
+		logger := common.LoggerFromContext(cCtx.Context)
 
 		// Identify the context we are working against
 		context := cCtx.String("context")
@@ -80,7 +80,7 @@ var Command = &cli.Command{
 
 		// Open editor for the context level config
 		if cCtx.Bool("edit") {
-			log.Info("Opening context file for editing...")
+			logger.Info("Opening context file for editing...")
 			return config.EditConfig(cCtx, contextPath, config.Context, context)
 		}
 
@@ -119,7 +119,7 @@ var Command = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("setting value %s failed: %w", item, err)
 				}
-				log.Info("Set %s = %s", parts[0], val)
+				logger.Info("Set %s = %s", parts[0], val)
 
 			}
 			if err := common.WriteYAML(contextPath, rootDoc); err != nil {
@@ -164,13 +164,13 @@ var Command = &cli.Command{
 			if err := common.WriteYAML(cfgPath, doc); err != nil {
 				return fmt.Errorf("write config: %w", err)
 			}
-			log.Info("Global context successfully set to %s", context)
+			logger.Info("Global context successfully set to %s", context)
 			return nil
 		}
 
 		// List the context
 		contextPath = filepath.Join(contextDir, fmt.Sprintf("%s.yaml", context))
-		err := common.ListYaml(contextPath)
+		err := common.ListYaml(contextPath, logger)
 		if err != nil {
 			return fmt.Errorf("this context does not exist, create it with `devkit avs context create %s`", context)
 		}
