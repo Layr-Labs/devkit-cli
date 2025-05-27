@@ -145,7 +145,7 @@ func emitTelemetryMetrics(ctx *cli.Context, actionError error) {
 	}
 	defer client.Close()
 
-	l := logger.NewZapLogger()
+	l := logger.NewZapLogger(false)
 	for _, metric := range metrics.Metrics {
 		mDimensions := metric.Dimensions
 		for k, v := range metrics.Properties {

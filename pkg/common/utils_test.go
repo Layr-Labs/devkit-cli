@@ -28,7 +28,7 @@ func TestIsVerboseEnabled(t *testing.T) {
 }
 
 func TestGetLogger_ReturnsLoggerAndTracker(t *testing.T) {
-	log, tracker := GetLogger()
+	log, tracker := GetLogger(false)
 
 	logType := reflect.TypeOf(log).String()
 	trackerType := reflect.TypeOf(tracker).String()

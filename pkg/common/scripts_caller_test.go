@@ -12,6 +12,7 @@ import (
 )
 
 func TestCallTemplateScript(t *testing.T) {
+	logger, _ := GetLogger(false)
 	// JSON response case
 	scriptJSON := `#!/bin/bash
 input=$1
@@ -30,7 +31,7 @@ echo '{"status": "ok", "received": '"$input"'}'`
 	}
 
 	// Run the json_echo script
-	out, err := CallTemplateScript(context.Background(), "", jsonScriptPath, ExpectJSONResponse, inputJSON)
+	out, err := CallTemplateScript(context.Background(), logger, "", jsonScriptPath, ExpectJSONResponse, inputJSON)
 	if err != nil {
 		t.Fatalf("CallTemplateScript (JSON) failed: %v", err)
 	}
@@ -60,7 +61,7 @@ echo "This is plain text output"`
 	}
 
 	// Run the text_echo script
-	out, err = CallTemplateScript(context.Background(), "", textScriptPath, ExpectNonJSONResponse)
+	out, err = CallTemplateScript(context.Background(), logger, "", textScriptPath, ExpectNonJSONResponse)
 	if err != nil {
 		t.Fatalf("CallTemplateScript (non-JSON) failed: %v", err)
 	}
@@ -83,7 +84,7 @@ echo "This is plain text output"`
 	os.Stdout, os.Stderr = wOut, wErr
 
 	// Run the empty script
-	out, err = CallTemplateScript(context.Background(), "", textScriptPath, ExpectNonJSONResponse)
+	out, err = CallTemplateScript(context.Background(), logger, "", textScriptPath, ExpectNonJSONResponse)
 	if err != nil {
 		t.Fatalf("CallTemplateScript (non-JSON) failed: %v", err)
 	}

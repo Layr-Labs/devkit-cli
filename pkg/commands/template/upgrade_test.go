@@ -20,11 +20,7 @@ type MockGitClient struct {
 	mockUpgradeScript string
 }
 
-func (m *MockGitClient) SubmoduleInit(ctx context.Context, repoDir string, opts template.CloneOptions) error {
-	return nil
-}
-
-func (m *MockGitClient) Clone(ctx context.Context, repoURL, dest string, opts template.CloneOptions) error {
+func (m *MockGitClient) Clone(ctx context.Context, repoURL, dest string) error {
 	// Create basic directory structure for a mock git repo
 	return os.MkdirAll(filepath.Join(dest, ".devkit", "scripts"), 0755)
 }
@@ -33,55 +29,6 @@ func (m *MockGitClient) Checkout(ctx context.Context, repoDir, commit string) er
 	// Create upgrade script in the target directory with mock content
 	targetScript := filepath.Join(repoDir, ".devkit", "scripts", "upgrade")
 	return os.WriteFile(targetScript, []byte(m.mockUpgradeScript), 0755)
-}
-
-// Implement other required methods of GitClient with minimal functionality for testing
-func (m *MockGitClient) WorktreeCheckout(ctx context.Context, mirrorPath, commit, worktreePath string) error {
-	return nil
-}
-
-func (m *MockGitClient) SubmoduleList(ctx context.Context, repoDir string) ([]template.Submodule, error) {
-	return nil, nil
-}
-
-func (m *MockGitClient) SubmoduleCommit(ctx context.Context, repoDir, path string) (string, error) {
-	return "", nil
-}
-
-func (m *MockGitClient) ResolveRemoteCommit(ctx context.Context, repoURL, branch string) (string, error) {
-	return "", nil
-}
-
-func (m *MockGitClient) RetryClone(ctx context.Context, repoURL, dest string, opts template.CloneOptions, maxRetries int) error {
-	return nil
-}
-
-func (m *MockGitClient) SubmoduleClone(
-	ctx context.Context,
-	submodule template.Submodule,
-	commit string,
-	repoUrl string,
-	targetDir string,
-	repoDir string,
-	opts template.CloneOptions,
-) error {
-	return nil
-}
-
-func (m *MockGitClient) CheckoutCommit(ctx context.Context, repoDir, commitHash string) error {
-	return nil
-}
-
-func (m *MockGitClient) StageSubmodule(ctx context.Context, repoDir, path, sha string) error {
-	return nil
-}
-
-func (m *MockGitClient) SetSubmoduleURL(ctx context.Context, repoDir, name, url string) error {
-	return nil
-}
-
-func (m *MockGitClient) ActivateSubmodule(ctx context.Context, repoDir, name string) error {
-	return nil
 }
 
 // MockGitClientGetter implements the gitClientGetter interface for testing

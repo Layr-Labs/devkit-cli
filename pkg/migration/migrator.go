@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
 )
 
@@ -96,9 +97,7 @@ func (e *PatchEngine) Apply() error {
 }
 
 // Run all migrations after current version upto latestVersion according to migrationChain
-func MigrateYaml(path string, latestVersion string, migrationChain []MigrationStep) error {
-	// Get logger
-	log, _ := common.GetLogger()
+func MigrateYaml(logger iface.Logger, path string, latestVersion string, migrationChain []MigrationStep) error {
 
 	// Load as YAML AST
 	userNode, err := common.LoadYAML(path)
@@ -118,7 +117,7 @@ func MigrateYaml(path string, latestVersion string, migrationChain []MigrationSt
 	if from == to {
 		return ErrAlreadyUpToDate
 	}
-	log.Info("Migrating %s v%s -> v%s", path, from, to)
+	logger.Info("Migrating %s v%s -> v%s", path, from, to)
 
 	// Perform node-based migration
 	migrated, err := MigrateNode(userNode, from, to, migrationChain)

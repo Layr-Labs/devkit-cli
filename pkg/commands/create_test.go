@@ -21,7 +21,7 @@ import (
 
 func TestCreateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
-
+	logger, _ := common.GetLogger(false)
 	mockConfigYaml := configs.ConfigYamls[configs.LatestVersion]
 	configDir := filepath.Join("config")
 	err := os.MkdirAll(configDir, 0755)
@@ -93,7 +93,7 @@ func TestCreateCommand(t *testing.T) {
 		}
 
 		// Create config.yaml
-		return copyDefaultConfigToProject(targetDir, projectName, "https://github.com/Layr-Labs/hourglass-avs-template", "v0.0.9", false)
+		return copyDefaultConfigToProject(logger, targetDir, projectName, "https://github.com/Layr-Labs/hourglass-avs-template", "v0.0.9")
 	}
 
 	app := &cli.App{
