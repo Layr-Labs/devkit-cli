@@ -18,4 +18,9 @@ const (
 	BaseConfig = "config.yaml"
 
 	ZeusConfig = ".zeus"
+	// Docker open timeout
+	DockerOpenTimeoutSeconds = 10
+
+	// Docker open retry interval in milliseconds
+	DockerOpenRetryIntervalMilliseconds = 500
 )

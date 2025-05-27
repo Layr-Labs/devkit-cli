@@ -53,6 +53,11 @@ func GetLogger(verbose bool) (iface.Logger, iface.ProgressTracker) {
 	return log, tracker
 }
 
+// isCI checks if the code is running in a CI environment like GitHub Actions.
+func isCI() bool {
+	return os.Getenv("CI") == "true"
+}
+
 // WithLogger stores the logger in the context
 func WithLogger(ctx context.Context, logger iface.Logger) context.Context {
 	return context.WithValue(ctx, loggerContextKey{}, logger)
