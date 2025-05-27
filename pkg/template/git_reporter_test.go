@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
@@ -44,9 +45,9 @@ func (f *mockTracker) Clear() {
 func (s *mockTracker) ProgressRows() []iface.ProgressRow { return make([]iface.ProgressRow, 0) }
 
 func TestCloneReporterEndToEnd(t *testing.T) {
-	baseLogger := logger.NewZapLogger()
+	log, _ := common.GetLogger(false)
 	mock := newMockTracker()
-	progLogger := *logger.NewProgressLogger(baseLogger, mock)
+	progLogger := *logger.NewProgressLogger(log, mock)
 
 	// Create the reporter for a repo named "foo"
 	rep := template.NewCloneReporter("https://example.com/foo.git", progLogger, nil)
@@ -86,9 +87,9 @@ func TestCloneReporterEndToEnd(t *testing.T) {
 }
 
 func TestCloneReporterSubmoduleDiscoveryGrouping(t *testing.T) {
-	baseLogger := logger.NewZapLogger()
+	log, _ := common.GetLogger(false)
 	mock := newMockTracker()
-	progLogger := *logger.NewProgressLogger(baseLogger, mock)
+	progLogger := *logger.NewProgressLogger(log, mock)
 
 	rep := template.NewCloneReporter("https://example.com/bar.git", progLogger, nil)
 
@@ -105,9 +106,9 @@ func TestCloneReporterSubmoduleDiscoveryGrouping(t *testing.T) {
 }
 
 func TestCloneReporterFallbackRootProgress(t *testing.T) {
-	baseLogger := logger.NewZapLogger()
+	log, _ := common.GetLogger(false)
 	mock := newMockTracker()
-	progLogger := *logger.NewProgressLogger(baseLogger, mock)
+	progLogger := *logger.NewProgressLogger(log, mock)
 
 	rep := template.NewCloneReporter("https://example.com/baz.git", progLogger, nil)
 
