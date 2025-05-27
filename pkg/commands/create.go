@@ -393,7 +393,6 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 	// }
 
 	// remove the old .git dir
-	logger.Info("Removing existing .git directory in %s (if any)...", targetDir)
 	gitDir := filepath.Join(targetDir, ".git")
 	if err := os.RemoveAll(gitDir); err != nil {
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
