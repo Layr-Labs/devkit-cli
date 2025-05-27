@@ -118,8 +118,7 @@ func FindSubcommandByName(name string, commands []*cli.Command) *cli.Command {
 
 func CaptureOutput(fn func()) (stdout string, stderr string) {
 	// Get the logger
-	log, _ := common.GetLogger()
-
+	log, _ := common.GetLogger(true)
 	// Capture stdout
 	origStdout := os.Stdout
 	origStderr := os.Stderr

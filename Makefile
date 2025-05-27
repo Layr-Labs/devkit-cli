@@ -27,6 +27,9 @@ build: ## Build the binary
 tests: ## Run tests
 	$(GO) test -v ./... -p 1
 
+tests-fast: ## Run fast tests (skip slow integration tests)
+	$(GO) test -v ./... -p 1 -timeout 5m -short
+
 fmt: ## Format code
 	@go fmt $(GO_PACKAGES)
 

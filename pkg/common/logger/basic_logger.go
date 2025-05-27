@@ -51,3 +51,16 @@ func (l *BasicLogger) Error(msg string, args ...any) {
 		log.Printf("Error: %s", line)
 	}
 }
+
+func (l *BasicLogger) Debug(msg string, args ...any) {
+	// format the message once
+	formatted := fmt.Sprintf(msg, args...)
+
+	// split into lines
+	lines := strings.Split(strings.TrimSuffix(formatted, "\n"), "\n")
+
+	// print the lines with log
+	for _, line := range lines {
+		log.Printf("Error: %s", line)
+	}
+}

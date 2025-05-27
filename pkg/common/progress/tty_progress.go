@@ -1,8 +1,9 @@
 package progress
 
 import (
-	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"time"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 
 	"fmt"
 	"os"
@@ -26,6 +27,24 @@ func NewTTYProgressTracker(max int, target *os.File) *TTYProgressTracker {
 		maxTracked: max,
 		target:     target,
 	}
+}
+
+// ProgressRows returns all progress entries, in the order they completed.
+// It is safe to call from multiple goroutines.
+func (s *TTYProgressTracker) ProgressRows() []iface.ProgressRow {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rows := make([]iface.ProgressRow, 0, len(s.order))
+	for _, id := range s.order {
+		info := s.progress[id]
+		rows = append(rows, iface.ProgressRow{
+			Module: id,
+			Pct:    info.Percentage,
+			Label:  info.DisplayText,
+		})
+	}
+	return rows
 }
 
 func (t *TTYProgressTracker) Set(id string, pct int, label string) {

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 )
 
 type ResponseExpectation int
@@ -17,9 +19,8 @@ const (
 	ExpectJSONResponse
 )
 
-func CallTemplateScript(cmdCtx context.Context, dir string, scriptPath string, expect ResponseExpectation, params ...[]byte) (map[string]interface{}, error) {
+func CallTemplateScript(cmdCtx context.Context, logger iface.Logger, dir string, scriptPath string, expect ResponseExpectation, params ...[]byte) (map[string]interface{}, error) {
 	// Get logger
-	log, _ := GetLogger()
 
 	// Convert byte params to strings
 	stringParams := make([]string, len(params))
@@ -50,14 +51,14 @@ func CallTemplateScript(cmdCtx context.Context, dir string, scriptPath string, e
 	if expect == ExpectJSONResponse {
 		// End early for empty response
 		if len(raw) == 0 {
-			log.Warn("Empty output from %s; returning empty result", scriptPath)
+			logger.Warn("Empty output from %s; returning empty result", scriptPath)
 			return map[string]interface{}{}, nil
 		}
 
 		// Unmarshal response and return unless err
 		var result map[string]interface{}
 		if err := json.Unmarshal(raw, &result); err != nil {
-			log.Warn("Invalid or non-JSON script output: %s; returning empty result: %v", string(raw), err)
+			logger.Warn("Invalid or non-JSON script output: %s; returning empty result: %v", string(raw), err)
 			return map[string]interface{}{}, nil
 		}
 		return result, nil
@@ -65,7 +66,7 @@ func CallTemplateScript(cmdCtx context.Context, dir string, scriptPath string, e
 
 	// Log the raw stdout
 	if len(raw) > 0 {
-		log.Info("%s", string(raw))
+		logger.Info("%s", string(raw))
 	}
 
 	return nil, nil
