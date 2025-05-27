@@ -342,7 +342,7 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName stri
 }
 
 // / Creates a keystores directory with default keystore json files
-func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string, verbose bool) error {
+func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string) error {
 	// Construct keystore dest
 	destKeystoreDir := filepath.Join(targetDir, "keystores")
 
