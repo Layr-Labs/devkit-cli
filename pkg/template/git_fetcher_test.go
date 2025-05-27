@@ -181,4 +181,10 @@ func TestCloneRealRepo(t *testing.T) {
 		t.Log("submodule not found - has .devkit/contracts moved?")
 	}
 
+	// Verify we saw at least one 100% record
+	rows := tracker.ProgressRows()
+	if len(rows) > 0 {
+		t.Error("expected at least one completed progress row, got none")
+	}
+
 }
