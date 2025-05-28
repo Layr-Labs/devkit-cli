@@ -41,12 +41,14 @@ func GetLoggerFromCLIContext(cCtx *cli.Context) (iface.Logger, iface.ProgressTra
 // Get logger for the env we're in
 func GetLogger(verbose bool) (iface.Logger, iface.ProgressTracker) {
 
-	log := logger.NewZapLogger(verbose)
+	var log iface.Logger
 	var tracker iface.ProgressTracker
 
 	if progress.IsTTY() {
+		log = logger.NewLogger(verbose)
 		tracker = progress.NewTTYProgressTracker(10, os.Stdout)
 	} else {
+		log = logger.NewZapLogger(verbose)
 		tracker = progress.NewLogProgressTracker(10, log)
 	}
 

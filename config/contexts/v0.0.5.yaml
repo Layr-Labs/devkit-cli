@@ -1,5 +1,5 @@
 # Devnet context to be used for local deployments against Anvil chain
-version: 0.0.3
+version: 0.0.5
 context:
   # Name of the context
   name: "devnet"
@@ -58,9 +58,13 @@ context:
     avs_private_key: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" # Anvil Private Key 1
     metadata_url: "https://my-org.com/avs/metadata.json"
     registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"
+  # Core EigenLayer contract addresses
+  eigenlayer:
+    allocation_manager: "0x948a420b8CC1d6BFd0B6087C2E7c344a2CD0bc39"
+    delegation_manager: "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A" 
   # Contracts deployed on `devnet start`
-  deployed_contracts:
+  deployed_contracts: []
   # Operator Sets registered on `devnet start`
-  operator_sets:
+  operator_sets: []
   # Operators registered on `devnet start`
-  operator_registrations:
+  operator_registrations: []

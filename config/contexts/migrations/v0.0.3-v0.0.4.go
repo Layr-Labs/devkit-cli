@@ -24,17 +24,14 @@ func Migration_0_0_3_to_0_0_4(user, old, new *yaml.Node) (*yaml.Node, error) {
 
 	// Add eigenlayer section to user config
 	if eigenlayerNode != nil {
-		// Create eigenlayer key node
-		keyNode := &yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Value: "eigenlayer",
-		}
+		// Add the key with comment first
+		migration.EnsureKeyWithComment(user, []string{"context", "eigenlayer"}, "Core EigenLayer contract addresses")
 
-		// Create a copy of the eigenlayer value node from the new config
-		valueNode := migration.CloneNode(eigenlayerNode)
+		// Pull users eigenlayer key node
+		keyNode := migration.ResolveNode(user, []string{"context", "eigenlayer"})
 
-		// Append the key-value pair to the context mapping
-		contextNode.Content = append(contextNode.Content, keyNode, valueNode)
+		// Replace the key-value pairs in the context eigenlayer mapping
+		*keyNode = *migration.CloneNode(eigenlayerNode)
 	}
 
 	// Write Zeus config to project root if it doesn't exist already

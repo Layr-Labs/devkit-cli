@@ -15,19 +15,30 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
 	"go.uber.org/zap"
 
-	"sigs.k8s.io/yaml"
-
 	"github.com/urfave/cli/v2"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"sigs.k8s.io/yaml"
 )
 
+// ConfigChange represents a change in a configuration field
+type ConfigChange struct {
+	Path     string
+	OldValue interface{}
+	NewValue interface{}
+}
+
+// Iota based enum for types of config
 type EditTarget int
 
 const (
 	Config EditTarget = iota
 	Context
 )
+
+// Path to the config directory
+var DefaultConfigPath = filepath.Join("config")
 
 // editConfig is the main entry point for the edit config functionality
 func EditConfig(cCtx *cli.Context, configPath string, editTarget EditTarget, context string) error {
@@ -40,7 +51,7 @@ func EditConfig(cCtx *cli.Context, configPath string, editTarget EditTarget, con
 	}
 
 	// Create a backup of the current config
-	originalConfig, backupData, err := backupConfig(configPath, editTarget, context)
+	_, backupData, err := backupConfig(configPath, editTarget, context)
 	if err != nil {
 		return err
 	}
@@ -51,18 +62,29 @@ func EditConfig(cCtx *cli.Context, configPath string, editTarget EditTarget, con
 	}
 
 	// Validate the edited config
-	newConfig, err := ValidateConfig(configPath)
+	newData, err := ValidateConfig(configPath, editTarget)
+	// Check for validation errs
 	if err != nil {
 		logger.Error("Error validating config: %v", err)
 		logger.Info("Reverting changes...")
 		if restoreErr := restoreBackup(configPath, backupData); restoreErr != nil {
-			return fmt.Errorf("failed to restore backup after validation error: %w", restoreErr)
+			logger.Error("Failed to restore backup after validation error: %w", restoreErr)
+			return restoreErr
 		}
 		return err
 	}
 
 	// Collect changes
-	changes := collectConfigChanges(originalConfig, newConfig, editTarget, logger)
+	changes, err := validateConfigChanges(backupData, newData)
+	if err != nil {
+		logger.Error("Error validating config: %v", err)
+		logger.Info("Reverting changes...")
+		if restoreErr := restoreBackup(configPath, backupData); restoreErr != nil {
+			logger.Error("Failed to restore backup after validation error: %w", restoreErr)
+			return restoreErr
+		}
+		return err
+	}
 
 	// Log changes
 	logConfigChanges(changes, logger)
@@ -93,24 +115,24 @@ func findEditor() (string, error) {
 	return "", fmt.Errorf("no suitable text editor found. Please install nano or vi, or set the EDITOR environment variable")
 }
 
-var DefaultConfigPath = filepath.Join("config")
-
 // backupConfig creates a backup of the current config
-func backupConfig(configPath string, editTarget EditTarget, context string) (interface{}, []byte, error) {
+func backupConfig(configPath string, editTarget EditTarget, context string) (map[string]interface{}, []byte, error) {
 	// Load the current config to compare later
 	var (
-		currentConfig interface{}
+		currentConfig map[string]interface{}
 		err           error
 	)
 
-	// select the interface based on target
-	switch editTarget {
-	case Config:
+	// Select the interface based on target
+	if editTarget == Config {
 		currentConfig, err = common.LoadBaseConfig()
-	case Context:
+	} else if editTarget == Context {
 		currentConfig, err = common.LoadContextConfig(context)
+	} else {
+		return nil, nil, fmt.Errorf("error selecting yaml: %w", err)
 	}
 
+	// If there is any error loading the yaml
 	if err != nil {
 		return nil, nil, fmt.Errorf("error loading yaml: %w", err)
 	}
@@ -143,29 +165,44 @@ func openEditor(editorPath, filePath string, logger iface.Logger) error {
 	return cmd.Run()
 }
 
-// ValidateConfig checks if the edited config file is valid
-func ValidateConfig(configPath string) (interface{}, error) {
+// ValidateConfig reads configPath into the appropriate struct based on editTarget,
+// then runs requireNonZero on it, returning the raw bytes or an error.
+func ValidateConfig(configPath string, editTarget EditTarget) ([]byte, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	// Try unmarshalling as BaseConfig (config.yaml)
-	var base common.ConfigWithContextConfig
-	if err := yaml.Unmarshal(data, &base); err == nil && base.Config.Project.Name != "" {
-		return &base, nil
+	// Either Config or ContextConfig
+	var val interface{}
+
+	// Perform validations on the provided struct
+	if editTarget == Config {
+		// Try unmarshalling as BaseConfig (config.yaml)
+		var cfg common.Config
+		if err := yaml.Unmarshal(data, &cfg); err != nil {
+			return data, fmt.Errorf("invalid base config YAML: %w", err)
+		}
+		val = &cfg
+
+	} else if editTarget == Context {
+		// Try unmarshalling as ContextConfig (devnet.yaml, sepolia.yaml)
+		var ctx common.ContextConfig
+		if err := yaml.Unmarshal(data, &ctx); err != nil {
+			return data, fmt.Errorf("invalid context config YAML: %w", err)
+		}
+		val = &ctx
+
+	} else {
+		return data, fmt.Errorf("unsupported edit target: %v", editTarget)
 	}
 
-	// Try unmarshalling as ChainContextConfig (devnet.yaml, sepolia.yaml)
-	var ctxWrapper struct {
-		Version string                    `yaml:"version"`
-		Context common.ChainContextConfig `yaml:"context"`
-	}
-	if err := yaml.Unmarshal(data, &ctxWrapper); err == nil && ctxWrapper.Context.Name != "" {
-		return &ctxWrapper, nil
+	// Verify known fileds are present
+	if err := common.RequireNonZero(val); err != nil {
+		return data, err
 	}
 
-	return nil, fmt.Errorf("invalid YAML config: unrecognized structure")
+	return data, nil
 }
 
 // restoreBackup restores the original file content
@@ -173,140 +210,127 @@ func restoreBackup(configPath string, backupData []byte) error {
 	return os.WriteFile(configPath, backupData, 0644)
 }
 
-// ConfigChange represents a change in a configuration field
-type ConfigChange struct {
-	Path     string
-	OldValue interface{}
-	NewValue interface{}
+// validateConfigChanges returns adds/removes/changes between two generic maps
+func validateConfigChanges(
+	originalYAML, updatedYAML []byte,
+) ([]ConfigChange, error) {
+	original, err := common.YamlToMap(originalYAML)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert yaml to map: %w", err)
+	}
+	updated, err := common.YamlToMap(updatedYAML)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert yaml to map: %w", err)
+	}
+
+	// Ensure version string is present and unchanged
+	ov, ok := original["version"].(string)
+	if !ok {
+		return nil, fmt.Errorf("missing or non-string 'version' in original")
+	}
+	nv, ok := updated["version"].(string)
+	if !ok {
+		return nil, fmt.Errorf("missing or non-string 'version' in updated")
+	}
+	if ov != nv {
+		return nil, fmt.Errorf("version must not be altered (was %q, now %q)", ov, nv)
+	}
+
+	changes := diffValues("", original, updated)
+	return changes, nil
 }
 
-// collectConfigChanges compares the original and updated configurations
-// and returns a slice of ConfigChange entries for all detected differences.
-// It handles two edit targets: Config (base project config) and Context (chain context config).
-func collectConfigChanges(original, updated interface{}, editTarget EditTarget, logger iface.Logger) []ConfigChange {
-	var changes []ConfigChange
+// diffValues recurses into maps, slices and primitives.
+func diffValues(path string, oldV, newV interface{}) []ConfigChange {
+	var out []ConfigChange
 
-	switch editTarget {
-	case Config:
-		// Assert both original and updated to *ConfigWithContextConfig
-		oldCfg, ok1 := original.(*common.ConfigWithContextConfig)
-		newCfg, ok2 := updated.(*common.ConfigWithContextConfig)
-		if !ok1 || !ok2 {
-			// Log type mismatch and abort diff
-			logger.Info("Mismatched types for Config comparison: %T vs %T", original, updated)
-			return nil
-		}
-		// Compare only the Project block fields
-		changes = getFieldChangesDetailed(
-			"project",
-			oldCfg.Config.Project,
-			newCfg.Config.Project,
-		)
+	// If oldV is map[interface{}]interface{}, turn into map[string]interface{}
+	if m, ok := oldV.(map[interface{}]interface{}); ok {
+		oldV = common.Normalize(m)
+	}
+	if m, ok := newV.(map[interface{}]interface{}); ok {
+		newV = common.Normalize(m)
+	}
 
-	case Context:
-		// Extract original ChainContextConfig pointer
-		oldPtr, ok := original.(*common.ChainContextConfig)
-		if !ok {
-			logger.Info("Mismatched types for context.yaml comparison: %T", original)
-			return nil
-		}
+	// nil/absent cases
+	if oldV == nil && newV == nil {
+		return nil
+	}
+	if oldV == nil {
+		out = append(out, ConfigChange{Path: path, OldValue: nil, NewValue: newV})
+		return out
+	}
+	if newV == nil {
+		out = append(out, ConfigChange{Path: path, OldValue: oldV, NewValue: nil})
+		return out
+	}
 
-		// Resolve updated ChainContextConfig pointer
-		var newPtr *common.ChainContextConfig
+	ro, no := reflect.ValueOf(oldV), reflect.ValueOf(newV)
+	ko, kn := ro.Kind(), no.Kind()
 
-		// Updated is directly *common.ChainContextConfig
-		if nc, ok := updated.(*common.ChainContextConfig); ok {
-			newPtr = nc
-		} else {
-			// Updated is an anonymous wrapper struct with a 'Context' field
-			rv := reflect.ValueOf(updated)
-			if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Struct {
-				// Look for a field named 'Context'
-				fv := rv.Elem().FieldByName("Context")
-				if fv.IsValid() && fv.Type() == reflect.TypeOf(common.ChainContextConfig{}) {
-					// Extract the inner ChainContextConfig value
-					temp := fv.Interface().(common.ChainContextConfig)
-					newPtr = &temp
-				}
+	// different kinds -> replace
+	if ko != kn {
+		return []ConfigChange{{Path: path, OldValue: oldV, NewValue: newV}}
+	}
+
+	switch ko {
+	case reflect.Map:
+		// both map[string]interface{}
+		om := oldV.(map[string]interface{})
+		nm := newV.(map[string]interface{})
+
+		// check keys in old
+		for k, ov := range om {
+			newPath := join(path, k)
+			if nv, ok := nm[k]; ok {
+				out = append(out, diffValues(newPath, ov, nv)...)
+			} else {
+				out = append(out, ConfigChange{Path: newPath, OldValue: ov, NewValue: nil})
 			}
 		}
-		if newPtr == nil {
-			logger.Info("Mismatched updated type for Context: %T", updated)
-			return nil
+		// new-only keys
+		for k, nv := range nm {
+			if _, ok := om[k]; !ok {
+				newPath := join(path, k)
+				out = append(out, ConfigChange{Path: newPath, OldValue: nil, NewValue: nv})
+			}
 		}
 
-		// Compare the flat fields on the ChainContextConfig
-		changes = getFieldChangesDetailed(
-			"context",
-			*oldPtr,
-			*newPtr,
-		)
+	case reflect.Slice, reflect.Array:
+		os := ro.Len()
+		ns := no.Len()
+		max := os
+		if ns > max {
+			max = ns
+		}
+		for i := 0; i < max; i++ {
+			newPath := fmt.Sprintf("%s[%d]", path, i)
+			var ov, nv interface{}
+			if i < os {
+				ov = ro.Index(i).Interface()
+			}
+			if i < ns {
+				nv = no.Index(i).Interface()
+			}
+			out = append(out, diffValues(newPath, ov, nv)...)
+		}
 
 	default:
-		// Unsupported edit target
-		logger.Info("Unsupported edit target: %v", editTarget)
+		// primitive or struct: DeepEqual
+		if !reflect.DeepEqual(oldV, newV) {
+			out = append(out, ConfigChange{Path: path, OldValue: oldV, NewValue: newV})
+		}
 	}
 
-	return changes
+	return out
 }
 
-// getFieldChangesDetailed returns detailed field changes between two structs
-func getFieldChangesDetailed(prefix string, old, new interface{}) []ConfigChange {
-	changes := []ConfigChange{}
-
-	// Use reflection to compare struct fields
-	oldVal := reflect.ValueOf(old)
-	newVal := reflect.ValueOf(new)
-
-	// Handle nil values
-	if !oldVal.IsValid() || !newVal.IsValid() {
-		return changes
+// join concatenates path and field
+func join(base, field string) string {
+	if base == "" {
+		return field
 	}
-
-	// Handle different types
-	if oldVal.Type() != newVal.Type() {
-		return changes
-	}
-
-	// Only handle struct types
-	if oldVal.Kind() != reflect.Struct {
-		return changes
-	}
-
-	// Compare all fields
-	for i := 0; i < oldVal.NumField(); i++ {
-		fieldName := oldVal.Type().Field(i).Name
-		tomlTag := strings.Split(oldVal.Type().Field(i).Tag.Get("toml"), ",")[0]
-		if tomlTag == "" {
-			tomlTag = strings.ToLower(fieldName)
-		}
-
-		oldField := oldVal.Field(i)
-		newField := newVal.Field(i)
-
-		// Skip unexported fields
-		if !oldField.CanInterface() {
-			continue
-		}
-
-		// Skip complex nested structures (they'll be handled separately)
-		if oldField.Kind() == reflect.Struct || oldField.Kind() == reflect.Map ||
-			(oldField.Kind() == reflect.Slice && oldField.Type().Elem().Kind() != reflect.String) {
-			continue
-		}
-
-		// Compare values
-		if !reflect.DeepEqual(oldField.Interface(), newField.Interface()) {
-			fieldPath := fmt.Sprintf("%s.%s", prefix, tomlTag)
-			changes = append(changes, ConfigChange{
-				Path:     fieldPath,
-				OldValue: oldField.Interface(),
-				NewValue: newField.Interface(),
-			})
-		}
-	}
-
-	return changes
+	return base + "." + field
 }
 
 // logConfigChanges logs the configuration changes
@@ -337,39 +361,36 @@ func logConfigChanges(changes []ConfigChange, logger iface.Logger) {
 
 // formatAndLogChange formats and logs a single change
 func formatAndLogChange(change ConfigChange, logger iface.Logger) {
-	var changeMsg string
-
-	// Format based on change type
+	// Additions
+	if change.OldValue == nil && change.NewValue != nil {
+		logger.Info("  - %s added (value: %v)", change.Path, change.NewValue)
+		return
+	}
+	// Removals
+	if change.NewValue == nil && change.OldValue != nil {
+		logger.Info("  - %s removed (was: %v)", change.Path, change.OldValue)
+		return
+	}
+	// Updates (both non-nil)
 	switch oldVal := change.OldValue.(type) {
 	case string:
-		if newVal, ok := change.NewValue.(string); ok && newVal != "removed" && newVal != "added" {
-			changeMsg = fmt.Sprintf("%s changed from '%v' to '%v'", change.Path, oldVal, newVal)
-		} else if newVal == "removed" {
-			changeMsg = fmt.Sprintf("%s removed", change.Path)
+		if newVal, ok := change.NewValue.(string); ok {
+			logger.Info("  - %s changed from '%s' to '%s'", change.Path, oldVal, newVal)
 		} else {
-			changeMsg = fmt.Sprintf("%s changed", change.Path)
+			logger.Info("  - %s changed from '%v' to '%v'", change.Path, change.OldValue, change.NewValue)
 		}
 	case bool:
 		if newVal, ok := change.NewValue.(bool); ok {
-			changeMsg = fmt.Sprintf("%s changed from %v to %v", change.Path, oldVal, newVal)
+			logger.Info("  - %s changed from %v to %v", change.Path, oldVal, newVal)
 		} else {
-			changeMsg = fmt.Sprintf("%s changed", change.Path)
+			logger.Info("  - %s changed from %v to %v", change.Path, change.OldValue, change.NewValue)
 		}
-	case int, int8, int16, int32, int64:
-		changeMsg = fmt.Sprintf("%s changed from %v to %v", change.Path, oldVal, change.NewValue)
+	case int, int8, int16, int32, int64, float32, float64:
+		logger.Info("  - %s changed from %v to %v", change.Path, change.OldValue, change.NewValue)
 	default:
-		if change.NewValue == "added" {
-			changeMsg = fmt.Sprintf("%s added", change.Path)
-		} else if change.NewValue == "removed" {
-			changeMsg = fmt.Sprintf("%s removed", change.Path)
-		} else if change.NewValue == "modified" {
-			changeMsg = fmt.Sprintf("%s modified", change.Path)
-		} else {
-			changeMsg = fmt.Sprintf("%s changed", change.Path)
-		}
+		// Fallback for slices, maps, structs, etc.
+		logger.Info("  - %s changed", change.Path)
 	}
-
-	logger.Info("  - %s", changeMsg)
 }
 
 // sendConfigChangeTelemetry sends telemetry data for config changes

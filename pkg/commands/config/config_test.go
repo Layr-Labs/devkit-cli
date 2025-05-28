@@ -165,10 +165,10 @@ config:
 	require.NoError(t, os.WriteFile(validPath, []byte(validYAML), 0644))
 	require.NoError(t, os.WriteFile(invalidPath, []byte(invalidYAML), 0644))
 
-	_, err := ValidateConfig(validPath)
+	_, err := ValidateConfig(validPath, Config)
 	require.NoError(t, err)
 
-	_, err = ValidateConfig(invalidPath)
+	_, err = ValidateConfig(invalidPath, Config)
 	require.Error(t, err)
 	t.Logf("Expected YAML parse error: %v", err)
 }

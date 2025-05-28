@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -66,6 +68,11 @@ type ConfigWithContextConfig struct {
 	Context map[string]ChainContextConfig `json:"context" yaml:"context"`
 }
 
+type Config struct {
+	Version string      `json:"version" yaml:"version"`
+	Config  ConfigBlock `json:"config" yaml:"config"`
+}
+
 type ContextConfig struct {
 	Version string             `json:"version" yaml:"version"`
 	Context ChainContextConfig `json:"context" yaml:"context"`
@@ -99,33 +106,30 @@ type ChainContextConfig struct {
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 }
 
-func LoadBaseConfig() (*ConfigWithContextConfig, error) {
+func LoadBaseConfig() (map[string]interface{}, error) {
 	path := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read base config: %w", err)
 	}
-	var cfg *ConfigWithContextConfig
+	var cfg map[string]interface{}
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse base config: %w", err)
 	}
 	return cfg, nil
 }
 
-func LoadContextConfig(ctxName string) (*ChainContextConfig, error) {
+func LoadContextConfig(ctxName string) (map[string]interface{}, error) {
 	path := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", ctxName+".yaml")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read context %q: %w", ctxName, err)
 	}
-	var wrapper struct {
-		Version string              `yaml:"version"`
-		Context *ChainContextConfig `yaml:"context"`
-	}
-	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+	var ctx map[string]interface{}
+	if err := yaml.Unmarshal(data, &ctx); err != nil {
 		return nil, fmt.Errorf("parse context %q: %w", ctxName, err)
 	}
-	return wrapper.Context, nil
+	return ctx, nil
 }
 
 func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {
@@ -189,4 +193,33 @@ func LoadRawContext(yamlPath string) ([]byte, error) {
 	}
 
 	return context, nil
+}
+
+func RequireNonZero(s interface{}) error {
+	v := reflect.ValueOf(s)
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return fmt.Errorf("must be non-nil")
+		}
+		v = v.Elem()
+	}
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		// skip private or omitempty-tagged fields
+		if f.PkgPath != "" || strings.Contains(f.Tag.Get("yaml"), "omitempty") {
+			continue
+		}
+		fv := v.Field(i)
+		if reflect.DeepEqual(fv.Interface(), reflect.Zero(f.Type).Interface()) {
+			return fmt.Errorf("missing required field: %s", f.Name)
+		}
+		// if nested struct, recurse
+		if fv.Kind() == reflect.Struct || (fv.Kind() == reflect.Ptr && fv.Elem().Kind() == reflect.Struct) {
+			if err := RequireNonZero(fv.Interface()); err != nil {
+				return fmt.Errorf("%s.%w", f.Name, err)
+			}
+		}
+	}
+	return nil
 }

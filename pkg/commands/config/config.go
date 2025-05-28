@@ -99,12 +99,28 @@ var Command = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to load config and context config: %w", err)
 		}
+		cfgRaw, ok := config["config"].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("missing top-level 'config'")
+		}
+		projRaw, ok := cfgRaw["project"].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("missing 'config.project'")
+		}
+		name, ok := projRaw["name"].(string)
+		if !ok {
+			return fmt.Errorf("missing or non-string 'config.project.name'")
+		}
+		version, ok := projRaw["version"].(string)
+		if !ok {
+			return fmt.Errorf("missing or non-string 'config.project.version'")
+		}
 
 		// Log top level details
 		logger.Info("Displaying current configuration... \n\n")
 		logger.Info("Telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
-		logger.Info("Project: %s\n", config.Config.Project.Name)
-		logger.Info("Version: %s\n\n", config.Config.Project.Version)
+		logger.Info("Project: %s\n", name)
+		logger.Info("Version: %s\n\n", version)
 
 		// err = listConfig(config, projectSetting)
 		err = common.ListYaml(cfgPath, logger)

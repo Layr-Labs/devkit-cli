@@ -223,6 +223,38 @@ func CloneNode(n *yaml.Node) *yaml.Node {
 	return &c
 }
 
+// EnsureKeyWithComment adds “# comment\nkey:” (with an empty sequence value) if key missing
+func EnsureKeyWithComment(root *yaml.Node, path []string, comment string) {
+	// locate parent mapping
+	parentPath := path[:len(path)-1]
+	keyName := path[len(path)-1]
+
+	parent := ResolveNode(root, parentPath)
+	if parent == nil || parent.Kind != yaml.MappingNode {
+		return
+	}
+
+	// skip if key already present
+	for i := 0; i < len(parent.Content)-1; i += 2 {
+		if parent.Content[i].Value == keyName {
+			return
+		}
+	}
+
+	// append key (with comment) + empty seq
+	keyNode := &yaml.Node{
+		Kind:        yaml.ScalarNode,
+		Tag:         "!!str",
+		Value:       keyName,
+		HeadComment: comment,
+	}
+	valNode := &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Tag:  "!!seq",
+	}
+	parent.Content = append(parent.Content, keyNode, valNode)
+}
+
 // findParent locates the parent mapping or sequence node and the index/key position
 func findParent(root *yaml.Node, path []string) (*yaml.Node, int) {
 	if len(path) == 0 {

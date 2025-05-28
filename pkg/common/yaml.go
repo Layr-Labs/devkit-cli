@@ -42,6 +42,38 @@ func LoadMap(path string) (map[string]interface{}, error) {
 	return m, nil
 }
 
+// YamlToMap unmarshals your YAML into interface{}, normalizes all maps, and returns the top‐level map[string]interface{}
+func YamlToMap(b []byte) (map[string]interface{}, error) {
+	var raw interface{}
+	if err := yaml.Unmarshal(b, &raw); err != nil {
+		return nil, err
+	}
+	norm := Normalize(raw)
+	if m, ok := norm.(map[string]interface{}); ok {
+		return m, nil
+	}
+	return nil, fmt.Errorf("expected top‐level map, got %T", norm)
+}
+
+// Normalize will walk any nested map[interface{}]interface{} -> map[string]interface{}, and also recurse into []interface{}
+func Normalize(i interface{}) interface{} {
+	switch v := i.(type) {
+	case map[interface{}]interface{}:
+		m2 := make(map[string]interface{}, len(v))
+		for key, val := range v {
+			m2[fmt.Sprint(key)] = Normalize(val)
+		}
+		return m2
+	case []interface{}:
+		for idx, elem := range v {
+			v[idx] = Normalize(elem)
+		}
+		return v
+	default:
+		return v
+	}
+}
+
 // WriteYAML encodes a *yaml.Node to YAML and writes it to the specified file path
 func WriteYAML(path string, node *yaml.Node) error {
 	buf := &bytes.Buffer{}
