@@ -94,7 +94,20 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 }
 
 func setupTelemetry(ctx *cli.Context) telemetry.Client {
-	// TODO: (brandon c) handle disabled telemetry after private preview.
+	logger := common.LoggerFromContext(ctx.Context)
+
+	// Get effective telemetry preference (project takes precedence over global)
+	telemetryEnabled, err := common.GetEffectiveTelemetryPreference()
+	if err != nil {
+		logger.Debug("Failed to get telemetry preference: %v", err)
+		return telemetry.NewNoopClient()
+	}
+
+	// If telemetry is disabled, return noop client
+	if !telemetryEnabled {
+		return telemetry.NewNoopClient()
+	}
+
 	appEnv, ok := common.AppEnvironmentFromContext(ctx.Context)
 	if !ok {
 		return telemetry.NewNoopClient()
@@ -106,6 +119,43 @@ func setupTelemetry(ctx *cli.Context) telemetry.Client {
 	}
 
 	return phClient
+}
+
+// WithFirstRunTelemetryPrompt handles first-run telemetry setup
+func WithFirstRunTelemetryPrompt(cCtx *cli.Context) error {
+	logger := common.LoggerFromContext(cCtx.Context)
+
+	// Check if this is the first run
+	isFirstRun, err := common.IsFirstRun()
+	if err != nil {
+		logger.Debug("Failed to check first run status: %v", err)
+		return nil // Don't fail the command, just skip the prompt
+	}
+
+	if !isFirstRun {
+		return nil // Not first run, continue normally
+	}
+
+	// Show telemetry prompt and get user choice
+	choice, err := common.TelemetryPrompt(logger)
+	if err != nil {
+		logger.Debug("Failed to show telemetry prompt: %v", err)
+		// If prompt fails, mark first run complete but don't set telemetry preference
+		common.MarkFirstRunComplete()
+		return nil
+	}
+
+	// Save the user's choice globally
+	if err := common.SetGlobalTelemetryPreference(choice); err != nil {
+		logger.Debug("Failed to save telemetry preference: %v", err)
+		// Still mark first run complete even if save fails
+		common.MarkFirstRunComplete()
+		return nil
+	}
+
+	// First run handling complete
+	logger.Debug("First run telemetry setup completed")
+	return nil
 }
 
 func WithMetricEmission(action cli.ActionFunc) cli.ActionFunc {

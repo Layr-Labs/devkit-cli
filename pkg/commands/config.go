@@ -21,6 +21,9 @@ var ConfigCommand = &cli.Command{
 			Usage: "Open config file in a text editor for manual editing",
 		},
 	}, common.GlobalFlags...),
+	Subcommands: []*cli.Command{
+		TelemetryCommand,
+	},
 	Action: func(cCtx *cli.Context) error {
 		logger := common.LoggerFromContext(cCtx.Context)
 

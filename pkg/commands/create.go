@@ -170,12 +170,12 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to write .env.example: %w", err)
 		}
 
-		// Save project settings with telemetry preference
+		// Save project settings with telemetry preference inherited from global config
 		appEnv, ok := common.AppEnvironmentFromContext(cCtx.Context)
 		if !ok {
 			return fmt.Errorf("could not determine application environment")
 		}
-		if err := common.SaveProjectIdAndTelemetryToggle(targetDir, appEnv.ProjectUUID, true); err != nil {
+		if err := common.CreateProjectWithGlobalTelemetryDefaults(targetDir, appEnv.ProjectUUID); err != nil {
 			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 

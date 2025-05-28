@@ -117,18 +117,18 @@ func TestIsTelemetryEnabled_TrueAndFalse(t *testing.T) {
 	}
 
 	// Override global path
-	if !isTelemetryEnabled(truePath) {
+	if !isTelemetryEnabledAtPath(truePath) {
 		t.Error("Expected telemetry to be enabled")
 	}
 
-	if isTelemetryEnabled(falsePath) {
+	if isTelemetryEnabledAtPath(falsePath) {
 		t.Error("Expected telemetry to be disabled")
 	}
 }
 
 func TestIsTelemetryEnabled_FileMissing(t *testing.T) {
 	truePath := filepath.Join(t.TempDir(), "missing.yaml")
-	if isTelemetryEnabled(truePath) {
+	if isTelemetryEnabledAtPath(truePath) {
 		t.Error("Expected telemetry to be disabled when config is missing")
 	}
 }

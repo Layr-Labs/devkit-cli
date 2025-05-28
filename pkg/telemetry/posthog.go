@@ -76,9 +76,11 @@ func getPostHogAPIKey() string {
 	// 1. Environment variable
 	// 2. Project config file
 	// 3. Embedded key (set at build time)
-
+	logger, _ := common.GetLogger(false)
+	logger.Info("Getting PostHog API key")
 	// Check environment variable first
 	if key := os.Getenv("DEVKIT_POSTHOG_KEY"); key != "" {
+		logger.Info("Found PostHog API key in environment variable %s",key)
 		return key
 	}
 
