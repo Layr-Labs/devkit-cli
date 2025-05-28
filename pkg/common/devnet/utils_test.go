@@ -52,7 +52,7 @@ func TestGetDockerHost(t *testing.T) {
 				assert.Equal(t, tt.expected, result)
 			} else {
 				// When DOCKERS_HOST is empty, should return platform-specific default
-				assert.Contains(t, []string{"localhost", "host.docker.internal"}, result)
+				assert.Contains(t, []string{"172.17.0.1", "host.docker.internal"}, result)
 			}
 		})
 	}
