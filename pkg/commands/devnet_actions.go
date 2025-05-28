@@ -191,6 +191,21 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
+
+	// On cancel, always call down if skipAvsRun=false
+	if !skipAvsRun {
+		defer func() {
+			logger.Info("Stopping containers")
+			// clone cCtx but overwrite the context to Background
+			cloned := *cCtx
+			cloned.Context = context.Background()
+			if err := StopDevnetAction(&cloned); err != nil {
+				logger.Warn("automatic StopDevnetAction failed: %v", err)
+			}
+		}()
+	}
+
+	// Constuct RPC url to pass to scripts
 	rpcUrl := devnet.GetRPCURL(port)
 	logger.Info("Waiting for devnet to be ready...")
 
@@ -261,7 +276,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Start offchain AVS components after starting devnet and deploying contracts unless skipped
 	if !skipDeployContracts && !skipAvsRun {
-		if err := AVSRun(cCtx); err != nil {
+		if err := AVSRun(cCtx); err != nil && !errors.Is(err, context.Canceled) {
 			return fmt.Errorf("avs run failed: %w", err)
 		}
 	}
@@ -952,7 +967,6 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 }
 
 func migrateConfig(logger iface.Logger) (int, error) {
-
 	// Set path for context yamls
 	configDir := filepath.Join("config")
 	configPath := filepath.Join(configDir, "config.yaml")
