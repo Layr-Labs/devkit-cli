@@ -120,6 +120,10 @@ func LoadBaseConfig() (map[string]interface{}, error) {
 }
 
 func LoadContextConfig(ctxName string) (map[string]interface{}, error) {
+	// Default to devnet
+	if ctxName == "" {
+		ctxName = "devnet"
+	}
 	path := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", ctxName+".yaml")
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -132,7 +136,25 @@ func LoadContextConfig(ctxName string) (map[string]interface{}, error) {
 	return ctx, nil
 }
 
-func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {
+func LoadBaseConfigYaml() (*Config, error) {
+	path := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config: %w", err)
+	}
+	var cfg *Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+	return cfg, nil
+}
+
+func LoadConfigWithContextConfig(ctxName string) (*ConfigWithContextConfig, error) {
+	// Default to devnet
+	if ctxName == "" {
+		ctxName = "devnet"
+	}
+
 	// Load base config
 	configPath := filepath.Join(DefaultConfigWithContextConfigPath, BaseConfig)
 	data, err := os.ReadFile(configPath)
@@ -146,10 +168,10 @@ func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, 
 	}
 
 	// Load requested context file
-	contextFile := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", contextName+".yaml")
+	contextFile := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", ctxName+".yaml")
 	ctxData, err := os.ReadFile(contextFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read context %q file: %w", contextName, err)
+		return nil, fmt.Errorf("failed to read context %q file: %w", ctxName, err)
 	}
 
 	var wrapper struct {
@@ -162,7 +184,7 @@ func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, 
 	}
 
 	cfg.Context = map[string]ChainContextConfig{
-		contextName: wrapper.Context,
+		ctxName: wrapper.Context,
 	}
 
 	return &cfg, nil
