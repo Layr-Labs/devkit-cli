@@ -49,16 +49,16 @@ Before you begin, ensure you have:
 To download a binary for the latest release, run:
 ```bash
 # MacOS (Apple Silicon)
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-darwin-arm64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-darwin-arm64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
 
 # MacOS (Intel)
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-darwin-amd64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-darwin-amd64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
 
 # Linux (x86_64 / AMD64)
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-linux-amd64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-linux-amd64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
 
 # Linux (ARM64 / aarch64)
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-linux-arm64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-linux-arm64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
 ```
 
 The binary will be installed inside the ~/bin directory.
@@ -356,7 +356,7 @@ devkit avs build --verbose
 To upgrade the Devkit CLI to the latest version, find the [latest release](releases) you want to download and re-run the curl install command:
 
 ```bash
-VERSION=v0.0.6
+VERSION=v0.0.7
 ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
 DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
 
