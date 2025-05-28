@@ -260,29 +260,16 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName stri
 	configContent := configs.ConfigYamls[configs.LatestVersion]
 
 	// Unmarshal the YAML content into a map
-	var configMap map[string]interface{}
-	if err := yaml.Unmarshal([]byte(configContent), &configMap); err != nil {
+	var cfg common.Config
+	if err := yaml.Unmarshal([]byte(configContent), &cfg); err != nil {
 		return fmt.Errorf("failed to unmarshal config YAML: %w", err)
 	}
-
-	// Access the project section
-	if configSection, ok := configMap["config"].(map[string]interface{}); ok {
-		if projectMap, ok := configSection["project"].(map[string]interface{}); ok {
-			// Update project name
-			projectMap["name"] = projectName
-
-			// Add template information if provided
-			if templateBaseURL != "" {
-				projectMap["templateBaseUrl"] = templateBaseURL
-			}
-			if templateVersion != "" {
-				projectMap["templateVersion"] = templateVersion
-			}
-		}
-	}
+	cfg.Config.Project.Name = projectName
+	cfg.Config.Project.TemplateBaseURL = templateBaseURL
+	cfg.Config.Project.TemplateVersion = templateVersion
 
 	// Marshal the modified configuration back to YAML
-	newContentBytes, err := yaml.Marshal(configMap)
+	newContentBytes, err := yaml.Marshal(&cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal modified config: %w", err)
 	}
