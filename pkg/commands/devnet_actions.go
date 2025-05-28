@@ -205,7 +205,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}()
 	}
 
-	// Constuct RPC url to pass to scripts
+	// Construct RPC url to pass to scripts
 	rpcUrl := devnet.GetRPCURL(port)
 	logger.Info("Waiting for devnet to be ready...")
 
