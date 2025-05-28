@@ -72,6 +72,7 @@ func (l *BasicLogger) Warn(msg string, args ...any) {
 
 func (l *BasicLogger) Error(msg string, args ...any) {
 	l.ErrorWithActor("System", msg, args...)
+<<<<<<< Updated upstream
 }
 
 func (l *BasicLogger) Debug(msg string, args ...any) {
@@ -85,4 +86,6 @@ func (l *BasicLogger) Debug(msg string, args ...any) {
 	for _, line := range lines {
 		log.Printf("Error: %s", line)
 	}
+=======
+>>>>>>> Stashed changes
 }

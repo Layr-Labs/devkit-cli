@@ -41,6 +41,7 @@ func main() {
 			commands.AVSCommand,
 			keystore.KeystoreCommand,
 			version.VersionCommand,
+			commands.OperatorCommands(),
 		},
 		UseShortOptionHandling: true,
 	}
