@@ -197,7 +197,7 @@ func ValidateConfig(configPath string, editTarget EditTarget) ([]byte, error) {
 		return data, fmt.Errorf("unsupported edit target: %v", editTarget)
 	}
 
-	// Verify known fileds are present
+	// Verify known fields are present
 	if err := common.RequireNonZero(val); err != nil {
 		return data, err
 	}
