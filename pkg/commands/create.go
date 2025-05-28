@@ -165,7 +165,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Copies the default .zeus file in the .zeus/ directory
-		if err := copyZeusFileToProject(targetDir, cCtx.Bool("verbose")); err != nil {
+		if err := copyZeusFileToProject(logger, targetDir); err != nil {
 			return fmt.Errorf("failed to initialize .zeus: %w", err)
 		}
 
@@ -351,9 +351,7 @@ func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string) error 
 }
 
 // Copies the .zeus file to the project directory
-func copyZeusFileToProject(targetDir string, verbose bool) error {
-	log, _ := common.GetLogger()
-
+func copyZeusFileToProject(logger iface.Logger, targetDir string) error {
 	// Destination .zeus file path
 	destZeusPath := filepath.Join(targetDir, common.ZeusConfig)
 
@@ -364,9 +362,8 @@ func copyZeusFileToProject(targetDir string, verbose bool) error {
 		return fmt.Errorf("failed to write file %s: %w", common.ZeusConfig, err)
 	}
 
-	if verbose {
-		log.Info("Copied zeus config: %s", common.ZeusConfig)
-	}
+	logger.Debug("Copied zeus config: %s", common.ZeusConfig)
+
 	return nil
 }
 
