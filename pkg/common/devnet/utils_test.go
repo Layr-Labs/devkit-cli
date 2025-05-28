@@ -140,6 +140,55 @@ func TestEnsureDockerHost(t *testing.T) {
 			expectedURL: "http://custom.docker.host:8545?param=value",
 			description: "Should replace localhost and preserve query parameters",
 		},
+		{
+			name:        "WebSocket localhost replacement",
+			inputURL:    "ws://localhost:8546",
+			dockersHost: "custom.docker.host",
+			expectedURL: "ws://custom.docker.host:8546",
+			description: "Should replace localhost in WebSocket URLs",
+		},
+		{
+			name:        "Secure WebSocket localhost replacement",
+			inputURL:    "wss://localhost:8546/ws",
+			dockersHost: "custom.docker.host",
+			expectedURL: "wss://custom.docker.host:8546/ws",
+			description: "Should replace localhost in secure WebSocket URLs",
+		},
+		{
+			name:        "Do not replace localhost in complex subdomain",
+			inputURL:    "https://dev.localhost.internal.company.com:3000",
+			dockersHost: "custom.docker.host",
+			expectedURL: "https://dev.localhost.internal.company.com:3000",
+			description: "Should NOT replace localhost when it's part of a complex subdomain",
+		},
+		{
+			name:        "Do not replace localhost-like service names",
+			inputURL:    "https://localhost-dev.myservice.com:8080",
+			dockersHost: "custom.docker.host",
+			expectedURL: "https://localhost-dev.myservice.com:8080",
+			description: "Should NOT replace localhost when it's part of a hyphenated service name",
+		},
+		{
+			name:        "Replace localhost in fragment",
+			inputURL:    "http://localhost:8545/api#section",
+			dockersHost: "custom.docker.host",
+			expectedURL: "http://custom.docker.host:8545/api#section",
+			description: "Should replace localhost and preserve URL fragment",
+		},
+		{
+			name:        "Replace standalone localhost in complex string",
+			inputURL:    "Connect to localhost:8545 for RPC",
+			dockersHost: "custom.docker.host",
+			expectedURL: "Connect to custom.docker.host:8545 for RPC",
+			description: "Should replace standalone localhost in descriptive text",
+		},
+		{
+			name:        "Do not replace when localhost is part of word",
+			inputURL:    "Visit our-localhost-cluster.example.com",
+			dockersHost: "custom.docker.host",
+			expectedURL: "Visit our-localhost-cluster.example.com",
+			description: "Should NOT replace localhost when it's part of a hyphenated word",
+		},
 	}
 
 	for _, tt := range tests {

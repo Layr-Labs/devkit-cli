@@ -125,20 +125,50 @@ func EnsureDockerHost(inputUrl string) string {
 
 // ensureDockerHostRegex provides regex-based fallback for malformed URLs
 func ensureDockerHostRegex(inputUrl string, dockerHost string) string {
-	// Pattern to match localhost or 127.0.0.1 as hostname (not substring)
-	// Matches localhost:port followed by safe separators, or standalone localhost
-	// Matches: localhost:8545, localhost/path, localhost?param, localhost (at end), localhost with space, etc.
-	// Doesn't match: localhost.domain.com, my-localhost-service.com, etc.
-	localhostPattern := regexp.MustCompile(`\blocalhost(:[0-9]+)?(?:[\s/=?#]|$)`)
-	ipPattern := regexp.MustCompile(`\b127\.0\.0\.1(:[0-9]+)?(?:[\s/=?#]|$)`)
+	// Pattern to match URLs with schemes (http, https, ws, wss) followed by localhost
+	// This ensures we only rewrite actual localhost URLs, not subdomains like "api.localhost.company.com"
+	schemeLocalhostPattern := regexp.MustCompile(`(https?|wss?)://localhost(:[0-9]+)?(/\S*)?`)
+	schemeIPPattern := regexp.MustCompile(`(https?|wss?)://127\.0\.0\.1(:[0-9]+)?(/\S*)?`)
 
-	// Replace localhost patterns
-	result := localhostPattern.ReplaceAllStringFunc(inputUrl, func(match string) string {
+	// Pattern to match malformed scheme-like strings with localhost/127.0.0.1
+	// This handles cases like "ht tp://localhost" or "ht\x00tp://localhost"
+	malformedSchemeLocalhostPattern := regexp.MustCompile(`\S*tp://localhost(:[0-9]+)?(/\S*)?`)
+	malformedSchemeIPPattern := regexp.MustCompile(`\S*tp://127\.0\.0\.1(:[0-9]+)?(/\S*)?`)
+
+	// Pattern to match standalone localhost (no scheme) at start of string or after whitespace/equals
+	// This avoids matching localhost as part of a larger domain name
+	standaloneLocalhostPattern := regexp.MustCompile(`(?:^|[\s=])localhost(:[0-9]+)?(?:[\s/=?#]|$)`)
+	standaloneIPPattern := regexp.MustCompile(`(?:^|[\s=])127\.0\.0\.1(:[0-9]+)?(?:[\s/=?#]|$)`)
+
+	result := inputUrl
+
+	// Replace scheme-based localhost URLs
+	result = schemeLocalhostPattern.ReplaceAllStringFunc(result, func(match string) string {
 		return strings.Replace(match, "localhost", dockerHost, 1)
 	})
 
-	// Replace 127.0.0.1 patterns
-	result = ipPattern.ReplaceAllStringFunc(result, func(match string) string {
+	// Replace scheme-based 127.0.0.1 URLs
+	result = schemeIPPattern.ReplaceAllStringFunc(result, func(match string) string {
+		return strings.Replace(match, "127.0.0.1", dockerHost, 1)
+	})
+
+	// Replace malformed scheme localhost patterns
+	result = malformedSchemeLocalhostPattern.ReplaceAllStringFunc(result, func(match string) string {
+		return strings.Replace(match, "localhost", dockerHost, 1)
+	})
+
+	// Replace malformed scheme 127.0.0.1 patterns
+	result = malformedSchemeIPPattern.ReplaceAllStringFunc(result, func(match string) string {
+		return strings.Replace(match, "127.0.0.1", dockerHost, 1)
+	})
+
+	// Replace standalone localhost patterns
+	result = standaloneLocalhostPattern.ReplaceAllStringFunc(result, func(match string) string {
+		return strings.Replace(match, "localhost", dockerHost, 1)
+	})
+
+	// Replace standalone 127.0.0.1 patterns
+	result = standaloneIPPattern.ReplaceAllStringFunc(result, func(match string) string {
 		return strings.Replace(match, "127.0.0.1", dockerHost, 1)
 	})
 
