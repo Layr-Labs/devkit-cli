@@ -46,7 +46,7 @@ Before you begin, ensure you have:
 
 ### 📦 Installation
 
-To download the MacOS binary for the latest release, run:
+To download a binary for the latest release, run:
 ```bash
 # MacOS (Apple Silicon)
 sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-darwin-arm64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
