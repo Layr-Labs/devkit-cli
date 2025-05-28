@@ -58,9 +58,3 @@ context:
     avs_private_key: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d" # Anvil Private Key 1
     metadata_url: "https://my-org.com/avs/metadata.json"
     registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"
-  # Contracts deployed on `devnet start`
-  deployed_contracts:
-  # Operator Sets registered on `devnet start`
-  operator_sets:
-  # Operators registered on `devnet start`
-  operator_registrations:
