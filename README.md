@@ -22,7 +22,8 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 | Command        | Description                                                       |
 |----------------|-------------------------------------------------------------------|
 | `devkit avs create`   | Scaffold a new AVS project                                        |
-| `devkit avs config`   | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...) |
+| `devkit avs config`   | Configure your Project (`config/config.yaml`) |
+| `devkit avs context`   | Configure your environment and AVS (`config/devnet.yaml`...) |
 | `devkit avs build`    | Compile AVS smart contracts and binaries                          |
 | `devkit avs devnet`   | Manage local development network                                  |
 | `devkit avs call`     | Simulate AVS task execution locally                               |
@@ -125,7 +126,7 @@ These functions will be invoked automatically when using `devkit avs call`, enab
 > **💡 Tip:**  
 > You can add logging inside these methods using the `tw.logger.Sugar().Infow(...)` lines to debug and inspect task input and output during development.
 
-### 3️⃣ Configure Your AVS (`avs config` & `avs context`)
+### 3️⃣ Configure Your AVS (`devkit avs config` & `devkit avs context`)
 
 <!-- TODO: Make it very clear and very specific that the one field we need to change is the fork_url and that they are in charge of supplying this.
 Also, keep stuff at the top about introducing config yaml files and what they do.
