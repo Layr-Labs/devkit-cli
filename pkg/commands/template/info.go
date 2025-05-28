@@ -20,12 +20,12 @@ var InfoCommand = &cli.Command{
 		}
 
 		// Display template information
-		logger.Info("Project template information:")
+		log.InfoWithActor("User", "Project template information:")
 		if projectName != "" {
-			logger.Info("  Project name: %s", projectName)
+			log.InfoWithActor("User", "  Project name: %s", projectName)
 		}
-		logger.Info("  Template URL: %s", templateBaseURL)
-		logger.Info("  Version: %s", templateVersion)
+		log.InfoWithActor("User", "  Template URL: %s", templateBaseURL)
+		log.InfoWithActor("User", "  Version: %s", templateVersion)
 
 		return nil
 	},

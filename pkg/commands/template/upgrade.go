@@ -68,7 +68,7 @@ func createUpgradeCommand(
 				if templateBaseURL == "" {
 					return fmt.Errorf("no template URL found in config and no default available")
 				}
-				logger.Info("No template URL found in config, using default: %s", templateBaseURL)
+				log.InfoWithActor("AVS Developer", "No template URL found in config, using default: %s", templateBaseURL)
 			}
 
 			// Get project's absolute path
@@ -90,12 +90,12 @@ func createUpgradeCommand(
 			}
 			defer os.RemoveAll(tempCacheDir) // Clean up on exit
 
-			logger.Info("Upgrading project template:")
-			logger.Info("  Project: %s", projectName)
-			logger.Info("  Template URL: %s", templateBaseURL)
-			logger.Info("  Current version: %s", currentVersion)
-			logger.Info("  Target version: %s", requestedVersion)
-			logger.Info("")
+			log.InfoWithActor("AVS Developer", "Upgrading project template:")
+			log.InfoWithActor("AVS Developer", "  Project: %s", projectName)
+			log.InfoWithActor("AVS Developer", "  Template URL: %s", templateBaseURL)
+			log.InfoWithActor("AVS Developer", "  Current version: %s", currentVersion)
+			log.InfoWithActor("AVS Developer", "  Target version: %s", requestedVersion)
+			log.InfoWithActor("AVS Developer", "")
 
 			// Extract base URL without .git suffix for consistency
 			baseRepoURL := strings.TrimSuffix(templateBaseURL, ".git")
@@ -111,7 +111,7 @@ func createUpgradeCommand(
 					Verbose: cCtx.Bool("verbose"),
 				},
 			}
-			logger.Info("Cloning template repository...")
+			log.InfoWithActor("AVS Developer", "Cloning template repository...")
 			if err := fetcher.Fetch(cCtx.Context, baseRepoURL, requestedVersion, tempDir); err != nil {
 				return fmt.Errorf("failed to fetch template from %s with version %s: %w", baseRepoURL, requestedVersion, err)
 			}
@@ -122,7 +122,7 @@ func createUpgradeCommand(
 				return fmt.Errorf("upgrade script not found in template version %s", requestedVersion)
 			}
 
-			logger.Info("Running upgrade script...")
+			log.InfoWithActor("AVS Developer", "Running upgrade script...")
 
 			// Execute the upgrade script, passing the project path as an argument
 			_, err = common.CallTemplateScript(cCtx.Context, logger, tempDir, upgradeScriptPath, common.ExpectNonJSONResponse, []byte(absProjectPath))
@@ -152,7 +152,7 @@ func createUpgradeCommand(
 					if _, ok := projectMap["templateBaseUrl"]; !ok {
 						// Use the non-.git version for the config
 						projectMap["templateBaseUrl"] = strings.TrimSuffix(baseRepoURL, ".git")
-						logger.Info("Added missing template URL to config")
+						log.InfoWithActor("AVS Developer", "Added missing template URL to config")
 					}
 				}
 			}
@@ -168,9 +168,9 @@ func createUpgradeCommand(
 				return fmt.Errorf("failed to write updated config: %w", err)
 			}
 
-			logger.Info("")
-			logger.Info("Template upgrade completed successfully!")
-			logger.Info("Project is now using template version: %s", requestedVersion)
+			log.InfoWithActor("User", "")
+			log.InfoWithActor("User", "Template upgrade completed successfully!")
+			log.InfoWithActor("User", "Project is now using template version: %s", requestedVersion)
 
 			return nil
 		},

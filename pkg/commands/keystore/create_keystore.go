@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
@@ -46,10 +45,13 @@ var CreateCommand = &cli.Command{
 		path := cCtx.String("path")
 		curve := cCtx.String("type")
 		password := cCtx.String("password")
+		verbose := cCtx.Bool("verbose")
 
-		logger.Debug("🔐 Starting Bls keystore creation")
-		logger.Debug("• Curve: %s", curve)
-		logger.Debug("• Output Path: %s", path)
+		if verbose {
+			log.InfoWithActor("User", "🔐 Starting Bls keystore creation")
+			log.InfoWithActor("User", "• Curve: %s", curve)
+			log.InfoWithActor("User", "• Output Path: %s", path)
+		}
 
 		return CreateBLSKeystore(logger, privateKey, path, password, curve)
 	},
@@ -65,9 +67,11 @@ func CreateBLSKeystore(logger iface.Logger, privateKey, path, password, curve st
 		return fmt.Errorf("unsupported curve: %s", curve)
 	}
 
-	logger.Debug("🔐 Starting Bls keystore creation")
-	logger.Debug("• Curve: %s", curve)
-	logger.Debug("• Output Path: %s", path)
+	if verbose {
+		log.InfoWithActor("User", "🔐 Starting Bls keystore creation")
+		log.InfoWithActor("User", "• Curve: %s", curve)
+		log.InfoWithActor("User", "• Output Path: %s", path)
+	}
 
 	scheme := bn254.NewScheme()
 	cleanedKey := strings.TrimPrefix(privateKey, "0x")
@@ -91,9 +95,9 @@ func CreateBLSKeystore(logger iface.Logger, privateKey, path, password, curve st
 		return errors.New("failed to extract the private key from the keystore file")
 	}
 
-	logger.Info("✅ Keystore generated successfully")
-	logger.Info("🔑 Save this BLS private key in a secure location:")
-	logger.Info("    %s\n", privateKeyData.Bytes())
+	log.InfoWithActor("User", "✅ Keystore generated successfully")
+	log.InfoWithActor("User", "🔑 Save this BLS private key in a secure location:")
+	log.InfoWithActor("User", "    %s\n", privateKeyData.Bytes())
 
 	return nil
 }

@@ -50,23 +50,23 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Migrate config
 	configMigrated, err := migrateConfig(logger)
 	if err != nil {
-		logger.Error("config migration failed: %w", err)
+		log.ErrorWithActor("System", "config migration failed: %w", err)
 	}
 	if configMigrated > 0 {
-		logger.Info("Config migration complete")
+		log.InfoWithActor("System", "Config migration complete")
 	}
 
 	// Migrate contexts
 	contextsMigrated, err := migrateContexts(logger)
 	if err != nil {
-		logger.Error("context migrations failed: %w", err)
+		log.ErrorWithActor("System", "context migrations failed: %w", err)
 	}
 	if contextsMigrated > 0 {
 		suffix := "s"
 		if contextsMigrated == 1 {
 			suffix = ""
 		}
-		logger.Info("%d context migration%s complete", contextsMigrated, suffix)
+		log.InfoWithActor("System", "%d context migration%s complete", contextsMigrated, suffix)
 	}
 
 	// Load config for devnet
@@ -86,16 +86,16 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// If user gives, say, log = "DEBUG" Or "Debug", we normalize it to lowercase
 	if common.IsVerboseEnabled(cCtx, config) {
-		logger.Info("Starting devnet...\n")
+		log.InfoWithActor("User", "Starting devnet...\n")
 
 		if cCtx.Bool("reset") {
-			logger.Info("Resetting devnet...")
+			log.InfoWithActor("User", "Resetting devnet...")
 		}
 		if fork := cCtx.String("fork"); fork != "" {
-			logger.Info("Forking from chain: %s", fork)
+			log.InfoWithActor("User", "Forking from chain: %s", fork)
 		}
 		if cCtx.Bool("headless") {
-			logger.Info("Running in headless mode")
+			log.InfoWithActor("User", "Running in headless mode")
 		}
 	}
 
@@ -139,7 +139,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
-	logger.Info("Waiting for devnet to be ready...")
+	log.InfoWithActor("User", "Waiting for devnet to be ready...")
 
 	// Set path for context yamls
 	contextDir := filepath.Join("config", "contexts")
@@ -197,7 +197,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 1 second to make sure wallets are funded
 	time.Sleep(1 * time.Second)
-	logger.Info("\nDevnet started successfully in %s", elapsed)
+	log.InfoWithActor("User", "\nDevnet started successfully in %s", elapsed)
 
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
@@ -208,7 +208,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		// Sleep for 1 second to make sure new context values have been written
 		time.Sleep(1 * time.Second)
 
-		logger.Info("Registering AVS with EigenLayer...")
+		log.InfoWithActor("AVS Developer", "Registering AVS with EigenLayer...")
 
 		if !cCtx.Bool("skip-setup") {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
@@ -220,13 +220,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			if err := CreateAVSOperatorSetsAction(cCtx, logger); err != nil {
 				return fmt.Errorf("creating AVS operator sets failed: %w", err)
 			}
-			logger.Info("AVS registered with EigenLayer successfully.")
+			log.InfoWithActor("AVS Developer", "AVS registered with EigenLayer successfully.")
 
 			if err := RegisterOperatorsFromConfigAction(cCtx, logger); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
 		} else {
-			logger.Info("Skipping AVS setup steps...")
+			log.InfoWithActor("AVS Developer", "Skipping AVS setup steps...")
 		}
 	}
 
@@ -291,7 +291,8 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Loop scripts with cloned context
 	for _, name := range scriptNames {
 		// Log the script name that's about to be executed
-		logger.Info("Executing script: %s", name)
+		log, _ := common.GetLogger()
+		log.InfoWithActor("User", "Executing script: %s", name)
 		// Clone context node and convert to map
 		clonedCtxNode := common.CloneNode(contextNode)
 		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
@@ -336,7 +337,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Measure how long we ran for
 	elapsed := time.Since(startTime).Round(time.Second)
-	logger.Info("\nDevnet contracts deployed successfully in %s", elapsed)
+	log.InfoWithActor("User", "\nDevnet contracts deployed successfully in %s", elapsed)
 	return nil
 }
 
@@ -364,7 +365,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		}
 
 		if cCtx.Bool("verbose") {
-			log.Info("Attempting to stop devnet containers...")
+			log.InfoWithActor("System", "Attempting to stop devnet containers...")
 		}
 
 		for _, name := range containerNames {
@@ -397,7 +398,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 			output, err := cmd.Output()
 			if err != nil {
-				log.Warn("Failed to list running devnet containers: %v", err)
+				log.WarnWithActor("System", "Failed to list running devnet containers: %v", err)
 			}
 
 			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -416,13 +417,13 @@ func StopDevnetAction(cCtx *cli.Context) error {
 					projectName := strings.TrimPrefix(containerName, "devkit-devnet-")
 					devnet.StopAndRemoveContainer(cCtx, containerName)
 
-					log.Info("Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
+					log.InfoWithActor("User", "Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
 					containerFoundUsingthePort = true
 					break
 				}
 			}
 			if !containerFoundUsingthePort {
-				log.Info("No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers", projectPort, devnet.Cyan, devnet.Reset)
+				log.InfoWithActor("User", "No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers", projectPort, devnet.Cyan, devnet.Reset)
 			}
 
 		}
@@ -441,7 +442,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		devnet.StopAndRemoveContainer(cCtx, container)
 
 	} else {
-		log.Info("Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
+		log.InfoWithActor("User", "Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
 	}
 
 	return nil
@@ -562,12 +563,12 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	var registrarAddr ethcommon.Address
-	logger.Info("Attempting to find AvsRegistrar in deployed contracts...")
+	log.InfoWithActor("System", "Attempting to find AvsRegistrar in deployed contracts...")
 	foundInDeployed := false
 	for _, contract := range envCtx.DeployedContracts {
 		if strings.Contains(strings.ToLower(contract.Name), "avsregistrar") {
 			registrarAddr = ethcommon.HexToAddress(contract.Address)
-			logger.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
+			log.InfoWithActor("System", "Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
 			foundInDeployed = true
 			break
 		}
@@ -616,7 +617,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	if len(envCtx.OperatorSets) == 0 {
-		logger.Info("No operator sets to create.")
+		log.InfoWithActor("System", "No operator sets to create.")
 		return nil
 	}
 	createSetParams := make([]allocationmanager.IAllocationManagerTypesCreateSetParams, len(envCtx.OperatorSets))
@@ -644,25 +645,25 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) e
 		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
 	}
 
-	logger.Info("Registering operators with EigenLayer...")
+	log.InfoWithActor("System", "Registering operators with EigenLayer...")
 	if len(envCtx.OperatorRegistrations) == 0 {
-		logger.Info("No operator registrations found in context, skipping operator registration.")
+		log.InfoWithActor("System", "No operator registrations found in context, skipping operator registration.")
 		return nil
 	}
 
 	for _, opReg := range envCtx.OperatorRegistrations {
-		logger.Info("Processing registration for operator at address %s", opReg.Address)
-		if err := registerOperatorEL(cCtx, opReg.Address, logger); err != nil {
-			logger.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
+		log.InfoWithActor("System", "Processing registration for operator at address %s", opReg.Address)
+		if err := registerOperatorEL(cCtx, opReg.Address); err != nil {
+			log.ErrorWithActor("System", "Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
 			continue
 		}
-		if err := registerOperatorAVS(cCtx, logger, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
-			logger.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
+		if err := registerOperatorAVS(cCtx, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
+			log.ErrorWithActor("System", "Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
 			continue
 		}
-		logger.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
+		log.InfoWithActor("System", "Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
 	}
-	logger.Info("Operator registration with EigenLayer completed.")
+	log.InfoWithActor("System", "Operator registration with EigenLayer completed.")
 	return nil
 }
 
@@ -814,7 +815,7 @@ func migrateConfig(logger iface.Logger) (int, error) {
 
 	// If config was migrated
 	if !alreadyUptoDate {
-		logger.Info("Migrated %s\n", configPath)
+		log.InfoWithActor("System", "Migrated %s\n", configPath)
 
 		return 1, nil
 	}
@@ -850,7 +851,7 @@ func migrateContexts(logger iface.Logger) (int, error) {
 
 		// For every other error, migration failed
 		if err != nil && !alreadyUptoDate {
-			logger.Error("failed to migrate: %v", err)
+			log.ErrorWithActor("System", "failed to migrate: %v", err)
 			continue
 		}
 
@@ -860,7 +861,7 @@ func migrateContexts(logger iface.Logger) (int, error) {
 			contextsMigrated += 1
 
 			// If migration succeeds
-			logger.Info("Migrated %s\n", contextPath)
+			log.InfoWithActor("System", "Migrated %s\n", contextPath)
 		}
 	}
 

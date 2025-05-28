@@ -26,7 +26,9 @@ func AVSRun(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Print task if verbose
-	logger.Debug("Starting offchain AVS components...")
+	if cCtx.Bool("verbose") {
+		log.InfoWithActor("AVS Developer", "Starting offchain AVS components...")
+	}
 
 	// Run the script from root of project dir
 	// (@TODO (GD): this should always be the root of the project, but we need to do this everywhere (ie reading ctx/config etc))
@@ -48,7 +50,7 @@ func AVSRun(cCtx *cli.Context) error {
 		return fmt.Errorf("run failed: %w", err)
 	}
 
-	logger.Info("Offchain AVS components started successfully!")
+	log.InfoWithActor("User", "Offchain AVS components started successfully!")
 
 	return nil
 }
