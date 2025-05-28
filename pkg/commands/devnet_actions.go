@@ -193,7 +193,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// On cancel, always call down if skipAvsRun=false
-	if !skipAvsRun {
+	if !skipDeployContracts && !skipAvsRun {
 		defer func() {
 			logger.Info("Stopping containers")
 			// clone cCtx but overwrite the context to Background

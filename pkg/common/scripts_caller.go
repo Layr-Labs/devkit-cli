@@ -39,11 +39,12 @@ func CallTemplateScript(cmdCtx context.Context, logger iface.Logger, dir string,
 	// Run the command in its own group
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
-	// When context is canceled, forward SIGINT
+	// When context is canceled, forward SIGINT (but only if the process is running)
 	go func() {
 		<-cmdCtx.Done()
-		// kill the whole group: negative PID means process group
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGINT)
+		if cmd.Process != nil {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGINT)
+		}
 	}()
 
 	// Exec the command
