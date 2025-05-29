@@ -375,7 +375,7 @@ devkit avs template info
 2025/05/22 14:42:36 Project template information:
 2025/05/22 14:42:36   Project name: <your project>
 2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
-2025/05/22 14:42:36   Version: v0.0.10
+2025/05/22 14:42:36   Version: v0.0.11
 ```
 
 **_Upgrade to a newer version_**

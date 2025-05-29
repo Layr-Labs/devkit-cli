@@ -57,7 +57,7 @@ func GetDockerPsDevnetArgs() []string {
 
 // GetDockerHost returns the appropriate Docker host based on environment and platform.
 // Uses DOCKERS_HOST environment variable if set, otherwise detects OS:
-// - Linux: defaults to localhost (Docker containers can access host via localhost)
+// - Linux: defaults to 172.17.0.1 (Docker containers can access host via localhost)
 // - macOS/Windows: defaults to host.docker.internal (required for Docker Desktop)
 func GetDockerHost() string {
 	if dockersHost := os.Getenv("DOCKERS_HOST"); dockersHost != "" {
