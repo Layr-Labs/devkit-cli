@@ -136,6 +136,17 @@ func WithFirstRunTelemetryPrompt(cCtx *cli.Context) error {
 		return nil // Not first run, continue normally
 	}
 
+	// Check if telemetry is configurable
+	if !common.IsTelemetryConfigurable() {
+		// Telemetry is not configurable, skip prompt and just mark first run complete
+		logger.Debug("Telemetry not configurable, skipping first-run prompt")
+		err = common.MarkFirstRunComplete()
+		if err != nil {
+			logger.Debug("Failed to mark first run complete: %v", err)
+		}
+		return nil
+	}
+
 	// Show telemetry prompt and get user choice
 	choice, err := common.TelemetryPrompt(logger)
 	if err != nil {

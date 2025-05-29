@@ -85,7 +85,21 @@ func HandleFirstRunTelemetryPrompt(logger iface.Logger) (bool, bool, error) {
 		return false, false, nil
 	}
 
-	// This is the first run, show the prompt
+	// This is the first run - check if telemetry is configurable
+	if !IsTelemetryConfigurable() { // @TODO: remove this once telemetry is configurable
+		// Telemetry is not configurable, skip prompt and enable telemetry
+		logger.Debug("Telemetry not configurable, skipping first-run prompt")
+
+		// Mark first run as complete
+		if err := markFirstRunCompleteWithVersion(); err != nil {
+			logger.Debug("Failed to mark first run complete: %v", err)
+		}
+
+		// Return enabled=true since telemetry is always on when not configurable
+		return true, true, nil
+	}
+
+	// Telemetry is configurable, show the prompt
 	telemetryEnabled, err := TelemetryPrompt(logger)
 	if err != nil {
 		logger.Debug("Failed to show telemetry prompt: %v", err)
