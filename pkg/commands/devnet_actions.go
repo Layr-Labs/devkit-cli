@@ -934,12 +934,12 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 			ABI interface{} `json:"abi"`
 		}
 		if err := json.Unmarshal(raw, &abi); err != nil {
-			return fmt.Errorf("unmarshal artifact JSON: %w", err)
+			return fmt.Errorf("unmarshal artifact JSON for %s (%s) failed: %w", nameVal, addressVal, err)
 		}
 
 		// Check if provided abi is valid
 		if err := common.IsValidABI(abi.ABI); err != nil {
-			return fmt.Errorf("ABI is invalid: %v", err)
+			return fmt.Errorf("ABI for %s (%s) is invalid: %v", nameVal, addressVal, err)
 		}
 
 		// Build the output struct
@@ -952,13 +952,13 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 		// Marshal with indentation
 		data, err := json.MarshalIndent(out, "", "  ")
 		if err != nil {
-			return fmt.Errorf("marshal output for %s: %w", nameVal, err)
+			return fmt.Errorf("marshal output for %s (%s): %w", nameVal, addressVal, err)
 		}
 
 		// Write to ./contracts/outputs/<context>/<name>.json
 		outPath := filepath.Join(outDir, nameVal+".json")
 		if err := os.WriteFile(outPath, data, 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", outPath, err)
+			return fmt.Errorf("write output to %s (%s): %w", outPath, addressVal, err)
 		}
 
 		logger.Info("Written contract output: %s\n", outPath)
