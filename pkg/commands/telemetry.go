@@ -59,42 +59,33 @@ var TelemetryCommand = &cli.Command{
 	},
 }
 
+// displayGlobalTelemetryStatus shows the global telemetry preference status
+func displayGlobalTelemetryStatus(logger iface.Logger, prefix string) error {
+	globalPreference, err := common.GetGlobalTelemetryPreference()
+	if err != nil {
+		return fmt.Errorf("failed to get global telemetry preference: %w", err)
+	}
+
+	if globalPreference == nil {
+		logger.Info("%s: Not set (defaults to disabled)", prefix)
+	} else if *globalPreference {
+		logger.Info("%s: Enabled", prefix)
+	} else {
+		logger.Info("%s: Disabled", prefix)
+	}
+	return nil
+}
+
 func showTelemetryStatus(logger iface.Logger, global bool) error {
 	if global {
-		// Show global status
-		globalPreference, err := common.GetGlobalTelemetryPreference()
-		if err != nil {
-			return fmt.Errorf("failed to get global telemetry preference: %w", err)
-		}
-
-		if globalPreference == nil {
-			logger.Info("Global telemetry: Not set (defaults to disabled)")
-		} else if *globalPreference {
-			logger.Info("Global telemetry: Enabled")
-		} else {
-			logger.Info("Global telemetry: Disabled")
-		}
-		return nil
+		return displayGlobalTelemetryStatus(logger, "Global telemetry")
 	}
 
 	// Show effective status (project takes precedence over global)
 	effectivePreference, err := common.GetEffectiveTelemetryPreference()
 	if err != nil {
 		// If not in a project, show global preference
-		globalPreference, globalErr := common.GetGlobalTelemetryPreference()
-		if globalErr != nil {
-			logger.Error("failed to get telemetry preferences: %v", globalErr)
-			return fmt.Errorf("failed to get telemetry preferences: %w", globalErr)
-		}
-
-		if globalPreference == nil {
-			logger.Info("Telemetry: Disabled (no preference set)")
-		} else if *globalPreference {
-			logger.Info("Telemetry: Enabled (global setting)")
-		} else {
-			logger.Info("Telemetry: Disabled (global setting)")
-		}
-		return nil
+		return displayGlobalTelemetryStatus(logger, "Telemetry")
 	}
 
 	// Check if we're in a project and if there's a project-specific setting
@@ -107,14 +98,7 @@ func showTelemetryStatus(logger iface.Logger, global bool) error {
 		}
 
 		// Also show global setting for context
-		globalPreference, _ := common.GetGlobalTelemetryPreference()
-		if globalPreference == nil {
-			logger.Info("Global default: Not set")
-		} else if *globalPreference {
-			logger.Info("Global default: Enabled")
-		} else {
-			logger.Info("Global default: Disabled")
-		}
+		return displayGlobalTelemetryStatus(logger, "Global default")
 	} else {
 		// Not in project, show global
 		if effectivePreference {
