@@ -646,6 +646,9 @@ func TestDeployContracts_ExtractContractOutputs(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			originalCwd, err := os.Getwd()
+			assert.NoError(t, err)
+			t.Cleanup(func() { _ = os.Chdir(originalCwd) })
 			// each test in its own temp workspace
 			baseDir := t.TempDir()
 			require.NoError(t, os.Chdir(baseDir))
