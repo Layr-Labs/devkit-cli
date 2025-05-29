@@ -58,7 +58,10 @@ jobs:
         run: |
           cd ./my-awesome-avs/
           devkit avs devnet start &
-          sleep 60
+          # wait until executor and aggregator are available
+          until nc -z localhost 9090 && nc -z localhost 8081; do
+            sleep 1
+          done
 
       - name: Check devnet RPC is live
         run: |
