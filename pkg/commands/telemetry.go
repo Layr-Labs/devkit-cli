@@ -68,11 +68,11 @@ func showTelemetryStatus(logger iface.Logger, global bool) error {
 		}
 
 		if globalPreference == nil {
-			fmt.Println("Global telemetry: Not set (defaults to disabled)")
+			logger.Info("Global telemetry: Not set (defaults to disabled)")
 		} else if *globalPreference {
-			fmt.Println("Global telemetry: Enabled")
+			logger.Info("Global telemetry: Enabled")
 		} else {
-			fmt.Println("Global telemetry: Disabled")
+			logger.Info("Global telemetry: Disabled")
 		}
 		return nil
 	}
@@ -83,15 +83,16 @@ func showTelemetryStatus(logger iface.Logger, global bool) error {
 		// If not in a project, show global preference
 		globalPreference, globalErr := common.GetGlobalTelemetryPreference()
 		if globalErr != nil {
+			logger.Error("failed to get telemetry preferences: %v", globalErr)
 			return fmt.Errorf("failed to get telemetry preferences: %w", globalErr)
 		}
 
 		if globalPreference == nil {
-			fmt.Println("Telemetry: Disabled (no preference set)")
+			logger.Info("Telemetry: Disabled (no preference set)")
 		} else if *globalPreference {
-			fmt.Println("Telemetry: Enabled (global setting)")
+			logger.Info("Telemetry: Enabled (global setting)")
 		} else {
-			fmt.Println("Telemetry: Disabled (global setting)")
+			logger.Info("Telemetry: Disabled (global setting)")
 		}
 		return nil
 	}
@@ -100,26 +101,26 @@ func showTelemetryStatus(logger iface.Logger, global bool) error {
 	projectSettings, projectErr := common.LoadProjectSettings()
 	if projectErr == nil && projectSettings != nil {
 		if effectivePreference {
-			fmt.Println("Telemetry: Enabled (project setting)")
+			logger.Info("Telemetry: Enabled (project setting)")
 		} else {
-			fmt.Println("Telemetry: Disabled (project setting)")
+			logger.Info("Telemetry: Disabled (project setting)")
 		}
 
 		// Also show global setting for context
 		globalPreference, _ := common.GetGlobalTelemetryPreference()
 		if globalPreference == nil {
-			fmt.Println("Global default: Not set")
+			logger.Info("Global default: Not set")
 		} else if *globalPreference {
-			fmt.Println("Global default: Enabled")
+			logger.Info("Global default: Enabled")
 		} else {
-			fmt.Println("Global default: Disabled")
+			logger.Info("Global default: Disabled")
 		}
 	} else {
 		// Not in project, show global
 		if effectivePreference {
-			fmt.Println("Telemetry: Enabled (global setting)")
+			logger.Info("Telemetry: Enabled (global setting)")
 		} else {
-			fmt.Println("Telemetry: Disabled (global setting)")
+			logger.Info("Telemetry: Disabled (global setting)")
 		}
 	}
 
@@ -128,20 +129,13 @@ func showTelemetryStatus(logger iface.Logger, global bool) error {
 
 func enableTelemetry(logger iface.Logger, global bool) error {
 	if global {
-		// Set global preference
+		// Set global preference only
 		if err := common.SetGlobalTelemetryPreference(true); err != nil {
 			return fmt.Errorf("failed to enable global telemetry: %w", err)
 		}
 
-		// Also update current project if we're in one
-		if err := common.SetProjectTelemetry(true); err != nil {
-			// Don't fail if we're not in a project
-			logger.Info("Global telemetry enabled. Note: Not in a project directory.")
-		} else {
-			logger.Info("Global telemetry enabled and applied to current project.")
-		}
-
-		fmt.Println("✅ Telemetry enabled globally")
+		logger.Info("✅ Global telemetry enabled")
+		logger.Info("New projects will inherit this setting.")
 		return nil
 	}
 
@@ -150,26 +144,19 @@ func enableTelemetry(logger iface.Logger, global bool) error {
 		return fmt.Errorf("failed to enable project telemetry: %w", err)
 	}
 
-	fmt.Println("✅ Telemetry enabled for this project")
+	logger.Info("✅ Telemetry enabled for this project")
 	return nil
 }
 
 func disableTelemetry(logger iface.Logger, global bool) error {
 	if global {
-		// Set global preference
+		// Set global preference only
 		if err := common.SetGlobalTelemetryPreference(false); err != nil {
 			return fmt.Errorf("failed to disable global telemetry: %w", err)
 		}
 
-		// Also update current project if we're in one
-		if err := common.SetProjectTelemetry(false); err != nil {
-			// Don't fail if we're not in a project
-			logger.Info("Global telemetry disabled. Note: Not in a project directory.")
-		} else {
-			logger.Info("Global telemetry disabled and applied to current project.")
-		}
-
-		fmt.Println("❌ Telemetry disabled globally")
+		logger.Info("❌ Global telemetry disabled")
+		logger.Info("New projects will inherit this setting.")
 		return nil
 	}
 
@@ -178,6 +165,6 @@ func disableTelemetry(logger iface.Logger, global bool) error {
 		return fmt.Errorf("failed to disable project telemetry: %w", err)
 	}
 
-	fmt.Println("❌ Telemetry disabled for this project")
+	logger.Info("❌ Telemetry disabled for this project")
 	return nil
 }

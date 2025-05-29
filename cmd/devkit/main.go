@@ -48,6 +48,7 @@ func main() {
 			commands.AVSCommand,
 			keystore.KeystoreCommand,
 			commands.DevnetCommand,
+			commands.TelemetryCommand,
 		},
 		UseShortOptionHandling: true,
 	}
