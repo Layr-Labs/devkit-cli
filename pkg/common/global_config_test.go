@@ -10,22 +10,21 @@ import (
 )
 
 func TestGlobalConfig(t *testing.T) {
-	// Create a temporary directory for testing
-	tmpDir := t.TempDir()
-
-	// Override XDG_CONFIG_HOME for testing
-	originalXDG := os.Getenv("XDG_CONFIG_HOME")
-	defer func() {
-		if originalXDG != "" {
-			os.Setenv("XDG_CONFIG_HOME", originalXDG)
-		} else {
-			os.Unsetenv("XDG_CONFIG_HOME")
-		}
-	}()
-
-	os.Setenv("XDG_CONFIG_HOME", tmpDir)
-
 	t.Run("LoadGlobalConfig_FirstTime", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Override XDG_CONFIG_HOME for testing
+		originalXDG := os.Getenv("XDG_CONFIG_HOME")
+		defer func() {
+			if originalXDG != "" {
+				os.Setenv("XDG_CONFIG_HOME", originalXDG)
+			} else {
+				os.Unsetenv("XDG_CONFIG_HOME")
+			}
+		}()
+
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
 		config, err := LoadGlobalConfig()
 		require.NoError(t, err)
 		assert.True(t, config.FirstRun)
@@ -33,6 +32,21 @@ func TestGlobalConfig(t *testing.T) {
 	})
 
 	t.Run("SaveAndLoadGlobalConfig", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Override XDG_CONFIG_HOME for testing
+		originalXDG := os.Getenv("XDG_CONFIG_HOME")
+		defer func() {
+			if originalXDG != "" {
+				os.Setenv("XDG_CONFIG_HOME", originalXDG)
+			} else {
+				os.Unsetenv("XDG_CONFIG_HOME")
+			}
+		}()
+
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		// Save a config
 		config := &GlobalConfig{
 			FirstRun:         false,
 			TelemetryEnabled: boolPtr(true),
@@ -41,29 +55,30 @@ func TestGlobalConfig(t *testing.T) {
 		err := SaveGlobalConfig(config)
 		require.NoError(t, err)
 
+		// Load it back
 		loadedConfig, err := LoadGlobalConfig()
 		require.NoError(t, err)
+
 		assert.False(t, loadedConfig.FirstRun)
-		assert.NotNil(t, loadedConfig.TelemetryEnabled)
+		require.NotNil(t, loadedConfig.TelemetryEnabled)
 		assert.True(t, *loadedConfig.TelemetryEnabled)
 	})
 
-	t.Run("IsFirstRun", func(t *testing.T) {
-		// First time should be true
-		isFirst, err := IsFirstRun()
-		require.NoError(t, err)
-		assert.True(t, isFirst)
+	t.Run("SetGlobalTelemetryPreference", func(t *testing.T) {
+		tmpDir := t.TempDir()
 
-		// After marking complete, should be false
-		err = MarkFirstRunComplete()
-		require.NoError(t, err)
+		// Override XDG_CONFIG_HOME for testing
+		originalXDG := os.Getenv("XDG_CONFIG_HOME")
+		defer func() {
+			if originalXDG != "" {
+				os.Setenv("XDG_CONFIG_HOME", originalXDG)
+			} else {
+				os.Unsetenv("XDG_CONFIG_HOME")
+			}
+		}()
 
-		isFirst, err = IsFirstRun()
-		require.NoError(t, err)
-		assert.False(t, isFirst)
-	})
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
 
-	t.Run("TelemetryPreferences", func(t *testing.T) {
 		// Initially should be nil
 		pref, err := GetGlobalTelemetryPreference()
 		require.NoError(t, err)
@@ -88,12 +103,56 @@ func TestGlobalConfig(t *testing.T) {
 		assert.False(t, *pref)
 	})
 
-	t.Run("GetGlobalConfigPath", func(t *testing.T) {
-		configPath, err := GetGlobalConfigPath()
+	t.Run("IsFirstRun", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Override XDG_CONFIG_HOME for testing
+		originalXDG := os.Getenv("XDG_CONFIG_HOME")
+		defer func() {
+			if originalXDG != "" {
+				os.Setenv("XDG_CONFIG_HOME", originalXDG)
+			} else {
+				os.Unsetenv("XDG_CONFIG_HOME")
+			}
+		}()
+
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		// Should be true initially
+		firstRun, err := IsFirstRun()
 		require.NoError(t, err)
-		assert.Contains(t, configPath, "devkit")
-		assert.Contains(t, configPath, "config.yaml")
-		assert.Contains(t, configPath, tmpDir)
+		assert.True(t, firstRun)
+
+		// Mark as complete
+		err = MarkFirstRunComplete()
+		require.NoError(t, err)
+
+		// Should be false now
+		firstRun, err = IsFirstRun()
+		require.NoError(t, err)
+		assert.False(t, firstRun)
+	})
+
+	t.Run("GetGlobalConfigDir_XDG", func(t *testing.T) {
+		tmpDir := t.TempDir()
+
+		// Override XDG_CONFIG_HOME for testing
+		originalXDG := os.Getenv("XDG_CONFIG_HOME")
+		defer func() {
+			if originalXDG != "" {
+				os.Setenv("XDG_CONFIG_HOME", originalXDG)
+			} else {
+				os.Unsetenv("XDG_CONFIG_HOME")
+			}
+		}()
+
+		os.Setenv("XDG_CONFIG_HOME", tmpDir)
+
+		configDir, err := GetGlobalConfigDir()
+		require.NoError(t, err)
+
+		expected := filepath.Join(tmpDir, "devkit")
+		assert.Equal(t, expected, configDir)
 	})
 }
 

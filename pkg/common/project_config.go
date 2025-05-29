@@ -169,19 +169,19 @@ func GetProjectUUID() string {
 }
 
 // IsTelemetryEnabled returns whether telemetry is enabled for the project
-// It checks both global and project-level preferences, with global taking precedence
+// It checks both global and project-level preferences, with project taking precedence
 func IsTelemetryEnabled() bool {
-	return isTelemetryEnabledAtPath(DevkitConfigFile)
+	// Use the effective preference which handles precedence correctly
+	enabled, err := GetEffectiveTelemetryPreference()
+	if err != nil {
+		return false
+	}
+	return enabled
 }
 
 func isTelemetryEnabledAtPath(location string) bool {
-	// First check global preference - this takes precedence
-	globalPref, err := GetGlobalTelemetryPreference()
-	if err == nil && globalPref != nil {
-		return *globalPref
-	}
-
-	// Fallback to project-level preference
+	// This function is used for testing specific config files
+	// It should only check the project-level preference at that path
 	settings, err := loadProjectSettingsFromLocation(location)
 	if err != nil {
 		return false // Config doesn't exist, assume telemetry disabled
