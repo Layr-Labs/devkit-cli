@@ -567,7 +567,7 @@ func TestDeployContracts(t *testing.T) {
 func TestDeployContracts_ExtractContractOutputs(t *testing.T) {
 	type fixture struct {
 		name     string
-		setup    func(baseDir string) ([]map[string]interface{}, error)
+		setup    func(baseDir string) ([]DeployContractTransport, error)
 		context  string
 		wantErr  bool
 		validate func(t *testing.T, baseDir string)
@@ -577,8 +577,7 @@ func TestDeployContracts_ExtractContractOutputs(t *testing.T) {
 		{
 			name:    "successfully writes JSON output",
 			context: "devnet",
-			setup: func(baseDir string) ([]map[string]interface{}, error) {
-				// create a fake ABI file
+			setup: func(baseDir string) ([]DeployContractTransport, error) {
 				abiDir := filepath.Join(baseDir, "artifacts")
 				require.NoError(t, os.MkdirAll(abiDir, 0o755))
 				abiPath := filepath.Join(abiDir, "MyToken.json")
@@ -596,12 +595,11 @@ func TestDeployContracts_ExtractContractOutputs(t *testing.T) {
 				}
 				require.NoError(t, os.WriteFile(abiPath, data, 0o644))
 
-				// build the contractsList
-				return []map[string]interface{}{
+				return []DeployContractTransport{
 					{
-						"name":    "MyToken",
-						"address": "0x1234ABCD",
-						"abi":     abiPath,
+						Name:    "MyToken",
+						Address: "0x1234ABCD",
+						ABI:     abiPath,
 					},
 				}, nil
 			},
@@ -611,11 +609,12 @@ func TestDeployContracts_ExtractContractOutputs(t *testing.T) {
 				b, err := os.ReadFile(outPath)
 				require.NoError(t, err, "output file must exist and be readable")
 
-				var out DeployContractOutput
+				var out DeployContractJson
 				require.NoError(t, json.Unmarshal(b, &out), "output JSON must unmarshal")
 
 				require.Equal(t, "MyToken", out.Name)
 				require.Equal(t, "0x1234ABCD", out.Address)
+
 				// ABI should match what we wrote
 				abiSlice, ok := out.ABI.([]interface{})
 				require.True(t, ok, "ABI should be a slice")
@@ -628,18 +627,19 @@ func TestDeployContracts_ExtractContractOutputs(t *testing.T) {
 		{
 			name:    "error when ABI file missing",
 			context: "testnet",
-			setup: func(baseDir string) ([]map[string]interface{}, error) {
-				return []map[string]interface{}{
+			setup: func(baseDir string) ([]DeployContractTransport, error) {
+				// return a DeployContractOutput with a non-existent ABIPath
+				return []DeployContractTransport{
 					{
-						"name":    "NoAbiContract",
-						"address": "0xDEADBEEF",
-						"abi":     filepath.Join(baseDir, "no_such.json"),
+						Name:    "NoAbiContract",
+						Address: "0xDEADBEEF",
+						ABI:     filepath.Join(baseDir, "no_such.json"),
 					},
 				}, nil
 			},
 			wantErr: true,
 			validate: func(t *testing.T, baseDir string) {
-				// nothing to validate on disk
+				// no files should be written
 			},
 		},
 	}
@@ -647,8 +647,9 @@ func TestDeployContracts_ExtractContractOutputs(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			originalCwd, err := os.Getwd()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
 			// each test in its own temp workspace
 			baseDir := t.TempDir()
 			require.NoError(t, os.Chdir(baseDir))
