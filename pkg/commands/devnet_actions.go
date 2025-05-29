@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math/big"
 	"os"
 	"os/exec"
@@ -29,6 +30,12 @@ import (
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 	"gopkg.in/yaml.v3"
 )
+
+type DeployContractOutput struct {
+	Name    string      `json:"name"`
+	Address string      `json:"address"`
+	ABI     interface{} `json:"abi"`
+}
 
 func StartDevnetAction(cCtx *cli.Context) error {
 
@@ -281,13 +288,14 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Run scriptPath from cwd
 	const dir = ""
+	const context = "devnet" // @TODO: use selected context name
 
 	// Set path for .devkit scripts
 	scriptsDir := filepath.Join(".devkit", "scripts")
 
 	// Set path for context yaml
 	contextDir := filepath.Join("config", "contexts")
-	yamlPath := path.Join(contextDir, "devnet.yaml") // @TODO: use selected context name
+	yamlPath := path.Join(contextDir, fmt.Sprintf("%s.%s", context, "yaml"))
 
 	// Load YAML as *yaml.Node
 	rootNode, err := common.LoadYAML(yamlPath)
@@ -312,7 +320,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Check for context
 	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
 	if contextNode == nil {
-		return fmt.Errorf("missing 'context' key in ./config/contexts/devnet.yaml")
+		return fmt.Errorf("missing 'context' key in ./config/contexts/%s.yaml", context)
 	}
 
 	// Loop scripts with cloned context
@@ -354,6 +362,22 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 		// Merge output into original context node
 		common.DeepMerge(contextNode, outNode)
+	}
+
+	// Create output .json files for each of the deployed contracts
+	contracts := common.GetChildByKey(contextNode, "deployed_contracts")
+	if contracts == nil {
+		return fmt.Errorf("deployed_contracts node not found")
+	}
+	var contractsList []map[string]interface{}
+	if err := contracts.Decode(&contractsList); err != nil {
+		return fmt.Errorf("decode deployed_contracts: %w", err)
+	}
+	// Empty log line to split these logs from the main body for easy identification
+	logger.Info("")
+	err = extractContractOutputs(cCtx, context, contractsList)
+	if err != nil {
+		return fmt.Errorf("failed to write contract artefacts: %w", err)
 	}
 
 	// Write yaml back to project directory
@@ -502,15 +526,6 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 		)
 	}
 	return nil
-}
-
-func extractHostPort(portStr string) string {
-	if strings.Contains(portStr, "->") {
-		beforeArrow := strings.Split(portStr, "->")[0]
-		hostPort := strings.Split(beforeArrow, ":")
-		return hostPort[len(hostPort)-1]
-	}
-	return portStr
 }
 
 func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
@@ -693,6 +708,62 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) e
 	return nil
 }
 
+func FetchZeusAddressesAction(cCtx *cli.Context) error {
+	logger, _ := common.GetLoggerFromCLIContext(cCtx)
+	contextName := cCtx.String("context")
+
+	// Load config for the specified context
+	config, err := common.LoadConfigWithContextConfig(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to load config for context %s: %w", contextName, err)
+	}
+
+	// Fetch addresses from Zeus
+	logger.Info("Fetching EigenLayer core addresses from Zeus...")
+	addresses, err := common.GetZeusAddresses(logger)
+	if err != nil {
+		return fmt.Errorf("failed to get addresses from Zeus: %w", err)
+	}
+
+	// Print the fetched addresses
+	logger.Info("Found addresses:")
+	logger.Info("AllocationManager: %s", addresses.AllocationManager)
+	logger.Info("DelegationManager: %s", addresses.DelegationManager)
+
+	// Update the context with the fetched addresses
+	err = common.UpdateContextWithZeusAddresses(logger, config, contextName)
+	if err != nil {
+		return fmt.Errorf("failed to update context with Zeus addresses: %w", err)
+	}
+
+	// Write the updated config to disk
+	contextFile := filepath.Join("config", "contexts", contextName+".yaml")
+	yamlData, err := yaml.Marshal(map[string]interface{}{
+		"version": "0.0.4", // This should ideally use the latest version dynamically
+		"context": config.Context[contextName],
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated context: %w", err)
+	}
+
+	err = os.WriteFile(contextFile, yamlData, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write updated context file: %w", err)
+	}
+
+	logger.Info("Successfully updated %s context with EigenLayer core addresses", contextName)
+	return nil
+}
+
+func extractHostPort(portStr string) string {
+	if strings.Contains(portStr, "->") {
+		beforeArrow := strings.Split(portStr, "->")[0]
+		hostPort := strings.Split(beforeArrow, ":")
+		return hostPort[len(hostPort)-1]
+	}
+	return portStr
+}
+
 func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.Logger) error {
 	if operatorAddress == "" {
 		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
@@ -822,6 +893,59 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 	)
 }
 
+func extractContractOutputs(cCtx *cli.Context, context string, contractsList []map[string]interface{}) error {
+	logger, _ := common.GetLoggerFromCLIContext(cCtx)
+
+	// Push contract artefacts to ./contracts/outputs
+	outDir := filepath.Join("contracts", "outputs", context)
+	if err := os.MkdirAll(outDir, fs.ModePerm); err != nil {
+		return fmt.Errorf("create output dir: %w", err)
+	}
+
+	// For each contract extract details and produce json file in outputs/<context>/<contract.name>.json
+	for _, contract := range contractsList {
+		nameVal, _ := contract["name"].(string)
+		addressVal, _ := contract["address"].(string)
+		abiPath, _ := contract["abi"].(string)
+
+		// Read the ABI file
+		raw, err := os.ReadFile(abiPath)
+		if err != nil {
+			return fmt.Errorf("read ABI %q: %w", abiPath, err)
+		}
+
+		// Temporary struct to pick only the "abi" field from the artifact
+		var abi struct {
+			ABI interface{} `json:"abi"`
+		}
+		if err := json.Unmarshal(raw, &abi); err != nil {
+			return fmt.Errorf("unmarshal artifact JSON: %w", err)
+		}
+
+		// Build the output struct
+		out := DeployContractOutput{
+			Name:    nameVal,
+			Address: addressVal,
+			ABI:     abi.ABI,
+		}
+
+		// Marshal with indentation
+		data, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal output for %s: %w", nameVal, err)
+		}
+
+		// Write to ./contracts/outputs/<context>/<name>.json
+		outPath := filepath.Join(outDir, nameVal+".json")
+		if err := os.WriteFile(outPath, data, 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", outPath, err)
+		}
+
+		logger.Info("Written contract output: %s\n", outPath)
+	}
+	return nil
+}
+
 func migrateConfig(logger iface.Logger) (int, error) {
 
 	// Set path for context yamls
@@ -849,7 +973,6 @@ func migrateConfig(logger iface.Logger) (int, error) {
 }
 
 func migrateContexts(logger iface.Logger) (int, error) {
-
 	// Count the number of contexts we migrate
 	contextsMigrated := 0
 
@@ -891,51 +1014,4 @@ func migrateContexts(logger iface.Logger) (int, error) {
 	}
 
 	return contextsMigrated, nil
-}
-
-func FetchZeusAddressesAction(cCtx *cli.Context) error {
-	logger, _ := common.GetLoggerFromCLIContext(cCtx)
-	contextName := cCtx.String("context")
-
-	// Load config for the specified context
-	config, err := common.LoadConfigWithContextConfig(contextName)
-	if err != nil {
-		return fmt.Errorf("failed to load config for context %s: %w", contextName, err)
-	}
-
-	// Fetch addresses from Zeus
-	logger.Info("Fetching EigenLayer core addresses from Zeus...")
-	addresses, err := common.GetZeusAddresses(logger)
-	if err != nil {
-		return fmt.Errorf("failed to get addresses from Zeus: %w", err)
-	}
-
-	// Print the fetched addresses
-	logger.Info("Found addresses:")
-	logger.Info("AllocationManager: %s", addresses.AllocationManager)
-	logger.Info("DelegationManager: %s", addresses.DelegationManager)
-
-	// Update the context with the fetched addresses
-	err = common.UpdateContextWithZeusAddresses(logger, config, contextName)
-	if err != nil {
-		return fmt.Errorf("failed to update context with Zeus addresses: %w", err)
-	}
-
-	// Write the updated config to disk
-	contextFile := filepath.Join("config", "contexts", contextName+".yaml")
-	yamlData, err := yaml.Marshal(map[string]interface{}{
-		"version": "0.0.4", // This should ideally use the latest version dynamically
-		"context": config.Context[contextName],
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal updated context: %w", err)
-	}
-
-	err = os.WriteFile(contextFile, yamlData, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write updated context file: %w", err)
-	}
-
-	logger.Info("Successfully updated %s context with EigenLayer core addresses", contextName)
-	return nil
 }

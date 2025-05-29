@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"sigs.k8s.io/yaml"
 )
@@ -560,6 +562,109 @@ func TestDeployContracts(t *testing.T) {
 	}
 	err = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
 	assert.NoError(t, err)
+}
+
+func TestDeployContracts_ExtractContractOutputs(t *testing.T) {
+	type fixture struct {
+		name     string
+		setup    func(baseDir string) ([]map[string]interface{}, error)
+		context  string
+		wantErr  bool
+		validate func(t *testing.T, baseDir string)
+	}
+
+	tests := []fixture{
+		{
+			name:    "successfully writes JSON output",
+			context: "devnet",
+			setup: func(baseDir string) ([]map[string]interface{}, error) {
+				// create a fake ABI file
+				abiDir := filepath.Join(baseDir, "artifacts")
+				require.NoError(t, os.MkdirAll(abiDir, 0o755))
+				abiPath := filepath.Join(abiDir, "MyToken.json")
+				rawABI := map[string]interface{}{
+					"abi": []interface{}{
+						map[string]interface{}{
+							"type": "function",
+							"name": "balanceOf",
+						},
+					},
+				}
+				data, err := json.Marshal(rawABI)
+				if err != nil {
+					return nil, err
+				}
+				require.NoError(t, os.WriteFile(abiPath, data, 0o644))
+
+				// build the contractsList
+				return []map[string]interface{}{
+					{
+						"name":    "MyToken",
+						"address": "0x1234ABCD",
+						"abi":     abiPath,
+					},
+				}, nil
+			},
+			wantErr: false,
+			validate: func(t *testing.T, baseDir string) {
+				outPath := filepath.Join(baseDir, "contracts", "outputs", "devnet", "MyToken.json")
+				b, err := os.ReadFile(outPath)
+				require.NoError(t, err, "output file must exist and be readable")
+
+				var out DeployContractOutput
+				require.NoError(t, json.Unmarshal(b, &out), "output JSON must unmarshal")
+
+				require.Equal(t, "MyToken", out.Name)
+				require.Equal(t, "0x1234ABCD", out.Address)
+				// ABI should match what we wrote
+				abiSlice, ok := out.ABI.([]interface{})
+				require.True(t, ok, "ABI should be a slice")
+				require.Len(t, abiSlice, 1)
+				entry, ok := abiSlice[0].(map[string]interface{})
+				require.True(t, ok)
+				require.Equal(t, "balanceOf", entry["name"])
+			},
+		},
+		{
+			name:    "error when ABI file missing",
+			context: "testnet",
+			setup: func(baseDir string) ([]map[string]interface{}, error) {
+				return []map[string]interface{}{
+					{
+						"name":    "NoAbiContract",
+						"address": "0xDEADBEEF",
+						"abi":     filepath.Join(baseDir, "no_such.json"),
+					},
+				}, nil
+			},
+			wantErr: true,
+			validate: func(t *testing.T, baseDir string) {
+				// nothing to validate on disk
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// each test in its own temp workspace
+			baseDir := t.TempDir()
+			require.NoError(t, os.Chdir(baseDir))
+
+			contractsList, err := tc.setup(baseDir)
+			require.NoError(t, err)
+
+			// use a minimal cli.Context
+			cCtx := cli.NewContext(nil, nil, nil)
+			err = extractContractOutputs(cCtx, tc.context, contractsList)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), "read ABI")
+			} else {
+				require.NoError(t, err)
+				tc.validate(t, baseDir)
+			}
+		})
+	}
 }
 
 func TestStartDevnet_ContextCancellation(t *testing.T) {
