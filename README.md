@@ -360,7 +360,7 @@ VERSION=v0.0.7
 ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
 DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
 
-curl -s -L "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | sudo tar xvz -C /usr/local/bin
+curl -s -L "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | sudo tar xv -C /usr/local/bin
 ```
 
 ### Upgrading your template
