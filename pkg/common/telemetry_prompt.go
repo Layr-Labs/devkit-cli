@@ -46,7 +46,7 @@ func TelemetryPrompt(logger iface.Logger) (bool, error) {
 	response = strings.ToLower(strings.TrimSpace(response))
 
 	// Default to yes if empty response, no if they explicitly say no
-	enabled := response == "" || response == "y" || response == "yes"
+	enabled := response == "" || response == "y" || response == "Y" || response == "yes" || response == "Yes"
 
 	if enabled {
 		fmt.Println("✅ Telemetry enabled. Thank you for helping improve DevKit!")
