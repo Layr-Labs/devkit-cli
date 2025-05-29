@@ -3,14 +3,16 @@ package common
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"os/exec"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	"gopkg.in/yaml.v3"
 )
 
 // ZeusAddressData represents the addresses returned by zeus list command
 type ZeusAddressData struct {
-	AllocationManager string
-	DelegationManager string
+	AllocationManager string `json:"allocationManager"`
+	DelegationManager string `json:"delegationManager"`
 }
 
 // GetZeusAddresses runs the zeus env show mainnet command and extracts core EigenLayer addresses
@@ -56,33 +58,50 @@ func GetZeusAddresses(logger iface.Logger) (*ZeusAddressData, error) {
 }
 
 // UpdateContextWithZeusAddresses updates the context configuration with addresses from Zeus
-func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *ConfigWithContextConfig, contextName string) error {
+func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *yaml.Node, contextName string) error {
 	addresses, err := GetZeusAddresses(logger)
 	if err != nil {
 		return err
 	}
 
-	// Ensure the context and eigenlayer section exist
-	envCtx, ok := ctx.Context[contextName]
-	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", contextName)
+	// Find or create "eigenlayer" mapping entry
+	parentMap := GetChildByKey(ctx, "eigenlayer")
+	if parentMap == nil {
+		// Create key node
+		keyNode := &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Tag:   "!!str",
+			Value: "eigenlayer",
+		}
+		// Create empty map node
+		parentMap = &yaml.Node{
+			Kind:    yaml.MappingNode,
+			Tag:     "!!map",
+			Content: []*yaml.Node{},
+		}
+		ctx.Content = append(ctx.Content, keyNode, parentMap)
 	}
 
-	// Create EigenLayer config if it doesn't exist
-	if envCtx.EigenLayer == nil {
-		envCtx.EigenLayer = &EigenLayerConfig{}
+	// Print the fetched addresses
+	payload := ZeusAddressData{
+		AllocationManager: addresses.AllocationManager,
+		DelegationManager: addresses.DelegationManager,
 	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Found addresses (marshal failed): %w", err)
+	}
+	logger.Info("Found addresses: %s", b)
 
-	logger.Info("Updating context with addresses:")
-	logger.Info("AllocationManager: %s", addresses.AllocationManager)
-	logger.Info("DelegationManager: %s", addresses.DelegationManager)
+	// Prepare nodes
+	amKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "AllocationManager"}
+	amVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.AllocationManager}
+	dmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "DelegationManager"}
+	dmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.DelegationManager}
 
-	// Update addresses
-	envCtx.EigenLayer.AllocationManager = addresses.AllocationManager
-	envCtx.EigenLayer.DelegationManager = addresses.DelegationManager
-
-	// Update context in the config
-	ctx.Context[contextName] = envCtx
+	// Replace existing or append new entries
+	SetMappingValue(parentMap, amKey, amVal)
+	SetMappingValue(parentMap, dmKey, dmVal)
 
 	return nil
 }
