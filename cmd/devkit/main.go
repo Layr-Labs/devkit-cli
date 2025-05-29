@@ -7,9 +7,9 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/pkg/commands"
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/keystore"
+	"github.com/Layr-Labs/devkit-cli/pkg/commands/version"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/hooks"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -47,7 +47,7 @@ func main() {
 		Commands: []*cli.Command{
 			commands.AVSCommand,
 			keystore.KeystoreCommand,
-			commands.DevnetCommand,
+			version.VersionCommand,
 			commands.TelemetryCommand,
 		},
 		UseShortOptionHandling: true,
