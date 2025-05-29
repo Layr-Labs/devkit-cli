@@ -49,16 +49,16 @@ Before you begin, ensure you have:
 To download a binary for the latest release, run:
 ```bash
 # MacOS (Apple Silicon)
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-darwin-arm64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
+curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-darwin-arm64-v0.0.7.tar.gz | sudo tar xv -C "$HOME/bin"
 
 # MacOS (Intel)
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-darwin-amd64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
+curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-darwin-amd64-v0.0.7.tar.gz | sudo tar xv -C "$HOME/bin"
 
 # Linux (x86_64 / AMD64)
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-linux-amd64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
+curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-linux-amd64-v0.0.7.tar.gz | sudo tar xv -C "$HOME/bin"
 
 # Linux (ARM64 / aarch64)
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-linux-arm64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
+curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-linux-arm64-v0.0.7.tar.gz | sudo tar xv -C "$HOME/bin"
 ```
 
 The binary will be installed inside the ~/bin directory.
@@ -360,7 +360,8 @@ VERSION=v0.0.7
 ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
 DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
 
-curl -s -L "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | sudo tar xv -C /usr/local/bin
+curl -sL "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | sudo tar xv -C "$HOME/bin"
+
 ```
 
 ### Upgrading your template
