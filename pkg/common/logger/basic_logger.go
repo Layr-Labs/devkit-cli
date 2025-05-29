@@ -16,6 +16,19 @@ func NewLogger(verbose bool) *BasicLogger {
 	}
 }
 
+func (l *BasicLogger) Title(msg string, args ...any) {
+	// format the message once
+	formatted := fmt.Sprintf("\n"+msg+"\n", args...)
+
+	// split into lines
+	lines := strings.Split(formatted, "\n")
+
+	// print the lines with log
+	for _, line := range lines {
+		log.Printf("%s", line)
+	}
+}
+
 func (l *BasicLogger) Info(msg string, args ...any) {
 	// format the message once
 	formatted := fmt.Sprintf(msg, args...)
