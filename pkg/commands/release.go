@@ -2,7 +2,6 @@ package commands
 
 import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"log"
 
 	"github.com/urfave/cli/v2"
 )
@@ -27,20 +26,21 @@ var ReleaseCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
+		logger := common.LoggerFromContext(cCtx.Context)
 
 		if cCtx.Bool("verbose") {
-			log.Printf("Preparing release...")
-			log.Printf("Tag: %s", cCtx.String("tag"))
+			logger.InfoWithActor("User", "Preparing release...")
+			logger.InfoWithActor("User", "Tag: %s", cCtx.String("tag"))
 			if registry := cCtx.String("registry"); registry != "" {
-				log.Printf("Registry: %s", registry)
+				logger.InfoWithActor("User", "Registry: %s", registry)
 			}
 			if cCtx.Bool("sign") {
-				log.Printf("Signing release artifacts...")
+				logger.InfoWithActor("User", "Signing release artifacts...")
 			}
 		}
 
 		// Placeholder for future implementation
-		log.Printf("Release completed successfully")
+		logger.InfoWithActor("User", "Release completed successfully")
 		return nil
 	},
 }

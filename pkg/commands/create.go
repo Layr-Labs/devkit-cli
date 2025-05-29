@@ -67,7 +67,7 @@ var CreateCommand = &cli.Command{
 		projectName := cCtx.Args().First()
 		dest := cCtx.Args().Get(1)
 
-		// get logger
+		// get logger and tracker
 		logger := common.LoggerFromContext(cCtx.Context)
 		tracker := common.ProgressTrackerFromContext(cCtx.Context)
 
@@ -87,13 +87,13 @@ var CreateCommand = &cli.Command{
 
 		// in verbose mode, detail the situation
 		if cCtx.Bool("verbose") {
-			log.InfoWithActor("User", "Creating new AVS project: %s", projectName)
-			log.InfoWithActor("User", "Directory: %s", cCtx.String("dir"))
-			log.InfoWithActor("User", "Language: %s", cCtx.String("lang"))
-			log.InfoWithActor("User", "Architecture: %s", cCtx.String("arch"))
-			log.InfoWithActor("User", "Environment: %s", cCtx.String("env"))
+			logger.InfoWithActor("User", "Creating new AVS project: %s", projectName)
+			logger.InfoWithActor("User", "Directory: %s", cCtx.String("dir"))
+			logger.InfoWithActor("User", "Language: %s", cCtx.String("lang"))
+			logger.InfoWithActor("User", "Architecture: %s", cCtx.String("arch"))
+			logger.InfoWithActor("User", "Environment: %s", cCtx.String("env"))
 			if cCtx.String("template-url") != "" {
-				log.InfoWithActor("User", "Template URL: %s", cCtx.String("template-url"))
+				logger.InfoWithActor("User", "Template URL: %s", cCtx.String("template-url"))
 			}
 		}
 
@@ -109,15 +109,14 @@ var CreateCommand = &cli.Command{
 		}
 
 		if cCtx.Bool("verbose") {
-			log.InfoWithActor("User", "Using template: %s", mainBaseURL)
+			logger.InfoWithActor("User", "Using template: %s", mainBaseURL)
 			if mainVersion != "" {
-				log.InfoWithActor("User", "Template version: %s", mainVersion)
+				logger.InfoWithActor("User", "Template version: %s", mainVersion)
 			}
 		}
 
 		// Fetch main template
 		fetcher := &template.GitFetcher{
-
 			Client: template.NewGitClient(),
 			Logger: *progresslogger.NewProgressLogger(
 				logger,
@@ -148,7 +147,7 @@ var CreateCommand = &cli.Command{
 		scriptPath := filepath.Join(scriptDir, "init")
 
 		// Run init to install deps
-		log.InfoWithActor("User", "Installing template dependencies\n\n")
+		logger.InfoWithActor("User", "Installing template dependencies\n\n")
 
 		// Run init on the template init script
 		if _, err = common.CallTemplateScript(cCtx.Context, logger, targetDir, scriptPath, common.ExpectNonJSONResponse, nil); err != nil {
@@ -157,7 +156,7 @@ var CreateCommand = &cli.Command{
 
 		// Tidy the logs
 		if cCtx.Bool("verbose") {
-			log.InfoWithActor("User", "\nFinalising new project\n\n")
+			logger.InfoWithActor("User", "\nFinalising new project\n\n")
 		}
 
 		// Copy config.yaml to the project directory
@@ -187,7 +186,7 @@ var CreateCommand = &cli.Command{
 
 		// Initialize git repository in the project directory
 		if err := initGitRepo(cCtx, targetDir, logger); err != nil {
-			logger.Warn("Failed to initialize Git repository in %s: %v", targetDir, err)
+			logger.WarnWithActor("User", "Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
 		logger.Info("\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
@@ -227,10 +226,8 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 }
 
 func createProjectDir(logger iface.Logger, targetDir string, overwrite, verbose bool) error {
-
 	// Check if directory exists and handle overwrite
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
-
 		if !overwrite {
 			return fmt.Errorf("directory %s already exists. Use --overwrite flag to force overwrite", targetDir)
 		}
@@ -238,10 +235,9 @@ func createProjectDir(logger iface.Logger, targetDir string, overwrite, verbose 
 			return fmt.Errorf("failed to remove existing directory: %w", err)
 		}
 		if verbose {
-			log.InfoWithActor("User", "Removed existing directory: %s", targetDir)
+			logger.InfoWithActor("User", "Removed existing directory: %s", targetDir)
 		}
 	}
-
 	// Create main project directory
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
@@ -251,7 +247,6 @@ func createProjectDir(logger iface.Logger, targetDir string, overwrite, verbose 
 
 // copyDefaultConfigToProject copies config to the project directory with updated project name
 func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName string, templateBaseURL, templateVersion string) error {
-
 	// Create and ensure target config directory exists
 	destConfigDir := filepath.Join(targetDir, "config")
 	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
@@ -295,9 +290,7 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName stri
 		return fmt.Errorf("failed to write %s: %w", common.BaseConfig, err)
 	}
 
-	if verbose {
-		log.InfoWithActor("User", "Created config/%s in project directory", common.BaseConfig)
-	}
+	logger.InfoWithActor("User", "Created config/%s in project directory", common.BaseConfig)
 
 	// Copy all context files
 	destContextsDir := filepath.Join(destConfigDir, "contexts")
@@ -363,7 +356,6 @@ const contractsBasePath = ".devkit/contracts"
 
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error {
-
 	logger.Debug("Removing existing .git directory in %s (if any)...", targetDir)
 
 	// remove the old .git dir

@@ -56,7 +56,6 @@ func (l *ZapLogger) Warn(msg string, args ...any) {
 
 func (l *ZapLogger) Error(msg string, args ...any) {
 	l.ErrorWithActor("System", msg, args...)
-<<<<<<< Updated upstream
 }
 
 func (l *ZapLogger) Debug(msg string, args ...any) {

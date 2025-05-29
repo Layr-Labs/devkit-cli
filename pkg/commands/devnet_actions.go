@@ -84,9 +84,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Start timer
 	startTime := time.Now()
 
-	// If user gives, say, log = "DEBUG" Or "Debug", we normalize it to lowercase
-	if common.IsVerboseEnabled(cCtx, config) {
-		log.InfoWithActor("User", "Starting devnet...\n")
+	logger.InfoWithActor("User", "Starting devnet...\n")
 
 		if cCtx.Bool("reset") {
 			log.InfoWithActor("User", "Resetting devnet...")
@@ -197,7 +195,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 1 second to make sure wallets are funded
 	time.Sleep(1 * time.Second)
-	log.InfoWithActor("User", "\nDevnet started successfully in %s", elapsed)
+	logger.InfoWithActor("User", "\nDevnet started successfully in %s", elapsed)
 
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
@@ -208,7 +206,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		// Sleep for 1 second to make sure new context values have been written
 		time.Sleep(1 * time.Second)
 
-		log.InfoWithActor("AVS Developer", "Registering AVS with EigenLayer...")
+		logger.InfoWithActor("User", "Registering AVS with EigenLayer...")
 
 		if !cCtx.Bool("skip-setup") {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
@@ -220,13 +218,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			if err := CreateAVSOperatorSetsAction(cCtx, logger); err != nil {
 				return fmt.Errorf("creating AVS operator sets failed: %w", err)
 			}
-			log.InfoWithActor("AVS Developer", "AVS registered with EigenLayer successfully.")
+			logger.InfoWithActor("User", "AVS registered with EigenLayer successfully.")
 
 			if err := RegisterOperatorsFromConfigAction(cCtx, logger); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
 		} else {
-			log.InfoWithActor("AVS Developer", "Skipping AVS setup steps...")
+			logger.InfoWithActor("User", "Skipping AVS setup steps...")
 		}
 	}
 
@@ -337,7 +335,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Measure how long we ran for
 	elapsed := time.Since(startTime).Round(time.Second)
-	log.InfoWithActor("User", "\nDevnet contracts deployed successfully in %s", elapsed)
+	logger.InfoWithActor("User", "\nDevnet contracts deployed successfully in %s", elapsed)
 	return nil
 }
 
@@ -360,7 +358,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 		if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
-			fmt.Printf("%s🚫 No devnet containers running.%s\n", devnet.Yellow, devnet.Reset)
+			log.InfoWithActor("User", "🚫 No devnet containers running.")
 			return nil
 		}
 
@@ -417,13 +415,13 @@ func StopDevnetAction(cCtx *cli.Context) error {
 					projectName := strings.TrimPrefix(containerName, "devkit-devnet-")
 					devnet.StopAndRemoveContainer(cCtx, containerName)
 
-					log.InfoWithActor("User", "Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
+					log.InfoWithActor("System", "Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
 					containerFoundUsingthePort = true
 					break
 				}
 			}
 			if !containerFoundUsingthePort {
-				log.InfoWithActor("User", "No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers", projectPort, devnet.Cyan, devnet.Reset)
+				log.InfoWithActor("User", "No container found with port %d. Try devkit avs devnet list to get a list of running devnet containers", projectPort)
 			}
 
 		}
@@ -442,13 +440,14 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		devnet.StopAndRemoveContainer(cCtx, container)
 
 	} else {
-		log.InfoWithActor("User", "Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
+		log.InfoWithActor("User", "Run this command from the avs directory or run devkit avs devnet stop --help for available commands")
 	}
 
 	return nil
 }
 
 func ListDevnetContainersAction(cCtx *cli.Context) error {
+	log := common.LoggerFromContext(cCtx.Context)
 	cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
 	output, err := cmd.Output()
 	if err != nil {
@@ -456,10 +455,10 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 	}
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
-		fmt.Printf("%s🚫 No devnet containers running.%s\n", devnet.Yellow, devnet.Reset)
+		log.InfoWithActor("User", "🚫 No devnet containers running.")
 		return nil
 	}
-	fmt.Printf("%s📦 Running Devnet Containers:%s\n\n", devnet.Blue, devnet.Reset)
+	log.InfoWithActor("User", "📦 Running Devnet Containers:")
 	for _, line := range lines {
 		parts := strings.Split(line, ": ")
 		if len(parts) != 2 {
@@ -467,13 +466,7 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 		}
 		name := parts[0]
 		port := extractHostPort(parts[1])
-		fmt.Printf("%s  -  %s%-25s%s %s→%s  %shttp://localhost:%s%s\n",
-			devnet.Cyan, devnet.Reset,
-			name,
-			devnet.Reset,
-			devnet.Green, devnet.Reset,
-			devnet.Yellow, port, devnet.Reset,
-		)
+		log.InfoWithActor("User", "  -  %-25s → http://localhost:%s", name, port)
 	}
 	return nil
 }
@@ -866,4 +859,51 @@ func migrateContexts(logger iface.Logger) (int, error) {
 	}
 
 	return contextsMigrated, nil
+}
+
+func FetchZeusAddressesAction(cCtx *cli.Context) error {
+	logger, _ := common.GetLoggerFromCLIContext(cCtx)
+	contextName := cCtx.String("context")
+
+	// Load config for the specified context
+	config, err := common.LoadConfigWithContextConfig(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to load config for context %s: %w", contextName, err)
+	}
+
+	// Fetch addresses from Zeus
+	logger.InfoWithActor("User", "Fetching EigenLayer core addresses from Zeus...")
+	addresses, err := common.GetZeusAddresses(logger)
+	if err != nil {
+		return fmt.Errorf("failed to get addresses from Zeus: %w", err)
+	}
+
+	// Print the fetched addresses
+	logger.InfoWithActor("User", "Found addresses:")
+	logger.InfoWithActor("User", "AllocationManager: %s", addresses.AllocationManager)
+	logger.InfoWithActor("User", "DelegationManager: %s", addresses.DelegationManager)
+
+	// Update the context with the fetched addresses
+	err = common.UpdateContextWithZeusAddresses(logger, config, contextName)
+	if err != nil {
+		return fmt.Errorf("failed to update context with Zeus addresses: %w", err)
+	}
+
+	// Write the updated config to disk
+	contextFile := filepath.Join("config", "contexts", contextName+".yaml")
+	yamlData, err := yaml.Marshal(map[string]interface{}{
+		"version": "0.0.4", // This should ideally use the latest version dynamically
+		"context": config.Context[contextName],
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated context: %w", err)
+	}
+
+	err = os.WriteFile(contextFile, yamlData, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write updated context file: %w", err)
+	}
+
+	logger.InfoWithActor("User", "Successfully updated %s context with EigenLayer core addresses", contextName)
+	return nil
 }

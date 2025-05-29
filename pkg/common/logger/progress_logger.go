@@ -16,20 +16,32 @@ func NewProgressLogger(base iface.Logger, tracker iface.ProgressTracker) *Progre
 	}
 }
 
-func (p *ProgressLogger) ProgressRows() []iface.ProgressRow {
-	return p.tracker.ProgressRows()
+func (p *ProgressLogger) InfoWithActor(actor string, msg string, args ...any) {
+	p.base.InfoWithActor(actor, msg, args...)
+}
+
+func (p *ProgressLogger) WarnWithActor(actor string, msg string, args ...any) {
+	p.base.WarnWithActor(actor, msg, args...)
+}
+
+func (p *ProgressLogger) ErrorWithActor(actor string, msg string, args ...any) {
+	p.base.ErrorWithActor(actor, msg, args...)
 }
 
 func (p *ProgressLogger) Info(msg string, args ...any) {
-	p.base.Info(msg, args...)
+	p.InfoWithActor("System", msg, args...)
 }
 
 func (p *ProgressLogger) Warn(msg string, args ...any) {
-	p.base.Warn(msg, args...)
+	p.WarnWithActor("System", msg, args...)
 }
 
 func (p *ProgressLogger) Error(msg string, args ...any) {
-	p.base.Error(msg, args...)
+	p.ErrorWithActor("System", msg, args...)
+}
+
+func (p *ProgressLogger) ProgressRows() []iface.ProgressRow {
+	return p.tracker.ProgressRows()
 }
 
 func (p *ProgressLogger) SetProgress(name string, percent int, displayText string) {
