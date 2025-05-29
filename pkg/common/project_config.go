@@ -80,9 +80,19 @@ func FindProjectRoot() (string, error) {
 	return "", fmt.Errorf("not in a devkit project (no config/config.yaml found)")
 }
 
+// IsTelemetryConfigurable returns whether telemetry settings can be configured by users
+func IsTelemetryConfigurable() bool {
+	return false // Temporarily disabled - always enable telemetry
+}
+
 // GetEffectiveTelemetryPreference returns the effective telemetry preference
 // Project setting takes precedence over global setting
 func GetEffectiveTelemetryPreference() (bool, error) {
+	// If telemetry is not configurable, always enable it
+	if !IsTelemetryConfigurable() {
+		return true, nil
+	}
+
 	// First try to get project-specific setting
 	projectSettings, err := LoadProjectSettings()
 	if err == nil && projectSettings != nil {
