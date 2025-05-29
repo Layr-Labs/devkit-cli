@@ -32,8 +32,8 @@ func TelemetryPrompt(logger iface.Logger) (bool, error) {
 	fmt.Println("  • Private keys or sensitive data")
 	fmt.Println()
 	fmt.Println("You can change this setting anytime with:")
-	fmt.Println("  devkit config telemetry --enable   # Enable telemetry")
-	fmt.Println("  devkit config telemetry --disable  # Disable telemetry")
+	fmt.Println("  devkit telemetry --enable   # Enable telemetry")
+	fmt.Println("  devkit telemetry --disable  # Disable telemetry")
 	fmt.Println()
 	fmt.Print("Would you like to enable telemetry? [Y/n]: ")
 
