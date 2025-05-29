@@ -164,6 +164,11 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("failed to initialize keystores: %w", err)
 		}
 
+		// Copies the default .zeus file in the .zeus/ directory
+		if err := copyZeusFileToProject(logger, targetDir); err != nil {
+			return fmt.Errorf("failed to initialize .zeus: %w", err)
+		}
+
 		// Write the example .env file
 		err = os.WriteFile(filepath.Join(targetDir, ".env.example"), []byte(config.EnvExample), 0644)
 		if err != nil {
@@ -255,29 +260,16 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName stri
 	configContent := configs.ConfigYamls[configs.LatestVersion]
 
 	// Unmarshal the YAML content into a map
-	var configMap map[string]interface{}
-	if err := yaml.Unmarshal([]byte(configContent), &configMap); err != nil {
+	var cfg common.Config
+	if err := yaml.Unmarshal([]byte(configContent), &cfg); err != nil {
 		return fmt.Errorf("failed to unmarshal config YAML: %w", err)
 	}
-
-	// Access the project section
-	if configSection, ok := configMap["config"].(map[string]interface{}); ok {
-		if projectMap, ok := configSection["project"].(map[string]interface{}); ok {
-			// Update project name
-			projectMap["name"] = projectName
-
-			// Add template information if provided
-			if templateBaseURL != "" {
-				projectMap["templateBaseUrl"] = templateBaseURL
-			}
-			if templateVersion != "" {
-				projectMap["templateVersion"] = templateVersion
-			}
-		}
-	}
+	cfg.Config.Project.Name = projectName
+	cfg.Config.Project.TemplateBaseURL = templateBaseURL
+	cfg.Config.Project.TemplateVersion = templateVersion
 
 	// Marshal the modified configuration back to YAML
-	newContentBytes, err := yaml.Marshal(configMap)
+	newContentBytes, err := yaml.Marshal(&cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal modified config: %w", err)
 	}
@@ -341,6 +333,23 @@ func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string) error 
 
 		logger.Debug("Copied keystore: %s", fileName)
 	}
+
+	return nil
+}
+
+// Copies the .zeus file to the project directory
+func copyZeusFileToProject(logger iface.Logger, targetDir string) error {
+	// Destination .zeus file path
+	destZeusPath := filepath.Join(targetDir, common.ZeusConfig)
+
+	// Read the embedded zeus config
+	zeusConfigContent := config.ZeusConfig
+
+	if err := os.WriteFile(destZeusPath, []byte(zeusConfigContent), 0644); err != nil {
+		return fmt.Errorf("failed to write file %s: %w", common.ZeusConfig, err)
+	}
+
+	logger.Debug("Copied zeus config: %s", common.ZeusConfig)
 
 	return nil
 }

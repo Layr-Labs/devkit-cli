@@ -16,6 +16,7 @@ const LatestVersion = "0.0.1"
 //go:embed v0.0.1.yaml
 var v0_0_1_default []byte
 
+
 // Map of context name -> content
 var ConfigYamls = map[string][]byte{
 	"0.0.1": v0_0_1_default,

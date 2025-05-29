@@ -46,6 +46,11 @@ var DevnetCommand = &cli.Command{
 					Usage: "Skip AVS setup steps (metadata update, registrar setup, etc.) after contract deployment",
 					Value: false,
 				},
+				&cli.BoolFlag{
+					Name:  "use-zeus",
+					Usage: "Use Zeus CLI to fetch mainnet core addresses",
+					Value: false,
+				},
 			}, common.GlobalFlags...),
 			Action: StartDevnetAction,
 		},
@@ -78,6 +83,18 @@ var DevnetCommand = &cli.Command{
 			Name:   "list",
 			Usage:  "Lists all running devkit devnet containers with their ports",
 			Action: ListDevnetContainersAction,
+		},
+		{
+			Name:   "fetch-addresses",
+			Usage:  "Fetches current EigenLayer core addresses from mainnet using Zeus CLI",
+			Action: FetchZeusAddressesAction,
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:  "context",
+					Usage: "Context to update with Zeus addresses",
+					Value: "devnet",
+				},
+			},
 		},
 		// TODO: Surface the following actions as separate commands:
 		// - update-avs-metadata: Updates the AVS metadata URI on the devnet

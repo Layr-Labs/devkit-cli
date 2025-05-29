@@ -7,10 +7,13 @@ import (
 )
 
 type BasicLogger struct {
+	verbose bool
 }
 
-func NewLogger() *BasicLogger {
-	return &BasicLogger{}
+func NewLogger(verbose bool) *BasicLogger {
+	return &BasicLogger{
+		verbose: verbose,
+	}
 }
 
 func (l *BasicLogger) Info(msg string, args ...any) {
@@ -53,6 +56,11 @@ func (l *BasicLogger) Error(msg string, args ...any) {
 }
 
 func (l *BasicLogger) Debug(msg string, args ...any) {
+	// skip debug when !verbose
+	if !l.verbose {
+		return
+	}
+
 	// format the message once
 	formatted := fmt.Sprintf(msg, args...)
 
@@ -61,6 +69,6 @@ func (l *BasicLogger) Debug(msg string, args ...any) {
 
 	// print the lines with log
 	for _, line := range lines {
-		log.Printf("Error: %s", line)
+		log.Printf("Debug: %s", line)
 	}
 }

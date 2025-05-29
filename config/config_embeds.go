@@ -10,3 +10,6 @@ var GitIgnore string
 
 //go:embed .env.example
 var EnvExample string
+
+//go:embed .zeus
+var ZeusConfig string

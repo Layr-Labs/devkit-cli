@@ -27,6 +27,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	"gopkg.in/yaml.v3"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
@@ -46,6 +47,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Extract vars
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+	useZeus := cCtx.Bool("use-zeus")
 
 	// Migrate config
 	configMigrated, err := migrateConfig(logger)
@@ -74,6 +76,32 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Fetch EigenLayer addresses using Zeus if requested
+	if useZeus {
+		logger.Info("Fetching EigenLayer core addresses from Zeus...")
+		err = common.UpdateContextWithZeusAddresses(logger, config, devnet.CONTEXT)
+		if err != nil {
+			logger.Warn("Failed to fetch addresses from Zeus: %v", err)
+			logger.Info("Continuing with addresses from config...")
+		} else {
+			logger.Info("Successfully updated context with addresses from Zeus")
+
+			// Save the updated context to disk
+			contextFile := filepath.Join("config", "contexts", devnet.CONTEXT+".yaml")
+			yamlData, err := yaml.Marshal(map[string]interface{}{
+				"version": "0.0.4", // This should ideally use the latest version dynamically
+				"context": config.Context[devnet.CONTEXT],
+			})
+			if err != nil {
+				logger.Warn("Failed to save updated context: %v", err)
+			} else {
+				if err = os.WriteFile(contextFile, yamlData, 0644); err != nil {
+					logger.Warn("Failed to write context file: %v", err)
+				}
+			}
+		}
+	}
 	port := cCtx.Int("port")
 	if !devnet.IsPortAvailable(port) {
 		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --port", port)
@@ -84,19 +112,16 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Start timer
 	startTime := time.Now()
 
-	// If user gives, say, log = "DEBUG" Or "Debug", we normalize it to lowercase
-	if common.IsVerboseEnabled(cCtx, config) {
-		logger.Info("Starting devnet...\n")
+	logger.Info("Starting devnet...\n")
 
-		if cCtx.Bool("reset") {
-			logger.Info("Resetting devnet...")
-		}
-		if fork := cCtx.String("fork"); fork != "" {
-			logger.Info("Forking from chain: %s", fork)
-		}
-		if cCtx.Bool("headless") {
-			logger.Info("Running in headless mode")
-		}
+	if cCtx.Bool("reset") {
+		logger.Debug("Resetting devnet...")
+	}
+	if fork := cCtx.String("fork"); fork != "" {
+		logger.Debug("Forking from chain: %s", fork)
+	}
+	if cCtx.Bool("headless") {
+		logger.Debug("Running in headless mode")
 	}
 
 	// Docker-compose for anvil devnet
@@ -110,6 +135,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if forkUrl == "" {
 		return fmt.Errorf("fork-url not set; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
 	}
+
+	// Ensure fork URL uses appropriate Docker host for container environments
+	dockerForkUrl := devnet.EnsureDockerHost(forkUrl)
 
 	// Get the block_time from env/config
 	blockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L1)
@@ -131,14 +159,14 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		"FOUNDRY_IMAGE="+chainImage,
 		"ANVIL_ARGS="+chainArgs,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
-		"FORK_RPC_URL="+forkUrl,
+		"FORK_RPC_URL="+dockerForkUrl,
 		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
 		"AVS_CONTAINER_NAME="+containerName,
 	)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
-	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
+	rpcUrl := devnet.GetRPCURL(port)
 	logger.Info("Waiting for devnet to be ready...")
 
 	// Set path for context yamls
@@ -187,7 +215,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 4 second to ensure the devnet is fully started
 	time.Sleep(4 * time.Second)
-
 	// Fund the wallets defined in config
 	err = devnet.FundWalletsDevnet(config, rpcUrl)
 	if err != nil {
@@ -767,15 +794,14 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
 
-	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
-	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+	allocationManagerAddr, delegationManagerAddr := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
 		big.NewInt(int64(l1Cfg.ChainID)),
 		client,
-		allocationManagerAddr,
-		delegationManagerAddr,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
 		logger,
 	)
 	if err != nil {
@@ -865,4 +891,51 @@ func migrateContexts(logger iface.Logger) (int, error) {
 	}
 
 	return contextsMigrated, nil
+}
+
+func FetchZeusAddressesAction(cCtx *cli.Context) error {
+	logger, _ := common.GetLoggerFromCLIContext(cCtx)
+	contextName := cCtx.String("context")
+
+	// Load config for the specified context
+	config, err := common.LoadConfigWithContextConfig(contextName)
+	if err != nil {
+		return fmt.Errorf("failed to load config for context %s: %w", contextName, err)
+	}
+
+	// Fetch addresses from Zeus
+	logger.Info("Fetching EigenLayer core addresses from Zeus...")
+	addresses, err := common.GetZeusAddresses(logger)
+	if err != nil {
+		return fmt.Errorf("failed to get addresses from Zeus: %w", err)
+	}
+
+	// Print the fetched addresses
+	logger.Info("Found addresses:")
+	logger.Info("AllocationManager: %s", addresses.AllocationManager)
+	logger.Info("DelegationManager: %s", addresses.DelegationManager)
+
+	// Update the context with the fetched addresses
+	err = common.UpdateContextWithZeusAddresses(logger, config, contextName)
+	if err != nil {
+		return fmt.Errorf("failed to update context with Zeus addresses: %w", err)
+	}
+
+	// Write the updated config to disk
+	contextFile := filepath.Join("config", "contexts", contextName+".yaml")
+	yamlData, err := yaml.Marshal(map[string]interface{}{
+		"version": "0.0.4", // This should ideally use the latest version dynamically
+		"context": config.Context[contextName],
+	})
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated context: %w", err)
+	}
+
+	err = os.WriteFile(contextFile, yamlData, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write updated context file: %w", err)
+	}
+
+	logger.Info("Successfully updated %s context with EigenLayer core addresses", contextName)
+	return nil
 }

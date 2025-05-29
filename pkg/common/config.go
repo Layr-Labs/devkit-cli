@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -37,23 +39,16 @@ type OperatorSpec struct {
 	Stake               string `json:"stake" yaml:"stake"`
 }
 
-type ChainContextConfig struct {
-	Name                  string                 `json:"name" yaml:"name"`
-	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
-	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
-	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`
-	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
-	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
-	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
-	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
-	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
-}
-
 type AvsConfig struct {
 	Address          string `json:"address" yaml:"address"`
 	MetadataUri      string `json:"metadata_url" yaml:"metadata_url"`
 	AVSPrivateKey    string `json:"avs_private_key" yaml:"avs_private_key"`
 	RegistrarAddress string `json:"registrar_address" yaml:"registrar_address"`
+}
+
+type EigenLayerConfig struct {
+	AllocationManager string `json:"allocation_manager" yaml:"allocation_manager"`
+	DelegationManager string `json:"delegation_manager" yaml:"delegation_manager"`
 }
 
 type ChainConfig struct {
@@ -71,6 +66,11 @@ type DeployedContract struct {
 type ConfigWithContextConfig struct {
 	Config  ConfigBlock                   `json:"config" yaml:"config"`
 	Context map[string]ChainContextConfig `json:"context" yaml:"context"`
+}
+
+type Config struct {
+	Version string      `json:"version" yaml:"version"`
+	Config  ConfigBlock `json:"config" yaml:"config"`
 }
 
 type ContextConfig struct {
@@ -93,7 +93,68 @@ type OperatorRegistration struct {
 	Payload       string `json:"payload" yaml:"payload"`
 }
 
-func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, error) {
+type ChainContextConfig struct {
+	Name                  string                 `json:"name" yaml:"name"`
+	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
+	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
+	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`
+	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
+	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
+	EigenLayer            *EigenLayerConfig      `json:"eigenlayer" yaml:"eigenlayer"`
+	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
+	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
+	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
+}
+
+func LoadBaseConfig() (map[string]interface{}, error) {
+	path := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read base config: %w", err)
+	}
+	var cfg map[string]interface{}
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse base config: %w", err)
+	}
+	return cfg, nil
+}
+
+func LoadContextConfig(ctxName string) (map[string]interface{}, error) {
+	// Default to devnet
+	if ctxName == "" {
+		ctxName = "devnet"
+	}
+	path := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", ctxName+".yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read context %q: %w", ctxName, err)
+	}
+	var ctx map[string]interface{}
+	if err := yaml.Unmarshal(data, &ctx); err != nil {
+		return nil, fmt.Errorf("parse context %q: %w", ctxName, err)
+	}
+	return ctx, nil
+}
+
+func LoadBaseConfigYaml() (*Config, error) {
+	path := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read config: %w", err)
+	}
+	var cfg *Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+	return cfg, nil
+}
+
+func LoadConfigWithContextConfig(ctxName string) (*ConfigWithContextConfig, error) {
+	// Default to devnet
+	if ctxName == "" {
+		ctxName = "devnet"
+	}
+
 	// Load base config
 	configPath := filepath.Join(DefaultConfigWithContextConfigPath, BaseConfig)
 	data, err := os.ReadFile(configPath)
@@ -107,10 +168,10 @@ func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, 
 	}
 
 	// Load requested context file
-	contextFile := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", contextName+".yaml")
+	contextFile := filepath.Join(DefaultConfigWithContextConfigPath, "contexts", ctxName+".yaml")
 	ctxData, err := os.ReadFile(contextFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read context %q file: %w", contextName, err)
+		return nil, fmt.Errorf("failed to read context %q file: %w", ctxName, err)
 	}
 
 	var wrapper struct {
@@ -123,26 +184,13 @@ func LoadConfigWithContextConfig(contextName string) (*ConfigWithContextConfig, 
 	}
 
 	cfg.Context = map[string]ChainContextConfig{
-		contextName: wrapper.Context,
+		ctxName: wrapper.Context,
 	}
 
 	return &cfg, nil
 }
 
-func LoadConfigWithContextConfigWithoutContext() (*ConfigWithContextConfig, error) {
-	configPath := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read base config: %w", err)
-	}
-	var cfg ConfigWithContextConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse base config: %w", err)
-	}
-	return &cfg, nil
-}
-
-func LoadContext(yamlPath string) ([]byte, error) {
+func LoadRawContext(yamlPath string) ([]byte, error) {
 	rootNode, err := LoadYAML(yamlPath)
 	if err != nil {
 		return nil, err
@@ -167,4 +215,33 @@ func LoadContext(yamlPath string) ([]byte, error) {
 	}
 
 	return context, nil
+}
+
+func RequireNonZero(s interface{}) error {
+	v := reflect.ValueOf(s)
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return fmt.Errorf("must be non-nil")
+		}
+		v = v.Elem()
+	}
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		// skip private or omitempty-tagged fields
+		if f.PkgPath != "" || strings.Contains(f.Tag.Get("yaml"), "omitempty") {
+			continue
+		}
+		fv := v.Field(i)
+		if reflect.DeepEqual(fv.Interface(), reflect.Zero(f.Type).Interface()) {
+			return fmt.Errorf("missing required field: %s", f.Name)
+		}
+		// if nested struct, recurse
+		if fv.Kind() == reflect.Struct || (fv.Kind() == reflect.Ptr && fv.Elem().Kind() == reflect.Struct) {
+			if err := RequireNonZero(fv.Interface()); err != nil {
+				return fmt.Errorf("%s.%w", f.Name, err)
+			}
+		}
+	}
+	return nil
 }
