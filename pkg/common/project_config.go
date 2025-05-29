@@ -14,89 +14,57 @@ type ProjectSettings struct {
 	TelemetryEnabled bool   `yaml:"telemetry_enabled"`
 }
 
-// SaveProjectIdAndTelemetryToggle saves project settings to the project directory
+// SaveProjectIdAndTelemetryToggle saves project settings to config.yaml
 func SaveProjectIdAndTelemetryToggle(projectDir string, projectUuid string, telemetryEnabled bool) error {
-	// Try to load existing settings first to preserve UUID if it exists
-	var settings ProjectSettings
-	existingSettings, err := LoadProjectSettings()
-	if err == nil && existingSettings != nil {
-		settings = *existingSettings
-		// Only update telemetry setting
-		settings.TelemetryEnabled = telemetryEnabled
-	} else {
-		// Create new settings with a new UUID
-		settings = ProjectSettings{
-			ProjectUUID:      projectUuid,
-			TelemetryEnabled: telemetryEnabled,
-		}
-	}
+	configPath := filepath.Join(projectDir, "config", "config.yaml")
 
-	data, err := yaml.Marshal(settings)
+	// Load existing config.yaml
+	config, err := loadConfigFromPath(configPath)
 	if err != nil {
-		return fmt.Errorf("failed to marshal settings: %w", err)
+		return fmt.Errorf("failed to load config.yaml: %w", err)
 	}
 
-	configPath := filepath.Join(projectDir, DevkitConfigFile)
-	if err := os.WriteFile(configPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
+	// Update project fields
+	config.Config.Project.ProjectUUID = projectUuid
+	config.Config.Project.TelemetryEnabled = telemetryEnabled
 
-	return nil
-}
-
-// CreateProjectWithGlobalTelemetryDefaults creates a new project config using global telemetry preference
-func CreateProjectWithGlobalTelemetryDefaults(projectDir string, projectUuid string) error {
-	// Get global telemetry preference
-	globalTelemetryEnabled, err := GetGlobalTelemetryPreference()
-	if err != nil {
-		// If we can't get global preference, default to false for safety
-		return SaveProjectIdAndTelemetryToggle(projectDir, projectUuid, false)
-	}
-
-	// Use global preference if set, otherwise default to false
-	telemetryEnabled := false
-	if globalTelemetryEnabled != nil {
-		telemetryEnabled = *globalTelemetryEnabled
-	}
-
-	return SaveProjectIdAndTelemetryToggle(projectDir, projectUuid, telemetryEnabled)
+	// Save back to config.yaml
+	return saveConfigToPath(configPath, config)
 }
 
 // SetProjectTelemetry sets telemetry preference for the current project only
 func SetProjectTelemetry(enabled bool) error {
-	// Find project directory by looking for .config.devkit.yml
+	// Find project directory by looking for config/config.yaml
 	projectDir, err := FindProjectRoot()
 	if err != nil {
 		return fmt.Errorf("not in a devkit project directory: %w", err)
 	}
 
-	// Load existing settings to preserve other values
-	settings, err := LoadProjectSettings()
-	if err != nil {
-		return fmt.Errorf("failed to load project settings: %w", err)
-	}
+	configPath := filepath.Join(projectDir, "config", "config.yaml")
 
-	if settings == nil {
-		return fmt.Errorf("no project configuration found")
+	// Load existing config.yaml
+	config, err := loadConfigFromPath(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to load project config: %w", err)
 	}
 
 	// Update only telemetry setting
-	settings.TelemetryEnabled = enabled
+	config.Config.Project.TelemetryEnabled = enabled
 
-	// Save back to project
-	return SaveProjectIdAndTelemetryToggle(projectDir, settings.ProjectUUID, enabled)
+	// Save back to config.yaml
+	return saveConfigToPath(configPath, config)
 }
 
-// FindProjectRoot searches upward from current directory to find .config.devkit.yml
+// FindProjectRoot searches upward from current directory to find config/config.yaml
 func FindProjectRoot() (string, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 
-	// Search upward for .config.devkit.yml
+	// Search upward for config/config.yaml
 	for {
-		configPath := filepath.Join(currentDir, ".config.devkit.yml")
+		configPath := filepath.Join(currentDir, "config", "config.yaml")
 		if _, err := os.Stat(configPath); err == nil {
 			return currentDir, nil
 		}
@@ -109,7 +77,7 @@ func FindProjectRoot() (string, error) {
 		currentDir = parent
 	}
 
-	return "", fmt.Errorf("not in a devkit project (no .config.devkit.yml found)")
+	return "", fmt.Errorf("not in a devkit project (no config/config.yaml found)")
 }
 
 // GetEffectiveTelemetryPreference returns the effective telemetry preference
@@ -135,37 +103,56 @@ func GetEffectiveTelemetryPreference() (bool, error) {
 	return *globalPreference, nil
 }
 
-func loadProjectSettingsFromLocation(location string) (*ProjectSettings, error) {
-	data, err := os.ReadFile(location)
+// loadConfigFromPath loads the complete config.yaml structure
+func loadConfigFromPath(configPath string) (*Config, error) {
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var settings ProjectSettings
-	if err := yaml.Unmarshal(data, &settings); err != nil {
+	var config Config
+	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	return &settings, nil
+	return &config, nil
 }
 
-// LoadProjectSettings loads project settings from the current directory
+// saveConfigToPath saves the complete config.yaml structure
+func saveConfigToPath(configPath string, config *Config) error {
+	data, err := yaml.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
+}
+
+// LoadProjectSettings loads project settings from config.yaml
 func LoadProjectSettings() (*ProjectSettings, error) {
-	return loadProjectSettingsFromLocation(DevkitConfigFile)
+	configPath := filepath.Join("config", "config.yaml")
+	config, err := loadConfigFromPath(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ProjectSettings{
+		ProjectUUID:      config.Config.Project.ProjectUUID,
+		TelemetryEnabled: config.Config.Project.TelemetryEnabled,
+	}, nil
 }
 
-func getProjectUUIDFromLocation(location string) string {
-	settings, err := loadProjectSettingsFromLocation(location)
+// GetProjectUUID returns the project UUID from config.yaml or empty string if not found
+func GetProjectUUID() string {
+	settings, err := LoadProjectSettings()
 	if err != nil {
 		return ""
 	}
-
 	return settings.ProjectUUID
-}
-
-// GetProjectUUID returns the project UUID or empty string if not found
-func GetProjectUUID() string {
-	return getProjectUUIDFromLocation(DevkitConfigFile)
 }
 
 // IsTelemetryEnabled returns whether telemetry is enabled for the project
@@ -179,13 +166,21 @@ func IsTelemetryEnabled() bool {
 	return enabled
 }
 
+// Helper functions for testing
 func isTelemetryEnabledAtPath(location string) bool {
-	// This function is used for testing specific config files
-	// It should only check the project-level preference at that path
-	settings, err := loadProjectSettingsFromLocation(location)
+	// For testing: load config.yaml at specific path and check telemetry setting
+	config, err := loadConfigFromPath(location)
 	if err != nil {
 		return false // Config doesn't exist, assume telemetry disabled
 	}
 
-	return settings.TelemetryEnabled
+	return config.Config.Project.TelemetryEnabled
+}
+
+func getProjectUUIDFromLocation(location string) string {
+	config, err := loadConfigFromPath(location)
+	if err != nil {
+		return ""
+	}
+	return config.Config.Project.ProjectUUID
 }

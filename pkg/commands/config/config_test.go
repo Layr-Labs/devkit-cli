@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 
@@ -19,27 +18,25 @@ import (
 func TestConfigCommand_ListOutput(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	defaultConfigFile := configs.ConfigYamls[configs.LatestVersion]
+	// Create config.yaml with embedded telemetry settings
+	configContent := `version: 0.0.2
+config:
+  project:
+    name: "my-avs"
+    version: "0.1.0"
+    context: "devnet"
+    project_uuid: "d7598c91-2ec4-4751-b0ab-bc848f73d58e"
+    telemetry_enabled: true`
+
 	defaultDevnetConfigFile := contexts.ContextYamls[contexts.LatestVersion]
 
 	configPath := filepath.Join(tmpDir, "config")
 	require.NoError(t, os.MkdirAll(configPath, 0755))
-	require.NoError(t, os.WriteFile(filepath.Join(configPath, common.BaseConfig), defaultConfigFile, 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(configPath, common.BaseConfig), []byte(configContent), 0644))
 	contextsPath := filepath.Join(configPath, "contexts")
 	require.NoError(t, os.MkdirAll(contextsPath, 0755))
 	require.NoError(t, os.WriteFile(filepath.Join(contextsPath, "devnet.yaml"), defaultDevnetConfigFile, 0644))
 
-	mockTelemteryContent :=
-		`
-project_uuid: d7598c91-2ec4-4751-b0ab-bc848f73d58e
-telemetry_enabled: true
-`
-
-	require.NoError(t, os.WriteFile(
-		filepath.Join(tmpDir, common.DevkitConfigFile),
-		[]byte(mockTelemteryContent),
-		0644,
-	))
 	// 🔁 Change into the test directory
 	originalWD, _ := os.Getwd()
 	defer func() {
@@ -145,12 +142,14 @@ func TestValidateYAML(t *testing.T) {
 	tempDir := t.TempDir()
 
 	validYAML := `
-version: 0.1.0
+version: 0.0.2
 config:
   project:
     name: "valid-avs"
     version: "0.1.0"
     context: "devnet"
+    project_uuid: "test-uuid"
+    telemetry_enabled: true
 `
 	invalidYAML := `
 config:

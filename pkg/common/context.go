@@ -3,12 +3,14 @@ package common
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/urfave/cli/v2"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"syscall"
+
+	"github.com/google/uuid"
+	"github.com/urfave/cli/v2"
 )
 
 // Embedded devkit version from release
@@ -49,7 +51,7 @@ func NewAppEnvironment(os string, arch string, projectUuid string) *AppEnvironme
 }
 
 func WithAppEnvironment(ctx *cli.Context) {
-	withAppEnvironmentFromLocation(ctx, DevkitConfigFile)
+	withAppEnvironmentFromLocation(ctx, filepath.Join("config", "config.yaml"))
 }
 
 func withAppEnvironmentFromLocation(ctx *cli.Context, location string) {

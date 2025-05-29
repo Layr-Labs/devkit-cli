@@ -154,8 +154,33 @@ var CreateCommand = &cli.Command{
 		// Tidy the logs
 		logger.Debug("\nFinalising new project\n\n")
 
-		// Copy config.yaml to the project directory
-		if err := copyDefaultConfigToProject(logger, targetDir, projectName, mainBaseURL, mainVersion); err != nil {
+		// Write the example .env file
+		err = os.WriteFile(filepath.Join(targetDir, ".env.example"), []byte(config.EnvExample), 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write .env.example: %w", err)
+		}
+
+		// Get app environment for UUID
+		appEnv, ok := common.AppEnvironmentFromContext(cCtx.Context)
+		if !ok {
+			return fmt.Errorf("could not determine application environment")
+		}
+
+		// Get global telemetry preference
+		globalTelemetryEnabled, err := common.GetGlobalTelemetryPreference()
+		if err != nil {
+			// If we can't get global preference, default to false for safety
+			logger.Debug("Unable to get global telemetry preference, defaulting to false: %v", err)
+		}
+
+		// Use global preference if set, otherwise default to false
+		telemetryEnabled := false
+		if globalTelemetryEnabled != nil {
+			telemetryEnabled = *globalTelemetryEnabled
+		}
+
+		// Copy config.yaml to the project directory with UUID and telemetry settings
+		if err := copyDefaultConfigToProject(logger, targetDir, projectName, appEnv.ProjectUUID, mainBaseURL, mainVersion, telemetryEnabled); err != nil {
 			return fmt.Errorf("failed to initialize %s: %w", common.BaseConfig, err)
 		}
 
@@ -167,21 +192,6 @@ var CreateCommand = &cli.Command{
 		// Copies the default .zeus file in the .zeus/ directory
 		if err := copyZeusFileToProject(logger, targetDir); err != nil {
 			return fmt.Errorf("failed to initialize .zeus: %w", err)
-		}
-
-		// Write the example .env file
-		err = os.WriteFile(filepath.Join(targetDir, ".env.example"), []byte(config.EnvExample), 0644)
-		if err != nil {
-			return fmt.Errorf("failed to write .env.example: %w", err)
-		}
-
-		// Save project settings with telemetry preference inherited from global config
-		appEnv, ok := common.AppEnvironmentFromContext(cCtx.Context)
-		if !ok {
-			return fmt.Errorf("could not determine application environment")
-		}
-		if err := common.CreateProjectWithGlobalTelemetryDefaults(targetDir, appEnv.ProjectUUID); err != nil {
-			return fmt.Errorf("failed to save project settings: %w", err)
 		}
 
 		// Initialize git repository in the project directory
@@ -247,8 +257,8 @@ func createProjectDir(logger iface.Logger, targetDir string, overwrite, verbose 
 	return nil
 }
 
-// copyDefaultConfigToProject copies config to the project directory with updated project name
-func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName string, templateBaseURL, templateVersion string) error {
+// copyDefaultConfigToProject copies config to the project directory with updated project name, UUID, and telemetry settings
+func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName, projectUUID string, templateBaseURL, templateVersion string, telemetryEnabled bool) error {
 
 	// Create and ensure target config directory exists
 	destConfigDir := filepath.Join(targetDir, "config")
@@ -265,6 +275,8 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName stri
 		return fmt.Errorf("failed to unmarshal config YAML: %w", err)
 	}
 	cfg.Config.Project.Name = projectName
+	cfg.Config.Project.ProjectUUID = projectUUID
+	cfg.Config.Project.TelemetryEnabled = telemetryEnabled
 	cfg.Config.Project.TemplateBaseURL = templateBaseURL
 	cfg.Config.Project.TemplateVersion = templateVersion
 

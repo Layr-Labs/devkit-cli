@@ -10,22 +10,44 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
 
 func TestSaveAndLoadProjectSettings(t *testing.T) {
-	// Create temp dir for test
+	// Create temp dir for test with config structure
 	tmpDir := t.TempDir()
+	configDir := filepath.Join(tmpDir, "config")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create config directory: %v", err)
+	}
+
+	// Create a basic config.yaml file first
+	configContent := `version: 0.0.2
+config:
+  project:
+    name: "test-project"
+    version: "0.1.0"
+    context: "devnet"
+    project_uuid: ""
+    telemetry_enabled: false`
+
+	configPath := filepath.Join(configDir, "config.yaml")
+	err = os.WriteFile(configPath, []byte(configContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create config.yaml: %v", err)
+	}
 
 	// Test saving project settings
-	err := SaveProjectIdAndTelemetryToggle(tmpDir, uuid.New().String(), true)
+	testUUID := uuid.New().String()
+	err = SaveProjectIdAndTelemetryToggle(tmpDir, testUUID, true)
 	if err != nil {
 		t.Fatalf("Failed to save project settings: %v", err)
 	}
 
-	// Verify file exists
-	configPath := filepath.Join(tmpDir, DevkitConfigFile)
+	// Verify config.yaml was updated
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		t.Fatalf("Config file was not created")
+		t.Fatalf("Config file was not found")
 	}
 
 	// Set current directory to temp dir to test loading
@@ -51,8 +73,8 @@ func TestSaveAndLoadProjectSettings(t *testing.T) {
 	}
 
 	// Verify settings content
-	if settings.ProjectUUID == "" {
-		t.Error("ProjectUUID is empty")
+	if settings.ProjectUUID != testUUID {
+		t.Errorf("Expected ProjectUUID %s, got %s", testUUID, settings.ProjectUUID)
 	}
 
 	if !settings.TelemetryEnabled {
@@ -64,9 +86,18 @@ func TestGetProjectUUIDFromLocation_ValidFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	expectedUUID := uuid.New().String()
 
-	content := []byte("project_uuid: " + expectedUUID + "\ntelemetry_enabled: true\n")
-	configPath := filepath.Join(tmpDir, "devkit.yaml")
-	err := os.WriteFile(configPath, content, 0644)
+	// Create config.yaml format
+	configContent := `version: 0.0.2
+config:
+  project:
+    name: "test-project"
+    version: "0.1.0"
+    context: "devnet"
+    project_uuid: "` + expectedUUID + `"
+    telemetry_enabled: true`
+
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	err := os.WriteFile(configPath, []byte(configContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
@@ -88,13 +119,13 @@ func TestGetProjectUUIDFromLocation_FileMissing(t *testing.T) {
 func TestLoadProjectSettings_InvalidYAML(t *testing.T) {
 	tmpDir := t.TempDir()
 	invalidContent := []byte("{invalid_yaml:::")
-	configPath := filepath.Join(tmpDir, "devkit.yaml")
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	err := os.WriteFile(configPath, invalidContent, 0644)
 	if err != nil {
 		t.Fatalf("Failed to write invalid config file: %v", err)
 	}
 
-	_, err = loadProjectSettingsFromLocation(configPath)
+	_, err = loadConfigFromPath(configPath)
 	if err == nil {
 		t.Error("Expected YAML parsing error, got nil")
 	}
@@ -106,17 +137,36 @@ func TestIsTelemetryEnabled_TrueAndFalse(t *testing.T) {
 	falsePath := filepath.Join(tmpDir, "telemetry_false.yaml")
 
 	// Write "true" config
-	err := os.WriteFile(truePath, []byte("project_uuid: "+uuid.New().String()+"\ntelemetry_enabled: true\n"), 0644)
-	if err != nil {
-		t.Fatalf("Failed to write telemetry config: %v", err)
-	}
-	// Write "false" config
-	err = os.WriteFile(falsePath, []byte("project_uuid: "+uuid.New().String()+"\ntelemetry_enabled: false\n"), 0644)
+	trueContent := `version: 0.0.2
+config:
+  project:
+    name: "test-project"
+    version: "0.1.0"
+    context: "devnet"
+    project_uuid: "` + uuid.New().String() + `"
+    telemetry_enabled: true`
+
+	err := os.WriteFile(truePath, []byte(trueContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write telemetry config: %v", err)
 	}
 
-	// Override global path
+	// Write "false" config
+	falseContent := `version: 0.0.2
+config:
+  project:
+    name: "test-project"
+    version: "0.1.0"
+    context: "devnet"
+    project_uuid: "` + uuid.New().String() + `"
+    telemetry_enabled: false`
+
+	err = os.WriteFile(falsePath, []byte(falseContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write telemetry config: %v", err)
+	}
+
+	// Test telemetry enabled
 	if !isTelemetryEnabledAtPath(truePath) {
 		t.Error("Expected telemetry to be enabled")
 	}
@@ -145,10 +195,17 @@ func writeTempConfig(t *testing.T, content string) string {
 
 func TestGetProjectUUID_WhenUUIDIsPresent(t *testing.T) {
 	expectedUUID := uuid.New().String()
-	content := "project_uuid: " + expectedUUID + "\n"
-	writeTempConfig(t, content)
+	content := `version: 0.0.2
+config:
+  project:
+    name: "test-project"
+    version: "0.1.0"
+    context: "devnet"
+    project_uuid: "` + expectedUUID + `"
+    telemetry_enabled: false`
 
-	actualUUID := getProjectUUIDFromLocation(writeTempConfig(t, content))
+	tempFile := writeTempConfig(t, content)
+	actualUUID := getProjectUUIDFromLocation(tempFile)
 	assert.Equal(t, expectedUUID, actualUUID)
 }
 
@@ -175,7 +232,15 @@ func TestWithAppEnvironment_GeneratesUUIDWhenMissing(t *testing.T) {
 
 func TestWithAppEnvironment_UsesUUIDFromConfig(t *testing.T) {
 	expectedUUID := uuid.New().String()
-	content := "project_uuid: " + expectedUUID + "\n"
+	content := `version: 0.0.2
+config:
+  project:
+    name: "test-project"
+    version: "0.1.0"
+    context: "devnet"
+    project_uuid: "` + expectedUUID + `"
+    telemetry_enabled: false`
+
 	tempFile := writeTempConfig(t, content)
 	ctx := &cli.Context{
 		Context: context.Background(),
@@ -190,4 +255,41 @@ func TestWithAppEnvironment_UsesUUIDFromConfig(t *testing.T) {
 	assert.Equal(t, runtime.GOOS, env.OS)
 	assert.Equal(t, runtime.GOARCH, env.Arch)
 	assert.Equal(t, expectedUUID, env.ProjectUUID)
+}
+
+// Test the new migration functionality
+func TestConfigStructureWithNewFields(t *testing.T) {
+	tmpDir := t.TempDir()
+	testUUID := uuid.New().String()
+
+	// Create config.yaml with new structure
+	configContent := Config{
+		Version: "0.0.2",
+		Config: ConfigBlock{
+			Project: ProjectConfig{
+				Name:             "test-project",
+				Version:          "0.1.0",
+				Context:          "devnet",
+				ProjectUUID:      testUUID,
+				TelemetryEnabled: true,
+			},
+		},
+	}
+
+	configDir := filepath.Join(tmpDir, "config")
+	err := os.MkdirAll(configDir, 0755)
+	assert.NoError(t, err)
+
+	configPath := filepath.Join(configDir, "config.yaml")
+	data, err := yaml.Marshal(configContent)
+	assert.NoError(t, err)
+
+	err = os.WriteFile(configPath, data, 0644)
+	assert.NoError(t, err)
+
+	// Test loading the config
+	loadedConfig, err := loadConfigFromPath(configPath)
+	assert.NoError(t, err)
+	assert.Equal(t, testUUID, loadedConfig.Config.Project.ProjectUUID)
+	assert.True(t, loadedConfig.Config.Project.TelemetryEnabled)
 }

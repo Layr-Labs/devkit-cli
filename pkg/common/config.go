@@ -18,11 +18,13 @@ type ConfigBlock struct {
 }
 
 type ProjectConfig struct {
-	Name            string `json:"name" yaml:"name"`
-	Version         string `json:"version" yaml:"version"`
-	Context         string `json:"context" yaml:"context"`
-	TemplateBaseURL string `json:"templateBaseUrl,omitempty" yaml:"templateBaseUrl,omitempty"`
-	TemplateVersion string `json:"templateVersion,omitempty" yaml:"templateVersion,omitempty"`
+	Name             string `json:"name" yaml:"name"`
+	Version          string `json:"version" yaml:"version"`
+	Context          string `json:"context" yaml:"context"`
+	ProjectUUID      string `json:"project_uuid,omitempty" yaml:"project_uuid,omitempty"`
+	TelemetryEnabled bool   `json:"telemetry_enabled" yaml:"telemetry_enabled"`
+	TemplateBaseURL  string `json:"templateBaseUrl,omitempty" yaml:"templateBaseUrl,omitempty"`
+	TemplateVersion  string `json:"templateVersion,omitempty" yaml:"templateVersion,omitempty"`
 }
 
 type ForkConfig struct {
