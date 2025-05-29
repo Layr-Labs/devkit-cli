@@ -141,7 +141,10 @@ func WithFirstRunTelemetryPrompt(cCtx *cli.Context) error {
 	if err != nil {
 		logger.Debug("Failed to show telemetry prompt: %v", err)
 		// If prompt fails, mark first run complete but don't set telemetry preference
-		common.MarkFirstRunComplete()
+		err = common.MarkFirstRunComplete()
+		if err != nil {
+			logger.Debug("Failed to mark first run complete: %v", err)
+		}
 		return nil
 	}
 
@@ -149,7 +152,10 @@ func WithFirstRunTelemetryPrompt(cCtx *cli.Context) error {
 	if err := common.SetGlobalTelemetryPreference(choice); err != nil {
 		logger.Debug("Failed to save telemetry preference: %v", err)
 		// Still mark first run complete even if save fails
-		common.MarkFirstRunComplete()
+		err = common.MarkFirstRunComplete()
+		if err != nil {
+			logger.Debug("Failed to mark first run complete: %v", err)
+		}
 		return nil
 	}
 
