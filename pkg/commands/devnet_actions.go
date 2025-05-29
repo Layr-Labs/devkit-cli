@@ -922,6 +922,11 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 			return fmt.Errorf("unmarshal artifact JSON: %w", err)
 		}
 
+		// Check if provided abi is valid
+		if err := common.IsValidABI(abi.ABI); err != nil {
+			return fmt.Errorf("ABI is invalid: %v", err)
+		}
+
 		// Build the output struct
 		out := DeployContractJson{
 			Name:    nameVal,
