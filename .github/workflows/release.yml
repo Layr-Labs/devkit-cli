@@ -152,13 +152,12 @@ jobs:
       - name: Read version
         id: ver
         run: |
-          version=$(<VERSION)
-          echo "::set-output name=VERSION::$version"
+          echo "VERSION=$(<VERSION)" >> $GITHUB_ENV
 
       - name: Install devkit
         run: |
           set -euxo pipefail
-          ver="${{ steps.ver.outputs.VERSION }}"
+          ver="${{ env.VERSION }}"
           case "${{ matrix.os }}-${{ matrix.arch }}" in
             "macos-latest-x64")   url="https://s3.amazonaws.com/eigenlayer-devkit-releases/${ver}/devkit-darwin-amd64-${ver}.tar.gz" ;;
             "macos-latest-arm64") url="https://s3.amazonaws.com/eigenlayer-devkit-releases/${ver}/devkit-darwin-arm64-${ver}.tar.gz" ;;
@@ -174,7 +173,7 @@ jobs:
         run: |
           export PATH="$HOME/bin:$PATH"
           # expected version from file
-          ver="${{ steps.ver.outputs.VERSION }}"
+          ver="${{ env.VERSION }}"
           # extract the Version line (e.g. "v0.0.7") without dropping the prefix
           installed=$(devkit version \
             | awk '/^Version:/ { print $2 }')
