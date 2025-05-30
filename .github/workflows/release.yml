@@ -154,6 +154,12 @@ jobs:
         run: |
           echo "VERSION=$(<VERSION)" >> $GITHUB_ENV
 
+      - name: Setup QEMU (for arm64 on Linux runners)
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: linux/arm64
+
       - name: Install devkit
         run: |
           set -euxo pipefail
@@ -174,7 +180,7 @@ jobs:
           export PATH="$HOME/bin:$PATH"
           # expected version from file
           ver="${{ env.VERSION }}"
-          # extract the Version line (e.g. "v0.0.7") without dropping the prefix
+          # extract the `devkit version` Version line
           installed=$(devkit version \
             | awk '/^Version:/ { print $2 }')
           if [[ "$installed" != "$ver" ]]; then
