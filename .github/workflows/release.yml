@@ -43,6 +43,7 @@ jobs:
         run: |
           go mod tidy
           make tests
+  
   build-create-release:
     runs-on: ubuntu-latest
     needs: [lint, test]
@@ -50,11 +51,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Check and set release version
         env:
           REF: ${{ github.ref }}
         run: |
           ./scripts/version.sh $REF
+
       - name: Build binary
         env:
           RELEASE_BUCKET_NAME: ${{ secrets.RELEASE_BUCKET_NAME }}
@@ -97,6 +100,7 @@ jobs:
           echo 'RELEASE_BODY<<EOF' >> $GITHUB_ENV
           echo "$RELEASE_BODY" >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
+
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -108,6 +112,7 @@ jobs:
           draft: false
           prerelease: false
           body: ${{ env.RELEASE_BODY }}
+
       - name: Upload Release Asset
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -132,3 +137,49 @@ jobs:
               --data-binary @"$asset" \
               "${upload_url}?name=$asset_name"
           done
+
+  smoke-test-binaries:
+    needs: build-create-release 
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+        arch: [x64, arm64]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repo @ tag
+        uses: actions/checkout@v4
+
+      - name: Read version
+        id: ver
+        run: |
+          version=$(<VERSION)
+          echo "::set-output name=VERSION::$version"
+
+      - name: Install devkit
+        run: |
+          set -euxo pipefail
+          ver="${{ steps.ver.outputs.VERSION }}"
+          case "${{ matrix.os }}-${{ matrix.arch }}" in
+            "macos-latest-x64")   url="https://s3.amazonaws.com/eigenlayer-devkit-releases/${ver}/devkit-darwin-amd64-${ver}.tar.gz" ;;
+            "macos-latest-arm64") url="https://s3.amazonaws.com/eigenlayer-devkit-releases/${ver}/devkit-darwin-arm64-${ver}.tar.gz" ;;
+            "ubuntu-latest-x64")  url="https://s3.amazonaws.com/eigenlayer-devkit-releases/${ver}/devkit-linux-amd64-${ver}.tar.gz" ;;
+            "ubuntu-latest-arm64")url="https://s3.amazonaws.com/eigenlayer-devkit-releases/${ver}/devkit-linux-arm64-${ver}.tar.gz" ;;
+            *) echo "Unsupported combination"; exit 1 ;;
+          esac
+          mkdir -p "$HOME/bin"
+          echo "::set-output name=url::$url"
+          curl -fsSL "$url" | tar xv -C "$HOME/bin"
+
+      - name: Verify installation
+        run: |
+          export PATH="$HOME/bin:$PATH"
+          # expected version from file
+          ver="${{ steps.ver.outputs.VERSION }}"
+          # extract the Version line (e.g. "v0.0.7") without dropping the prefix
+          installed=$(devkit version \
+            | awk '/^Version:/ { print $2 }')
+          if [[ "$installed" != "$ver" ]]; then
+            echo "✖ version mismatch: expected $ver, got $installed"
+            exit 1
+          fi
+          echo "✔ version $installed matches expected $ver"
