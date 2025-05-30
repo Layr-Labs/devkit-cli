@@ -171,20 +171,20 @@ You can view or modify these configurations using the DevKit CLI or by editing t
 
 #### Set values via CLI flags
 
-- **Project-level**  
-  ```bash  
-  devkit avs config --set project.name="My new name" project.version="0.0.2"  
+- **Project-level**
+  ```bash
+  devkit avs config --set project.name="My new name" project.version="0.0.2"
   ```
 
-- **Context-specific**  
-  ```bash  
-  devkit avs context --set operator.key="0xabc…" context.timeout=30  
-  devkit avs context --context devnet --set operator.key="0xabc…" context.timeout=30  
+- **Context-specific**
+  ```bash
+  devkit avs context --set operators.0.address="0xabc..." operators.0.ecdsa_key="0x123..."
+  devkit avs context --context devnet --set operators.0.address="0xabc..." operators.0.ecdsa_key="0x123..."
   ```
 
 Alternatively, you can manually edit `config.yaml` or the `contexts/*.yaml` files in the text editor of your choice.
 
-> [!IMPORTANT]  
+> [!IMPORTANT]
 > All `devkit avs` commands must be run from the **root of your AVS project** — the directory containing the `config` folder.
 
 Before launching your local devnet, you must set valid Ethereum fork URLs to define the chain state your AVS will simulate against. These values are loaded from your `.env` file and automatically applied to your environment.

@@ -5,11 +5,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
+)
+
+// HandlerFunc defines operations on a YAML node
+type HandlerFunc func(node *yaml.Node, last bool, val string) (*yaml.Node, error)
+
+// Set up regex patterns to match bracketed index/filters in path
+var (
+	idxRe  = regexp.MustCompile(`^(\w+)\[(\d+)\]$`)
+	filtRe = regexp.MustCompile(`^(\w+)\[([^=]+)=([^\]]+)\]$`)
 )
 
 // LoadYAML reads a YAML file from the given path and unmarshals it into a *yaml.Node
@@ -184,74 +194,6 @@ func CloneNode(n *yaml.Node) *yaml.Node {
 	return &c
 }
 
-// WriteToPath navigates the given YAML node tree according to the dot-delimited
-// path segments in `path`, creating intermediate mapping nodes as needed, and
-// sets or overwrites the final key to the provided string value. Returns the
-// original root node for chaining or further use.
-func WriteToPath(root *yaml.Node, path []string, val string) (*yaml.Node, error) {
-	// workingNode is our cursor as we descend the tree
-	workingNode := root
-
-	// move through the path segment at a time
-	for i, seg := range path {
-		last := i == len(path)-1
-
-		// look for an existing child mapping key under workingNode
-		child := GetChildByKey(workingNode, seg)
-
-		// if no child exists, create or append
-		if child == nil {
-			if last {
-				// final segment missing—append key + scalar value,
-				// tagging as int if possible, else as quoted string
-				valNode := &yaml.Node{Kind: yaml.ScalarNode}
-				if _, err := strconv.Atoi(val); err == nil {
-					// integer literal
-					valNode.Value = val
-				} else {
-					// explicit string
-					valNode.Tag = "!!str"
-					valNode.Style = yaml.DoubleQuotedStyle
-					valNode.Value = val
-				}
-				workingNode.Content = append(workingNode.Content,
-					&yaml.Node{Kind: yaml.ScalarNode, Value: seg},
-					valNode,
-				)
-				break
-			}
-			// intermediate segment missing—create nested map
-			newMap := &yaml.Node{Kind: yaml.MappingNode}
-			workingNode.Content = append(workingNode.Content,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: seg},
-				newMap,
-			)
-			workingNode = newMap
-			continue
-		}
-
-		if last {
-			// final segment exists—overwrite its scalar value,
-			// preserving int if possible, else using quoted string
-			child.Kind = yaml.ScalarNode
-			if _, err := strconv.Atoi(val); err == nil {
-				child.Tag = "" // let YAML infer !!int
-				child.Style = 0
-				child.Value = val
-			} else {
-				child.Tag = "!!str"
-				child.Style = yaml.DoubleQuotedStyle
-				child.Value = val
-			}
-		} else {
-			// descend into existing mapping node
-			workingNode = child
-		}
-	}
-
-	return root, nil
-}
-
 // DeepMerge merges two *yaml.Node trees recursively
 //
 // - If both nodes are MappingNodes, their keys are merged:
@@ -356,4 +298,204 @@ func SetMappingValue(mapNode, keyNode, valNode *yaml.Node) {
 
 	// Not found: append key and value
 	mapNode.Content = append(mapNode.Content, keyNode, valNode)
+}
+
+// WriteToPath sets or overwrites a value in the YAML tree given a dot-delimited path.
+func WriteToPath(root *yaml.Node, path []string, val string) (*yaml.Node, error) {
+	// Ensure the provided value is clean
+	val = sanitizeValue(val)
+
+	// WorkingNode is our cursor as we descend the tree
+	workingNode := root
+
+	// Move through the path 1 segment at a time
+	for i, seg := range path {
+		last := i == len(path)-1
+
+		// Attempt to match indexed bracket path (operators[0]...)
+		if handler, node := tryBracketIndex(workingNode, seg); handler != nil {
+			node, err := handler(node, last, val)
+			if err != nil {
+				return nil, err
+			}
+			if last {
+				return root, nil
+			}
+			workingNode = node
+			continue
+		}
+
+		// Attempt to match on an indexed path (operators.0...)
+		if handler, node := tryNumericIndex(workingNode, seg); handler != nil {
+			node, err := handler(node, last, val)
+			if err != nil {
+				return nil, err
+			}
+			if last {
+				return root, nil
+			}
+			workingNode = node
+			continue
+		}
+
+		// Attempt to match filter path (operators[address=123]...)
+		if handler, node := tryFilterSeq(workingNode, seg); handler != nil {
+			node, err := handler(node, last, val)
+			if err != nil {
+				return nil, err
+			}
+			workingNode = node
+			continue
+		}
+
+		// Fallback to mapping (.key)
+		node, err := handleMapping(workingNode, seg, last, val)
+		if err != nil {
+			return nil, err
+		}
+		if last {
+			return root, nil
+		}
+		workingNode = node
+	}
+
+	return root, nil
+}
+
+// sanitizeValue trims quotes from user input
+func sanitizeValue(val string) string {
+	return strings.Trim(val, `"'`)
+}
+
+// tryBracketIndex detects foo[2]
+func tryBracketIndex(root *yaml.Node, seg string) (HandlerFunc, *yaml.Node) {
+	if m := idxRe.FindStringSubmatch(seg); m != nil {
+		key, iStr := m[1], m[2]
+		idx, _ := strconv.Atoi(iStr)
+		seq := GetChildByKey(root, key)
+		return bracketHandler(idx), seq
+	}
+	return nil, nil
+}
+
+// bracketHandler returns a handler for bracketed index
+func bracketHandler(idx int) HandlerFunc {
+	return func(seqRoot *yaml.Node, last bool, val string) (*yaml.Node, error) {
+		if seqRoot == nil || seqRoot.Kind != yaml.SequenceNode {
+			return nil, fmt.Errorf("not a sequence")
+		}
+		// Append if targeting next index
+		if idx == len(seqRoot.Content) {
+			seqRoot.Content = append(seqRoot.Content, &yaml.Node{Kind: yaml.MappingNode})
+		}
+		if idx < 0 || idx > len(seqRoot.Content)-1 {
+			return nil, fmt.Errorf("index out of range: %d", idx)
+		}
+		target := seqRoot.Content[idx]
+		if last {
+			return writeScalar(target, val)
+		}
+		return target, nil
+	}
+}
+
+// tryNumericIndex detects .0 on a sequence
+func tryNumericIndex(root *yaml.Node, seg string) (HandlerFunc, *yaml.Node) {
+	if root.Kind == yaml.SequenceNode && regexp.MustCompile(`^\d+$`).MatchString(seg) {
+		idx, _ := strconv.Atoi(seg)
+		return numericHandler(idx), root
+	}
+	return nil, nil
+}
+
+// numericHandler handles numeric segment on a sequence
+func numericHandler(idx int) HandlerFunc {
+	return func(seqRoot *yaml.Node, last bool, val string) (*yaml.Node, error) {
+		// Append if next index
+		if idx == len(seqRoot.Content) {
+			seqRoot.Content = append(seqRoot.Content, &yaml.Node{Kind: yaml.MappingNode})
+		}
+		if idx < 0 || idx > len(seqRoot.Content)-1 {
+			return nil, fmt.Errorf("index out of range: %d", idx)
+		}
+		target := seqRoot.Content[idx]
+		if last {
+			return writeScalar(target, val)
+		}
+		return target, nil
+	}
+}
+
+// tryFilterSeq detects foo[key=val]
+func tryFilterSeq(root *yaml.Node, seg string) (HandlerFunc, *yaml.Node) {
+	if m := filtRe.FindStringSubmatch(seg); m != nil {
+		key, fk, fv := m[1], m[2], m[3]
+		seq := GetChildByKey(root, key)
+		return filterHandler(fk, fv), seq
+	}
+	return nil, nil
+}
+
+// filterHandler returns a handler for filter-by-key
+func filterHandler(fk, fv string) HandlerFunc {
+	return func(seqRoot *yaml.Node, last bool, val string) (*yaml.Node, error) {
+		if seqRoot == nil || seqRoot.Kind != yaml.SequenceNode {
+			return nil, fmt.Errorf("not a sequence")
+		}
+		for _, item := range seqRoot.Content {
+			if child := GetChildByKey(item, fk); child != nil && child.Value == fv {
+				if last {
+					return writeScalar(item, val)
+				}
+				return item, nil
+			}
+		}
+		return nil, fmt.Errorf("no match for %s=%s", fk, fv)
+	}
+}
+
+// handleMapping handles map key creation or overwrite
+func handleMapping(root *yaml.Node, key string, last bool, val string) (*yaml.Node, error) {
+	child := GetChildByKey(root, key)
+	if child == nil {
+		if last {
+			return appendKeyValue(root, key, val), nil
+		}
+		newMap := &yaml.Node{Kind: yaml.MappingNode}
+		root.Content = append(root.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: key},
+			newMap,
+		)
+		return newMap, nil
+	}
+	if last {
+		return writeScalar(child, val)
+	}
+	return child, nil
+}
+
+// appendKeyValue appends a new key/value pair
+func appendKeyValue(root *yaml.Node, key, val string) *yaml.Node {
+	valNode := &yaml.Node{Kind: yaml.ScalarNode, Value: val}
+	root.Content = append(root.Content,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: key},
+		valNode,
+	)
+	return root
+}
+
+// writeScalar overwrites a node with a scalar value, preserving int vs string
+func writeScalar(node *yaml.Node, val string) (*yaml.Node, error) {
+	node.Kind = yaml.ScalarNode
+	if _, err := strconv.Atoi(val); err == nil {
+		// integer literal
+		node.Tag = ""
+		node.Style = 0
+	} else {
+		// explicit string
+		node.Tag = "!!str"
+		node.Style = yaml.DoubleQuotedStyle
+	}
+	node.Value = val
+	return node, nil
 }
