@@ -46,6 +46,7 @@ func main() {
 	}
 
 	actionChain := hooks.NewActionChain()
+	actionChain.Use(hooks.WithCommandDependencyCheck)
 	actionChain.Use(hooks.WithMetricEmission)
 
 	hooks.ApplyMiddleware(app.Commands, actionChain)
