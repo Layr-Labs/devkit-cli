@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"io"
 	"net"
 	"os"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
@@ -606,4 +607,64 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Error("StartDevnetAction did not exit after context cancellation")
 	}
+}
+
+func TestStartDevnet_UseZeus(t *testing.T) {
+	os.Setenv("SKIP_DEVNET_FUNDING", "true")
+	originalCwd, err := os.Getwd()
+	assert.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
+
+	projectDir, err := testutils.CreateTempAVSProject(t)
+	assert.NoError(t, err)
+	defer os.RemoveAll(projectDir)
+
+	err = os.Chdir(projectDir)
+	assert.NoError(t, err)
+
+	port, err := getFreePort()
+	assert.NoError(t, err)
+
+	app := &cli.App{
+		Name: "devkit",
+		Flags: []cli.Flag{
+			&cli.IntFlag{Name: "port"},
+			&cli.BoolFlag{Name: "verbose"},
+			&cli.BoolFlag{Name: "skip-deploy-contracts"},
+			&cli.BoolFlag{Name: "use-zeus"},
+		},
+		Action: StartDevnetAction,
+	}
+
+	var stdOut bytes.Buffer
+
+	originalStderr := os.Stderr
+	originalStdout := os.Stdout
+
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	os.Stderr = w
+
+	err = app.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts", "--use-zeus"})
+	// Check error is nil
+	assert.NoError(t, err, "Running devnet with --use-zeus flag should not produce an error")
+
+	w.Close()
+	os.Stdout = originalStdout
+	os.Stderr = originalStderr
+
+	_, err = io.Copy(&stdOut, r)
+	assert.NoError(t, err)
+
+	// Check output
+	output := stdOut.String()
+	assert.Contains(t, output, "zeus", "Output should mention zeus when --use-zeus flag is used")
+	assert.NotContains(t, output, "error", "Output should not contain error messages")
+
+	stopApp := &cli.App{
+		Name:   "devkit",
+		Flags:  []cli.Flag{&cli.IntFlag{Name: "port"}},
+		Action: StopDevnetAction,
+	}
+	_ = stopApp.Run([]string{"devkit", "--port", port})
 }

@@ -134,7 +134,7 @@ var CreateCommand = &cli.Command{
 		readMePath := filepath.Join(targetDir, "README.md")
 		readMeTemplate, err := os.ReadFile(readMePath)
 		if err != nil {
-			log.WarnWithActor("System", "Project README.md is missing: %w", err)
+			logger.Warn("Project README.md is missing: %w", err)
 		}
 		readMeTemplate = append(readMeTemplate, project.RawReadme...)
 		err = os.WriteFile(readMePath, readMeTemplate, 0644)
@@ -167,6 +167,11 @@ var CreateCommand = &cli.Command{
 		// Copies the default keystore json files in the keystores/ directory
 		if err := copyDefaultKeystoresToProject(logger, targetDir); err != nil {
 			return fmt.Errorf("failed to initialize keystores: %w", err)
+		}
+
+		// Copies the default .zeus file in the .zeus/ directory
+		if err := copyZeusFileToProject(logger, targetDir); err != nil {
+			return fmt.Errorf("failed to initialize .zeus: %w", err)
 		}
 
 		// Write the example .env file
@@ -257,29 +262,16 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName stri
 	configContent := configs.ConfigYamls[configs.LatestVersion]
 
 	// Unmarshal the YAML content into a map
-	var configMap map[string]interface{}
-	if err := yaml.Unmarshal([]byte(configContent), &configMap); err != nil {
+	var cfg common.Config
+	if err := yaml.Unmarshal([]byte(configContent), &cfg); err != nil {
 		return fmt.Errorf("failed to unmarshal config YAML: %w", err)
 	}
-
-	// Access the project section
-	if configSection, ok := configMap["config"].(map[string]interface{}); ok {
-		if projectMap, ok := configSection["project"].(map[string]interface{}); ok {
-			// Update project name
-			projectMap["name"] = projectName
-
-			// Add template information if provided
-			if templateBaseURL != "" {
-				projectMap["templateBaseUrl"] = templateBaseURL
-			}
-			if templateVersion != "" {
-				projectMap["templateVersion"] = templateVersion
-			}
-		}
-	}
+	cfg.Config.Project.Name = projectName
+	cfg.Config.Project.TemplateBaseURL = templateBaseURL
+	cfg.Config.Project.TemplateVersion = templateVersion
 
 	// Marshal the modified configuration back to YAML
-	newContentBytes, err := yaml.Marshal(configMap)
+	newContentBytes, err := yaml.Marshal(&cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal modified config: %w", err)
 	}
@@ -307,9 +299,7 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName stri
 			return fmt.Errorf("failed to write %s: %w", entryName, err)
 		}
 
-		if verbose {
-			log.InfoWithActor("User", "Copied context file: %s", entryName)
-		}
+		logger.Debug("Copied context file: %s", entryName)
 	}
 
 	return nil
@@ -324,9 +314,8 @@ func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string) error 
 	if err := os.MkdirAll(destKeystoreDir, 0755); err != nil {
 		return fmt.Errorf("failed to create keystores directory: %w", err)
 	}
-	if verbose {
-		log.InfoWithActor("User", "Created directory: %s", destKeystoreDir)
-	}
+
+	logger.Debug("Created directory: %s", destKeystoreDir)
 
 	// Read files embedded keystore
 	files := config.KeystoreEmbeds
@@ -344,10 +333,25 @@ func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string) error 
 			return fmt.Errorf("failed to write file %s: %w", fileName, err)
 		}
 
-		if verbose {
-			log.InfoWithActor("User", "Copied keystore: %s", fileName)
-		}
+		logger.Debug("Copied keystore: %s", fileName)
 	}
+
+	return nil
+}
+
+// Copies the .zeus file to the project directory
+func copyZeusFileToProject(logger iface.Logger, targetDir string) error {
+	// Destination .zeus file path
+	destZeusPath := filepath.Join(targetDir, common.ZeusConfig)
+
+	// Read the embedded zeus config
+	zeusConfigContent := config.ZeusConfig
+
+	if err := os.WriteFile(destZeusPath, []byte(zeusConfigContent), 0644); err != nil {
+		return fmt.Errorf("failed to write file %s: %w", common.ZeusConfig, err)
+	}
+
+	logger.Debug("Copied zeus config: %s", common.ZeusConfig)
 
 	return nil
 }
@@ -359,18 +363,13 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 	logger.Debug("Removing existing .git directory in %s (if any)...", targetDir)
 
 	// remove the old .git dir
-	if verbose {
-		log.InfoWithActor("User", "Removing existing .git directory in %s (if any)...", targetDir)
-	}
 	gitDir := filepath.Join(targetDir, ".git")
 	if err := os.RemoveAll(gitDir); err != nil {
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
 	}
 
-	// init a new .git repo
-	if verbose {
-		log.InfoWithActor("User", "Initializing Git repository in %s...", targetDir)
-	}
+	logger.Debug("Initializing Git repository in %s...", targetDir)
+
 	cmd := exec.CommandContext(ctx.Context, "git", "init")
 	cmd.Dir = targetDir
 	output, err := cmd.CombinedOutput()
@@ -396,87 +395,9 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 
-	if verbose {
-		log.InfoWithActor("User", "Git repository initialized successfully.")
-		if len(output) > 0 {
-			log.InfoWithActor("User", "Git init output: \"%s\"", strings.Trim(string(output), "\n"))
-		}
+	logger.Debug("Git repository initialized successfully.")
+	if len(output) > 0 {
+		logger.Debug("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
 	}
 	return nil
 }
-
-/*
-func collectSubmoduleInfo(ctx *cli.Context, git template.GitClient, targetDir, pathPrefix string) ([]template.Submodule, error) {
-	// collect all submodules info
-	var submoduleInfos []template.Submodule
-	submodules, err := git.SubmoduleList(ctx.Context, targetDir)
-	// get commit for the submodule
-	if err != nil {
-		return nil, fmt.Errorf("failed list submodules: %w", err)
-	}
-	// collect the referenced commit in the submodule list
-	for _, m := range submodules {
-		submoduleInfos = append(submoduleInfos, template.Submodule{
-			Name: m.Name,
-			Path: fmt.Sprintf("%s/%s", pathPrefix, m.Path),
-			URL:  m.URL,
-		})
-	}
-	return submoduleInfos, nil
-}
-
-func registerSubmodules(ctx *cli.Context, git template.GitClient, targetDir string, submoduleInfos []template.Submodule) error {
-	// reinstate gitmodules
-	for _, mod := range submoduleInfos {
-		// init the submodule at path in parent
-		if err := git.AddSubmodule(ctx.Context, targetDir, mod.URL, mod.Path); err != nil {
-			return fmt.Errorf("failed to init submodule: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// replaceGitmodules replaces root .gitmodules with the one under ./contracts
-func replaceGitmodules(targetDir string, verbose bool) error {
-	log, _ := common.GetLogger()
-
-	// Remove old root file
-	if verbose {
-		log.InfoWithActor("User", "rm %s/.gitmodules", targetDir)
-	}
-	if err := os.Remove(filepath.Join(targetDir, ".gitmodules")); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("rm old .gitmodules: %w", err)
-	}
-
-	// Load contracts/.gitmodules
-	src := filepath.Join(targetDir, contractsBasePath, ".gitmodules")
-	raw, err := os.ReadFile(src)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", src, err)
-	}
-
-	// Prefix section names: [submodule "X"] → [submodule "contracts/X"]
-	reSection := regexp.MustCompile(`(?m)^\[submodule\s+"([^"]+)"\]`)
-	out := reSection.ReplaceAll(raw, []byte(`[submodule "contracts/$1"]`))
-
-	// Prefix path = X → path = contracts/X
-	rePath := regexp.MustCompile(`(?m)^(\s*path\s*=\s*)(.+)$`)
-	out = rePath.ReplaceAll(out, []byte(`${1}contracts/${2}`))
-
-	// Write to root
-	dest := filepath.Join(targetDir, ".gitmodules")
-	if verbose {
-		log.InfoWithActor("User", "write %s", dest)
-	}
-	if err := os.WriteFile(dest, out, 0644); err != nil {
-		return fmt.Errorf("write %s: %w", dest, err)
-	}
-
-	// Remove from contracts
-	if err := os.Remove(filepath.Join(targetDir, contractsBasePath, ".gitmodules")); err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("rm old .gitmodules: %w", err)
-	}
-
-	return nil
-}*/

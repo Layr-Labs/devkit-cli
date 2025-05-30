@@ -11,7 +11,9 @@ type BasicLogger struct {
 }
 
 func NewLogger(verbose bool) *BasicLogger {
-	return &BasicLogger{verbose: verbose}
+	return &BasicLogger{
+		verbose: verbose,
+	}
 }
 
 func colorForActor(actor string) string {
@@ -76,11 +78,18 @@ func (l *BasicLogger) Error(msg string, args ...any) {
 }
 
 func (l *BasicLogger) Debug(msg string, args ...any) {
+	// skip debug when !verbose
 	if !l.verbose {
 		return
 	}
+
+	// format the message once
 	formatted := fmt.Sprintf(msg, args...)
+
+	// split into lines
 	lines := strings.Split(strings.TrimSuffix(formatted, "\n"), "\n")
+
+	// print the lines with log
 	for _, line := range lines {
 		log.Printf("Debug: %s", line)
 	}

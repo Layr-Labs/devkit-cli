@@ -51,10 +51,8 @@ var BuildCommand = &cli.Command{
 			}
 		}
 
-		if common.IsVerboseEnabled(cCtx, cfg) {
-			log.InfoWithActor("AVS Developer", "Project Name: %s", cfg.Config.Project.Name)
-			log.InfoWithActor("AVS Developer", "Building AVS components...")
-		}
+		logger.Debug("Project Name: %s", cfg.Config.Project.Name)
+		logger.Debug("Building AVS components...")
 
 		// All scripts contained here
 		scriptsDir := filepath.Join(".devkit", "scripts")
@@ -64,7 +62,7 @@ var BuildCommand = &cli.Command{
 			return fmt.Errorf("build failed: %w", err)
 		}
 
-		log.InfoWithActor("User", "Build completed successfully")
+		logger.Info("Build completed successfully")
 		return nil
 	},
 }

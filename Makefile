@@ -40,21 +40,25 @@ lint: ## Run linter
 install: build ## Install binary to ~/bin
 	@mkdir -p ~/bin
 	@cp $(BIN)/$(APP_NAME) ~/bin/
+	@if ! npm list -g @layr-labs/zeus@1.5.2 >/dev/null 2>&1; then \
+		echo "Installing @layr-labs/zeus@1.5.2..."; \
+		npm install -g @layr-labs/zeus@1.5.2; \
+	fi
 
 clean: ## Remove binary
 	@rm -f $(APP_NAME) ~/bin/$(APP_NAME) 
 
 build/darwin-arm64:
-	GOOS=darwin GOARCH=arm64 $(ALL_FLAGS) $(GO) build $(GO_FLAGS) -o release/darwin-arm64/devkit cmd/$(APP_NAME)/main.go
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(ALL_FLAGS) $(GO) build $(GO_FLAGS) -o release/darwin-arm64/devkit cmd/$(APP_NAME)/main.go
 
 build/darwin-amd64:
-	GOOS=darwin GOARCH=amd64 $(ALL_FLAGS) $(GO) build $(GO_FLAGS) -o release/darwin-amd64/devkit cmd/$(APP_NAME)/main.go
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(ALL_FLAGS) $(GO) build $(GO_FLAGS) -o release/darwin-amd64/devkit cmd/$(APP_NAME)/main.go
 
 build/linux-arm64:
-	GOOS=linux GOARCH=arm64 $(ALL_FLAGS) $(GO) build $(GO_FLAGS) -o release/linux-arm64/devkit cmd/$(APP_NAME)/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(ALL_FLAGS) $(GO) build $(GO_FLAGS) -o release/linux-arm64/devkit cmd/$(APP_NAME)/main.go
 
 build/linux-amd64:
-	GOOS=linux GOARCH=amd64 $(ALL_FLAGS) $(GO) build $(GO_FLAGS) -o release/linux-amd64/devkit cmd/$(APP_NAME)/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(ALL_FLAGS) $(GO) build $(GO_FLAGS) -o release/linux-amd64/devkit cmd/$(APP_NAME)/main.go
 
 
 .PHONY: release

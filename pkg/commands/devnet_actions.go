@@ -20,7 +20,6 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
-	"gopkg.in/yaml.v2"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -28,6 +27,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	"gopkg.in/yaml.v3"
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
@@ -47,33 +47,60 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Extract vars
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+	useZeus := cCtx.Bool("use-zeus")
 
 	// Migrate config
 	configMigrated, err := migrateConfig(logger)
 	if err != nil {
-		logger.ErrorWithActor("System", "config migration failed: %w", err)
+		logger.Error("config migration failed: %w", err)
 	}
 	if configMigrated > 0 {
-		logger.InfoWithActor("System", "Config migration complete")
+		logger.Info("Config migration complete")
 	}
 
 	// Migrate contexts
 	contextsMigrated, err := migrateContexts(logger)
 	if err != nil {
-		logger.ErrorWithActor("System", "context migrations failed: %w", err)
+		logger.Error("context migrations failed: %w", err)
 	}
 	if contextsMigrated > 0 {
 		suffix := "s"
 		if contextsMigrated == 1 {
 			suffix = ""
 		}
-		logger.InfoWithActor("System", "%d context migration%s complete", contextsMigrated, suffix)
+		logger.Info("%d context migration%s complete", contextsMigrated, suffix)
 	}
 
 	// Load config for devnet
 	config, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
 	if err != nil {
 		return err
+	}
+
+	// Fetch EigenLayer addresses using Zeus if requested
+	if useZeus {
+		logger.Info("Fetching EigenLayer core addresses from Zeus...")
+		err = common.UpdateContextWithZeusAddresses(logger, config, devnet.CONTEXT)
+		if err != nil {
+			logger.Warn("Failed to fetch addresses from Zeus: %v", err)
+			logger.Info("Continuing with addresses from config...")
+		} else {
+			logger.Info("Successfully updated context with addresses from Zeus")
+
+			// Save the updated context to disk
+			contextFile := filepath.Join("config", "contexts", devnet.CONTEXT+".yaml")
+			yamlData, err := yaml.Marshal(map[string]interface{}{
+				"version": "0.0.4", // This should ideally use the latest version dynamically
+				"context": config.Context[devnet.CONTEXT],
+			})
+			if err != nil {
+				logger.Warn("Failed to save updated context: %v", err)
+			} else {
+				if err = os.WriteFile(contextFile, yamlData, 0644); err != nil {
+					logger.Warn("Failed to write context file: %v", err)
+				}
+			}
+		}
 	}
 	port := cCtx.Int("port")
 	if !devnet.IsPortAvailable(port) {
@@ -88,13 +115,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	logger.InfoWithActor("User", "Starting devnet...\n")
 
 	if cCtx.Bool("reset") {
-		logger.InfoWithActor("User", "Resetting devnet...")
+		logger.Debug("Resetting devnet...")
 	}
 	if fork := cCtx.String("fork"); fork != "" {
-		logger.InfoWithActor("User", "Forking from chain: %s", fork)
+		logger.Debug("Forking from chain: %s", fork)
 	}
 	if cCtx.Bool("headless") {
-		logger.InfoWithActor("User", "Running in headless mode")
+		logger.Debug("Running in headless mode")
 	}
 
 	// Docker-compose for anvil devnet
@@ -108,6 +135,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if forkUrl == "" {
 		return fmt.Errorf("fork-url not set; set fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
 	}
+
+	// Ensure fork URL uses appropriate Docker host for container environments
+	dockerForkUrl := devnet.EnsureDockerHost(forkUrl)
 
 	// Get the block_time from env/config
 	blockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L1)
@@ -129,15 +159,15 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		"FOUNDRY_IMAGE="+chainImage,
 		"ANVIL_ARGS="+chainArgs,
 		fmt.Sprintf("DEVNET_PORT=%d", port),
-		"FORK_RPC_URL="+forkUrl,
+		"FORK_RPC_URL="+dockerForkUrl,
 		fmt.Sprintf("FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
 		"AVS_CONTAINER_NAME="+containerName,
 	)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
-	rpcUrl := fmt.Sprintf("http://localhost:%d", port)
-	logger.InfoWithActor("User", "Waiting for devnet to be ready...")
+	rpcUrl := devnet.GetRPCURL(port)
+	logger.Info("Waiting for devnet to be ready...")
 
 	// Set path for context yamls
 	contextDir := filepath.Join("config", "contexts")
@@ -185,7 +215,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 4 second to ensure the devnet is fully started
 	time.Sleep(4 * time.Second)
-
 	// Fund the wallets defined in config
 	err = devnet.FundWalletsDevnet(config, rpcUrl)
 	if err != nil {
@@ -289,8 +318,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Loop scripts with cloned context
 	for _, name := range scriptNames {
 		// Log the script name that's about to be executed
-		logger, _ := common.GetLogger()
-		logger.InfoWithActor("User", "Executing script: %s", name)
+		logger.Info("Executing script: %s", name)
 		// Clone context node and convert to map
 		clonedCtxNode := common.CloneNode(contextNode)
 		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
@@ -341,7 +369,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 func StopDevnetAction(cCtx *cli.Context) error {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	log := common.LoggerFromContext(cCtx.Context)
 
 	// Read flags
 	stopAllContainers := cCtx.Bool("all")
@@ -358,12 +386,12 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 		lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 		if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
-			logger.InfoWithActor("User", "🚫 No devnet containers running.")
+			log.InfoWithActor("User", "🚫 No devnet containers running.")
 			return nil
 		}
 
 		if cCtx.Bool("verbose") {
-			logger.InfoWithActor("System", "Attempting to stop devnet containers...")
+			log.InfoWithActor("System", "Attempting to stop devnet containers...")
 		}
 
 		for _, name := range containerNames {
@@ -396,7 +424,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 			output, err := cmd.Output()
 			if err != nil {
-				logger.WarnWithActor("System", "Failed to list running devnet containers: %v", err)
+				log.Warn("Failed to list running devnet containers: %v", err)
 			}
 
 			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -415,13 +443,13 @@ func StopDevnetAction(cCtx *cli.Context) error {
 					projectName := strings.TrimPrefix(containerName, "devkit-devnet-")
 					devnet.StopAndRemoveContainer(cCtx, containerName)
 
-					logger.InfoWithActor("System", "Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
+					log.InfoWithActor("System", "Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
 					containerFoundUsingthePort = true
 					break
 				}
 			}
 			if !containerFoundUsingthePort {
-				logger.InfoWithActor("User", "No container found with port %d. Try devkit avs devnet list to get a list of running devnet containers", projectPort)
+				log.InfoWithActor("User", "No container found with port %d. Try devkit avs devnet list to get a list of running devnet containers", projectPort)
 			}
 
 		}
@@ -440,14 +468,14 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		devnet.StopAndRemoveContainer(cCtx, container)
 
 	} else {
-		logger.InfoWithActor("User", "Run this command from the avs directory or run devkit avs devnet stop --help for available commands")
+		log.InfoWithActor("User", "Run this command from the avs directory or run devkit avs devnet stop --help for available commands")
 	}
 
 	return nil
 }
 
 func ListDevnetContainersAction(cCtx *cli.Context) error {
-	logger := common.LoggerFromContext(cCtx.Context)
+	log := common.LoggerFromContext(cCtx.Context)
 	cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
 	output, err := cmd.Output()
 	if err != nil {
@@ -455,10 +483,10 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 	}
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
 	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
-		logger.InfoWithActor("User", "🚫 No devnet containers running.")
+		log.InfoWithActor("User", "🚫 No devnet containers running.")
 		return nil
 	}
-	logger.InfoWithActor("User", "📦 Running Devnet Containers:")
+	log.InfoWithActor("User", "📦 Running Devnet Containers:")
 	for _, line := range lines {
 		parts := strings.Split(line, ": ")
 		if len(parts) != 2 {
@@ -466,7 +494,7 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 		}
 		name := parts[0]
 		port := extractHostPort(parts[1])
-		logger.InfoWithActor("User", "  -  %-25s → http://localhost:%s", name, port)
+		log.InfoWithActor("User", "  -  %-25s → http://localhost:%s", name, port)
 	}
 	return nil
 }
@@ -556,12 +584,12 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	var registrarAddr ethcommon.Address
-	logger.InfoWithActor("System", "Attempting to find AvsRegistrar in deployed contracts...")
+	logger.Info("Attempting to find AvsRegistrar in deployed contracts...")
 	foundInDeployed := false
 	for _, contract := range envCtx.DeployedContracts {
 		if strings.Contains(strings.ToLower(contract.Name), "avsregistrar") {
 			registrarAddr = ethcommon.HexToAddress(contract.Address)
-			logger.InfoWithActor("System", "Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
+			logger.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
 			foundInDeployed = true
 			break
 		}
@@ -610,7 +638,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	if len(envCtx.OperatorSets) == 0 {
-		logger.InfoWithActor("System", "No operator sets to create.")
+		logger.Info("No operator sets to create.")
 		return nil
 	}
 	createSetParams := make([]allocationmanager.IAllocationManagerTypesCreateSetParams, len(envCtx.OperatorSets))
@@ -638,25 +666,25 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) e
 		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
 	}
 
-	logger.InfoWithActor("System", "Registering operators with EigenLayer...")
+	logger.Info("Registering operators with EigenLayer...")
 	if len(envCtx.OperatorRegistrations) == 0 {
-		logger.InfoWithActor("System", "No operator registrations found in context, skipping operator registration.")
+		logger.Info("No operator registrations found in context, skipping operator registration.")
 		return nil
 	}
 
 	for _, opReg := range envCtx.OperatorRegistrations {
-		logger.InfoWithActor("System", "Processing registration for operator at address %s", opReg.Address)
-		if err := registerOperatorEL(cCtx, opReg.Address); err != nil {
-			logger.ErrorWithActor("System", "Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
+		logger.Info("Processing registration for operator at address %s", opReg.Address)
+		if err := registerOperatorEL(cCtx, opReg.Address, logger); err != nil {
+			logger.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
 			continue
 		}
-		if err := registerOperatorAVS(cCtx, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
-			logger.ErrorWithActor("System", "Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
+		if err := registerOperatorAVS(cCtx, logger, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
+			logger.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
 			continue
 		}
-		logger.InfoWithActor("System", "Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
+		logger.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
 	}
-	logger.InfoWithActor("System", "Operator registration with EigenLayer completed.")
+	logger.Info("Operator registration with EigenLayer completed.")
 	return nil
 }
 
@@ -761,15 +789,14 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
 
-	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
-	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+	allocationManagerAddr, delegationManagerAddr := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
 		big.NewInt(int64(l1Cfg.ChainID)),
 		client,
-		allocationManagerAddr,
-		delegationManagerAddr,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
 		logger,
 	)
 	if err != nil {
@@ -808,7 +835,7 @@ func migrateConfig(logger iface.Logger) (int, error) {
 
 	// If config was migrated
 	if !alreadyUptoDate {
-		logger.InfoWithActor("System", "Migrated %s\n", configPath)
+		logger.Info("Migrated %s\n", configPath)
 
 		return 1, nil
 	}
@@ -844,7 +871,7 @@ func migrateContexts(logger iface.Logger) (int, error) {
 
 		// For every other error, migration failed
 		if err != nil && !alreadyUptoDate {
-			logger.ErrorWithActor("System", "failed to migrate: %v", err)
+			logger.Error("failed to migrate: %v", err)
 			continue
 		}
 
@@ -854,7 +881,7 @@ func migrateContexts(logger iface.Logger) (int, error) {
 			contextsMigrated += 1
 
 			// If migration succeeds
-			logger.InfoWithActor("System", "Migrated %s\n", contextPath)
+			logger.Info("Migrated %s\n", contextPath)
 		}
 	}
 

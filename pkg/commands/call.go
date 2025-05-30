@@ -26,7 +26,7 @@ var CallCommand = &cli.Command{
 		// Set path for context yaml
 		contextDir := filepath.Join("config", "contexts")
 		yamlPath := path.Join(contextDir, "devnet.yaml") // @TODO: use selected context name
-		contextJSON, err := common.LoadContext(yamlPath)
+		contextJSON, err := common.LoadRawContext(yamlPath)
 		if err != nil {
 			return fmt.Errorf("failed to load context %w", err)
 		}

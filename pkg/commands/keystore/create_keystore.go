@@ -46,13 +46,10 @@ var CreateCommand = &cli.Command{
 		path := cCtx.String("path")
 		curve := cCtx.String("type")
 		password := cCtx.String("password")
-		verbose := cCtx.Bool("verbose")
 
-		if verbose {
-			logger.InfoWithActor("User", "🔐 Starting Bls keystore creation")
-			logger.InfoWithActor("User", "• Curve: %s", curve)
-			logger.InfoWithActor("User", "• Output Path: %s", path)
-		}
+		logger.Debug("🔐 Starting Bls keystore creation")
+		logger.Debug("• Curve: %s", curve)
+		logger.Debug("• Output Path: %s", path)
 
 		return CreateBLSKeystore(logger, privateKey, path, password, curve)
 	},
@@ -94,9 +91,9 @@ func CreateBLSKeystore(logger iface.Logger, privateKey, path, password, curve st
 		return errors.New("failed to extract the private key from the keystore file")
 	}
 
-	logger.InfoWithActor("User", "✅ Keystore generated successfully")
-	logger.InfoWithActor("User", "🔑 Save this BLS private key in a secure location:")
-	logger.InfoWithActor("User", "    %s\n", privateKeyData.Bytes())
+	logger.Info("✅ Keystore generated successfully")
+	logger.Info("🔑 Save this BLS private key in a secure location:")
+	logger.Info("    %s\n", privateKeyData.Bytes())
 
 	return nil
 }

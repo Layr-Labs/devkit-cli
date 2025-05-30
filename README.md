@@ -1,13 +1,19 @@
-## ⚠️ Warning: This is Alpha, non audited code ⚠️
-Hourglass is in active development and is not yet audited. Use at your own risk.
-
----
+## ⚠️ Disclaimer: Closed Alpha Not Production Ready
+EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used for use in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
 
 # EigenLayer Development Kit (DevKit) 🚀
 
-**A CLI toolkit for developing, testing, and managing EigenLayer Autonomous Verifiable Services (AVS).**
+**A CLI toolkit for scaffolding, developing, and testing EigenLayer Autonomous Verifiable Services (AVS).**
 
-EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold projects, compile contracts, run local networks, and simulate tasks with ease.
+EigenLayer DevKit streamlines AVS development, enabling you to:
+* Quickly scaffold projects
+* Compile contracts
+* Run local networks
+* Simulate tasks.
+
+Use DevKit to get from AVS idea to Proof of Concept with a local testing environment that includes task simulation.
+
+> **Note:** The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass task-based framework. We're actively expanding capabilities, so if there's a gap for your scenario, check out our roadmap see what's coming, or let us know what would support you in building AVS.
 
 ![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
 
@@ -15,11 +21,12 @@ EigenLayer DevKit streamlines AVS development, enabling you to quickly scaffold 
 
 | Command        | Description                                                       |
 |----------------|-------------------------------------------------------------------|
-| `avs create`   | Scaffold a new AVS project                                        |
-| `avs config`   | Configure your AVS (`config/config.yaml`,`config/devnet.yaml`...) |
-| `avs build`    | Compile AVS smart contracts and binaries                          |
-| `avs devnet`   | Manage local development network                                  |
-| `avs call`     | Simulate AVS task execution locally                               |
+| `devkit avs create`   | Scaffold a new AVS project                                        |
+| `devkit avs config`   | Configure your Project (`config/config.yaml`) |
+| `devkit avs context`   | Configure your environment and AVS (`config/devnet.yaml`...) |
+| `devkit avs build`    | Compile AVS smart contracts and binaries                          |
+| `devkit avs devnet`   | Manage local development network                                  |
+| `devkit avs call`     | Simulate AVS task execution locally                               |
 
 
 ---
@@ -35,12 +42,23 @@ Before you begin, ensure you have:
 * [make](https://formulae.brew.sh/formula/make)
 * [Foundry](https://book.getfoundry.sh/getting-started/installation)
 * [yq](https://github.com/mikefarah/yq/#install)
+* [zeus](https://github.com/Layr-Labs/zeus)
 
 ### 📦 Installation
 
 To download a binary for the latest release, run:
 ```bash
-sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.6/devkit-darwin-arm64-v0.0.6.tar.gz | sudo tar xvz -C /usr/local/bin
+# MacOS (Apple Silicon)
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-darwin-arm64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
+
+# MacOS (Intel)
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-darwin-amd64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
+
+# Linux (x86_64 / AMD64)
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-linux-amd64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
+
+# Linux (ARM64 / aarch64)
+sudo curl -s -L https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.7/devkit-linux-arm64-v0.0.7.tar.gz | sudo tar xvz -C /usr/local/bin
 ```
 
 The binary will be installed inside the ~/bin directory.
@@ -67,7 +85,7 @@ devkit --help
 
 ## 🚧 Step-by-Step Guide
 
-### 1️⃣ Create a New AVS Project (`avs create`)
+### 1️⃣ Create a New AVS Project (`devkit avs create`)
 
 Sets up a new AVS project with the recommended structure, configuration files, and boilerplate code. This helps you get started quickly without needing to manually organize files or determine a layout. Details:
 
@@ -77,7 +95,7 @@ Sets up a new AVS project with the recommended structure, configuration files, a
 Projects are created by default in the current directory from where the below command is called.
 
 ```bash
-devkit avs create my-avs-project
+devkit avs create my-avs-project ./
 cd my-avs-project
 ```
 
@@ -86,33 +104,103 @@ cd my-avs-project
 > \[!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
-### 2️⃣ Configure Your AVS (`avs config`)
+<!-- Put in section about editing main.go file to replace comments with your actual business logic
+-->
 
-Before running your AVS, you'll need to configure both project-level and environment-specific settings. This is done through two configuration files:
+### 2️⃣ Implement Your AVS Task Logic (`main.go`)
+After scaffolding your project, navigate into the project directory and begin implementing your AVS-specific logic. The core logic for task validation and execution lives in the `main.go` file inside the cmd folder:
 
-- **`config.yaml`**: Defines project-wide settings such as AVS name and context names.
-- **`contexts/devnet.yaml`**: Contains environment-specific settings for your a given context (i.e. devnet), including the Ethereum fork url, block height, operator keys, AVS keys, and other runtime parameters.
+```bash
+cd my-avs-project/cmd
+```
+
+Within `main.go`, you'll find two critical methods on the `TaskWorker` type:
+- **`HandleTask(*TaskRequest)`**  
+  This is where you implement your AVS's core business logic. It processes an incoming task and returns a `TaskResponse`. Replace the placeholder comment with the actual logic you want to run during task execution.
+
+- **`ValidateTask(*TaskRequest)`**  
+  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS’s criteria (e.g., argument format, access control, etc.).
+
+These functions will be invoked automatically when using `devkit avs call`, enabling you to quickly test and iterate on your AVS logic.
+
+> **💡 Tip:**  
+> You can add logging inside these methods using the `tw.logger.Sugar().Infow(...)` lines to debug and inspect task input and output during development.
+
+### 3️⃣ Configure Your AVS (`devkit avs config` & `devkit avs context`)
+
+<!-- TODO: Make it very clear and very specific that the one field we need to change is the fork_url and that they are in charge of supplying this.
+Also, keep stuff at the top about introducing config yaml files and what they do.
+-->
+
+Before running your AVS, you’ll need to configure both project-level and context-specific settings. This is done through two configuration files:
+
+- **`config.yaml`**  
+  Defines project-wide settings such as AVS name, version, and available context names.  
+- **`contexts/<context>.yaml`**  
+  Contains environment-specific settings for a given context (e.g., `devnet`), including the Ethereum fork URL, block height, operator keys, AVS keys, and other runtime parameters.
 
 You can view or modify these configurations using the DevKit CLI or by editing the files manually.
 
-View current settings via CLI:
+---
+
+#### View current settings
+
+- **Project-level**  
+  ```bash  
+  devkit avs config --list
+  ```
+
+- **Context-specific**  
+  ```bash  
+  devkit avs context --list  
+  devkit avs context --context devnet --list  
+  ```
+
+#### Edit settings directly via CLI
+
+- **Project-level**  
+  ```bash  
+  devkit avs config --edit  
+  ```
+
+- **Context-specific**  
+  ```bash  
+  devkit avs context --edit  
+  devkit avs context --context devnet --edit  
+  ```
+
+#### Set values via CLI flags
+
+- **Project-level**  
+  ```bash  
+  devkit avs config --set project.name="My new name" project.version="0.0.2"  
+  ```
+
+- **Context-specific**  
+  ```bash  
+  devkit avs context --set operator.key="0xabc…" context.timeout=30  
+  devkit avs context --context devnet --set operator.key="0xabc…" context.timeout=30  
+  ```
+
+Alternatively, you can manually edit `config.yaml` or the `contexts/*.yaml` files in the text editor of your choice.
+
+> [!IMPORTANT]  
+> All `devkit avs` commands must be run from the **root of your AVS project** — the directory containing the `config` folder.
+
+Before launching your local devnet, you must set valid Ethereum fork URLs to define the chain state your AVS will simulate against. These values are loaded from your `.env` file and automatically applied to your environment.
+
+To configure them:
 
 ```bash
-devkit avs config
+cp .env.example .env
+# edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
 ```
 
-Edit settings directly via CLI:
+Use any popular RPC provider (e.g., QuickNode, Alchemy) to obtain the URLs.
 
-```bash
-devkit avs config --edit --path <path to the config.yaml or contexts/devnet.yaml file>
-```
+This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
 
-Alternatively, manually edit the config files in the text editor of your choice.
-
-> \[!IMPORTANT]
-> These commands must be run from your AVS project's root directory.
-
-### 3️⃣ Build Your AVS
+### 4️⃣ Build Your AVS (`devkit avs build`)
 
 Compiles your AVS contracts and offchain binaries. Required before running a devnet or simulating tasks to ensure all components are built and ready.
 
@@ -125,7 +213,7 @@ Ensure you're in your project directory before running:
 devkit avs build
 ```
 
-### 4️⃣ Launch Local DevNet
+### 5️⃣ Launch Local DevNet (`devkit avs devnet`)
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
@@ -134,21 +222,7 @@ Starts a local devnet to simulate the full AVS environment. This step deploys co
 * Setup required `AVS` contracts.
 * Register `AVS` and `Operators`.
 
-
-> \[!IMPORTANT]
-> You **must** set valid `*_FORK_URL`s before launching your local devnet.  
-> Add them to your `.env` (copied from `.env.example`) or to `config/context/devnet.yaml`.
-
-> **Note:** Use any popular RPC provider (e.g. QuickNode, Alchemy) for `FORK_URL`.
-
-This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
-
-```
-$ cp .env.example .env
-# edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
-```
-
-After adding `*_FORK_URL`s, run this from your project directory:
+In your project directory, run:
 
 ```bash
 devkit avs devnet start
@@ -168,7 +242,7 @@ DevNet management commands:
 | `stop --project.name`  | Stops the specific project's devnet                                  |
 | `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
 
-### 5️⃣ Simulate Task Execution (`avs call`)
+### 6️⃣ Simulate Task Execution (`devkit avs call`)
 
 Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
 
@@ -188,7 +262,7 @@ Optionally, submit tasks directly to the on-chain TaskMailBox contract via a fro
 
 ## Optional Commands
 
-### Start offchain AVS infrastructure (`avs run`)
+### Start offchain AVS infrastructure (`devkit avs run`)
 
 Run your offchain AVS components locally.
 
@@ -202,7 +276,7 @@ This step is optional. The devkit `devkit avs devnet start` command already star
 devkit avs run
 ```
 
-### Deploy AVS Contracts (`avs deploy-contract`)
+### Deploy AVS Contracts (`devkit avs deploy-contract`)
 
 Deploy your AVS's onchain contracts independently of the full devnet setup.
 
@@ -214,7 +288,7 @@ This step is **optional**. The `devkit avs devnet start` command already handles
 devkit avs deploy-contract
 ```
 
-### Create Operator Keys (`avs keystore`)
+### Create Operator Keys (`devkit avs keystore`)
 Create and read keystores for bn254 private keys using the CLI. 
 
 - To create a keystore
@@ -232,7 +306,7 @@ devkit keystore read --path --password
 - **`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
 - **`password`**: Password to encrypt/decrypt the keystore.
 
-### Template Management (`avs template`)
+### Template Management (`devkit avs template`)
 
 Manage your project templates to stay up-to-date with the latest features and improvements.
 
@@ -282,7 +356,7 @@ devkit avs build --verbose
 To upgrade the Devkit CLI to the latest version, find the [latest release](releases) you want to download and re-run the curl install command:
 
 ```bash
-VERSION=v0.0.6
+VERSION=v0.0.7
 ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
 DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
 
@@ -301,7 +375,7 @@ devkit avs template info
 2025/05/22 14:42:36 Project template information:
 2025/05/22 14:42:36   Project name: <your project>
 2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
-2025/05/22 14:42:36   Version: v0.0.9
+2025/05/22 14:42:36   Version: v0.0.10
 ```
 
 **_Upgrade to a newer version_**

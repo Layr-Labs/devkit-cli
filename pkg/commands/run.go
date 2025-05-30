@@ -26,9 +26,7 @@ func AVSRun(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Print task if verbose
-	if cCtx.Bool("verbose") {
-		log.InfoWithActor("AVS Developer", "Starting offchain AVS components...")
-	}
+	logger.Debug("Starting offchain AVS components...")
 
 	// Run the script from root of project dir
 	// (@TODO (GD): this should always be the root of the project, but we need to do this everywhere (ie reading ctx/config etc))
@@ -40,7 +38,7 @@ func AVSRun(cCtx *cli.Context) error {
 	// Set path for context yaml
 	contextDir := filepath.Join("config", "contexts")
 	yamlPath := path.Join(contextDir, "devnet.yaml") // @TODO: use selected context name
-	contextJSON, err := common.LoadContext(yamlPath)
+	contextJSON, err := common.LoadRawContext(yamlPath)
 	if err != nil {
 		return fmt.Errorf("failed to load context: %w", err)
 	}
@@ -50,7 +48,7 @@ func AVSRun(cCtx *cli.Context) error {
 		return fmt.Errorf("run failed: %w", err)
 	}
 
-	log.InfoWithActor("User", "Offchain AVS components started successfully!")
+	logger.Info("Offchain AVS components started successfully!")
 
 	return nil
 }
