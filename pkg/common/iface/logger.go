@@ -1,6 +1,7 @@
 package iface
 
 type Logger interface {
+	Title(msg string, args ...any)
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
 	Error(msg string, args ...any)
@@ -8,6 +9,7 @@ type Logger interface {
 }
 
 type ProgressLogger interface {
+	Title(msg string, args ...any)
 	Info(msg string, args ...any)
 	Warn(msg string, args ...any)
 	Error(msg string, args ...any)

@@ -336,3 +336,24 @@ func ListYaml(filePath string, logger iface.Logger) error {
 
 	return nil
 }
+
+// SetMappingValue sets mapNode[keyNode.Value] = valNode, replacing existing or appending if missing.
+func SetMappingValue(mapNode, keyNode, valNode *yaml.Node) {
+	// Ensure mapNode is a MappingNode
+	if mapNode.Kind != yaml.MappingNode {
+		return
+	}
+
+	// Scan existing entries (Content holds [key, value, key, value, …])
+	for i := 0; i < len(mapNode.Content); i += 2 {
+		existingKey := mapNode.Content[i]
+		if existingKey.Value == keyNode.Value {
+			// replace the paired value node
+			mapNode.Content[i+1] = valNode
+			return
+		}
+	}
+
+	// Not found: append key and value
+	mapNode.Content = append(mapNode.Content, keyNode, valNode)
+}

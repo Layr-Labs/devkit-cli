@@ -20,6 +20,10 @@ func (p *ProgressLogger) ProgressRows() []iface.ProgressRow {
 	return p.tracker.ProgressRows()
 }
 
+func (p *ProgressLogger) Title(msg string, args ...any) {
+	p.base.Title(msg, args...)
+}
+
 func (p *ProgressLogger) Info(msg string, args ...any) {
 	p.base.Info(msg, args...)
 }

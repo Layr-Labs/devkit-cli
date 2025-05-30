@@ -1,9 +1,11 @@
 package common
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -11,6 +13,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 	delegationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -215,5 +218,14 @@ func (cc *ContractCaller) RegisterForOperatorSets(ctx context.Context, operatorA
 		}
 		return tx, err
 	})
+	return err
+}
+
+func IsValidABI(v interface{}) error {
+	b, err := json.Marshal(v) // serialize ABI field
+	if err != nil {
+		return fmt.Errorf("marshal ABI: %w", err)
+	}
+	_, err = abi.JSON(bytes.NewReader(b)) // parse it
 	return err
 }

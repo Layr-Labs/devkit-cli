@@ -102,7 +102,7 @@ var CreateCommand = &cli.Command{
 		}
 
 		// Create project directories
-		if err := createProjectDir(logger, targetDir, cCtx.Bool("overwrite"), cCtx.Bool("verbose")); err != nil {
+		if err := createProjectDir(logger, targetDir, cCtx.Bool("overwrite")); err != nil {
 			return err
 		}
 
@@ -235,8 +235,7 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, error) {
 	return mainBaseURL, mainVersion, nil
 }
 
-func createProjectDir(logger iface.Logger, targetDir string, overwrite, verbose bool) error {
-
+func createProjectDir(logger iface.Logger, targetDir string, overwrite bool) error {
 	// Check if directory exists and handle overwrite
 	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
 

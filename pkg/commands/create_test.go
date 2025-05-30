@@ -13,6 +13,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/template"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -92,8 +93,20 @@ func TestCreateCommand(t *testing.T) {
 			return err
 		}
 
+		// Load the current config
+		config, err := template.LoadConfig()
+		if err != nil {
+			t.Fatalf("Failed to load config: %v", err)
+		}
+
+		// Test template URL lookup
+		mainBaseURL, mainVersion, err := template.GetTemplateURLs(config, "task", "go")
+		if err != nil {
+			t.Fatalf("Failed to get template URLs: %v", err)
+		}
+
 		// Create config.yaml
-		return copyDefaultConfigToProject(logger, targetDir, projectName, "test-uuid", "https://github.com/Layr-Labs/hourglass-avs-template", "v0.0.10", false)
+		return copyDefaultConfigToProject(logger, targetDir, projectName, "test-uuid", mainBaseURL, mainVersion, false)
 	}
 
 	app := &cli.App{
