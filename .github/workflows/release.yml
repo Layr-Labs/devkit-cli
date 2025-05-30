@@ -154,7 +154,7 @@ jobs:
         run: |
           echo "VERSION=$(<VERSION)" >> $GITHUB_ENV
 
-      - name: Setup QEMU (for arm64 on Linux runners)
+      - name: Setup QEMU (for arm64 on Linux runner)
         if: matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64'
         uses: docker/setup-qemu-action@v2
         with:
