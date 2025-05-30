@@ -136,6 +136,7 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 	}
 	_ = stopApp.Run([]string{"devkit", "--port", port, "--verbose"})
 }
+
 func TestStartDevnet_WithDeployContracts(t *testing.T) {
 	os.Setenv("SKIP_DEVNET_FUNDING", "true")
 	originalCwd, err := os.Getwd()

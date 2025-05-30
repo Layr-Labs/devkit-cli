@@ -2,7 +2,6 @@ package devnet
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/urfave/cli/v2"
 )
 
@@ -29,15 +29,17 @@ func IsPortAvailable(port int) bool {
 
 // / Stops the container and removes it
 func StopAndRemoveContainer(ctx *cli.Context, containerName string) {
+	logger := common.LoggerFromContext(ctx.Context)
+
 	if err := exec.CommandContext(ctx.Context, "docker", "stop", containerName).Run(); err != nil {
-		log.Printf("⚠️ Failed to stop container %s: %v", containerName, err)
+		logger.Error("⚠️  Failed to stop container %s: %v", containerName, err)
 	} else {
-		log.Printf("✅ Stopped container %s", containerName)
+		logger.Info("✅ Stopped container %s", containerName)
 	}
 	if err := exec.CommandContext(ctx.Context, "docker", "rm", containerName).Run(); err != nil {
-		log.Printf("⚠️ Failed to remove container %s: %v", containerName, err)
+		logger.Error("⚠️  Failed to remove container %s: %v", containerName, err)
 	} else {
-		log.Printf("✅ Removed container %s", containerName)
+		logger.Info("✅ Removed container %s", containerName)
 	}
 }
 
@@ -55,7 +57,7 @@ func GetDockerPsDevnetArgs() []string {
 
 // GetDockerHost returns the appropriate Docker host based on environment and platform.
 // Uses DOCKERS_HOST environment variable if set, otherwise detects OS:
-// - Linux: defaults to localhost (Docker containers can access host via localhost)
+// - Linux: defaults to 172.17.0.1 (Docker containers can access host via localhost)
 // - macOS/Windows: defaults to host.docker.internal (required for Docker Desktop)
 func GetDockerHost() string {
 	if dockersHost := os.Getenv("DOCKERS_HOST"); dockersHost != "" {
@@ -64,7 +66,7 @@ func GetDockerHost() string {
 
 	// Detect OS and set appropriate default
 	if runtime.GOOS == "linux" {
-		return "localhost"
+		return "172.17.0.1"
 	} else {
 		return "host.docker.internal"
 	}

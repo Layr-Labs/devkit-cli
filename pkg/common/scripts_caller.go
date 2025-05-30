@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"syscall"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 )
@@ -35,10 +36,27 @@ func CallTemplateScript(cmdCtx context.Context, logger iface.Logger, dir string,
 	cmd.Stdout = &stdout
 	cmd.Stderr = os.Stderr
 
+	// Run the command in its own group
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	// When context is canceled, forward SIGINT (but only if the process is running)
+	go func() {
+		<-cmdCtx.Done()
+		if cmd.Process != nil {
+			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGINT)
+		}
+	}()
+
 	// Exec the command
 	if err := cmd.Run(); err != nil {
+		// if it’s an ExitError, check if it was killed by a signal
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
+			if ws, ok := exitErr.ProcessState.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+				// killed by signal -> treat as cancellation
+				return nil, cmdCtx.Err()
+			}
+			// nonzero exit code
 			return nil, fmt.Errorf("script %s exited with code %d", scriptPath, exitErr.ExitCode())
 		}
 		return nil, fmt.Errorf("failed to run script %s: %w", scriptPath, err)

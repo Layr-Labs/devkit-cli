@@ -226,6 +226,19 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 
+	// On cancel, always call down if skipAvsRun=false
+	if !skipDeployContracts && !skipAvsRun {
+		defer func() {
+			logger.Info("Stopping containers")
+			// clone cCtx but overwrite the context to Background
+			cloned := *cCtx
+			cloned.Context = context.Background()
+			if err := StopDevnetAction(&cloned); err != nil {
+				logger.Warn("automatic StopDevnetAction failed: %v", err)
+			}
+		}()
+	}
+
 	l1RpcUrl := devnet.GetL1RPCURL(port)
 	l2RpcUrl := devnet.GetL2RPCURL(port)
 	logger.Info("Waiting for L1 and L2 devnets to be ready...")
@@ -313,7 +326,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Start offchain AVS components after starting devnet and deploying contracts unless skipped
 	if !skipDeployContracts && !skipAvsRun {
-		if err := AVSRun(cCtx); err != nil {
+		if err := AVSRun(cCtx); err != nil && !errors.Is(err, context.Canceled) {
 			return fmt.Errorf("avs run failed: %w", err)
 		}
 	}
@@ -971,12 +984,12 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 			ABI interface{} `json:"abi"`
 		}
 		if err := json.Unmarshal(raw, &abi); err != nil {
-			return fmt.Errorf("unmarshal artifact JSON: %w", err)
+			return fmt.Errorf("unmarshal artifact JSON for %s (%s) failed: %w", nameVal, addressVal, err)
 		}
 
 		// Check if provided abi is valid
 		if err := common.IsValidABI(abi.ABI); err != nil {
-			return fmt.Errorf("ABI is invalid: %v", err)
+			return fmt.Errorf("ABI for %s (%s) is invalid: %v", nameVal, addressVal, err)
 		}
 
 		// Build the output struct
@@ -989,13 +1002,13 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 		// Marshal with indentation
 		data, err := json.MarshalIndent(out, "", "  ")
 		if err != nil {
-			return fmt.Errorf("marshal output for %s: %w", nameVal, err)
+			return fmt.Errorf("marshal output for %s (%s): %w", nameVal, addressVal, err)
 		}
 
 		// Write to ./contracts/outputs/<context>/<name>.json
 		outPath := filepath.Join(outDir, nameVal+".json")
 		if err := os.WriteFile(outPath, data, 0o644); err != nil {
-			return fmt.Errorf("write %s: %w", outPath, err)
+			return fmt.Errorf("write output to %s (%s): %w", outPath, addressVal, err)
 		}
 
 		logger.Info("Written contract output: %s\n", outPath)
@@ -1004,7 +1017,6 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 }
 
 func migrateConfig(logger iface.Logger) (int, error) {
-
 	// Set path for context yamls
 	configDir := filepath.Join("config")
 	configPath := filepath.Join(configDir, "config.yaml")
