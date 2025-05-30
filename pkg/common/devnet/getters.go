@@ -10,12 +10,12 @@ import (
 
 // GetDevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
 // Falls back to CHAIN_ARGS constant if value is empty.
-func GetDevnetChainArgsOrDefault(cfg *common.ConfigWithContextConfig) string {
+func GetDevnetChainArgsOrDefault(cfg *common.ConfigWithContextConfig) (string, string) {
 	args := []string{} // TODO(nova) : Get chain args from config.yaml ?  For now using default
 	if len(args) == 0 {
-		return CHAIN_ARGS
+		return L1_CHAIN_ARGS, L2_CHAIN_ARGS
 	}
-	return " "
+	return "", ""
 }
 
 // GetDevnetChainImageOrDefault returns the devnet chain image,
@@ -109,4 +109,24 @@ func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationMana
 	}
 
 	return allocationManager, delegationManager
+}
+
+// GetL1Port returns the L1 devnet port (default port + 0)
+func GetL1Port(basePort int) int {
+	return basePort
+}
+
+// GetL2Port returns the L2 devnet port (default port + 1)
+func GetL2Port(basePort int) int {
+	return basePort + 1
+}
+
+// GetL1RPCURL returns the L1 RPC URL for the given port
+func GetL1RPCURL(basePort int) string {
+	return fmt.Sprintf("http://localhost:%d", GetL1Port(basePort))
+}
+
+// GetL2RPCURL returns the L2 RPC URL for the given port
+func GetL2RPCURL(basePort int) string {
+	return fmt.Sprintf("http://localhost:%d", GetL2Port(basePort))
 }
