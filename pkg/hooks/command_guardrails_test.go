@@ -44,6 +44,7 @@ func TestFindCommandDependency(t *testing.T) {
 		{"build", true, StageCreated},
 		{"start", true, StageCreated},
 		{"deploy-contracts", true, StageCreated},
+		{"stop", true, StageCreated},
 		{"call", true, StageRunning},
 		{"run", true, StageDevnetReady},
 		{"nonexistent", false, ""},
@@ -68,7 +69,7 @@ func TestGetCurrentProjectStage(t *testing.T) {
 		tmpDir := t.TempDir()
 		origDir, err := os.Getwd()
 		require.NoError(t, err)
-		defer os.Chdir(origDir)
+		defer func() { _ = os.Chdir(origDir) }()
 
 		require.NoError(t, os.Chdir(tmpDir))
 
@@ -82,7 +83,7 @@ func TestGetCurrentProjectStage(t *testing.T) {
 		tmpDir := t.TempDir()
 		origDir, err := os.Getwd()
 		require.NoError(t, err)
-		defer os.Chdir(origDir)
+		defer func() { _ = os.Chdir(origDir) }()
 
 		// Create basic project structure
 		configDir := filepath.Join(tmpDir, "config")
@@ -109,7 +110,7 @@ config:
 		tmpDir := t.TempDir()
 		origDir, err := os.Getwd()
 		require.NoError(t, err)
-		defer os.Chdir(origDir)
+		defer func() { _ = os.Chdir(origDir) }()
 
 		// Create project structure with build artifacts
 		configDir := filepath.Join(tmpDir, "config")
@@ -149,7 +150,7 @@ context:
 		tmpDir := t.TempDir()
 		origDir, err := os.Getwd()
 		require.NoError(t, err)
-		defer os.Chdir(origDir)
+		defer func() { _ = os.Chdir(origDir) }()
 
 		// Create project structure with deployed contracts
 		configDir := filepath.Join(tmpDir, "config")
@@ -190,7 +191,7 @@ context:
 		tmpDir := t.TempDir()
 		origDir, err := os.Getwd()
 		require.NoError(t, err)
-		defer os.Chdir(origDir)
+		defer func() { _ = os.Chdir(origDir) }()
 
 		// Create project structure with explicit stage
 		configDir := filepath.Join(tmpDir, "config")
