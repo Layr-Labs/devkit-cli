@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )
@@ -48,24 +49,20 @@ var CommandFlowDependencies = []CommandDependency{
 	{
 		Command:         "start", // This is the devnet start subcommand
 		RequiredStage:   StageCreated,
-		PromotesToStage: StageDevnetReady, // Default promotion
-		ConditionalPromotion: func(cCtx *cli.Context) ProjectStage {
-			// If devnet start is called without --skip-deploy-contracts and --skip-avs-run,
-			// it automatically runs AVS components, so promote to StageRunning
-			skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
-			skipAvsRun := cCtx.Bool("skip-avs-run")
-			if !skipDeployContracts && !skipAvsRun {
-				return StageRunning
-			}
-			return StageDevnetReady
-		},
-		ErrorMessage: "The 'start' command requires a project to be created first. Please run 'devkit avs create <project-name>' first.",
+		PromotesToStage: StageDevnetReady, // Default promotion (will be overridden manually if AVS runs)
+		ErrorMessage:    "The 'start' command requires a project to be created first. Please run 'devkit avs create <project-name>' first.",
 	},
 	{
 		Command:         "deploy-contracts", // This is the devnet deploy-contracts subcommand
 		RequiredStage:   StageCreated,
 		PromotesToStage: StageDevnetReady,
 		ErrorMessage:    "The 'deploy-contracts' command requires a project to be created first. Please run 'devkit avs create <project-name>' first.",
+	},
+	{
+		Command:         "stop", // This is the devnet stop subcommand
+		RequiredStage:   StageCreated,
+		PromotesToStage: StageCreated, // Reset back to created when devnet is stopped
+		ErrorMessage:    "The 'stop' command requires a project to be created first.",
 	},
 	{
 		Command:       "call",
@@ -117,10 +114,18 @@ func WithCommandDependencyCheck(action cli.ActionFunc) cli.ActionFunc {
 			}
 
 			if newStage != "" {
-				if err := updateProjectStage(newStage); err != nil {
-					// Log but don't fail the command if we can't update stage
-					logger := common.LoggerFromContext(cCtx.Context)
-					logger.Warn("Failed to update project stage: %v", err)
+				logger := common.LoggerFromContext(cCtx.Context)
+
+				if cmdName == "create" {
+					// For create command, update stage in the newly created project directory
+					if err := updateProjectStageForCreate(cCtx, newStage, logger); err != nil {
+						logger.Warn("Failed to update project stage for new project: %v", err)
+					}
+				} else {
+					// For other commands, update stage in current directory
+					if err := updateProjectStage(newStage, logger); err != nil {
+						logger.Warn("Failed to update project stage: %v", err)
+					}
 				}
 			}
 		}
@@ -238,7 +243,7 @@ func inferStageFromProjectState(contextWrapper *struct {
 }
 
 // updateProjectStage updates the project stage in the context file
-func updateProjectStage(newStage ProjectStage) error {
+func updateProjectStage(newStage ProjectStage, logger iface.Logger) error {
 	// Load the base config to get the current context
 	cfg, err := common.LoadBaseConfigYaml()
 	if err != nil {
@@ -277,4 +282,87 @@ func updateProjectStage(newStage ProjectStage) error {
 
 	// Write the updated YAML back
 	return common.WriteYAML(contextPath, rootNode)
+}
+
+// updateProjectStageForCreate updates the project stage in the context file for a newly created project
+func updateProjectStageForCreate(cCtx *cli.Context, newStage ProjectStage, logger iface.Logger) error {
+	// Get the project name and target directory from create command arguments
+	if cCtx.NArg() == 0 {
+		return fmt.Errorf("project name is required for create command")
+	}
+
+	projectName := cCtx.Args().First()
+	dest := cCtx.Args().Get(1)
+
+	// Use dest from dir flag or positional
+	var targetDir string
+	if dest != "" {
+		targetDir = dest
+	} else {
+		targetDir = cCtx.String("dir")
+	}
+
+	// Ensure provided dir is absolute
+	targetDir, err := filepath.Abs(filepath.Join(targetDir, projectName))
+	if err != nil {
+		return fmt.Errorf("failed to resolve absolute path for target directory: %w", err)
+	}
+
+	// Load the base config from the target project directory
+	configPath := filepath.Join(targetDir, "config", "config.yaml")
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read project config: %w", err)
+	}
+
+	var cfg struct {
+		Config struct {
+			Project struct {
+				Context string `yaml:"context"`
+			} `yaml:"project"`
+		} `yaml:"config"`
+	}
+
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("failed to parse project config: %w", err)
+	}
+
+	// Build context path in the target directory
+	contextPath := filepath.Join(targetDir, "config", "contexts", cfg.Config.Project.Context+".yaml")
+
+	// Load the existing context as YAML nodes to preserve formatting
+	rootNode, err := common.LoadYAML(contextPath)
+	if err != nil {
+		return fmt.Errorf("failed to load context YAML: %w", err)
+	}
+
+	if len(rootNode.Content) == 0 {
+		return fmt.Errorf("empty YAML root node")
+	}
+
+	// Navigate to the context node
+	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
+	if contextNode == nil {
+		return fmt.Errorf("missing 'context' key in context file")
+	}
+
+	// Update or add the stage field
+	stageNode := common.GetChildByKey(contextNode, "stage")
+	if stageNode != nil {
+		// Update existing stage
+		stageNode.Value = string(newStage)
+	} else {
+		// Add new stage field
+		stageKey := &yaml.Node{Kind: yaml.ScalarNode, Value: "stage"}
+		stageValue := &yaml.Node{Kind: yaml.ScalarNode, Value: string(newStage)}
+		contextNode.Content = append(contextNode.Content, stageKey, stageValue)
+	}
+
+	// Write the updated YAML back
+	return common.WriteYAML(contextPath, rootNode)
+}
+
+// UpdateProjectStage manually updates the project stage - can be called from command implementations
+func UpdateProjectStage(newStage ProjectStage, logger iface.Logger) error {
+	return updateProjectStage(newStage, logger)
 }
