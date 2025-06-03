@@ -96,24 +96,28 @@ devkit avs <TAB>      # Should show subcommands
 
 **For Zsh (recommended for macOS):**
 ```bash
-# Add to your ~/.zshrc
-fpath=(~/.zsh/completions $fpath)
-autoload -U compinit && compinit
+# Add to your ~/.zshrc:
 PROG=devkit
 source <(curl -s https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/autocomplete/zsh_autocomplete)
 
-# Then restart your shell
 exec zsh
 ```
 
 **For Bash:**
 ```bash
-# Add to your ~/.bashrc or ~/.bash_profile
+# Add to your ~/.bashrc or ~/.bash_profile:
 PROG=devkit
 source <(curl -s https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/autocomplete/bash_autocomplete)
 
-# Then restart your shell
 source ~/.bashrc
+```
+
+**For local development/testing:**
+```bash
+# If you have the devkit-cli repo locally
+cd /path/to/devkit-cli
+PROG=devkit source autocomplete/zsh_autocomplete  # for zsh
+PROG=devkit source autocomplete/bash_autocomplete # for bash
 ```
 
 After setup, you can use tab completion:
