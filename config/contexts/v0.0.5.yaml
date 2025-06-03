@@ -9,16 +9,16 @@ context:
       chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
-        block: 22594304
+        block: 22475020
         url: ""
-        block_time: 12
+        block_time: 3
     l2:
-      chain_id: 31338
-      rpc_url: "http://localhost:8546"
+      chain_id: 31337
+      rpc_url: "http://localhost:8545"
       fork:
-        block: 30901853
+        block: 22475020
         url: ""
-        block_time: 2
+        block_time: 3
   # All key material (BLS and ECDSA) within this file should be used for local testing ONLY
   # ECDSA keys used are from Anvil's private key set
   # BLS keystores are deterministically pre-generated and embedded. These are NOT derived from a secure seed
