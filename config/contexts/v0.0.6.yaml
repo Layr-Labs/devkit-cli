@@ -1,5 +1,5 @@
 # Devnet context to be used for local deployments against Anvil chain
-version: 0.0.5
+version: 0.0.6
 context:
   # Name of the context
   name: "devnet"
@@ -9,16 +9,16 @@ context:
       chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
-        block: 22475020
+        block: 22594304
         url: ""
-        block_time: 3
+        block_time: 12
     l2:
-      chain_id: 31337
-      rpc_url: "http://localhost:8545"
+      chain_id: 31338
+      rpc_url: "http://localhost:8546"
       fork:
-        block: 22475020
+        block: 30901853
         url: ""
-        block_time: 3
+        block_time: 2
   # All key material (BLS and ECDSA) within this file should be used for local testing ONLY
   # ECDSA keys used are from Anvil's private key set
   # BLS keystores are deterministically pre-generated and embedded. These are NOT derived from a secure seed
@@ -67,4 +67,4 @@ context:
   # Operator Sets registered on `devnet start`
   operator_sets: []
   # Operators registered on `devnet start`
-  operator_registrations: []
+  operator_registrations: [] 
