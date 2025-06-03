@@ -18,9 +18,10 @@ func main() {
 	ctx := common.WithShutdown(context.Background())
 
 	app := &cli.App{
-		Name:  "devkit",
-		Usage: "EigenLayer Development Kit",
-		Flags: common.GlobalFlags,
+		EnableBashCompletion: true,
+		Name:                 "devkit",
+		Usage:                "EigenLayer Development Kit",
+		Flags:                common.GlobalFlags,
 		Before: func(cCtx *cli.Context) error {
 			err := hooks.LoadEnvFile(cCtx)
 			if err != nil {

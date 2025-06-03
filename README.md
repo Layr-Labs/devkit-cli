@@ -81,6 +81,48 @@ Verify your installation:
 devkit --help
 ```
 
+### 🔧 Shell Completion (Optional)
+
+Tab completion for devkit commands is automatically set up when you install with `make install`.
+
+**If you installed from source with `make install`:**
+- Completion is automatically configured and enabled! Test it immediately:
+```bash
+devkit <TAB>          # Should show: avs, keystore, version
+devkit avs <TAB>      # Should show subcommands
+```
+
+**If you downloaded the binary directly, manual setup:**
+
+**For Zsh (recommended for macOS):**
+```bash
+# Add to your ~/.zshrc
+fpath=(~/.zsh/completions $fpath)
+autoload -U compinit && compinit
+PROG=devkit
+source <(curl -s https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/autocomplete/zsh_autocomplete)
+
+# Then restart your shell
+exec zsh
+```
+
+**For Bash:**
+```bash
+# Add to your ~/.bashrc or ~/.bash_profile
+PROG=devkit
+source <(curl -s https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/autocomplete/bash_autocomplete)
+
+# Then restart your shell
+source ~/.bashrc
+```
+
+After setup, you can use tab completion:
+```bash
+devkit <TAB>          # Shows: avs, keystore, version
+devkit avs <TAB>      # Shows: create, config, context, build, devnet, run, call, release, template
+devkit avs cr<TAB>    # Completes to: devkit avs create
+```
+
 ---
 
 ## 🚧 Step-by-Step Guide
@@ -119,7 +161,7 @@ Within `main.go`, you'll find two critical methods on the `TaskWorker` type:
   This is where you implement your AVS's core business logic. It processes an incoming task and returns a `TaskResponse`. Replace the placeholder comment with the actual logic you want to run during task execution.
 
 - **`ValidateTask(*TaskRequest)`**  
-  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS’s criteria (e.g., argument format, access control, etc.).
+  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS's criteria (e.g., argument format, access control, etc.).
 
 These functions will be invoked automatically when using `devkit avs call`, enabling you to quickly test and iterate on your AVS logic.
 
@@ -132,7 +174,7 @@ These functions will be invoked automatically when using `devkit avs call`, enab
 Also, keep stuff at the top about introducing config yaml files and what they do.
 -->
 
-Before running your AVS, you’ll need to configure both project-level and context-specific settings. This is done through two configuration files:
+Before running your AVS, you'll need to configure both project-level and context-specific settings. This is done through two configuration files:
 
 - **`config.yaml`**  
   Defines project-wide settings such as AVS name, version, and available context names.  
