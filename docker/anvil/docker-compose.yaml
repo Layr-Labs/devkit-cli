@@ -1,10 +1,20 @@
 services:
-  devkit-devnet:
+  devkit-devnet-l1:
     image: ${FOUNDRY_IMAGE}
-    container_name: ${AVS_CONTAINER_NAME} 
+    container_name: ${AVS_CONTAINER_NAME}-l1
     entrypoint: anvil
-    command: "--host 0.0.0.0 --fork-url ${FORK_RPC_URL} --fork-block-number ${FORK_BLOCK_NUMBER}  ${ANVIL_ARGS}"
+    command: "--host 0.0.0.0 --fork-url ${L1_FORK_RPC_URL} --fork-block-number ${L1_FORK_BLOCK_NUMBER} ${L1_ANVIL_ARGS}"
     ports:
-      - "${DEVNET_PORT}:8545"
+      - "${L1_DEVNET_PORT}:8545"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  devkit-devnet-l2:
+    image: ${FOUNDRY_IMAGE}
+    container_name: ${AVS_CONTAINER_NAME}-l2
+    entrypoint: anvil
+    command: "--host 0.0.0.0 --fork-url ${L2_FORK_RPC_URL} --fork-block-number ${L2_FORK_BLOCK_NUMBER} ${L2_ANVIL_ARGS}"
+    ports:
+      - "${L2_DEVNET_PORT}:8545"
     extra_hosts:
       - "host.docker.internal:host-gateway"
