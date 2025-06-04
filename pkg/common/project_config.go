@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -81,22 +80,9 @@ func FindProjectRoot() (string, error) {
 	return "", fmt.Errorf("not in a devkit project (no config/config.yaml found)")
 }
 
-// IsTelemetryConfigurable returns whether telemetry settings can be configured by users
-func IsTelemetryConfigurable() bool {
-	// Allow configuration during tests
-	if strings.Contains(os.Args[0], "test") || os.Getenv("GO_TEST") != "" {
-		return true
-	}
-	return false // Temporarily disabled - always enable telemetry
-}
-
 // GetEffectiveTelemetryPreference returns the effective telemetry preference
 // Project setting takes precedence over global setting
 func GetEffectiveTelemetryPreference() (bool, error) {
-	// If telemetry is not configurable, always enable it
-	if !IsTelemetryConfigurable() {
-		return true, nil
-	}
 
 	// First try to get project-specific setting
 	projectSettings, err := LoadProjectSettings()
