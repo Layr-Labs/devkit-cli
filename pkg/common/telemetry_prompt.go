@@ -24,6 +24,7 @@ func TelemetryPrompt(logger iface.Logger) (bool, error) {
 	fmt.Println("This includes:")
 	fmt.Println("  • Commands used (e.g., 'devkit avs create', 'devkit avs build')")
 	fmt.Println("  • Error counts and types (to identify common issues)")
+	fmt.Println("  • Country and city details (to help us understand global usage)")
 	fmt.Println("  • Performance metrics (command execution times)")
 	fmt.Println("  • System information (OS, architecture)")
 	fmt.Println()
