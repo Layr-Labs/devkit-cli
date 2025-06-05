@@ -8,7 +8,7 @@ replace github.com/Layr-Labs/devkit-cli => ./
 
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.4.2
-	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250430200448-e0f09ac951eb
+	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250530201420-ae8ff1382f1e
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/posthog/posthog-go v1.4.10
@@ -20,6 +20,7 @@ require (
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
+	github.com/Layr-Labs/hourglass-monorepo/contracts v0.0.0-20250530201420-ae8ff1382f1e // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -83,7 +84,6 @@ require (
 	golang.org/x/crypto v0.37.0 // indirect
 	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
@@ -98,5 +98,3 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/term v0.32.0
 )
-
-replace github.com/Layr-Labs/hourglass-monorepo => ./temp_external/hourglass-monorepo
