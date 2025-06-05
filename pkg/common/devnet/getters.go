@@ -50,13 +50,13 @@ func GetDevnetChainIdOrDefault(cfg *common.ConfigWithContextConfig, chainName st
 		return l2ChainIdInt, nil
 	}
 
-	// Fallback to context defined value or 31337 if undefined
+	// Fallback to context defined value or DefaultAnvilChainId if undefined
 	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
 	if !found {
-		return 31337, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+		return common.DefaultAnvilChainId, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
 	}
 	if chainConfig.ChainID == 0 {
-		return 31337, fmt.Errorf("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+		return common.DefaultAnvilChainId, fmt.Errorf("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
 	}
 
 	return chainConfig.ChainID, nil

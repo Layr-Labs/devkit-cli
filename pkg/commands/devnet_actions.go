@@ -173,7 +173,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Get the chain_id from env/config
 	chainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1)
 	if err != nil {
-		chainId = 31337
+		chainId = common.DefaultAnvilChainId
 	}
 
 	// Append config defined details to chainArgs
