@@ -35,14 +35,22 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 
 ### ✅ Prerequisites
 
-Before you begin, ensure you have:
+On MacOS or Debian, running:
 
-* [Docker](https://docs.docker.com/engine/install/)
-* [Go](https://go.dev/doc/install)
-* [make](https://formulae.brew.sh/formula/make)
-* [Foundry](https://book.getfoundry.sh/getting-started/installation)
-* [yq](https://github.com/mikefarah/yq/#install)
-* [zeus](https://github.com/Layr-Labs/zeus)
+```bash
+devkit avs create my-avs-project ./
+```
+
+Installs all required dependencies. If you've already installed any, verify they match the versions below. On other OSes, install them manually:
+
+* [Docker (latest)](https://docs.docker.com/engine/install/)
+* [Foundry (latest)](https://book.getfoundry.sh/getting-started/installation)
+* [Go (v1.23.6)](https://go.dev/doc/install)
+* [Gomplate (v4)](https://docs.gomplate.ca/installing/)
+* [make (v4.3)](https://formulae.brew.sh/formula/make)
+* [jq (v1.7.1)](https://jqlang.org/download/)
+* [yq (v4.35.1)](https://github.com/mikefarah/yq/#install)
+* [zeus (v1.5.2)](https://github.com/Layr-Labs/zeus)
 
 ### 📦 Installation
 
