@@ -35,6 +35,33 @@ func FileExistsInRoot(filename string) bool {
 	return err == nil || !os.IsNotExist(err)
 }
 
+func GetDevnetChainIdOrDefault(cfg *common.ConfigWithContextConfig, chainName string) (int, error) {
+	// Check in env first for L1 chain id
+	l1ChainId := os.Getenv("L1_CHAIN_ID")
+	l1ChainIdInt, err := strconv.Atoi(l1ChainId)
+	if chainName == "l1" && err != nil && l1ChainIdInt != 0 {
+		return l1ChainIdInt, nil
+	}
+
+	// Check in env first for L2 chain id
+	l2ChainId := os.Getenv("L2_CHAIN_ID")
+	l2ChainIdInt, err := strconv.Atoi(l2ChainId)
+	if chainName == "l2" && err != nil && l2ChainIdInt != 0 {
+		return l2ChainIdInt, nil
+	}
+
+	// Fallback to context defined value or 31337 if undefined
+	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
+	if !found {
+		return 31337, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+	}
+	if chainConfig.ChainID == 0 {
+		return 31337, fmt.Errorf("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+	}
+
+	return chainConfig.ChainID, nil
+}
+
 func GetDevnetBlockTimeOrDefault(cfg *common.ConfigWithContextConfig, chainName string) (int, error) {
 	// Check in env first for L1 block time
 	l1BlockTime := os.Getenv("L1_BLOCK_TIME")

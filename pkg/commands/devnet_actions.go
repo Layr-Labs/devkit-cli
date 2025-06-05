@@ -169,7 +169,15 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if err != nil {
 		blockTime = 12
 	}
-	// Append blockTime to chainArgs
+
+	// Get the chain_id from env/config
+	chainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1)
+	if err != nil {
+		chainId = 31337
+	}
+
+	// Append config defined details to chainArgs
+	chainArgs = fmt.Sprintf("%s --chain-id %d", chainArgs, chainId)
 	chainArgs = fmt.Sprintf("%s --block-time %d", chainArgs, blockTime)
 
 	// Run docker compose up for anvil devnet
