@@ -7,6 +7,8 @@ const FUND_VALUE = "10000000000000000000"
 const CONTEXT = "devnet"
 const L1 = "l1"
 const ANVIL_1_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
+// Ref https://github.com/Layr-Labs/eigenlayer-contracts/blob/c08c9e849c27910f36f3ab746f3663a18838067f/src/contracts/core/AllocationManagerStorage.sol#L63
 const ALLOCATION_DELAY_INFO_SLOT = 155
 
 // These are fallback EigenLayer deployment addresses when not specified in context
