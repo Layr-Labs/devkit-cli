@@ -4,7 +4,7 @@ package devnet
 const FOUNDRY_IMAGE = "ghcr.io/foundry-rs/foundry:stable"
 const CHAIN_ARGS = "--chain-id 31337 --gas-limit 140000000 --base-fee 9400000"
 const FUND_VALUE = "10000000000000000000"
-const CONTEXT = "devnet"
+const DEVNET_CONTEXT = "devnet"
 const L1 = "l1"
 const ANVIL_1_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 

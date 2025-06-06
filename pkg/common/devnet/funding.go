@@ -9,10 +9,11 @@ import (
 	"strings"
 
 	devkitcommon "github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/contracts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 
 	"context"
 
-	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -27,12 +28,6 @@ type TokenFunding struct {
 	HolderAddress common.Address `json:"holder_address"`
 	Amount        *big.Int       `json:"amount"`
 }
-
-// ERC20 ABI for transfer function
-const erc20TransferABI = `[{"constant":false,"inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
-
-// Strategy ABI for underlyingToken function
-const strategyUnderlyingTokenABI = `[{"constant":true,"inputs":[],"name":"underlyingToken","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]`
 
 // EIGEN contract ABI for unwrap function
 const eigenUnwrapABI = `[{"constant":false,"inputs":[{"name":"amount","type":"uint256"}],"name":"unwrap","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
@@ -76,12 +71,6 @@ func StopImpersonatingAccount(client *rpc.Client, address common.Address) error 
 
 // FundOperatorWithTokens funds an operator with strategy tokens using impersonation
 func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, operatorAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, rpcURL string) error {
-	// Parse ERC20 ABI
-	parsedABI, err := abi.JSON(strings.NewReader(erc20TransferABI))
-	if err != nil {
-		return fmt.Errorf("failed to parse ERC20 ABI: %w", err)
-	}
-
 	if tokenFunding.TokenName == "bEIGEN" {
 		// For bEIGEN, we need to call unwrap() on the EIGEN contract first
 		// to convert EIGEN tokens to bEIGEN tokens
@@ -170,8 +159,8 @@ func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rp
 		return fmt.Errorf("failed to get gas price: %w", err)
 	}
 
-	// Encode transfer function call
-	data, err := parsedABI.Pack("transfer", operatorAddress, tokenFunding.Amount)
+	// Encode transfer function call using the registry's ERC20 contract
+	transferData, err := contracts.PackTransferCall(operatorAddress, tokenFunding.Amount)
 	if err != nil {
 		return fmt.Errorf("failed to pack transfer call: %w", err)
 	}
@@ -184,7 +173,7 @@ func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rp
 		"gas":      "0x186a0", // 100000 in hex
 		"gasPrice": fmt.Sprintf("0x%x", gasPrice),
 		"value":    "0x0",
-		"data":     fmt.Sprintf("0x%x", data),
+		"data":     fmt.Sprintf("0x%x", transferData),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to send token transfer transaction: %w", err)
@@ -205,7 +194,6 @@ func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rp
 		tokenFunding.Amount.String(),
 		tokenAddress,
 		txHash.Hex())
-	// log balance of tokenFUnding.TokenAddress for operator address using balanceOf  method in erc20
 
 	return nil
 }
@@ -233,7 +221,7 @@ func FundOperatorsWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, 
 	ctx := context.Background()
 
 	// Fund each operator with each requested token
-	for _, operator := range cfg.Context[CONTEXT].Operators {
+	for _, operator := range cfg.Context[DEVNET_CONTEXT].Operators {
 		operatorAddr := common.HexToAddress(operator.Address)
 
 		for _, tokenAddressStr := range tokenAddresses {
@@ -290,7 +278,7 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 
 	// All operator keys from [operator]
 	// We only intend to fund for devnet, so hardcoding to `CONTEXT` is fine
-	for _, key := range cfg.Context[CONTEXT].Operators {
+	for _, key := range cfg.Context[DEVNET_CONTEXT].Operators {
 		cleanedKey := strings.TrimPrefix(key.ECDSAKey, "0x")
 		privateKey, err := crypto.HexToECDSA(cleanedKey)
 		if err != nil {
@@ -347,7 +335,7 @@ func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
 }
 
 // GetUnderlyingTokenAddressesFromStrategies extracts all unique underlying token addresses from strategy contracts
-func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) ([]string, error) {
+func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, logger iface.Logger) ([]string, error) {
 	// Connect to ETH client
 	ethClient, err := ethclient.Dial(rpcURL)
 	if err != nil {
@@ -355,43 +343,53 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 	}
 	defer ethClient.Close()
 
-	// Parse strategy ABI
-	parsedABI, err := abi.JSON(strings.NewReader(strategyUnderlyingTokenABI))
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse strategy ABI: %w", err)
+	// Get EigenLayer contract addresses from config
+	context := cfg.Context[DEVNET_CONTEXT]
+	eigenLayer := context.EigenLayer
+	if eigenLayer == nil {
+		return nil, fmt.Errorf("EigenLayer configuration not found")
 	}
 
-	ctx := context.Background()
+	// Create a ContractCaller with proper registry
+	contractCaller, err := devkitcommon.NewContractCaller(
+		context.DeployerPrivateKey,
+		big.NewInt(1), // Chain ID doesn't matter for read operations
+		ethClient,
+		common.HexToAddress(eigenLayer.AllocationManager),
+		common.HexToAddress(eigenLayer.DelegationManager),
+		common.HexToAddress(eigenLayer.StrategyManager),
+		logger,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create contract caller: %w", err)
+	}
+
 	uniqueTokenAddresses := make(map[string]bool)
 	var tokenAddresses []string
 
-	// Iterate through all operators and their allocations
-	for _, operator := range cfg.Context[CONTEXT].Operators {
+	// Register and process strategies for all operators
+	for _, operator := range context.Operators {
+		// Register strategies from this operator's allocations
+		err := contractCaller.RegisterStrategiesFromConfig(&operator)
+		if err != nil {
+			log.Printf("⚠️  Failed to register strategies for operator %s: %v", operator.Address, err)
+			continue
+		}
+
+		// Get underlying tokens for each allocation
 		for _, allocation := range operator.Allocations {
 			strategyAddress := common.HexToAddress(allocation.StrategyAddress)
 
-			// Call underlyingToken() on the strategy contract
-			callData, err := parsedABI.Pack("underlyingToken")
+			strategy, err := contractCaller.GetRegistry().GetStrategy(strategyAddress)
 			if err != nil {
-				log.Printf("⚠️  Failed to pack underlyingToken call for strategy %s: %v", allocation.StrategyAddress, err)
+				log.Printf("⚠️  Failed to get strategy contract %s: %v", allocation.StrategyAddress, err)
 				continue
 			}
 
-			// Make the call
-			result, err := ethClient.CallContract(ctx, ethereum.CallMsg{
-				To:   &strategyAddress,
-				Data: callData,
-			}, nil)
+			// Call underlyingToken() on the strategy contract using the binding
+			underlyingTokenAddr, err := strategy.UnderlyingToken(nil)
 			if err != nil {
 				log.Printf("⚠️  Failed to call underlyingToken() on strategy %s: %v", allocation.StrategyAddress, err)
-				continue
-			}
-
-			// Unpack the result
-			var underlyingTokenAddr common.Address
-			err = parsedABI.UnpackIntoInterface(&underlyingTokenAddr, "underlyingToken", result)
-			if err != nil {
-				log.Printf("⚠️  Failed to unpack underlyingToken result for strategy %s: %v", allocation.StrategyAddress, err)
 				continue
 			}
 

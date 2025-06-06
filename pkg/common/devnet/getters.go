@@ -51,7 +51,7 @@ func GetDevnetBlockTimeOrDefault(cfg *common.ConfigWithContextConfig, chainName 
 	}
 
 	// Fallback to context defined value or 12s if undefined
-	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
+	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
 	if !found {
 		return 12, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
 	}
@@ -76,7 +76,7 @@ func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName stri
 	}
 
 	// Fallback to context defined value
-	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
+	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
 	if !found {
 		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
 	}
@@ -93,7 +93,7 @@ func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationMana
 		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS
 	}
 
-	devnetCtx, found := cfg.Context[CONTEXT]
+	devnetCtx, found := cfg.Context[DEVNET_CONTEXT]
 	if !found || devnetCtx.EigenLayer == nil {
 		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS
 	}
