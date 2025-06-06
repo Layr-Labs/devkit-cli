@@ -1,0 +1,34 @@
+version: "0.0.6"
+context:
+  name: "devnet"
+  chains:
+    l1:
+      chain_id: 1337
+      rpc_url: "http://localhost:8545"
+      fork:
+        url: "https://ethereum-holesky-rpc.publicnode.com"
+        block: 22640530
+        block_time: 12
+  deployer_private_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+  app_private_key: "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+  operators:
+    - address: "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+      ecdsa_key: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+      bls_keystore_path: "./tests/keys/opr1.ecdsa.key.json"
+      bls_keystore_password: "testpassword"
+      allocations:
+        - strategy: "0x54945180dB7943c0ed0FEE7EdaB2Bd24620256bc"
+          deposit_amount: "5ETH"
+          allocation_in_wads: "500000000000000000"
+  avs:
+    address: "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0"
+    metadata_url: "https://yolo.com/metadata.json"
+    avs_private_key: "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
+    registrar_address: "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512"
+  eigenlayer:
+    allocation_manager: "0x3d9AcAab2F40b6a1d4887a7F13B27B503a5839e5"
+    delegation_manager: "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A"
+    strategy_manager: "0x9240e7B73ec78B1C4843bdA0f7b5C1fCE93Dd5f1"
+  deployed_contracts: []
+  operator_sets: []
+  operator_registrations: [] 
