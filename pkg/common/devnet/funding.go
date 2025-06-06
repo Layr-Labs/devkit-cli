@@ -130,10 +130,10 @@ func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rp
 		if err != nil {
 			return fmt.Errorf("unwrap transaction failed: %w", err)
 		}
-		log.Printf("unwrapReceipt: %v", unwrapReceipt.TxHash)
+		log.Printf("EIGEN to bEIGEN unwrap transaction eceipt: %v", unwrapReceipt.TxHash)
 
 		if unwrapReceipt.Status == 0 {
-			return fmt.Errorf("unwrap transaction reverted")
+			return fmt.Errorf("EIGEN to bEIGEN unwrap transaction reverted")
 		}
 
 		// Stop impersonating for unwrap (we'll impersonate again for transfer)

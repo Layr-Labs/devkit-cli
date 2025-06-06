@@ -302,7 +302,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			}
 			logger.Info("AVS registered with EigenLayer successfully.")
 
-			if err := RegisterOperatorsFromConfigAction(cCtx, logger); err != nil {
+			if err := RegisterOperatorsToEigenLayerFromConfigAction(cCtx, logger); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
 
@@ -316,6 +316,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 			if err := ModifyAllocationsAction(cCtx, logger); err != nil {
 				return fmt.Errorf("modifying allocations failed: %w", err)
+			}
+
+			if err := RegisterOperatorsToAvsFromConfigAction(cCtx, logger); err != nil {
+				return fmt.Errorf("registering operators to AVS failed: %w", err)
 			}
 		} else {
 			logger.Info("Skipping AVS setup steps...")
@@ -760,7 +764,7 @@ func DepositIntoStrategiesAction(cCtx *cli.Context, logger iface.Logger) error {
 	return nil
 }
 
-func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) error {
+func RegisterOperatorsToEigenLayerFromConfigAction(cCtx *cli.Context, logger iface.Logger) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
@@ -782,13 +786,42 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) e
 			logger.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
 			continue
 		}
+		// if err := registerOperatorAVS(cCtx, logger, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
+		// 	logger.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
+		// 	continue
+		// }
+		// logger.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
+	}
+	logger.Info("Operator registration with EigenLayer completed.")
+	return nil
+}
+
+func RegisterOperatorsToAvsFromConfigAction(cCtx *cli.Context, logger iface.Logger) error {
+	logger.Info("Registering operators to AVS from config...")
+
+	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+	}
+
+	logger.Info("Registering operators to AVS from config...")
+	if len(envCtx.OperatorRegistrations) == 0 {
+		logger.Info("No operator registrations found in context, skipping operator registration.")
+		return nil
+	}
+
+	for _, opReg := range envCtx.OperatorRegistrations {
+		logger.Info("Processing registration for operator at address %s", opReg.Address)
 		if err := registerOperatorAVS(cCtx, logger, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
 			logger.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
 			continue
 		}
 		logger.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
 	}
-	logger.Info("Operator registration with EigenLayer completed.")
 	return nil
 }
 
@@ -1271,7 +1304,7 @@ func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivat
 			operatorSetID := opSetAllocation.OperatorSet
 			allocationInWads := opSetAllocation.AllocationInWads
 
-			// Check if this operator set ID exists in deployed operator sets and contains this strategy
+			// Check if this operator set ID exists in  deployed operator_sets and contains this strategy
 			var strategyFound bool
 			for _, deployedOpSet := range deployedOperatorSets {
 				if fmt.Sprintf("%d", deployedOpSet.OperatorSetID) == operatorSetID {
