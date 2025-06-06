@@ -693,24 +693,24 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 	})
 }
 
-// TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.5
+// TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.6
 func TestAVSContextMigration_FullChain(t *testing.T) {
 	// Use the embedded v0.0.1 content as our starting point
 	userYAML := string(contexts.ContextYamls["0.0.1"])
 
 	userNode := testNode(t, userYAML)
 
-	// Execute migration through the entire chain
-	migratedNode, err := migration.MigrateNode(userNode, "0.0.1", "0.0.5", contexts.MigrationChain)
+	// Execute migration through the entire chain to 0.0.6 (where stake conversion happens)
+	migratedNode, err := migration.MigrateNode(userNode, "0.0.1", "0.0.6", contexts.MigrationChain)
 	if err != nil {
 		t.Fatalf("Full chain migration failed: %v", err)
 	}
 
 	// Verify final state
-	t.Run("final version is 0.0.5", func(t *testing.T) {
+	t.Run("final version is 0.0.6", func(t *testing.T) {
 		version := migration.ResolveNode(migratedNode, []string{"version"})
-		if version == nil || version.Value != "0.0.5" {
-			t.Errorf("Expected final version to be 0.0.5, got %v", version.Value)
+		if version == nil || version.Value != "0.0.6" {
+			t.Errorf("Expected final version to be 0.0.6, got %v", version.Value)
 		}
 	})
 
@@ -732,13 +732,11 @@ func TestAVSContextMigration_FullChain(t *testing.T) {
 		if deployedContracts == nil {
 			t.Error("Expected deployed_contracts section to be added")
 		}
-	})
 
-	t.Run("user customizations preserved", func(t *testing.T) {
-		// User's custom stake should be preserved
-		stake := migration.ResolveNode(migratedNode, []string{"context", "operators", "0", "stake"})
-		if stake == nil || stake.Value != "1000ETH" {
-			t.Errorf("Expected user's stake to be preserved, got %v", stake.Value)
+		// Check that strategy_manager was added (from 0.0.5→0.0.6)
+		strategyManager := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "strategy_manager"})
+		if strategyManager == nil {
+			t.Error("Expected strategy_manager to be added")
 		}
 	})
 
