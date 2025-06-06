@@ -241,6 +241,10 @@ func MigrateNode(
 			continue
 		}
 
+		if versionGreaterThan(step.To, to) {
+			break
+		}
+
 		oldDef := &yaml.Node{}
 		if err := yaml.Unmarshal(step.OldYAML, oldDef); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal old default for %s: %w", step.From, err)
