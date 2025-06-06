@@ -211,54 +211,69 @@ func NewRegistryBuilder(client *ethclient.Client) *RegistryBuilder {
 // AddEigenLayerCore adds the core EigenLayer contracts
 func (rb *RegistryBuilder) AddEigenLayerCore(
 	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr common.Address,
-) *RegistryBuilder {
+) (*RegistryBuilder, error) {
 	// Register AllocationManager
-	rb.registry.RegisterContract(ContractInfo{
+	err := rb.registry.RegisterContract(ContractInfo{
 		Name:        "AllocationManager",
 		Type:        AllocationManagerContract,
 		Address:     allocationManagerAddr,
 		Description: "EigenLayer AllocationManager contract",
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Register DelegationManager
-	rb.registry.RegisterContract(ContractInfo{
+	err = rb.registry.RegisterContract(ContractInfo{
 		Name:        "DelegationManager",
 		Type:        DelegationManagerContract,
 		Address:     delegationManagerAddr,
 		Description: "EigenLayer DelegationManager contract",
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// Register StrategyManager
-	rb.registry.RegisterContract(ContractInfo{
+	err = rb.registry.RegisterContract(ContractInfo{
 		Name:        "StrategyManager",
 		Type:        StrategyManagerContract,
 		Address:     strategyManagerAddr,
 		Description: "EigenLayer StrategyManager contract",
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return rb
+	return rb, nil
 }
 
 // AddStrategy adds a strategy contract
-func (rb *RegistryBuilder) AddStrategy(address common.Address, name string) *RegistryBuilder {
-	rb.registry.RegisterContract(ContractInfo{
+func (rb *RegistryBuilder) AddStrategy(address common.Address, name string) (*RegistryBuilder, error) {
+	err := rb.registry.RegisterContract(ContractInfo{
 		Name:        name,
 		Type:        StrategyContract,
 		Address:     address,
 		Description: fmt.Sprintf("Strategy contract: %s", name),
 	})
-	return rb
+	if err != nil {
+		return nil, err
+	}
+	return rb, nil
 }
 
 // AddERC20 adds an ERC20 token contract
-func (rb *RegistryBuilder) AddERC20(address common.Address, symbol string) *RegistryBuilder {
-	rb.registry.RegisterContract(ContractInfo{
+func (rb *RegistryBuilder) AddERC20(address common.Address, symbol string) (*RegistryBuilder, error) {
+	err := rb.registry.RegisterContract(ContractInfo{
 		Name:        symbol,
 		Type:        ERC20Contract,
 		Address:     address,
 		Description: fmt.Sprintf("ERC20 token: %s", symbol),
 	})
-	return rb
+	if err != nil {
+		return nil, err
+	}
+	return rb, nil
 }
 
 // Build returns the constructed registry

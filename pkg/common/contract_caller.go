@@ -40,9 +40,13 @@ func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient
 	}
 
 	// Build contract registry with core EigenLayer contracts
-	registry := contracts.NewRegistryBuilder(client).
-		AddEigenLayerCore(allocationManagerAddr, delegationManagerAddr, strategyManagerAddr).
-		Build()
+	builder := contracts.NewRegistryBuilder(client)
+	builder, err = builder.AddEigenLayerCore(allocationManagerAddr, delegationManagerAddr, strategyManagerAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add EigenLayer core contracts: %w", err)
+	}
+
+	registry := builder.Build()
 
 	return &ContractCaller{
 		registry:              registry,
