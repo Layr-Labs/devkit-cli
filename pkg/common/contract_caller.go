@@ -259,12 +259,15 @@ func (cc *ContractCaller) DepositIntoStrategy(ctx context.Context, strategyAddre
 	strategy, err := cc.registry.GetStrategy(strategyAddress)
 	if err != nil {
 		// Strategy not registered, add it to registry
-		cc.registry.RegisterContract(contracts.ContractInfo{
+		err = cc.registry.RegisterContract(contracts.ContractInfo{
 			Name:        fmt.Sprintf("Strategy_%s", strategyAddress.Hex()[:8]),
 			Type:        contracts.StrategyContract,
 			Address:     strategyAddress,
 			Description: fmt.Sprintf("Strategy contract at %s", strategyAddress.Hex()),
 		})
+		if err != nil {
+			return fmt.Errorf("failed to register strategy contract: %w", err)
+		}
 		strategy, err = cc.registry.GetStrategy(strategyAddress)
 		if err != nil {
 			return fmt.Errorf("failed to get strategy contract: %w", err)
@@ -282,12 +285,15 @@ func (cc *ContractCaller) DepositIntoStrategy(ctx context.Context, strategyAddre
 	erc20Contract, err := cc.registry.GetERC20(underlyingToken)
 	if err != nil {
 		// ERC20 not registered, add it to registry
-		cc.registry.RegisterContract(contracts.ContractInfo{
+		err = cc.registry.RegisterContract(contracts.ContractInfo{
 			Name:        fmt.Sprintf("Token_%s", underlyingToken.Hex()[:8]),
 			Type:        contracts.ERC20Contract,
 			Address:     underlyingToken,
 			Description: fmt.Sprintf("ERC20 token at %s", underlyingToken.Hex()),
 		})
+		if err != nil {
+			return fmt.Errorf("failed to register ERC20 contract: %w", err)
+		}
 		erc20Contract, err = cc.registry.GetERC20(underlyingToken)
 		if err != nil {
 			return fmt.Errorf("failed to get ERC20 contract: %w", err)
