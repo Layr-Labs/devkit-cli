@@ -46,14 +46,20 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "keystores/operator2.keystore.json", cfg.Context["devnet"].Operators[1].BlsKeystorePath)
 	assert.Equal(t, "testpass", cfg.Context["devnet"].Operators[0].BlsKeystorePassword)
 	assert.Equal(t, "testpass", cfg.Context["devnet"].Operators[0].BlsKeystorePassword)
-	assert.Equal(t, "1000ETH", cfg.Context["devnet"].Operators[0].Stake)
-	assert.Equal(t, "1000ETH", cfg.Context["devnet"].Operators[1].Stake)
+
+	// In v0.0.6, operators use allocations instead of stake
+	assert.Len(t, cfg.Context["devnet"].Operators[0].Allocations, 2) // Should have 2 strategy allocations
+	assert.Len(t, cfg.Context["devnet"].Operators[1].Allocations, 2) // Should have 2 strategy allocations
+	assert.Equal(t, "5ETH", cfg.Context["devnet"].Operators[0].Allocations[0].DepositAmount)
+	assert.Equal(t, "5ETH", cfg.Context["devnet"].Operators[1].Allocations[0].DepositAmount)
 
 	assert.Equal(t, "devnet", cfg.Context["devnet"].Name)
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l1"].RPCURL)
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l2"].RPCURL)
-	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
-	assert.Equal(t, 22475020, cfg.Context["devnet"].Chains["l1"].Fork.Block)
+
+	// Fork blocks updated to v0.0.6 values
+	assert.Equal(t, 22640530, cfg.Context["devnet"].Chains["l1"].Fork.Block)
+	assert.Equal(t, 22640530, cfg.Context["devnet"].Chains["l2"].Fork.Block)
 
 	assert.Equal(t, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", cfg.Context["devnet"].Avs.Address)
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
