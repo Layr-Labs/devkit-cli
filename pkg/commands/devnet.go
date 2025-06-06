@@ -51,11 +51,6 @@ var DevnetCommand = &cli.Command{
 					Usage: "Use Zeus CLI to fetch mainnet core addresses",
 					Value: false,
 				},
-				&cli.StringSliceFlag{
-					Name:  "fund-tokens",
-					Usage: "Override automatic token detection - fund operators with specific token addresses",
-					Value: cli.NewStringSlice(), // Empty by default - will auto-detect from strategies
-				},
 			}, common.GlobalFlags...),
 			Action: StartDevnetAction,
 		},

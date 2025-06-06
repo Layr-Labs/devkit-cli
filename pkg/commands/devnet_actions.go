@@ -244,22 +244,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if devnet.CONTEXT == "devnet" {
 		logger.Info("Funding operators with strategy tokens...")
 
-		// Check if user specified specific tokens to fund
-		manualTokenAddresses := cCtx.StringSlice("fund-tokens")
 		var tokenAddresses []string
-
-		if len(manualTokenAddresses) > 0 {
-			// Use manually specified token addresses
-			tokenAddresses = manualTokenAddresses
-			logger.Info("Using manually specified token addresses: %v", tokenAddresses)
-		} else {
-			// Auto-detect underlying token addresses from strategy contracts
-			var tokenErr error
-			tokenAddresses, tokenErr = devnet.GetUnderlyingTokenAddressesFromStrategies(config, rpcUrl)
-			if tokenErr != nil {
-				logger.Warn("Failed to get underlying token addresses from strategies: %v", tokenErr)
-				logger.Info("Continuing with devnet startup...")
-			}
+		var tokenErr error
+		tokenAddresses, tokenErr = devnet.GetUnderlyingTokenAddressesFromStrategies(config, rpcUrl)
+		if tokenErr != nil {
+			logger.Warn("Failed to get underlying token addresses from strategies: %v", tokenErr)
+			logger.Info("Continuing with devnet startup...")
 		}
 
 		if len(tokenAddresses) > 0 {
