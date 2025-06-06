@@ -35,14 +35,22 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 
 ### ✅ Prerequisites
 
-Before you begin, ensure you have:
+On MacOS or Debian, running:
 
-* [Docker](https://docs.docker.com/engine/install/)
-* [Go](https://go.dev/doc/install)
-* [make](https://formulae.brew.sh/formula/make)
-* [Foundry](https://book.getfoundry.sh/getting-started/installation)
-* [yq](https://github.com/mikefarah/yq/#install)
-* [zeus](https://github.com/Layr-Labs/zeus)
+```bash
+devkit avs create my-avs-project ./
+```
+
+Installs all required dependencies. If you've already installed any, verify they match the versions below. On other OSes, install them manually:
+
+* [Docker (latest)](https://docs.docker.com/engine/install/)
+* [Foundry (latest)](https://book.getfoundry.sh/getting-started/installation)
+* [Go (v1.23.6)](https://go.dev/doc/install)
+* [Gomplate (v4)](https://docs.gomplate.ca/installing/)
+* [make (v4.3)](https://formulae.brew.sh/formula/make)
+* [jq (v1.7.1)](https://jqlang.org/download/)
+* [yq (v4.35.1)](https://github.com/mikefarah/yq/#install)
+* [zeus (v1.5.2)](https://github.com/Layr-Labs/zeus)
 
 ### 📦 Installation
 
@@ -98,6 +106,15 @@ Projects are created by default in the current directory from where the below co
 ```bash
 devkit avs create my-avs-project ./
 cd my-avs-project
+# If dependencies we're installed during the creation process, you will need to source your bash/zsh profile:
+#  - if you use bashrc
+source ~/.bashrc
+#  - if you use bash_profile
+source ~/.bash_profile
+#  - if you use zshrc
+source ~/.zshrc
+#  - if you use zprofile
+source ~/.zprofile
 ```
 
 > Note: Projects are created with a specific template version. You can view your current template version with `devkit avs template info` and upgrade later using `devkit avs template upgrade`.
@@ -120,7 +137,7 @@ Within `main.go`, you'll find two critical methods on the `TaskWorker` type:
   This is where you implement your AVS's core business logic. It processes an incoming task and returns a `TaskResponse`. Replace the placeholder comment with the actual logic you want to run during task execution.
 
 - **`ValidateTask(*TaskRequest)`**  
-  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS’s criteria (e.g., argument format, access control, etc.).
+  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS's criteria (e.g., argument format, access control, etc.).
 
 These functions will be invoked automatically when using `devkit avs call`, enabling you to quickly test and iterate on your AVS logic.
 
@@ -133,7 +150,7 @@ These functions will be invoked automatically when using `devkit avs call`, enab
 Also, keep stuff at the top about introducing config yaml files and what they do.
 -->
 
-Before running your AVS, you’ll need to configure both project-level and context-specific settings. This is done through two configuration files:
+Before running your AVS, you'll need to configure both project-level and context-specific settings. This is done through two configuration files:
 
 - **`config.yaml`**  
   Defines project-wide settings such as AVS name, version, and available context names.  
@@ -378,7 +395,7 @@ devkit avs template info
 2025/05/22 14:42:36 Project template information:
 2025/05/22 14:42:36   Project name: <your project>
 2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
-2025/05/22 14:42:36   Version: v0.0.11
+2025/05/22 14:42:36   Version: v0.0.12
 ```
 
 **_Upgrade to a newer version_**

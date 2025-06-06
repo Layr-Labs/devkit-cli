@@ -14,13 +14,18 @@ const (
 	// DevkitConfigFile is the name of the config YAML used to configure devkit operations
 	DevkitConfigFile = ".config.devkit.yml"
 
-	// Filename for the config
+	// Filename for devkit project config
 	BaseConfig = "config.yaml"
 
+	// Filename for zeus config
 	ZeusConfig = ".zeus"
+
 	// Docker open timeout
 	DockerOpenTimeoutSeconds = 10
 
 	// Docker open retry interval in milliseconds
 	DockerOpenRetryIntervalMilliseconds = 500
+
+	// Default chainId for Anvil
+	DefaultAnvilChainId = 31337
 )
