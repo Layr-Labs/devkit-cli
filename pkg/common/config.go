@@ -3,13 +3,15 @@ package common
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/internal/version"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/Layr-Labs/devkit-cli/internal/version"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	"gopkg.in/yaml.v3"
 )
 
 const DefaultConfigWithContextConfigPath = "config"
@@ -202,10 +204,14 @@ func compareVersions(v1, v2 string) (bool, error) {
 }
 
 // checkVersionCompatibility validates that the context version is supported by the current CLI
-func checkVersionCompatibility(contextVersion, contextFile string) error {
+// Logs a warning if there's a version mismatch, but allows execution to continue
+func checkVersionCompatibility(contextVersion, contextFile string, logger iface.Logger) {
 	if contextVersion == "" {
 		// Missing version - could be very old context, warn but allow
-		return fmt.Errorf("context file %s is missing version field - this may be an old context that needs migration", contextFile)
+		if logger != nil {
+			logger.Info("⚠️  Context file %s is missing version field - this may be an old context that needs migration", contextFile)
+		}
+		return
 	}
 
 	// Get the latest version supported by this CLI
@@ -214,20 +220,24 @@ func checkVersionCompatibility(contextVersion, contextFile string) error {
 	// Compare versions
 	isNewer, err := compareVersions(contextVersion, latestSupported)
 	if err != nil {
-		return fmt.Errorf("failed to compare versions: %w", err)
+		if logger != nil {
+			logger.Info("⚠️  Failed to compare versions: %v", err)
+		}
+		return
 	}
 
-	// If context version is newer than what we support, return compatibility error
+	// If context version is newer than what we support, log compatibility warning
 	if isNewer {
-		return &VersionCompatibilityError{
+		compatError := &VersionCompatibilityError{
 			ContextVersion:  contextVersion,
 			CLIVersion:      version.GetVersion(),
 			LatestSupported: latestSupported,
 			ContextFile:     contextFile,
 		}
+		if logger != nil {
+			logger.Info("%s", compatError.Error())
+		}
 	}
-
-	return nil
 }
 
 func LoadBaseConfig() (map[string]interface{}, error) {
@@ -244,6 +254,10 @@ func LoadBaseConfig() (map[string]interface{}, error) {
 }
 
 func LoadContextConfig(ctxName string) (map[string]interface{}, error) {
+	return LoadContextConfigWithLogger(ctxName, nil)
+}
+
+func LoadContextConfigWithLogger(ctxName string, logger iface.Logger) (map[string]interface{}, error) {
 	// Default to devnet
 	if ctxName == "" {
 		ctxName = "devnet"
@@ -260,9 +274,7 @@ func LoadContextConfig(ctxName string) (map[string]interface{}, error) {
 
 	// Check version compatibility
 	if version, ok := ctx["version"].(string); ok {
-		if err := checkVersionCompatibility(version, path); err != nil {
-			return nil, err
-		}
+		checkVersionCompatibility(version, path, logger)
 	}
 
 	return ctx, nil
@@ -282,6 +294,10 @@ func LoadBaseConfigYaml() (*Config, error) {
 }
 
 func LoadConfigWithContextConfig(ctxName string) (*ConfigWithContextConfig, error) {
+	return LoadConfigWithContextConfigAndLogger(ctxName, nil)
+}
+
+func LoadConfigWithContextConfigAndLogger(ctxName string, logger iface.Logger) (*ConfigWithContextConfig, error) {
 	// Default to devnet
 	if ctxName == "" {
 		ctxName = "devnet"
@@ -316,9 +332,7 @@ func LoadConfigWithContextConfig(ctxName string) (*ConfigWithContextConfig, erro
 	}
 
 	// Check version compatibility before proceeding
-	if err := checkVersionCompatibility(wrapper.Version, contextFile); err != nil {
-		return nil, err
-	}
+	checkVersionCompatibility(wrapper.Version, contextFile, logger)
 
 	cfg.Context = map[string]ChainContextConfig{
 		ctxName: wrapper.Context,
