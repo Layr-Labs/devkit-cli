@@ -412,6 +412,10 @@ _Please consult your template's docs for further information on how the upgrade 
 
 ---
 
+## 🔧 Compatibility Notes
+- **Linux**: Primarily tested on Ubuntu and Debian only.
+- **macOS**: Supports both Intel and Apple Silicon
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request.
