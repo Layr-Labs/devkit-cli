@@ -413,7 +413,7 @@ _Please consult your template's docs for further information on how the upgrade 
 ---
 
 ## 🔧 Compatibility Notes
-- **Linux**: Primarily tested on Ubuntu and Debian only.
+- **Linux**: Primarily tested on Debian/Ubuntu only.
 - **macOS**: Supports both Intel and Apple Silicon
 
 ## 🤝 Contributing
