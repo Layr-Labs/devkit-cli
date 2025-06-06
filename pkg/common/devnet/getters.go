@@ -51,7 +51,7 @@ func GetDevnetChainIdOrDefault(cfg *common.ConfigWithContextConfig, chainName st
 	}
 
 	// Fallback to context defined value or DefaultAnvilChainId if undefined
-	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
+	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
 	if !found {
 		return common.DefaultAnvilChainId, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
 	}
