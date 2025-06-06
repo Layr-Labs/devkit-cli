@@ -13,6 +13,8 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 	delegationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
+	istrategy "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IStrategy"
+	strategymanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/StrategyManager"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -23,15 +25,17 @@ import (
 
 // TODO: Should we break this out into it's own package?
 type ContractCaller struct {
-	allocationManager *allocationmanager.AllocationManager
-	delegationManager *delegationmanager.DelegationManager
-	ethclient         *ethclient.Client
-	privateKey        *ecdsa.PrivateKey
-	chainID           *big.Int
-	logger            iface.Logger
+	allocationManager      *allocationmanager.AllocationManager
+	delegationManager      *delegationmanager.DelegationManager
+	strategyManager        *strategymanager.StrategyManager
+	ethclient              *ethclient.Client
+	privateKey             *ecdsa.PrivateKey
+	chainID                *big.Int
+	logger                 iface.Logger
+	strategyManagerAddress common.Address
 }
 
-func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
+func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr, strategyManagerAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
@@ -47,13 +51,20 @@ func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient
 		return nil, fmt.Errorf("failed to create DelegationManager: %w", err)
 	}
 
+	strategyManager, err := strategymanager.NewStrategyManager(strategyManagerAddr, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create StrategyManager: %w", err)
+	}
+
 	return &ContractCaller{
-		allocationManager: allocationManager,
-		delegationManager: delegationManager,
-		ethclient:         client,
-		privateKey:        privateKey,
-		chainID:           chainID,
-		logger:            logger,
+		allocationManager:      allocationManager,
+		delegationManager:      delegationManager,
+		strategyManager:        strategyManager,
+		ethclient:              client,
+		privateKey:             privateKey,
+		chainID:                chainID,
+		logger:                 logger,
+		strategyManagerAddress: strategyManagerAddr,
 	}, nil
 }
 
@@ -219,6 +230,100 @@ func (cc *ContractCaller) RegisterForOperatorSets(ctx context.Context, operatorA
 		return tx, err
 	})
 	return err
+}
+
+func (cc *ContractCaller) DepositIntoStrategy(ctx context.Context, strategyAddress common.Address, amount *big.Int) error {
+	opts, err := cc.buildTxOpts()
+	if err != nil {
+		return fmt.Errorf("failed to build transaction options: %w", err)
+	}
+
+	istrategyContract, err := istrategy.NewIStrategy(strategyAddress, cc.ethclient)
+	if err != nil {
+		return fmt.Errorf("failed to create IStrategy contract: %w", err)
+	}
+	underlyingToken, err := istrategyContract.UnderlyingToken(nil)
+	if err != nil {
+		return fmt.Errorf("failed to get underlying token: %w", err)
+	}
+
+	cc.logger.Info("Depositing into strategy %s with amount %s underlying token %s", strategyAddress.Hex(), amount.String(), underlyingToken.Hex())
+
+	// Create manual ERC20 bindings for approve function
+	erc20ABI := `[{"constant":false,"inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"name":"approve","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
+	parsedABI, err := abi.JSON(strings.NewReader(erc20ABI))
+	if err != nil {
+		return fmt.Errorf("failed to parse ERC20 ABI: %w", err)
+	}
+	erc20Contract := bind.NewBoundContract(underlyingToken, parsedABI, cc.ethclient, cc.ethclient, cc.ethclient)
+
+	// approve the strategy manager to spend the underlying tokens
+	cc.logger.Info("Approving strategy manager %s to spend %s of token %s", cc.strategyManagerAddress.Hex(), amount.String(), underlyingToken.Hex())
+	err = cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("Approve strategy manager: token %s, amount %s", underlyingToken.Hex(), amount.String()), func() (*types.Transaction, error) {
+		opts, err := cc.buildTxOpts()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build transaction options for approval: %w", err)
+		}
+		return erc20Contract.Transact(opts, "approve", cc.strategyManagerAddress, amount)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to approve strategy manager: %w", err)
+	}
+
+	err = cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("DepositIntoStrategy : strategy %s, amount %s", strategyAddress.Hex(), amount.String()), func() (*types.Transaction, error) {
+		tx, err := cc.strategyManager.DepositIntoStrategy(opts, strategyAddress, underlyingToken, amount)
+		if err == nil && tx != nil {
+			cc.logger.Debug(
+				"Transaction hash for DepositIntoStrategy: %s\n"+
+					"strategyAddress: %s\n"+
+					"underlyingTokenAddress: %d\n"+
+					"amount: %s",
+				tx.Hash().Hex(),
+				strategyAddress,
+				underlyingToken,
+				amount,
+			)
+		}
+		return tx, err
+	})
+	return err
+}
+
+func (cc *ContractCaller) ModifyAllocations(ctx context.Context, operatorAddress common.Address, operatorPrivateKey string, strategies []common.Address, newMagnitudes []uint64, avsAddress common.Address, opSetId uint32, logger iface.Logger) error {
+	opts, err := cc.buildTxOpts()
+	if err != nil {
+		return fmt.Errorf("failed to build transaction options: %w", err)
+	}
+
+	operatorSet := allocationmanager.OperatorSet{Avs: avsAddress, Id: opSetId}
+	allocations := []allocationmanager.IAllocationManagerTypesAllocateParams{
+		{
+			OperatorSet:   operatorSet,
+			Strategies:    strategies,
+			NewMagnitudes: newMagnitudes,
+		},
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to create AllocationManager contract: %w", err)
+	}
+
+	err = cc.SendAndWaitForTransaction(ctx, "ModifyAllocations", func() (*types.Transaction, error) {
+		tx, err := cc.allocationManager.ModifyAllocations(opts, operatorAddress, allocations)
+		if err == nil && tx != nil {
+			cc.logger.Debug(
+				"Transaction hash for ModifyAllocations: %s\n"+
+					"operatorAddress: %s\n"+
+					"allocations: %s",
+				tx.Hash().Hex(),
+				operatorAddress,
+				allocations,
+			)
+		}
+		return tx, err
+	})
+	return err
+
 }
 
 func IsValidABI(v interface{}) error {

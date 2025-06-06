@@ -88,14 +88,14 @@ func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName stri
 
 // GetEigenLayerAddresses returns EigenLayer addresses from the context config
 // Falls back to constants if not found in context
-func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationManager, delegationManager string) {
+func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationManager, delegationManager string, strategyManager string) {
 	if cfg == nil || cfg.Context == nil {
-		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS
+		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS
 	}
 
 	devnetCtx, found := cfg.Context[CONTEXT]
 	if !found || devnetCtx.EigenLayer == nil {
-		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS
+		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS
 	}
 
 	allocationManager = devnetCtx.EigenLayer.AllocationManager
@@ -107,6 +107,10 @@ func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationMana
 	if delegationManager == "" {
 		delegationManager = DELEGATION_MANAGER_ADDRESS
 	}
+	strategyManager = devnetCtx.EigenLayer.StrategyManager
+	if strategyManager == "" {
+		strategyManager = STRATEGY_MANAGER_ADDRESS
+	}
 
-	return allocationManager, delegationManager
+	return allocationManager, delegationManager, strategyManager
 }

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -237,6 +239,42 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Fund operators with strategy tokens
+	if devnet.CONTEXT == "devnet" {
+		logger.Info("Funding operators with strategy tokens...")
+
+		// Check if user specified specific tokens to fund
+		manualTokenAddresses := cCtx.StringSlice("fund-tokens")
+		var tokenAddresses []string
+
+		if len(manualTokenAddresses) > 0 {
+			// Use manually specified token addresses
+			tokenAddresses = manualTokenAddresses
+			logger.Info("Using manually specified token addresses: %v", tokenAddresses)
+		} else {
+			// Auto-detect underlying token addresses from strategy contracts
+			var tokenErr error
+			tokenAddresses, tokenErr = devnet.GetUnderlyingTokenAddressesFromStrategies(config, rpcUrl)
+			if tokenErr != nil {
+				logger.Warn("Failed to get underlying token addresses from strategies: %v", tokenErr)
+				logger.Info("Continuing with devnet startup...")
+			}
+		}
+
+		if len(tokenAddresses) > 0 {
+			err = devnet.FundOperatorsWithStrategyTokens(config, rpcUrl, tokenAddresses)
+			if err != nil {
+				logger.Warn("Failed to fund operators with strategy tokens: %v", err)
+				logger.Info("Continuing with devnet startup...")
+			}
+		} else {
+			logger.Info("No tokens to fund operators with, skipping token funding")
+		}
+	} else {
+		logger.Info("Skipping token funding for non-devnet context")
+	}
+
 	elapsed := time.Since(startTime).Round(time.Second)
 
 	// Sleep for 1 second to make sure wallets are funded
@@ -268,6 +306,18 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 			if err := RegisterOperatorsFromConfigAction(cCtx, logger); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
+			}
+
+			if err := DepositIntoStrategiesAction(cCtx, logger); err != nil {
+				return fmt.Errorf("depositing into strategies failed: %w", err)
+			}
+
+			if err := SetAllocationDelayAction(cCtx, logger); err != nil {
+				return fmt.Errorf("setting allocation delay failed: %w", err)
+			}
+
+			if err := ModifyAllocationsAction(cCtx, logger); err != nil {
+				return fmt.Errorf("modifying allocations failed: %w", err)
 			}
 		} else {
 			logger.Info("Skipping AVS setup steps...")
@@ -560,6 +610,7 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
 	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
+	strategyManagerAddr := ethcommon.HexToAddress(devnet.STRATEGY_MANAGER_ADDRESS)
 
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
@@ -567,6 +618,7 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 		client,
 		allocationManagerAddr,
 		delegationManagerAddr,
+		strategyManagerAddr,
 		logger,
 	)
 	if err != nil {
@@ -599,13 +651,14 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
 	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
-
+	strategyManagerAddr := ethcommon.HexToAddress(devnet.STRATEGY_MANAGER_ADDRESS)
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
 		big.NewInt(int64(l1ChainCfg.ChainID)),
 		client,
 		allocationManagerAddr,
 		delegationManagerAddr,
+		strategyManagerAddr,
 		logger,
 	)
 	if err != nil {
@@ -653,13 +706,14 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
 	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
-
+	strategyManagerAddr := ethcommon.HexToAddress(devnet.STRATEGY_MANAGER_ADDRESS)
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
 		big.NewInt(int64(l1ChainCfg.ChainID)),
 		client,
 		allocationManagerAddr,
 		delegationManagerAddr,
+		strategyManagerAddr,
 		logger,
 	)
 	if err != nil {
@@ -684,6 +738,28 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 	}
 
 	return contractCaller.CreateOperatorSets(cCtx.Context, avsAddr, createSetParams)
+}
+
+func DepositIntoStrategiesAction(cCtx *cli.Context, logger iface.Logger) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for deposit into strategies: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+
+	logger.Info("Depositing into strategies...")
+	for _, op := range envCtx.Operators {
+		logger.Info("Depositing into strategies for operator %s", op.Address)
+		if err := depositIntoStrategy(cCtx, op.Address, logger); err != nil {
+			logger.Error("Failed to deposit into strategies for operator %s: %v. Continuing...", op.Address, err)
+			continue
+		}
+	}
+	logger.Info("Depositing into strategies completed.")
+	return nil
 }
 
 func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) error {
@@ -763,7 +839,7 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 
 	// Write yaml back to project directory
 	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
-		return fmt.Errorf("Failed to save updated context: %v", err)
+		return fmt.Errorf("failed to save updated context: %v", err)
 	}
 
 	logger.Info("Successfully updated %s context with EigenLayer core addresses", contextName)
@@ -821,13 +897,14 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 
 	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
 	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
-
+	strategyManagerAddr := ethcommon.HexToAddress(devnet.STRATEGY_MANAGER_ADDRESS)
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
 		big.NewInt(int64(l1Cfg.ChainID)),
 		client,
 		allocationManagerAddr,
 		delegationManagerAddr,
+		strategyManagerAddr,
 		logger,
 	)
 	if err != nil {
@@ -880,7 +957,7 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
 
-	allocationManagerAddr, delegationManagerAddr := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
@@ -888,6 +965,7 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		client,
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
+		ethcommon.HexToAddress(strategyManagerAddr),
 		logger,
 	)
 	if err != nil {
@@ -906,6 +984,82 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		[]uint32{operatorSetID},
 		payloadBytes,
 	)
+}
+
+func depositIntoStrategy(cCtx *cli.Context, operatorAddress string, logger iface.Logger) error {
+	if operatorAddress == "" {
+		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
+	}
+
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.CONTEXT)
+	}
+
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer client.Close()
+
+	var operatorPrivateKey string
+	for _, op := range envCtx.Operators {
+		key, keyErr := crypto.HexToECDSA(strings.TrimPrefix(op.ECDSAKey, "0x"))
+		if keyErr != nil {
+			continue
+		}
+		if strings.EqualFold(crypto.PubkeyToAddress(key.PublicKey).Hex(), operatorAddress) {
+			operatorPrivateKey = op.ECDSAKey
+			break
+		}
+	}
+	if operatorPrivateKey == "" {
+		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
+	}
+
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr := devnet.GetEigenLayerAddresses(cfg)
+
+	contractCaller, err := common.NewContractCaller(
+		operatorPrivateKey,
+		big.NewInt(int64(l1Cfg.ChainID)),
+		client,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
+		ethcommon.HexToAddress(strategyManagerAddr),
+		logger,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
+	}
+
+	for _, op := range envCtx.Operators {
+		if len(op.Allocations) == 0 {
+			logger.Info("Operator %s has not specified any allocations, skipping depositing to strategy", op.Address)
+			continue
+		}
+		for _, allocation := range op.Allocations {
+			strategyAddress := allocation.StrategyAddress
+			depositAmount := allocation.DepositAmount
+			amount, err := common.ParseETHAmount(depositAmount)
+			if err != nil {
+				return fmt.Errorf("failed to parse deposit amount '%s': %w", depositAmount, err)
+			}
+			if err := contractCaller.DepositIntoStrategy(cCtx.Context, ethcommon.HexToAddress(strategyAddress), amount); err != nil {
+				return fmt.Errorf("failed to deposit into strategy: %w", err)
+			}
+		}
+	}
+	return nil
 }
 
 func extractContractOutputs(cCtx *cli.Context, context string, contractsList []DeployContractTransport) error {
@@ -1033,4 +1187,258 @@ func migrateContexts(logger iface.Logger) (int, error) {
 	}
 
 	return contextsMigrated, nil
+}
+
+func ModifyAllocationsAction(cCtx *cli.Context, logger iface.Logger) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for modify allocations: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+
+	for _, op := range envCtx.Operators {
+		logger.Info("Modifying allocations for operator %s", op.Address)
+		if len(op.Allocations) == 0 {
+			logger.Info("Operator %s has no allocations specified, skipping allocation modification", op.Address)
+			continue
+		}
+		if err := modifyAllocations(cCtx, op.Address, op.ECDSAKey, logger); err != nil {
+			logger.Debug("Failed to modify allocations for operator %s: %v. Continuing...", op.Address, err)
+			continue
+		}
+	}
+	logger.Info("Modifying allocations completed.")
+	return nil
+}
+
+func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivateKey string, logger iface.Logger) error {
+	if operatorAddress == "" {
+		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
+	}
+
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.CONTEXT)
+	}
+
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer client.Close()
+
+	// Find the operator in config
+	var targetOperator *common.OperatorSpec
+	for i, op := range envCtx.Operators {
+		if strings.EqualFold(op.Address, operatorAddress) {
+			targetOperator = &envCtx.Operators[i]
+			break
+		}
+	}
+	if targetOperator == nil {
+		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
+	}
+
+	if len(targetOperator.Allocations) == 0 {
+		logger.Info("Operator %s has no allocations specified, skipping allocation modification", operatorAddress)
+		return nil
+	}
+
+	// Check deployed operator sets from context
+	deployedOperatorSets := envCtx.OperatorSets
+	if len(deployedOperatorSets) == 0 {
+		logger.Warn("No deployed operator sets found in context, skipping allocation modification")
+		return nil
+	}
+
+	// For each allocation in the operator config
+	for _, allocation := range targetOperator.Allocations {
+		strategyAddress := allocation.StrategyAddress
+
+		// For each operator set allocation within this allocation
+		for _, opSetAllocation := range allocation.OperatorSetAllocations {
+			operatorSetID := opSetAllocation.OperatorSet
+			allocationInWads := opSetAllocation.AllocationInWads
+
+			// Check if this operator set ID exists in deployed operator sets and contains this strategy
+			var strategyFound bool
+			for _, deployedOpSet := range deployedOperatorSets {
+				if fmt.Sprintf("%d", deployedOpSet.OperatorSetID) == operatorSetID {
+					// Check if this operator set contains the strategy we're allocating to
+					for _, strategy := range deployedOpSet.Strategies {
+						if strings.EqualFold(strategy.StrategyAddress, strategyAddress) {
+							strategyFound = true
+							break
+						}
+					}
+					break
+				}
+			}
+
+			if !strategyFound {
+				logger.Warn("Operator set %s with strategy %s not found in deployed operator sets, skipping allocation", operatorSetID, strategyAddress)
+				continue
+			}
+
+			logger.Info("Modifying allocation for operator %s: operator_set=%s, strategy=%s, allocation=%s",
+				operatorAddress, operatorSetID, strategyAddress, allocationInWads)
+
+			allocationManagerAddr, delegationManagerAddr, strategyManagerAddr := devnet.GetEigenLayerAddresses(cfg)
+
+			contractCaller, err := common.NewContractCaller(
+				operatorPrivateKey,
+				big.NewInt(int64(l1Cfg.ChainID)),
+				client,
+				ethcommon.HexToAddress(allocationManagerAddr),
+				ethcommon.HexToAddress(delegationManagerAddr),
+				ethcommon.HexToAddress(strategyManagerAddr),
+				logger,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create contract caller: %w", err)
+			}
+
+			// Convert operatorSetID string to uint32
+			operatorSetIDUint32, err := strconv.ParseUint(operatorSetID, 10, 32)
+			if err != nil {
+				return fmt.Errorf("failed to parse operator set ID '%s' to uint32: %w", operatorSetID, err)
+			}
+
+			// Build strategies array from matched operator set
+			strategies := make([]ethcommon.Address, 1)
+			strategies[0] = ethcommon.HexToAddress(strategyAddress)
+
+			// Parse allocation amount to uint64
+			allocationMagnitude, err := strconv.ParseUint(allocationInWads, 10, 64)
+			if err != nil {
+				return fmt.Errorf("failed to parse allocation amount '%s' to uint64: %w", allocationInWads, err)
+			}
+			newMagnitudes := []uint64{allocationMagnitude}
+			err = contractCaller.ModifyAllocations(
+				cCtx.Context,
+				ethcommon.HexToAddress(operatorAddress),
+				operatorPrivateKey,
+				strategies,
+				newMagnitudes,
+				ethcommon.HexToAddress(envCtx.Avs.Address),
+				uint32(operatorSetIDUint32),
+				logger,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to modify allocations: %w", err)
+			}
+
+			logger.Info("✅ Successfully modified allocation for operator %s (operator_set=%s, strategy=%s)",
+				operatorAddress, operatorSetID, strategyAddress)
+		}
+	}
+
+	return nil
+}
+
+func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for set allocation delay: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
+	}
+
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.CONTEXT)
+	}
+
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer client.Close()
+
+	// Instead of mining blocks(because it's infeasible for 126000 blocks), use anvil_setStorageAt to bypass ALLOCATION_CONFIGURATION_DELAY
+	// We need to manipulate the storage that tracks when allocation delays were set for each operator by modifying
+	// the effectBlock field in the AllocationDelayInfo struct.
+	logger.Info("Bypassing allocation configuration delay using anvil_setStorageAt...")
+
+	allocationManagerAddr, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	currentBlock, err := client.BlockNumber(cCtx.Context)
+	if err != nil {
+		return fmt.Errorf("failed to get current block number: %w", err)
+	}
+	rpcClient := client.Client()
+	// For each operator, modify their AllocationDelayInfo struct
+	// Ref https://github.com/Layr-Labs/eigenlayer-contracts/blob/c08c9e849c27910f36f3ab746f3663a18838067f/src/contracts/core/AllocationManagerStorage.sol#L63
+	for _, op := range envCtx.Operators {
+		operatorAddr := ethcommon.HexToAddress(op.Address)
+
+		// Calculate storage slot for _allocationDelayInfo mapping
+		// For mapping(address => struct), storage slot = keccak256(abi.encode(key, slot))
+		slotBytes := make([]byte, 32)
+		binary.BigEndian.PutUint64(slotBytes[24:], devnet.ALLOCATION_DELAY_INFO_SLOT)
+		keyBytes := ethcommon.LeftPadBytes(operatorAddr.Bytes(), 32)
+
+		encoded := append(keyBytes, slotBytes...)
+		storageKey := ethcommon.BytesToHash(crypto.Keccak256(encoded))
+		logger.Info("storageKey: %s", storageKey)
+
+		// Define struct fields
+		var (
+			delay        uint32 = 0                    // rightmost 4 bytes
+			isSet        byte   = 0x00                 // 1 byte before delay
+			pendingDelay uint32 = 0                    // 4 bytes before isSet
+			effectBlock  uint32 = uint32(currentBlock) // 4 bytes before pendingDelay
+		)
+
+		// Create a 32-byte array (filled with zeros)
+		structValue := make([]byte, 32)
+
+		// Offset starts from the right
+		offset := 32
+
+		// Set delay (4 bytes)
+		offset -= 4
+		binary.BigEndian.PutUint32(structValue[offset:], delay)
+
+		// Set isSet (1 byte)
+		offset -= 1
+		structValue[offset] = isSet
+
+		// Set pendingDelay (4 bytes)
+		offset -= 4
+		binary.BigEndian.PutUint32(structValue[offset:], pendingDelay)
+
+		// Set effectBlock (4 bytes)
+		offset -= 4
+		binary.BigEndian.PutUint32(structValue[offset:], effectBlock)
+
+		var setStorageResult interface{}
+		err = rpcClient.Call(&setStorageResult, "anvil_setStorageAt",
+			allocationManagerAddr,
+			storageKey.Hex(),
+			hex.EncodeToString(structValue))
+		if err != nil {
+			logger.Warn("Failed to manipulate AllocationDelayInfo storage for operator %s: %v", op.Address, err)
+		} else {
+			logger.Info("Manipulated AllocationDelayInfo storage for operator %s effectBlock: %s", op.Address, effectBlock)
+		}
+	}
+
+	logger.Info("Successfully bypassed allocation configuration delay")
+
+	return nil
 }

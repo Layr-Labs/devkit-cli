@@ -2,7 +2,11 @@ package common
 
 import (
 	"context"
+	"fmt"
+	"math/big"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
@@ -90,4 +94,46 @@ func ProgressTrackerFromContext(ctx context.Context) iface.ProgressTracker {
 	// Fallback to non-verbose tracker if not found in context
 	_, tracker := GetLogger(false)
 	return tracker
+}
+
+// ParseETHAmount parses ETH amount strings like "5ETH", "10.5ETH", "1000000000000000000" (wei)
+// Returns the amount in wei as *big.Int
+func ParseETHAmount(amountStr string) (*big.Int, error) {
+	if amountStr == "" {
+		return nil, fmt.Errorf("amount string is empty")
+	}
+
+	// Remove any whitespace
+	amountStr = strings.TrimSpace(amountStr)
+
+	// Check if it ends with "ETH"
+	if strings.HasSuffix(strings.ToUpper(amountStr), "ETH") {
+		// Remove the "ETH" suffix (case insensitive)
+		ethIndex := strings.LastIndex(strings.ToUpper(amountStr), "ETH")
+		numericPart := strings.TrimSpace(amountStr[:ethIndex])
+
+		// Parse the numeric part as float64 to handle decimals like "1.5ETH"
+		ethAmount, err := strconv.ParseFloat(numericPart, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid ETH amount '%s': %w", numericPart, err)
+		}
+
+		// Convert ETH to wei (multiply by 10^18)
+		// Use big.Float to handle the large numbers properly
+		ethBig := big.NewFloat(ethAmount)
+		weiPerEth := big.NewFloat(1e18)
+		weiBig := new(big.Float).Mul(ethBig, weiPerEth)
+
+		// Convert to big.Int
+		weiInt, _ := weiBig.Int(nil)
+		return weiInt, nil
+	}
+
+	// If no "ETH" suffix, assume it's already in wei
+	weiAmount := new(big.Int)
+	if _, ok := weiAmount.SetString(amountStr, 10); !ok {
+		return nil, fmt.Errorf("invalid wei amount '%s'", amountStr)
+	}
+
+	return weiAmount, nil
 }

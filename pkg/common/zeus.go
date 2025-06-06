@@ -13,6 +13,7 @@ import (
 type ZeusAddressData struct {
 	AllocationManager string `json:"allocationManager"`
 	DelegationManager string `json:"delegationManager"`
+	StrategyManager   string `json:"strategyManager"`
 }
 
 // GetZeusAddresses runs the zeus env show mainnet command and extracts core EigenLayer addresses
@@ -46,6 +47,13 @@ func GetZeusAddresses(logger iface.Logger) (*ZeusAddressData, error) {
 	if val, ok := zeusData["ZEUS_DEPLOYED_DelegationManager_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
 			addresses.DelegationManager = strVal
+		}
+	}
+
+	// Get StrategyManager address
+	if val, ok := zeusData["ZEUS_DEPLOYED_StrategyManager_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			addresses.StrategyManager = strVal
 		}
 	}
 
@@ -86,6 +94,7 @@ func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *yaml.Node, context
 	payload := ZeusAddressData{
 		AllocationManager: addresses.AllocationManager,
 		DelegationManager: addresses.DelegationManager,
+		StrategyManager:   addresses.StrategyManager,
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {
@@ -98,10 +107,13 @@ func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *yaml.Node, context
 	amVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.AllocationManager}
 	dmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "DelegationManager"}
 	dmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.DelegationManager}
+	smKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "StrategyManager"}
+	smVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.StrategyManager}
 
 	// Replace existing or append new entries
 	SetMappingValue(parentMap, amKey, amVal)
 	SetMappingValue(parentMap, dmKey, dmVal)
+	SetMappingValue(parentMap, smKey, smVal)
 
 	return nil
 }
