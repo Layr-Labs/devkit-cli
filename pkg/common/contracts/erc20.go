@@ -148,7 +148,7 @@ var WellKnownTokens = map[string]common.Address{
 	"bEIGEN": common.HexToAddress("0x83E9115d334D248Ce39a6f36144aEaB5b3456e75"),
 }
 
-// GetTokenAddress returns the address for a well-known token symbol
+// GetTokenAddress returns the address for some known token symbols
 func GetTokenAddress(symbol string) (common.Address, bool) {
 	addr, exists := WellKnownTokens[symbol]
 	return addr, exists

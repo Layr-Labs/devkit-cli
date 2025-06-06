@@ -364,34 +364,6 @@ func (cc *ContractCaller) ModifyAllocations(ctx context.Context, operatorAddress
 	return err
 }
 
-func (cc *ContractCaller) SetAllocationDelay(ctx context.Context, operatorAddress common.Address, delay uint32) error {
-	opts, err := cc.buildTxOpts()
-	if err != nil {
-		return fmt.Errorf("failed to build transaction options: %w", err)
-	}
-
-	allocationManager, err := cc.registry.GetAllocationManager(cc.allocationManagerAddr)
-	if err != nil {
-		return fmt.Errorf("failed to get AllocationManager: %w", err)
-	}
-
-	err = cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("SetAllocationDelay for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
-		tx, err := allocationManager.SetAllocationDelay(opts, operatorAddress, delay)
-		if err == nil && tx != nil {
-			cc.logger.Debug(
-				"Transaction hash for SetAllocationDelay: %s\n"+
-					"operatorAddress: %s\n"+
-					"delay: %d",
-				tx.Hash().Hex(),
-				operatorAddress,
-				delay,
-			)
-		}
-		return tx, err
-	})
-	return err
-}
-
 func IsValidABI(v interface{}) error {
 	b, err := json.Marshal(v) // serialize ABI field
 	if err != nil {
