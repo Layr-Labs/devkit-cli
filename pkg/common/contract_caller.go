@@ -393,27 +393,10 @@ func (cc *ContractCaller) CreateApprovalSignature(ctx context.Context, stakerAdd
 	}
 	cc.logger.Info("Signing approval signature for staker %s, operator %s, approver %s, salt %s, expiry %s", stakerAddress.Hex(), operatorAddress.Hex(), approverAddress.Hex(), approverSalt, expiry.String())
 
-	// sign the digest hash - convert [32]byte to []byte using slice notation
+	// sign the digest hash - convert [32]byte to []byte
 	signature, err := crypto.Sign(delegationApprovalDigestHash[:], privateKey)
 	if err != nil {
 		return DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry{}, fmt.Errorf("failed to sign digest hash: %w", err)
-	}
-
-	cc.logger.Info("Raw signature (before recovery ID adjustment): %s", hex.EncodeToString(signature))
-	cc.logger.Info("Digest hash: %s", hex.EncodeToString(delegationApprovalDigestHash[:]))
-
-	// Verify the signature locally for debugging (before adjusting recovery ID)
-	recoveredPubKey, err := crypto.SigToPub(delegationApprovalDigestHash[:], signature)
-	if err != nil {
-		cc.logger.Warn("Failed to recover public key from signature: %v", err)
-	} else {
-		recoveredAddr := crypto.PubkeyToAddress(*recoveredPubKey)
-		cc.logger.Info("Signature verification - Expected approver: %s, Recovered address: %s", approverAddress.Hex(), recoveredAddr.Hex())
-		if recoveredAddr != approverAddress {
-			cc.logger.Warn("Signature verification failed: recovered address does not match approver address")
-		} else {
-			cc.logger.Info("Signature verification successful")
-		}
 	}
 
 	// EigenLayer contracts use OpenZeppelin's SignatureChecker which expects recovery ID 27/28
@@ -421,7 +404,7 @@ func (cc *ContractCaller) CreateApprovalSignature(ctx context.Context, stakerAdd
 	// OpenZeppelin's ECDSA library expects V to be 27 or 28
 	if len(signature) == 65 {
 		signature[64] += 27
-		cc.logger.Info("Adjusted signature for EigenLayer (V += 27): %s", hex.EncodeToString(signature))
+		cc.logger.Debug("Adjusted signature for EigenLayer (V += 27): %s", hex.EncodeToString(signature))
 	}
 
 	// Create the signature with expiry structure
