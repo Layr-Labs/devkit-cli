@@ -91,14 +91,34 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 		return nil, err
 	}
 
-	// Add stakers section with comment first, then populate it
-	migration.EnsureKeyWithComment(user, []string{"context", "stakers"}, "List of stakers and their delegations")
-
-	// Now populate the stakers with content from new config
-	stakersNode := migration.ResolveNode(user, []string{"context", "stakers"})
+	// Insert stakers section after app_private_key and before operators
+	contextNode := migration.ResolveNode(user, []string{"context"})
 	newStakers := migration.ResolveNode(new, []string{"context", "stakers"})
-	if stakersNode != nil && newStakers != nil {
-		*stakersNode = *migration.CloneNode(newStakers)
+	if contextNode != nil && contextNode.Kind == yaml.MappingNode && newStakers != nil {
+		// Find the position of app_private_key
+		var insertIndex = -1
+		for i := 0; i < len(contextNode.Content)-1; i += 2 {
+			if contextNode.Content[i].Value == "app_private_key" {
+				insertIndex = i + 2 // Insert after app_private_key (key + value)
+				break
+			}
+		}
+
+		if insertIndex != -1 {
+			// Create stakers key and value nodes
+			stakersKey := &yaml.Node{
+				Kind:        yaml.ScalarNode,
+				Value:       "stakers",
+				HeadComment: "List of stakers and their delegations",
+			}
+			stakersValue := migration.CloneNode(newStakers)
+
+			newContent := make([]*yaml.Node, 0, len(contextNode.Content)+2)
+			newContent = append(newContent, contextNode.Content[:insertIndex]...)
+			newContent = append(newContent, stakersKey, stakersValue)
+			newContent = append(newContent, contextNode.Content[insertIndex:]...)
+			contextNode.Content = newContent
+		}
 	}
 
 	// Upgrade the version
