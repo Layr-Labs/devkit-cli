@@ -126,7 +126,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 			// Write yaml back to project directory
 			if err := common.WriteYAML(yamlPath, rootNode); err != nil {
-				return fmt.Errorf("Failed to save updated context: %v", err)
+				return fmt.Errorf("failed to save updated context: %v", err)
 			}
 		}
 	}
@@ -881,7 +881,7 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("Found addresses (marshal failed): %w", err)
+		return fmt.Errorf("found addresses (marshal failed): %w", err)
 	}
 	logger.Info("Found addresses: %s", b)
 
@@ -1153,7 +1153,10 @@ func delegateToOperator(cCtx *cli.Context, stakerSpec common.StakerSpec, operato
 
 	// generate a random salt
 	salt := [32]byte{}
-	rand.Read(salt[:])
+	_, err = rand.Read(salt[:])
+	if err != nil {
+		return fmt.Errorf("failed to generate random salt: %w", err)
+	}
 
 	// Create the approval signature
 	signature, err := contractCaller.CreateApprovalSignature(cCtx.Context, ethcommon.HexToAddress(stakerSpec.StakerAddress), operator, operator, operatorPrivateKey, salt, expiry)
