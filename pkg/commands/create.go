@@ -167,6 +167,11 @@ var CreateCommand = &cli.Command{
 			return fmt.Errorf("could not determine application environment")
 		}
 
+		// Save the users user_uuid to global config
+		if err := common.SaveUserId(appEnv.UserUUID); err != nil {
+			return fmt.Errorf("failed to save global settings: %w", err)
+		}
+
 		// Get global telemetry preference
 		globalTelemetryEnabled, err := common.GetGlobalTelemetryPreference()
 		if err != nil {

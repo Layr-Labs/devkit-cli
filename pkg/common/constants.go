@@ -12,7 +12,7 @@ const (
 	ContractsMakefile = "Makefile"
 
 	// GlobalConfigFile is the name of the global YAML used to store global config details (eg, user_id)
-	GlobalConfigFile = ".global.devkit.yaml"
+	GlobalConfigFile = "config.yaml"
 
 	// Filename for devkit project config
 	BaseConfig = "config.yaml"

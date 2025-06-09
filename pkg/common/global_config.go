@@ -14,6 +14,8 @@ type GlobalConfig struct {
 	FirstRun bool `yaml:"first_run"`
 	// TelemetryEnabled stores the user's global telemetry preference
 	TelemetryEnabled *bool `yaml:"telemetry_enabled,omitempty"`
+	// The users uuid to identify user across projects
+	UserUUID string `yaml:"user_uuid"`
 }
 
 // GetGlobalConfigDir returns the XDG-compliant directory where global devkit config should be stored
@@ -42,7 +44,7 @@ func GetGlobalConfigPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(configDir, "config.yaml"), nil
+	return filepath.Join(configDir, GlobalConfigFile), nil
 }
 
 // LoadGlobalConfig loads the global configuration, creating defaults if needed
