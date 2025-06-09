@@ -207,18 +207,15 @@ jobs:
           arch -x86_64 /bin/bash -c \
             "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-          # load /usr/local/bin/brew into PATH
-          eval "$(/usr/local/bin/brew shellenv)"
-
-          # persist the shellenv to login profile
-          echo 'eval "$(/usr/local/bin/brew shellenv)"' >> $GITHUB_ENV
-
-          # alias all future brew invocations to x86_64
-          echo "alias brew='arch -x86_64 brew'" >> $GITHUB_ENV
-
-          # verify
-          brew --version
+          # capture the brew-env exports, strip the leading 'export '
+          arch -x86_64 /usr/local/bin/brew shellenv \
+            | sed 's/^export //g' >> $GITHUB_ENV
           
+          # verify brew is on PATH and running under x86_64
+          which brew
+          file "$(which brew)"
+          brew --version
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
