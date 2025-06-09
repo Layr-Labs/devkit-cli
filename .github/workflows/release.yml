@@ -248,8 +248,10 @@ jobs:
 
       - name: Source shell profile
         # force a login shell so it actually reads ~/.bashrc / ~/.bash_profile
-        shell: bash --login
-        run: source ~/.bashrc 2>/dev/null || true
+        shell: bash -l {0}
+        run: |
+          source ~/.bashrc       2>/dev/null || true
+          source ~/.bash_profile 2>/dev/null || true
 
       - name: Verify AVS project created
         run: |
