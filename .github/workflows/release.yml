@@ -188,3 +188,65 @@ jobs:
             exit 1
           fi
           echo "✔ version $installed matches expected $ver"
+
+      - name: Add ~/bin to PATH
+        run: echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Run devkit avs create
+        run: devkit avs create my-awesome-avs
+
+      - name: Verify AVS project created
+        run: |
+          if [ ! -f "./my-awesome-avs/config/config.yaml" ]; then
+            echo "❌ AVS project config/config.yaml not found!"
+            exit 1
+          fi
+          echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
+
+      - name: Run devkit avs build
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs build
+
+      - name: Start devnet
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs devnet start &
+          # wait until executor and aggregator are available
+          until nc -z localhost 9090 && nc -z localhost 8081; do
+            sleep 1
+          done
+
+      - name: Check devnet RPC is live
+        run: |
+          for i in {1..10}; do
+            bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
+            if [ "$bn" != "error" ]; then
+              echo "Current block number: $bn"
+              exit 0
+            fi
+            echo "Waiting for devnet... retrying in 2s"
+            sleep 2
+          done
+          echo "❌ Devnet failed to start"
+          exit 1
+
+      - name: Call AVS
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
+
+      - name: Stop devnet
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs devnet stop
