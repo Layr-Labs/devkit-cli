@@ -265,7 +265,8 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           colima start \
-            --driver qemu \
+            --vm-type qemu \
+            --arch x86_64 \
             --cpu 2 \
             --memory 4 \
             --disk 50
