@@ -231,3 +231,98 @@ func TestLoadYAML_InvalidYAML(t *testing.T) {
 		t.Error("expected error for invalid YAML")
 	}
 }
+
+func TestWriteToPath_SequenceIndex(t *testing.T) {
+	// start with two-item list under "ops"
+	root, _ := InterfaceToNode(map[string]interface{}{
+		"ops": []interface{}{
+			map[string]interface{}{"a": 1},
+			map[string]interface{}{"a": 2},
+		},
+	})
+	// overwrite index 1
+	withOpsNode, err := WriteToPath(root, []string{"ops", "1", "a"}, "42")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	out, err := NodeToInterface(withOpsNode)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	arr := out.(map[string]interface{})["ops"].([]interface{})
+	if arr[1].(map[string]interface{})["a"] != 42 {
+		t.Errorf("expected 42 at ops[1].a, got %v", arr[1])
+	}
+
+	// append a third entry
+	withOpsNode, err = WriteToPath(withOpsNode, []string{"ops", "2", "a"}, "99")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out, err = NodeToInterface(withOpsNode)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	arr = out.(map[string]interface{})["ops"].([]interface{})
+	if len(arr) != 3 || arr[2].(map[string]interface{})["a"] != 99 {
+		t.Errorf("expected appended ops[2].a=99, got %#v", arr)
+	}
+}
+
+func TestWriteToPath_BracketIndex(t *testing.T) {
+	root, _ := InterfaceToNode(map[string]interface{}{
+		"ops": []interface{}{
+			map[string]interface{}{"a": "foo"},
+		},
+	})
+	withOpsNode, err := WriteToPath(root, []string{"ops[0]", "a"}, "bar")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out, err := NodeToInterface(withOpsNode)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	a := out.(map[string]interface{})["ops"].([]interface{})[0].(map[string]interface{})["a"]
+	if a != "bar" {
+		t.Errorf("expected ops[0].a=bar, got %v", a)
+	}
+}
+
+func TestWriteToPath_FilterByKey(t *testing.T) {
+	root, _ := InterfaceToNode(map[string]interface{}{
+		"users": []interface{}{
+			map[string]interface{}{"id": "x", "name": "Alice"},
+			map[string]interface{}{"id": "y", "name": "Bob"},
+		},
+	})
+	withOpsNode, err := WriteToPath(root, []string{"users[id=y]", "name"}, "Bobbert")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out, err := NodeToInterface(withOpsNode)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	name := out.(map[string]interface{})["users"].([]interface{})[1].(map[string]interface{})["name"]
+	if name != "Bobbert" {
+		t.Errorf("expected users[id=y].name=Bobbert, got %v", name)
+	}
+}
+
+func TestWriteToPath_MappingCreation(t *testing.T) {
+	root, _ := InterfaceToNode(map[string]interface{}{})
+	withOpsNode, err := WriteToPath(root, []string{"foo", "bar"}, "baz")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	out, err := NodeToInterface(withOpsNode)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	m := out.(map[string]interface{})["foo"].(map[string]interface{})["bar"]
+	if m != "baz" {
+		t.Errorf("expected foo.bar=baz, got %v", m)
+	}
+}

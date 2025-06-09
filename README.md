@@ -35,30 +35,38 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 
 ### ✅ Prerequisites
 
-Before you begin, ensure you have:
+On MacOS or Debian, running:
 
-* [Docker](https://docs.docker.com/engine/install/)
-* [Go](https://go.dev/doc/install)
-* [make](https://formulae.brew.sh/formula/make)
-* [Foundry](https://book.getfoundry.sh/getting-started/installation)
-* [yq](https://github.com/mikefarah/yq/#install)
-* [zeus](https://github.com/Layr-Labs/zeus)
+```bash
+devkit avs create my-avs-project ./
+```
+
+Installs all required dependencies. If you've already installed any, verify they match the versions below. On other OSes, install them manually:
+
+* [Docker (latest)](https://docs.docker.com/engine/install/)
+* [Foundry (latest)](https://book.getfoundry.sh/getting-started/installation)
+* [Go (v1.23.6)](https://go.dev/doc/install)
+* [Gomplate (v4)](https://docs.gomplate.ca/installing/)
+* [make (v4.3)](https://formulae.brew.sh/formula/make)
+* [jq (v1.7.1)](https://jqlang.org/download/)
+* [yq (v4.35.1)](https://github.com/mikefarah/yq/#install)
+* [zeus (v1.5.2)](https://github.com/Layr-Labs/zeus)
 
 ### 📦 Installation
 
 To download a binary for the latest release, run:
 ```bash
 # MacOS (Apple Silicon)
-curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
 
 # MacOS (Intel)
-curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
 
 # Linux (x86_64 / AMD64)
-curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-linux-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-linux-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
 
 # Linux (ARM64 / aarch64)
-curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-linux-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-linux-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
 ```
 
 The binary will be installed inside the ~/bin directory.
@@ -70,6 +78,7 @@ export PATH=$PATH:~/bin
 
 To build and install the devkit cli from source:
 ```bash
+mkdir -p $HOME/bin
 git clone https://github.com/Layr-Labs/devkit-cli
 cd devkit-cli
 make install
@@ -97,6 +106,15 @@ Projects are created by default in the current directory from where the below co
 ```bash
 devkit avs create my-avs-project ./
 cd my-avs-project
+# If dependencies we're installed during the creation process, you will need to source your bash/zsh profile:
+#  - if you use bashrc
+source ~/.bashrc
+#  - if you use bash_profile
+source ~/.bash_profile
+#  - if you use zshrc
+source ~/.zshrc
+#  - if you use zprofile
+source ~/.zprofile
 ```
 
 > Note: Projects are created with a specific template version. You can view your current template version with `devkit avs template info` and upgrade later using `devkit avs template upgrade`.
@@ -119,7 +137,7 @@ Within `main.go`, you'll find two critical methods on the `TaskWorker` type:
   This is where you implement your AVS's core business logic. It processes an incoming task and returns a `TaskResponse`. Replace the placeholder comment with the actual logic you want to run during task execution.
 
 - **`ValidateTask(*TaskRequest)`**  
-  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS’s criteria (e.g., argument format, access control, etc.).
+  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS's criteria (e.g., argument format, access control, etc.).
 
 These functions will be invoked automatically when using `devkit avs call`, enabling you to quickly test and iterate on your AVS logic.
 
@@ -132,7 +150,7 @@ These functions will be invoked automatically when using `devkit avs call`, enab
 Also, keep stuff at the top about introducing config yaml files and what they do.
 -->
 
-Before running your AVS, you’ll need to configure both project-level and context-specific settings. This is done through two configuration files:
+Before running your AVS, you'll need to configure both project-level and context-specific settings. This is done through two configuration files:
 
 - **`config.yaml`**  
   Defines project-wide settings such as AVS name, version, and available context names.  
@@ -171,20 +189,20 @@ You can view or modify these configurations using the DevKit CLI or by editing t
 
 #### Set values via CLI flags
 
-- **Project-level**  
-  ```bash  
-  devkit avs config --set project.name="My new name" project.version="0.0.2"  
+- **Project-level**
+  ```bash
+  devkit avs config --set project.name="My new name" project.version="0.0.2"
   ```
 
-- **Context-specific**  
-  ```bash  
-  devkit avs context --set operator.key="0xabc…" context.timeout=30  
-  devkit avs context --context devnet --set operator.key="0xabc…" context.timeout=30  
+- **Context-specific**
+  ```bash
+  devkit avs context --set operators.0.address="0xabc..." operators.0.ecdsa_key="0x123..."
+  devkit avs context --context devnet --set operators.0.address="0xabc..." operators.0.ecdsa_key="0x123..."
   ```
 
 Alternatively, you can manually edit `config.yaml` or the `contexts/*.yaml` files in the text editor of your choice.
 
-> [!IMPORTANT]  
+> [!IMPORTANT]
 > All `devkit avs` commands must be run from the **root of your AVS project** — the directory containing the `config` folder.
 
 Before launching your local devnet, you must set valid Ethereum fork URLs to define the chain state your AVS will simulate against. These values are loaded from your `.env` file and automatically applied to your environment.
@@ -360,6 +378,7 @@ VERSION=v0.0.8
 ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
 DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
 
+mkdir -p $HOME/bin
 curl -sL "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | tar xv -C "$HOME/bin"
 
 ```
@@ -376,7 +395,7 @@ devkit avs template info
 2025/05/22 14:42:36 Project template information:
 2025/05/22 14:42:36   Project name: <your project>
 2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
-2025/05/22 14:42:36   Version: v0.0.11
+2025/05/22 14:42:36   Version: v0.0.12
 ```
 
 **_Upgrade to a newer version_**

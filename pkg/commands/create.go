@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -393,16 +394,28 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 		return fmt.Errorf("failed to write .gitignore: %w", err)
 	}
 
-	// add all changes and commit
+	// add all changes and commit if identity is set
 	cmd = exec.CommandContext(ctx.Context, "git", "add", ".")
 	cmd.Dir = targetDir
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+		return fmt.Errorf("failed to stage changes: %w", err)
 	}
-	cmd = exec.CommandContext(ctx.Context, "git", "commit", "-m", "feat: initial commit")
-	cmd.Dir = targetDir
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+
+	// check for user.name and user.email
+	hasIdentity := func(key string) bool {
+		out, _ := exec.CommandContext(ctx.Context, "git", "config", "--get", key).Output()
+		return len(bytes.TrimSpace(out)) > 0
+	}
+
+	if hasIdentity("user.name") && hasIdentity("user.email") {
+		cmd = exec.CommandContext(ctx.Context, "git", "commit", "-m", "feat: initial commit")
+		cmd.Dir = targetDir
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to create initial commit: %w", err)
+		}
+	} else {
+		// skip commit if no identity
+		logger.Warn("Git identity not set - skipping initial commit")
 	}
 
 	logger.Debug("Git repository initialized successfully.")

@@ -105,22 +105,22 @@ var Command = &cli.Command{
 			}
 			for _, item := range items {
 				// Split into "key.path.to.field" and "value"
-				parts := strings.SplitN(item, "=", 2)
-				if len(parts) != 2 {
+				idx := strings.LastIndex(item, "=")
+				if idx < 0 {
 					return fmt.Errorf("invalid --set syntax %q (want key=val)", item)
 				}
+				pathStr := item[:idx]
+				val := item[idx+1:]
 
 				// Break the key path into segments
-				path := strings.Split(parts[0], ".")
-				val := parts[1]
+				path := strings.Split(pathStr, ".")
 
 				// Set val at path
 				configNode, err = common.WriteToPath(configNode, path, val)
 				if err != nil {
 					return fmt.Errorf("setting value %s failed: %w", item, err)
 				}
-				logger.Info("Set %s = %s", parts[0], val)
-
+				logger.Info("Set %s = %s", pathStr, val)
 			}
 			if err := common.WriteYAML(contextPath, rootDoc); err != nil {
 				return fmt.Errorf("write context YAML: %w", err)
