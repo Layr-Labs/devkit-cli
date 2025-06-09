@@ -210,7 +210,7 @@ jobs:
 
           # run installer but drop the "Next steps" section
           curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh \
-            | sed '/^==> Next steps:/Q' \
+            | sed -e '/^==> Next steps:/,$d' \
             | arch -x86_64 /bin/bash
 
           # capture the brew-env exports into GITHUB_ENV
