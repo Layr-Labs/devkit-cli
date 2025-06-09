@@ -254,27 +254,29 @@ jobs:
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
 
-      - name: Install Colima, Lima & Docker CLI on macOS
+      - name: Install Colima, Lima guestagents & Docker CLI on macOS
         if: matrix.os == 'macos-latest'
         run: |
-          # Install the runtime and CLI
           brew install lima colima docker
-
-          # Lima's "additional guest agents" package provides the missing binaries
+          # this provides the missing guest-agent bits for various arches
           brew install lima-additional-guestagents
 
-      - name: Start Colima with guest agent
+      - name: Start Colima under QEMU
         if: matrix.os == 'macos-latest'
         run: |
-          # spin up the VM under vz (the default on macOS)
-          colima start --cpu 2 --memory 4
-
+          colima start \
+            --driver qemu \
+            --cpu 2 \
+            --memory 4 \
+            --disk 50
+          
       - name: Verify Docker daemon
         if: matrix.os == 'macos-latest'
         run: |
           for i in {1..30}; do
-            command -v docker >/dev/null && docker info >/dev/null 2>&1 && break
-            echo "Waiting for Colima's Docker… ($i/30)"
+            command -v docker >/dev/null \
+              && docker info >/dev/null 2>&1 && break
+            echo "Waiting for Colima/QEMU Docker... ($i/30)"
             sleep 2
           done
           docker info
