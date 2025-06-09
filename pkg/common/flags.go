@@ -9,4 +9,12 @@ var GlobalFlags = []cli.Flag{
 		Aliases: []string{"v"},
 		Usage:   "Enable verbose logging",
 	},
+	&cli.BoolFlag{
+		Name:  "enable-telemetry",
+		Usage: "Enable telemetry collection on first run without prompting",
+	},
+	&cli.BoolFlag{
+		Name:  "disable-telemetry",
+		Usage: "Disable telemetry collection on first run without prompting",
+	},
 }

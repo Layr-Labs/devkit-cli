@@ -448,6 +448,29 @@ Would you like to enable telemetry? [Y/n]:
 
 Your choice is saved globally and will be inherited by all future projects.
 
+#### 🤖 Non-Interactive Environments
+
+For CI/CD pipelines and automated environments, DevKit provides several options:
+
+**Enable telemetry without prompting:**
+```bash
+devkit --enable-telemetry avs create my-project 
+```
+
+**Disable telemetry without prompting:**
+```bash
+devkit --disable-telemetry avs create my-project 
+```
+
+**CI environments** (when `CI=true` environment variable is set):
+- DevKit automatically detects CI environments and defaults to disabled telemetry
+- No prompting occurs, preventing pipeline hangs
+- You can still explicitly enable with `--enable-telemetry` if desired
+
+**Non-interactive terminals:**
+- DevKit detects when stdin is unavailable and skips prompting
+- Defaults to disabled telemetry with informational messages
+
 ### 📊 What Data We Collect
 
 **✅ We collect:**
@@ -516,6 +539,25 @@ telemetry_enabled: true
 ```
 
 ### 🔄 Common Workflows
+
+**Set global default for your organization:**
+```bash
+# Disable telemetry for all future projects
+devkit telemetry --disable --global
+```
+
+**Override for a specific project:**
+```bash
+# In project directory - enable telemetry just for this project
+cd my-avs-project
+devkit telemetry --enable
+```
+
+**Check what's actually being used:**
+```bash
+# Shows both project and global settings for context
+devkit telemetry --status
+```
 
 **Set global default for your organization:**
 ```bash

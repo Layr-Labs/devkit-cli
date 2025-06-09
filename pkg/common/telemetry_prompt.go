@@ -9,9 +9,78 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 )
 
-// TelemetryPrompt presents the telemetry opt-in dialog to first-time users
-func TelemetryPrompt(logger iface.Logger) (bool, error) {
+// TelemetryPromptOptions controls how the telemetry prompt behaves
+type TelemetryPromptOptions struct {
+	// EnableTelemetry automatically enables telemetry without prompting (for --enable-telemetry flag)
+	EnableTelemetry bool
+	// DisableTelemetry automatically disables telemetry without prompting (for --disable-telemetry flag)
+	DisableTelemetry bool
+	// SkipPromptInCI skips the prompt in CI environments (defaults to disabled)
+	SkipPromptInCI bool
+}
+
+// TelemetryPromptWithOptions presents the telemetry opt-in dialog with configurable behavior
+func TelemetryPromptWithOptions(logger iface.Logger, opts TelemetryPromptOptions) (bool, error) {
+	// Handle explicit enable/disable flags first (they take precedence over everything)
+	if opts.EnableTelemetry {
+		displayTelemetryInfo()
+		fmt.Println("✅ Telemetry enabled via --enable-telemetry flag. Thank you for helping improve DevKit!")
+		fmt.Println()
+		return true, nil
+	}
+
+	if opts.DisableTelemetry {
+		fmt.Println("❌ Telemetry disabled via --disable-telemetry flag")
+		fmt.Println()
+		return false, nil
+	}
+
+	// Check if we're in a CI environment and should skip prompting
+	if opts.SkipPromptInCI && isCI() {
+		logger.Debug("Skipping telemetry prompt in CI environment, defaulting to disabled")
+		fmt.Println("⚠️  Detected CI environment - telemetry disabled by default")
+		fmt.Println("   You can enable it later with: devkit telemetry --enable --global")
+		fmt.Println()
+		return false, nil
+	}
+
 	// Display telemetry information
+	displayTelemetryInfo()
+
+	// Check if stdin is available (not in a non-interactive environment)
+	if !isStdinAvailable() {
+		logger.Debug("No stdin available, defaulting telemetry to disabled")
+		fmt.Println("⚠️  Non-interactive environment detected - telemetry disabled by default")
+		fmt.Println("   You can enable it later with: devkit telemetry --enable --global")
+		fmt.Println()
+		return false, nil
+	}
+
+	fmt.Print("Would you like to enable telemetry? [Y/n]: ")
+
+	reader := bufio.NewReader(os.Stdin)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		return false, fmt.Errorf("failed to read user input: %w", err)
+	}
+
+	response = strings.ToLower(strings.TrimSpace(response))
+
+	// Default to yes if empty response, no if they explicitly say no
+	enabled := response == "" || response == "y" || response == "Y" || response == "yes" || response == "Yes"
+
+	if enabled {
+		fmt.Println("✅ Telemetry enabled. Thank you for helping improve DevKit!")
+	} else {
+		fmt.Println("❌ Telemetry disabled. You can enable it later if you change your mind.")
+	}
+	fmt.Println()
+
+	return enabled, nil
+}
+
+// displayTelemetryInfo shows the telemetry information banner
+func displayTelemetryInfo() {
 	fmt.Println()
 	fmt.Println("🎯 Welcome to EigenLayer DevKit!")
 	fmt.Println()
@@ -40,32 +109,27 @@ func TelemetryPrompt(logger iface.Logger) (bool, error) {
 	fmt.Println("  devkit telemetry --enable   # Enable telemetry")
 	fmt.Println("  devkit telemetry --disable  # Disable telemetry")
 	fmt.Println()
-	fmt.Print("Would you like to enable telemetry? [Y/n]: ")
+}
 
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
+// isStdinAvailable checks if stdin is available for reading user input
+func isStdinAvailable() bool {
+	stat, err := os.Stdin.Stat()
 	if err != nil {
-		return false, fmt.Errorf("failed to read user input: %w", err)
+		return false
 	}
 
-	response = strings.ToLower(strings.TrimSpace(response))
-
-	// Default to yes if empty response, no if they explicitly say no
-	enabled := response == "" || response == "y" || response == "Y" || response == "yes" || response == "Yes"
-
-	if enabled {
-		fmt.Println("✅ Telemetry enabled. Thank you for helping improve DevKit!")
-	} else {
-		fmt.Println("❌ Telemetry disabled. You can enable it later if you change your mind.")
-	}
-	fmt.Println()
-
-	return enabled, nil
+	// Check if stdin is connected to a terminal
+	return (stat.Mode() & os.ModeCharDevice) != 0
 }
 
 // HandleFirstRunTelemetryPrompt checks if this is a first run and prompts for telemetry
 // Returns the telemetry preference (true/false) and whether this was a first run
 func HandleFirstRunTelemetryPrompt(logger iface.Logger) (bool, bool, error) {
+	return HandleFirstRunTelemetryPromptWithOptions(logger, TelemetryPromptOptions{SkipPromptInCI: true})
+}
+
+// HandleFirstRunTelemetryPromptWithOptions handles first run with configurable options
+func HandleFirstRunTelemetryPromptWithOptions(logger iface.Logger, opts TelemetryPromptOptions) (bool, bool, error) {
 	// Check if this is the first run
 	isFirstRun, err := IsFirstRun()
 	if err != nil {
@@ -91,7 +155,7 @@ func HandleFirstRunTelemetryPrompt(logger iface.Logger) (bool, bool, error) {
 	}
 
 	// Telemetry is configurable, show the prompt
-	telemetryEnabled, err := TelemetryPrompt(logger)
+	telemetryEnabled, err := TelemetryPromptWithOptions(logger, opts)
 	if err != nil {
 		logger.Debug("Failed to show telemetry prompt: %v", err)
 		// Default to disabled if prompt fails

@@ -136,8 +136,15 @@ func WithFirstRunTelemetryPrompt(cCtx *cli.Context) error {
 		return nil // Not first run, continue normally
 	}
 
-	// Show telemetry prompt and get user choice
-	choice, err := common.TelemetryPrompt(logger)
+	// Check for global flags that control telemetry prompt behavior
+	opts := common.TelemetryPromptOptions{
+		EnableTelemetry:  cCtx.Bool("enable-telemetry"),
+		DisableTelemetry: cCtx.Bool("disable-telemetry"),
+		SkipPromptInCI:   true, // Always skip in CI environments
+	}
+
+	// Show telemetry prompt with options and get user choice
+	choice, err := common.TelemetryPromptWithOptions(logger, opts)
 	if err != nil {
 		logger.Debug("Failed to show telemetry prompt: %v", err)
 		// If prompt fails, mark first run complete but don't set telemetry preference
