@@ -236,6 +236,13 @@ jobs:
         with:
           version: stable
 
+      - name: Install Colima, Lima guestagents & Docker CLI on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install lima colima docker
+          # this provides the missing guest-agent bits for various arches
+          brew install lima-additional-guestagents
+
       - name: Run devkit avs create
         run: devkit avs create --disable-telemetry my-awesome-avs
 
@@ -253,13 +260,6 @@ jobs:
             exit 1
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
-
-      - name: Install Colima, Lima guestagents & Docker CLI on macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          brew install lima colima docker
-          # this provides the missing guest-agent bits for various arches
-          brew install lima-additional-guestagents
 
       - name: Start Colima under QEMU
         if: matrix.os == 'macos-latest'
