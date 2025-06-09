@@ -5,6 +5,11 @@ on:
     tags:
       - "*"
 
+env:
+  FOUNDRY_PROFILE: ci
+  L1_FORK_URL: ${{ secrets.L1_FORK_URL }}
+  L2_FORK_URL: ${{ secrets.L2_FORK_URL }}
+
 jobs:
   lint:
     name: lint
@@ -197,12 +202,15 @@ jobs:
         run: |
           # enable Rosetta  
           sudo softwareupdate --install-rosetta --agree-to-license || true
+
           # install ARM Homebrew into /opt/homebrew  
           arch -arm64 /bin/bash -c \
             "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          # load it into PATH  
+
+          # load /opt/homebrew/bin/brew into your PATH
           echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
           eval "$(/opt/homebrew/bin/brew shellenv)"
+
           # force all brew calls under arm64  
           echo "alias brew='arch -arm64 brew'" >> ~/.bashrc
           source ~/.bashrc
@@ -237,6 +245,11 @@ jobs:
 
       - name: Run devkit avs create
         run: devkit avs create my-awesome-avs
+
+      - name: Source shell profile
+        # force a login shell so it actually reads ~/.bashrc / ~/.bash_profile
+        shell: bash --login
+        run: source ~/.bashrc 2>/dev/null || true
 
       - name: Verify AVS project created
         run: |
