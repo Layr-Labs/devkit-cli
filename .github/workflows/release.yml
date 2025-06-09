@@ -192,6 +192,21 @@ jobs:
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
 
+      - name: Install Homebrew on macOS ARM64
+        if: matrix.os == 'macos-latest' && matrix.arch == 'arm64'
+        run: |
+          # enable Rosetta  
+          sudo softwareupdate --install-rosetta --agree-to-license || true
+          # install ARM Homebrew into /opt/homebrew  
+          arch -arm64 /bin/bash -c \
+            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          # load it into PATH  
+          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+          eval "$(/opt/homebrew/bin/brew shellenv)"
+          # force all brew calls under arm64  
+          echo "alias brew='arch -arm64 brew'" >> ~/.bashrc
+          source ~/.bashrc
+          
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
