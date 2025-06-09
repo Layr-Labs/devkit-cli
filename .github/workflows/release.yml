@@ -206,7 +206,18 @@ jobs:
       - name: Force Intel-brew on macOS x64
         if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
         run: |
-          echo "alias brew='arch -x86_64 brew'" >> $BASH_ENV
+          mkdir -p $HOME/bin
+          printf '%s\n' '#!/usr/bin/env bash' \
+            'exec arch -x86_64 /usr/local/bin/brew "$@"' \
+            > "$HOME/bin/brew"
+          chmod +x "$HOME/bin/brew"
+
+          # make sure our shim comes first
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+          # sanity check
+          which brew
+          brew --version
           
       - name: Set up Go
         uses: actions/setup-go@v5
