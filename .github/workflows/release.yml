@@ -199,13 +199,19 @@ jobs:
 
       - name: Install Homebrew on macOS x64
         if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
-        uses: Homebrew/actions/setup-homebrew@master
-        with:
-          arch: ${{ matrix.arch }}
-          
-      - name: Force Intel-brew on macOS x64
-        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
         run: |
+          # enable Rosetta (needed only on Apple Silicon hosts)
+          sudo softwareupdate --install-rosetta --agree-to-license || true
+
+          # install Intel Homebrew into /usr/local
+          arch -x86_64 /bin/bash -c \
+            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+          # capture the brew-env exports into GITHUB_ENV
+          arch -x86_64 /usr/local/bin/brew shellenv \
+            | sed 's/^export //g' >> $GITHUB_ENV
+
+          # alias brew via a shim
           mkdir -p $HOME/bin
           printf '%s\n' '#!/usr/bin/env bash' \
             'exec arch -x86_64 /usr/local/bin/brew "$@"' \
@@ -215,8 +221,9 @@ jobs:
           # make sure our shim comes first
           echo "$HOME/bin" >> $GITHUB_PATH
 
-          # sanity check
+          # verify brew is on PATH and running under x86_64
           which brew
+          file "$(which brew)"
           brew --version
           
       - name: Set up Go
