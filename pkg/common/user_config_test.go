@@ -9,8 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func TestSaveUserIdAndLoadGlobalSettings(t *testing.T) {
-	// Set HOME to a temp directory
+func TestSaveUserIdAndLoadGlobalConfig(t *testing.T) {
+	// Set XDG_CONFIG_HOME to a temp directory
 	tmp := t.TempDir()
 	os.Setenv("XDG_CONFIG_HOME", tmp)
 
@@ -66,8 +66,8 @@ func TestSaveUserIdAndLoadGlobalSettings(t *testing.T) {
 	}
 }
 
-func TestgetUserUUIDFromGlobalConfig_Empty(t *testing.T) {
-	// Unset HOME
+func TestGetUserUUIDFromGlobalConfig_Empty(t *testing.T) {
+	// Unset XDG_CONFIG_HOME
 	os.Unsetenv("XDG_CONFIG_HOME")
 
 	// Ensure no config and HOME unset
@@ -77,8 +77,8 @@ func TestgetUserUUIDFromGlobalConfig_Empty(t *testing.T) {
 	}
 }
 
-func TestLoadGlobalSettings_MalformedYAML(t *testing.T) {
-	// Set HOME to temp
+func TestLoadGlobalConfig_MalformedYAML(t *testing.T) {
+	// Set XDG_CONFIG_HOME to temp
 	tmp := t.TempDir()
 	os.Setenv("XDG_CONFIG_HOME", tmp)
 
@@ -124,7 +124,7 @@ func TestLoadGlobalSettings_MalformedYAML(t *testing.T) {
 }
 
 func TestSaveUserId_PermissionsError(t *testing.T) {
-	// Set HOME to temp
+	// Set XDG_CONFIG_HOME to temp
 	tmp := t.TempDir()
 	os.Setenv("XDG_CONFIG_HOME", tmp)
 
@@ -146,7 +146,7 @@ func TestSaveUserId_PermissionsError(t *testing.T) {
 }
 
 func TestSaveUserId_WriteFileError(t *testing.T) {
-	// Set HOME to temp
+	// Set XDG_CONFIG_HOME to temp
 	tmp := t.TempDir()
 	os.Setenv("XDG_CONFIG_HOME", tmp)
 
