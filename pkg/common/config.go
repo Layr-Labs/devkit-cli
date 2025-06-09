@@ -109,7 +109,7 @@ type ChainContextConfig struct {
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 }
 
-// VersionCompatibilityError represents a version mismatch error
+// VersionCompatibilityError represents a version mismatch error in migration
 type VersionCompatibilityError struct {
 	ContextVersion  string
 	CLIVersion      string
@@ -121,23 +121,24 @@ func (e *VersionCompatibilityError) Error() string {
 	return fmt.Sprintf(`
 ⚠️  VERSION COMPATIBILITY WARNING ⚠️
 
-Your context file version is newer than what this devkit CLI version supports:
+Your context file version is newer than what this devkit 
+CLI version supports:
 
-  Context file:     %s
-  Context version:  %s  
-  CLI version:      %s
-  Latest supported: %s
+  Current Context file:     %s
+  Current Context version:  %s  
+  Current CLI version:      %s
+  Latest supported context version: %s
 
 This can cause context corruption if you proceed. Please update your devkit CLI first:
 
   # Update devkit CLI to latest version
 
-	VERSION=v0.0.8
-	ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
-	DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
+VERSION=v0.0.8
+ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
 
-	mkdir -p $HOME/bin
-	curl -sL "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin
+curl -sL "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | tar xv -C "$HOME/bin"
   
   # Or build from source
   git pull origin main && make install

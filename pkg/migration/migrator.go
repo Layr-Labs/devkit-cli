@@ -68,47 +68,6 @@ type VersionComparator func(string, string) bool
 // Known errors which we can ignore
 var ErrAlreadyUpToDate = errors.New("already up to date")
 
-// VersionCompatibilityError represents a version mismatch error in migration
-type VersionCompatibilityError struct {
-	ContextVersion  string
-	CLIVersion      string
-	LatestSupported string
-	ContextFile     string
-}
-
-func (e *VersionCompatibilityError) Error() string {
-	return fmt.Sprintf(`
-⚠️  VERSION COMPATIBILITY WARNING ⚠️
-
-Your context file version is newer than what this devkit 
-CLI version supports:
-
-  Current Context file:     %s
-  Current Context version:  %s  
-  Current CLI version:      %s
-  Latest supported context version: %s
-
-This can cause context corruption if you proceed. Please update your devkit CLI first:
-
-  # Update devkit CLI to latest version
-
-VERSION=v0.0.8
-ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
-DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
-
-mkdir -p $HOME/bin
-curl -sL "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | tar xv -C "$HOME/bin"
-  
-  # Or build from source
-  git pull origin main && make install
-
-After updating, verify the CLI version supports your context:
-  devkit --version
-
-DO NOT edit the context file until you update the CLI version.
-`, e.ContextFile, e.ContextVersion, e.CLIVersion, e.LatestSupported)
-}
-
 // checkVersionCompatibility validates that the context version is supported by the current CLI
 func checkVersionCompatibility(contextVersion, latestSupported, contextFile string) error {
 	if contextVersion == "" {
@@ -143,7 +102,7 @@ func checkVersionCompatibility(contextVersion, latestSupported, contextFile stri
 
 	// If context version is newer than what we support, return compatibility error
 	if versionGreaterThan(contextVersion, latestSupported) {
-		return &VersionCompatibilityError{
+		return &common.VersionCompatibilityError{
 			ContextVersion:  contextVersion,
 			CLIVersion:      version.GetVersion(),
 			LatestSupported: latestSupported,
