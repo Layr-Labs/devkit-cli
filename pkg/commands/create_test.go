@@ -106,7 +106,7 @@ func TestCreateCommand(t *testing.T) {
 		}
 
 		// Create config.yaml
-		return copyDefaultConfigToProject(logger, targetDir, projectName, mainBaseURL, mainVersion)
+		return copyDefaultConfigToProject(logger, targetDir, projectName, "test-uuid", mainBaseURL, mainVersion, false)
 	}
 
 	app := &cli.App{

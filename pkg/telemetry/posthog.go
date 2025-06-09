@@ -76,22 +76,24 @@ func getPostHogAPIKey() string {
 	// 1. Environment variable
 	// 2. Project config file
 	// 3. Embedded key (set at build time)
-
 	// Check environment variable first
 	if key := os.Getenv("DEVKIT_POSTHOG_KEY"); key != "" {
 		return key
 	}
 
-	// Check project config file next
-	// Use a direct import to avoid circular dependencies
-	data, err := os.ReadFile(common.DevkitConfigFile)
+	// Check project config file next (config/config.yaml)
+	data, err := os.ReadFile("config/config.yaml")
 	if err == nil {
-		// Simple YAML parsing to extract just the key we need
+		// Parse the full config structure to extract the key
 		var config struct {
-			PostHogAPIKey string `yaml:"posthog_api_key"`
+			Config struct {
+				Project struct {
+					PostHogAPIKey string `yaml:"posthog_api_key"`
+				} `yaml:"project"`
+			} `yaml:"config"`
 		}
-		if yaml.Unmarshal(data, &config) == nil && config.PostHogAPIKey != "" {
-			return config.PostHogAPIKey
+		if yaml.Unmarshal(data, &config) == nil && config.Config.Project.PostHogAPIKey != "" {
+			return config.Config.Project.PostHogAPIKey
 		}
 	}
 

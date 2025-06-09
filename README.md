@@ -90,6 +90,52 @@ Verify your installation:
 devkit --help
 ```
 
+### 🔧 Shell Completion (Optional)
+
+Tab completion for devkit commands is automatically set up when you install with `make install`.
+
+**If you installed from source with `make install`:**
+- Completion is automatically configured and enabled! Test it immediately:
+```bash
+devkit <TAB>          # Should show: avs, keystore, version
+devkit avs <TAB>      # Should show subcommands
+```
+
+**If you downloaded the binary directly, manual setup:**
+
+**For Zsh (recommended for macOS):**
+```bash
+# Add to your ~/.zshrc:
+PROG=devkit
+source <(curl -s https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/autocomplete/zsh_autocomplete)
+
+exec zsh
+```
+
+**For Bash:**
+```bash
+# Add to your ~/.bashrc or ~/.bash_profile:
+PROG=devkit
+source <(curl -s https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/autocomplete/bash_autocomplete)
+
+source ~/.bashrc
+```
+
+**For local development/testing:**
+```bash
+# If you have the devkit-cli repo locally
+cd /path/to/devkit-cli
+PROG=devkit source autocomplete/zsh_autocomplete  # for zsh
+PROG=devkit source autocomplete/bash_autocomplete # for bash
+```
+
+After setup, you can use tab completion:
+```bash
+devkit <TAB>          # Shows: avs, keystore, version
+devkit avs <TAB>      # Shows: create, config, context, build, devnet, run, call, release, template
+devkit avs cr<TAB>    # Completes to: devkit avs create
+```
+
 ---
 
 ## 🚧 Step-by-Step Guide
@@ -411,6 +457,186 @@ More often than not, you'll want to use tag corresponding to your template's rel
 _Please consult your template's docs for further information on how the upgrade process works._
 
 ---
+
+## Telemetry 
+
+DevKit includes optional telemetry to help us improve the developer experience. We collect anonymous usage data about commands used, performance metrics, and error patterns - but never personal information, code content, or sensitive data.
+
+### 🎯 First-Time Setup
+
+When you first run DevKit, you'll see a telemetry consent prompt:
+
+```
+🎯 Welcome to EigenLayer DevKit!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 Help us improve DevKit by sharing anonymous usage data
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+We'd like to collect anonymous usage data to help us improve DevKit.
+
+This includes:
+  • Commands used (e.g., 'devkit avs create', 'devkit avs build')
+  • Error counts and types (to identify common issues)
+  • Performance metrics (command execution times)
+  • System information (OS, architecture)
+
+We do NOT collect:
+  • Personal information
+  • Private keys or sensitive data
+
+You can change this setting anytime with:
+  devkit telemetry --enable   # Enable telemetry
+  devkit telemetry --disable  # Disable telemetry
+
+Would you like to enable telemetry? [Y/n]:
+```
+
+Your choice is saved globally and will be inherited by all future projects.
+
+#### 🤖 Non-Interactive Environments
+
+For CI/CD pipelines and automated environments, DevKit provides several options:
+
+**Enable telemetry without prompting:**
+```bash
+devkit --enable-telemetry avs create my-project 
+```
+
+**Disable telemetry without prompting:**
+```bash
+devkit --disable-telemetry avs create my-project 
+```
+
+**CI environments** (when `CI=true` environment variable is set):
+- DevKit automatically detects CI environments and defaults to disabled telemetry
+- No prompting occurs, preventing pipeline hangs
+- You can still explicitly enable with `--enable-telemetry` if desired
+
+**Non-interactive terminals:**
+- DevKit detects when stdin is unavailable and skips prompting
+- Defaults to disabled telemetry with informational messages
+
+### 📊 What Data We Collect
+
+**✅ We collect:**
+- Command names (e.g., `devkit avs create`, `devkit avs build`)
+- Success/failure rates and error types
+- Command execution duration
+- Operating system and architecture
+- Anonymous project identifiers (UUIDs)
+
+**❌ We do NOT collect:**
+- Personal information or identifiable data
+- Code content, file names, or project details
+- Private keys, passwords, or sensitive data
+
+### 🛠 Managing Telemetry Settings
+
+#### Global Settings (affects all projects)
+
+```bash
+# Enable telemetry globally (new projects inherit this)
+devkit telemetry --enable --global
+
+# Disable telemetry globally  
+devkit telemetry --disable --global
+
+# Check global telemetry status
+devkit telemetry --status --global
+```
+
+#### Project-Level Settings (current project only)
+
+```bash
+# Enable telemetry for current project only
+devkit telemetry --enable
+
+# Disable telemetry for current project only
+devkit telemetry --disable
+
+# Check current project telemetry status
+devkit telemetry --status
+```
+
+### 📋 How Telemetry Precedence Works
+
+1. **Project setting exists?** → Use project setting
+2. **No project setting?** → Use global setting  
+3. **No settings at all?** → Default to disabled
+
+This means:
+- You can set a global default for all projects
+- Individual projects can override the global setting
+- Existing projects keep their current settings when you change global settings
+
+### 📁 Configuration Files
+
+**Global config:** `~/.config/devkit/config.yaml`
+```yaml
+first_run: false
+telemetry_enabled: true
+```
+
+**Project config:** `<project-dir>/.config.devkit.yml`
+```yaml
+project_uuid: "12345678-1234-1234-1234-123456789abc"
+telemetry_enabled: true
+```
+
+### 🔄 Common Workflows
+
+**Set global default for your organization:**
+```bash
+# Disable telemetry for all future projects
+devkit telemetry --disable --global
+```
+
+**Override for a specific project:**
+```bash
+# In project directory - enable telemetry just for this project
+cd my-avs-project
+devkit telemetry --enable
+```
+
+**Check what's actually being used:**
+```bash
+# Shows both project and global settings for context
+devkit telemetry --status
+```
+
+**Set global default for your organization:**
+```bash
+# Disable telemetry for all future projects
+devkit telemetry --disable --global
+```
+
+**Override for a specific project:**
+```bash
+# In project directory - enable telemetry just for this project
+cd my-avs-project
+devkit telemetry --enable
+```
+
+**Check what's actually being used:**
+```bash
+# Shows both project and global settings for context
+devkit telemetry --status
+```
+
+### 🏢 Enterprise Usage
+
+For enterprise environments, you can:
+
+1. **Set organization-wide defaults** by configuring global settings
+2. **Override per-project** as needed for specific teams or compliance requirements
+3. **Completely disable** telemetry with `devkit telemetry --disable --global`
+
+The telemetry system respects both user choice and organizational policies.
+
+## 🔧 Compatibility Notes
+- **Linux**: Primarily tested on Debian/Ubuntu only.
+- **macOS**: Supports both Intel and Apple Silicon
 
 ## 🤝 Contributing
 

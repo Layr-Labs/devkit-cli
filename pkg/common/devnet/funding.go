@@ -300,7 +300,7 @@ func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
 		if strings.Contains(string(output), "Error: error sending request for url") {
 			log.Printf(" Please check if your mainnet fork rpc url is up")
 		}
-		return fmt.Errorf("failed to get balance for account%s", to.String())
+		return fmt.Errorf("failed to get balance for account %s", to.String())
 	}
 	threshold := new(big.Int)
 	threshold.SetString(FUND_VALUE, 10)

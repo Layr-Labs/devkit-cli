@@ -94,7 +94,20 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 }
 
 func setupTelemetry(ctx *cli.Context) telemetry.Client {
-	// TODO: (brandon c) handle disabled telemetry after private preview.
+	logger := common.LoggerFromContext(ctx.Context)
+
+	// Get effective telemetry preference (project takes precedence over global)
+	telemetryEnabled, err := common.GetEffectiveTelemetryPreference()
+	if err != nil {
+		logger.Debug("Failed to get telemetry preference: %v", err)
+		return telemetry.NewNoopClient()
+	}
+
+	// If telemetry is disabled, return noop client
+	if !telemetryEnabled {
+		return telemetry.NewNoopClient()
+	}
+
 	appEnv, ok := common.AppEnvironmentFromContext(ctx.Context)
 	if !ok {
 		return telemetry.NewNoopClient()
@@ -106,6 +119,56 @@ func setupTelemetry(ctx *cli.Context) telemetry.Client {
 	}
 
 	return phClient
+}
+
+// WithFirstRunTelemetryPrompt handles first-run telemetry setup
+func WithFirstRunTelemetryPrompt(cCtx *cli.Context) error {
+	logger := common.LoggerFromContext(cCtx.Context)
+
+	// Check if this is the first run
+	isFirstRun, err := common.IsFirstRun()
+	if err != nil {
+		logger.Debug("Failed to check first run status: %v", err)
+		return nil // Don't fail the command, just skip the prompt
+	}
+
+	if !isFirstRun {
+		return nil // Not first run, continue normally
+	}
+
+	// Check for global flags that control telemetry prompt behavior
+	opts := common.TelemetryPromptOptions{
+		EnableTelemetry:  cCtx.Bool("enable-telemetry"),
+		DisableTelemetry: cCtx.Bool("disable-telemetry"),
+		SkipPromptInCI:   true, // Always skip in CI environments
+	}
+
+	// Show telemetry prompt with options and get user choice
+	choice, err := common.TelemetryPromptWithOptions(logger, opts)
+	if err != nil {
+		logger.Debug("Failed to show telemetry prompt: %v", err)
+		// If prompt fails, mark first run complete but don't set telemetry preference
+		err = common.MarkFirstRunComplete()
+		if err != nil {
+			logger.Debug("Failed to mark first run complete: %v", err)
+		}
+		return nil
+	}
+
+	// Save the user's choice globally
+	if err := common.SetGlobalTelemetryPreference(choice); err != nil {
+		logger.Debug("Failed to save telemetry preference: %v", err)
+		// Still mark first run complete even if save fails
+		err = common.MarkFirstRunComplete()
+		if err != nil {
+			logger.Debug("Failed to mark first run complete: %v", err)
+		}
+		return nil
+	}
+
+	// First run handling complete
+	logger.Debug("First run telemetry setup completed")
+	return nil
 }
 
 func WithMetricEmission(action cli.ActionFunc) cli.ActionFunc {
@@ -189,6 +252,7 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 		metrics.Properties["os"] = appEnv.OS
 		metrics.Properties["arch"] = appEnv.Arch
 		metrics.Properties["project_uuid"] = appEnv.ProjectUUID
+		metrics.Properties["user_uuid"] = appEnv.UserUUID
 	}
 
 	for k, v := range collectFlagValues(ctx) {

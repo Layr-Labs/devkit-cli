@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
 	"runtime"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
 
 	"github.com/urfave/cli/v2"
 )
@@ -40,6 +41,7 @@ func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.A
 		metrics.Properties["os"] = runtime.GOOS
 		metrics.Properties["arch"] = runtime.GOARCH
 		metrics.Properties["project_uuid"] = "test-uuid"
+		metrics.Properties["user_uuid"] = "user-uuid"
 
 		// Add command flags as properties
 		flags := collectFlagValues(ctx)

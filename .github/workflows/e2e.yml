@@ -77,6 +77,11 @@ jobs:
           echo "❌ Devnet failed to start"
           exit 1
 
+      - name: Call AVS
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
+
       - name: Stop devnet
         run: |
           cd ./my-awesome-avs/

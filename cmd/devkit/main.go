@@ -10,7 +10,6 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/version"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/hooks"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -18,9 +17,10 @@ func main() {
 	ctx := common.WithShutdown(context.Background())
 
 	app := &cli.App{
-		Name:  "devkit",
-		Usage: "EigenLayer Development Kit",
-		Flags: common.GlobalFlags,
+		EnableBashCompletion: true,
+		Name:                 "devkit",
+		Usage:                "EigenLayer Development Kit",
+		Flags:                common.GlobalFlags,
 		Before: func(cCtx *cli.Context) error {
 			err := hooks.LoadEnvFile(cCtx)
 			if err != nil {
@@ -35,12 +35,21 @@ func main() {
 			cCtx.Context = common.WithLogger(cCtx.Context, logger)
 			cCtx.Context = common.WithProgressTracker(cCtx.Context, tracker)
 
+			// Handle first-run telemetry prompt (only for non-telemetry commands)
+			if cCtx.Command.Name != "telemetry" && cCtx.Command.Name != "help" && cCtx.Command.Name != "version" {
+				if err := hooks.WithFirstRunTelemetryPrompt(cCtx); err != nil {
+					// Log error but don't fail the command
+					logger.Debug("First-run telemetry prompt failed: %v", err)
+				}
+			}
+
 			return hooks.WithCommandMetricsContext(cCtx)
 		},
 		Commands: []*cli.Command{
 			commands.AVSCommand,
 			keystore.KeystoreCommand,
 			version.VersionCommand,
+			commands.TelemetryCommand,
 		},
 		UseShortOptionHandling: true,
 	}
