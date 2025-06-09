@@ -227,7 +227,7 @@ jobs:
           version: stable
 
       - name: Run devkit avs create
-        run: devkit avs create my-awesome-avs
+        run: devkit avs create --disable-telemetry my-awesome-avs
 
       - name: Source shell profile
         # force a login shell so it actually reads ~/.bashrc / ~/.bash_profile
