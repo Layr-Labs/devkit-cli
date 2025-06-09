@@ -206,6 +206,24 @@ jobs:
           # force all brew calls under arm64  
           echo "alias brew='arch -arm64 brew'" >> ~/.bashrc
           source ~/.bashrc
+
+      - name: Install Homebrew on macOS AMD64
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
+        run: |
+          # enable Rosetta (so you can run x86_64 processes on Apple Silicon hosts)
+          sudo softwareupdate --install-rosetta --agree-to-license || true
+
+          # install Intel Homebrew into /usr/local
+          arch -x86_64 /bin/bash -c \
+            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+          # load /usr/local/bin/brew into your PATH
+          echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.bash_profile
+          eval "$(/usr/local/bin/brew shellenv)"
+
+          # force all future brew invocations under x86_64
+          echo "alias brew='arch -x86_64 brew'" >> ~/.bashrc
+          source ~/.bashrc
           
       - name: Set up Go
         uses: actions/setup-go@v5
