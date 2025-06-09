@@ -588,6 +588,10 @@ For enterprise environments, you can:
 
 The telemetry system respects both user choice and organizational policies.
 
+## 🔧 Compatibility Notes
+- **Linux**: Primarily tested on Debian/Ubuntu only.
+- **macOS**: Supports both Intel and Apple Silicon
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request.
