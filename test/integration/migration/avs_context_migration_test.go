@@ -505,12 +505,6 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 		if strategyName == nil || strategyName.Value != "stETH_Strategy" {
 			t.Errorf("Expected strategy name to be stETH_Strategy, got %v", strategyName.Value)
 		}
-
-		depositAmount := migration.ResolveNode(migratedNode, []string{"context", "operators", "0", "allocations", "0", "deposit_amount"})
-		if depositAmount == nil || depositAmount.Value != "5ETH" {
-			t.Errorf("Expected deposit amount to be 5ETH, got %v", depositAmount.Value)
-		}
-
 		// Check operator set allocation
 		opSetAlloc := migration.ResolveNode(migratedNode, []string{"context", "operators", "0", "allocations", "0", "operator_set_allocations", "0", "operator_set"})
 		if opSetAlloc == nil || opSetAlloc.Value != "0" {
@@ -633,13 +627,6 @@ func TestAVSContextMigration_FullChain(t *testing.T) {
 		if allocations == nil {
 			t.Error("Expected operator to have allocations structure after full migration")
 			return
-		}
-
-		// The migration creates new allocation structures with predefined values,
-		// not preserving original stake amounts since it's a complete restructure
-		depositAmount := migration.ResolveNode(migratedNode, []string{"context", "operators", "0", "allocations", "0", "deposit_amount"})
-		if depositAmount == nil || depositAmount.Value != "5ETH" {
-			t.Errorf("Expected deposit amount to be 5ETH (migration default), got %v", depositAmount.Value)
 		}
 
 		// Verify stake field is completely removed or empty

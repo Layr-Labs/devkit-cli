@@ -91,6 +91,16 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 		return nil, err
 	}
 
+	// Add stakers section with comment first, then populate it
+	migration.EnsureKeyWithComment(user, []string{"context", "stakers"}, "List of stakers and their delegations")
+
+	// Now populate the stakers with content from new config
+	stakersNode := migration.ResolveNode(user, []string{"context", "stakers"})
+	newStakers := migration.ResolveNode(new, []string{"context", "stakers"})
+	if stakersNode != nil && newStakers != nil {
+		*stakersNode = *migration.CloneNode(newStakers)
+	}
+
 	// Upgrade the version
 	if v := migration.ResolveNode(user, []string{"version"}); v != nil {
 		v.Value = "0.0.6"
