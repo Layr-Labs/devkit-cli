@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -248,9 +249,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	// Fund operators with strategy tokens
+	// Fund stakers with strategy tokens
 	if devnet.DEVNET_CONTEXT == "devnet" {
-		logger.Info("Funding operators with strategy tokens...")
+		logger.Info("Funding stakers with strategy tokens...")
 
 		var tokenAddresses []string
 		var tokenErr error
@@ -261,13 +262,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 
 		if len(tokenAddresses) > 0 {
-			err = devnet.FundOperatorsWithStrategyTokens(config, rpcUrl, tokenAddresses)
+			err = devnet.FundStakersWithStrategyTokens(config, rpcUrl, tokenAddresses)
 			if err != nil {
-				logger.Warn("Failed to fund operators with strategy tokens: %v", err)
+				logger.Warn("Failed to fund stakers with strategy tokens: %v", err)
 				logger.Info("Continuing with devnet startup...")
 			}
 		} else {
-			logger.Info("No tokens to fund operators with, skipping token funding")
+			logger.Info("No tokens to fund stakers with, skipping token funding")
 		}
 	} else {
 		logger.Info("Skipping token funding for non-devnet context")
@@ -308,6 +309,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 			if err := DepositIntoStrategiesAction(cCtx, logger); err != nil {
 				return fmt.Errorf("depositing into strategies failed: %w", err)
+			}
+
+			if err := DelegateToOperatorsAction(cCtx, logger); err != nil {
+				return fmt.Errorf("delegating to operators failed: %w", err)
 			}
 
 			if err := SetAllocationDelayAction(cCtx, logger); err != nil {
@@ -742,6 +747,29 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 	return contractCaller.CreateOperatorSets(cCtx.Context, avsAddr, createSetParams)
 }
 
+func DelegateToOperatorsAction(cCtx *cli.Context, logger iface.Logger) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for delegate to operators: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+	}
+
+	logger.Info("Delegating to operators...")
+
+	for _, stakerSpec := range envCtx.Stakers {
+		logger.Info("Delegating to operators for staker %s", stakerSpec.StakerAddress)
+		if err := delegateToOperator(cCtx, stakerSpec, ethcommon.HexToAddress(stakerSpec.OperatorAddress), logger); err != nil {
+			logger.Error("Failed to delegate to operators for staker %s: %v. Continuing...", stakerSpec.StakerAddress, err)
+			continue
+		}
+	}
+	logger.Info("Delegating to operators completed.")
+	return nil
+}
+
 func DepositIntoStrategiesAction(cCtx *cli.Context, logger iface.Logger) error {
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
 	if err != nil {
@@ -753,10 +781,10 @@ func DepositIntoStrategiesAction(cCtx *cli.Context, logger iface.Logger) error {
 	}
 
 	logger.Info("Depositing into strategies...")
-	for _, op := range envCtx.Operators {
-		logger.Info("Depositing into strategies for operator %s", op.Address)
-		if err := depositIntoStrategy(cCtx, op.Address, logger); err != nil {
-			logger.Error("Failed to deposit into strategies for operator %s: %v. Continuing...", op.Address, err)
+	for _, stakerSpec := range envCtx.Stakers {
+		logger.Info("Depositing into strategies for staker %s", stakerSpec.StakerAddress)
+		if err := depositIntoStrategy(cCtx, stakerSpec, logger); err != nil {
+			logger.Error("Failed to deposit into strategies for staker %s: %v. Continuing...", stakerSpec.StakerAddress, err)
 			continue
 		}
 	}
@@ -786,11 +814,6 @@ func RegisterOperatorsToEigenLayerFromConfigAction(cCtx *cli.Context, logger ifa
 			logger.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
 			continue
 		}
-		// if err := registerOperatorAVS(cCtx, logger, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
-		// 	logger.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
-		// 	continue
-		// }
-		// logger.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
 	}
 	logger.Info("Operator registration with EigenLayer completed.")
 	return nil
@@ -1017,9 +1040,9 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 	)
 }
 
-func depositIntoStrategy(cCtx *cli.Context, operatorAddress string, logger iface.Logger) error {
-	if operatorAddress == "" {
-		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
+func depositIntoStrategy(cCtx *cli.Context, stakerSpec common.StakerSpec, logger iface.Logger) error {
+	if stakerSpec.StakerAddress == "" {
+		return fmt.Errorf("staker addreess parameter is required and cannot be empty")
 	}
 
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
@@ -1043,25 +1066,11 @@ func depositIntoStrategy(cCtx *cli.Context, operatorAddress string, logger iface
 	}
 	defer client.Close()
 
-	var operatorPrivateKey string
-	for _, op := range envCtx.Operators {
-		key, keyErr := crypto.HexToECDSA(strings.TrimPrefix(op.ECDSAKey, "0x"))
-		if keyErr != nil {
-			continue
-		}
-		if strings.EqualFold(crypto.PubkeyToAddress(key.PublicKey).Hex(), operatorAddress) {
-			operatorPrivateKey = op.ECDSAKey
-			break
-		}
-	}
-	if operatorPrivateKey == "" {
-		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
-	}
-
 	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr := devnet.GetEigenLayerAddresses(cfg)
+	stakerPrivateKey := strings.TrimPrefix(stakerSpec.StakerECDSAKey, "0x")
 
 	contractCaller, err := common.NewContractCaller(
-		operatorPrivateKey,
+		stakerPrivateKey,
 		big.NewInt(int64(l1Cfg.ChainID)),
 		client,
 		ethcommon.HexToAddress(allocationManagerAddr),
@@ -1073,22 +1082,87 @@ func depositIntoStrategy(cCtx *cli.Context, operatorAddress string, logger iface
 		return fmt.Errorf("failed to create contract caller: %w", err)
 	}
 
+	for _, deposit := range stakerSpec.Deposits {
+		strategyAddress := deposit.StrategyAddress
+		depositAmount := deposit.DepositAmount
+		amount, err := common.ParseETHAmount(depositAmount)
+		if err != nil {
+			return fmt.Errorf("failed to parse deposit amount '%s': %w", depositAmount, err)
+		}
+		if err := contractCaller.DepositIntoStrategy(cCtx.Context, ethcommon.HexToAddress(strategyAddress), amount); err != nil {
+			return fmt.Errorf("failed to deposit into strategy: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func delegateToOperator(cCtx *cli.Context, stakerSpec common.StakerSpec, operator ethcommon.Address, logger iface.Logger) error {
+
+	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+
+	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+	}
+
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+	}
+
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer client.Close()
+
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr := devnet.GetEigenLayerAddresses(cfg)
+	stakerPrivateKey := strings.TrimPrefix(stakerSpec.StakerECDSAKey, "0x")
+
+	contractCaller, err := common.NewContractCaller(
+		stakerPrivateKey,
+		big.NewInt(int64(l1Cfg.ChainID)),
+		client,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
+		ethcommon.HexToAddress(strategyManagerAddr),
+		logger,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
+	}
+	// After depositing, delegate to the operator
+	// Extract the private key of the operator we are delegating to in order to create an approval signature
+	var operatorPrivateKey string
 	for _, op := range envCtx.Operators {
-		if len(op.Allocations) == 0 {
-			logger.Info("Operator %s has not specified any allocations, skipping depositing to strategy", op.Address)
-			continue
+		if strings.EqualFold(op.Address, operator.Hex()) {
+			operatorPrivateKey = op.ECDSAKey
+			break
 		}
-		for _, allocation := range op.Allocations {
-			strategyAddress := allocation.StrategyAddress
-			depositAmount := allocation.DepositAmount
-			amount, err := common.ParseETHAmount(depositAmount)
-			if err != nil {
-				return fmt.Errorf("failed to parse deposit amount '%s': %w", depositAmount, err)
-			}
-			if err := contractCaller.DepositIntoStrategy(cCtx.Context, ethcommon.HexToAddress(strategyAddress), amount); err != nil {
-				return fmt.Errorf("failed to deposit into strategy: %w", err)
-			}
-		}
+	}
+	if operatorPrivateKey == "" {
+		return fmt.Errorf("ECDSAkey not found for operator %s in operators in config.This means we cannot create an approval signature for this delegation", operator)
+	}
+
+	// expiry is 10 minutes from now
+	expiry := big.NewInt(time.Now().Add(10 * time.Minute).Unix())
+
+	// generate a random salt
+	salt := [32]byte{}
+	rand.Read(salt[:])
+
+	// Create the approval signature
+	signature, err := contractCaller.CreateApprovalSignature(cCtx.Context, ethcommon.HexToAddress(stakerSpec.StakerAddress), operator, operator, operatorPrivateKey, salt, expiry)
+	if err != nil {
+		return fmt.Errorf("failed to create approval signature: %w", err)
+	}
+
+	if err := contractCaller.DelegateToOperator(cCtx.Context, operator, signature, salt); err != nil {
+		return fmt.Errorf("failed to delegate to operator: %w", err)
 	}
 	return nil
 }

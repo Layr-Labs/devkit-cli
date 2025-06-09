@@ -54,6 +54,21 @@ type OperatorSetAllocation struct {
 	AllocationInWads string `json:"allocation_in_wads" yaml:"allocation_in_wads"`
 }
 
+// StakerSpec defines a staker configuration with address, key, and deposits
+type StakerSpec struct {
+	StakerAddress   string           `json:"address" yaml:"address"`
+	StakerECDSAKey  string           `json:"ecdsa_key" yaml:"ecdsa_key"`
+	Deposits        []StakerDeposits `json:"deposits" yaml:"deposits"`
+	OperatorAddress string           `json:"operator" yaml:"operator"`
+}
+
+// StakerDeposits defines a deposit to a strategy
+type StakerDeposits struct {
+	StrategyAddress string `json:"strategy_address" yaml:"strategy_address"`
+	Name            string `json:"name" yaml:"name"`
+	DepositAmount   string `json:"deposit_amount" yaml:"deposit_amount"`
+}
+
 type AvsConfig struct {
 	Address          string `json:"address" yaml:"address"`
 	MetadataUri      string `json:"metadata_url" yaml:"metadata_url"`
@@ -120,6 +135,7 @@ type ChainContextConfig struct {
 	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
 	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
+	Stakers               []StakerSpec           `json:"stakers" yaml:"stakers"`
 }
 
 func LoadBaseConfig() (map[string]interface{}, error) {

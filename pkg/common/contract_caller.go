@@ -13,6 +13,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/contracts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -335,6 +336,101 @@ func (cc *ContractCaller) DepositIntoStrategy(ctx context.Context, strategyAddre
 		return tx, err
 	})
 	return err
+}
+
+func (cc *ContractCaller) DelegateToOperator(ctx context.Context, operatorAddress common.Address, signature DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry, approverSalt [32]byte) error {
+	opts, err := cc.buildTxOpts()
+	if err != nil {
+		return fmt.Errorf("failed to build transaction options: %w", err)
+	}
+
+	delegationManager, err := cc.registry.GetDelegationManager(cc.delegationManagerAddr)
+	if err != nil {
+		return fmt.Errorf("failed to get DelegationManager: %w", err)
+	}
+
+	cc.logger.Info("DelegateToOperator parameters - Operator: %s, Signature: %s, Expiry: %s, ApproverSalt: %s",
+		operatorAddress.Hex(),
+		hex.EncodeToString(signature.Signature),
+		signature.Expiry.String(),
+		hex.EncodeToString(approverSalt[:]))
+
+	err = cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("DelegateToOperator: operator %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
+		tx, err := delegationManager.DelegateTo(opts, operatorAddress, signature, approverSalt)
+		if err == nil && tx != nil {
+			cc.logger.Debug(
+				"Transaction hash for DelegateToOperator: %s\n"+
+					"operatorAddress: %s\n"+
+					"signature: %s\n"+
+					"approverSalt: %s",
+				tx.Hash().Hex(),
+				operatorAddress,
+				signature,
+				approverSalt,
+			)
+		}
+		return tx, err
+	})
+	return err
+}
+
+func (cc *ContractCaller) CreateApprovalSignature(ctx context.Context, stakerAddress common.Address, operatorAddress common.Address, approverAddress common.Address, approverPrivateKey string, approverSalt [32]byte, expiry *big.Int) (DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry, error) {
+	delegationManager, err := cc.registry.GetDelegationManager(cc.delegationManagerAddr)
+	if err != nil {
+		return DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry{}, fmt.Errorf("failed to get DelegationManager: %w", err)
+	}
+
+	// calculateDelegationApprovalDigestHash
+	delegationApprovalDigestHash, err := delegationManager.CalculateDelegationApprovalDigestHash(nil, stakerAddress, operatorAddress, approverAddress, approverSalt, expiry)
+	if err != nil {
+		return DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry{}, fmt.Errorf("failed to calculate delegation approval digest hash: %w", err)
+	}
+
+	// Convert private key from hex string to *ecdsa.PrivateKey
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(approverPrivateKey, "0x"))
+	if err != nil {
+		return DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry{}, fmt.Errorf("failed to parse private key: %w", err)
+	}
+	cc.logger.Info("Signing approval signature for staker %s, operator %s, approver %s, salt %s, expiry %s", stakerAddress.Hex(), operatorAddress.Hex(), approverAddress.Hex(), approverSalt, expiry.String())
+
+	// sign the digest hash - convert [32]byte to []byte using slice notation
+	signature, err := crypto.Sign(delegationApprovalDigestHash[:], privateKey)
+	if err != nil {
+		return DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry{}, fmt.Errorf("failed to sign digest hash: %w", err)
+	}
+
+	cc.logger.Info("Raw signature (before recovery ID adjustment): %s", hex.EncodeToString(signature))
+	cc.logger.Info("Digest hash: %s", hex.EncodeToString(delegationApprovalDigestHash[:]))
+
+	// Verify the signature locally for debugging (before adjusting recovery ID)
+	recoveredPubKey, err := crypto.SigToPub(delegationApprovalDigestHash[:], signature)
+	if err != nil {
+		cc.logger.Warn("Failed to recover public key from signature: %v", err)
+	} else {
+		recoveredAddr := crypto.PubkeyToAddress(*recoveredPubKey)
+		cc.logger.Info("Signature verification - Expected approver: %s, Recovered address: %s", approverAddress.Hex(), recoveredAddr.Hex())
+		if recoveredAddr != approverAddress {
+			cc.logger.Warn("Signature verification failed: recovered address does not match approver address")
+		} else {
+			cc.logger.Info("Signature verification successful")
+		}
+	}
+
+	// EigenLayer contracts use OpenZeppelin's SignatureChecker which expects recovery ID 27/28
+	// crypto.Sign returns [R || S || V] where V is 0 or 1
+	// OpenZeppelin's ECDSA library expects V to be 27 or 28
+	if len(signature) == 65 {
+		signature[64] += 27
+		cc.logger.Info("Adjusted signature for EigenLayer (V += 27): %s", hex.EncodeToString(signature))
+	}
+
+	// Create the signature with expiry structure
+	signatureWithExpiry := DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry{
+		Signature: signature,
+		Expiry:    expiry,
+	}
+
+	return signatureWithExpiry, nil
 }
 
 func (cc *ContractCaller) ModifyAllocations(ctx context.Context, operatorAddress common.Address, operatorPrivateKey string, strategies []common.Address, newMagnitudes []uint64, avsAddress common.Address, opSetId uint32, logger iface.Logger) error {

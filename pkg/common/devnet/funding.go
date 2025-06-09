@@ -69,8 +69,8 @@ func StopImpersonatingAccount(client *rpc.Client, address common.Address) error 
 	return nil
 }
 
-// FundOperatorWithTokens funds an operator with strategy tokens using impersonation
-func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, operatorAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, rpcURL string) error {
+// FundStakerWithTokens funds staker with strategy tokens using impersonation
+func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, stakerAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, rpcURL string) error {
 	if tokenFunding.TokenName == "bEIGEN" {
 		// For bEIGEN, we need to call unwrap() on the EIGEN contract first
 		// to convert EIGEN tokens to bEIGEN tokens
@@ -160,7 +160,7 @@ func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rp
 	}
 
 	// Encode transfer function call using the registry's ERC20 contract
-	transferData, err := contracts.PackTransferCall(operatorAddress, tokenFunding.Amount)
+	transferData, err := contracts.PackTransferCall(stakerAddress, tokenFunding.Amount)
 	if err != nil {
 		return fmt.Errorf("failed to pack transfer call: %w", err)
 	}
@@ -190,7 +190,7 @@ func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rp
 	}
 
 	log.Printf("✅ Successfully funded %s with %s %s (tx: %s)",
-		operatorAddress.Hex(),
+		stakerAddress.Hex(),
 		tokenFunding.Amount.String(),
 		tokenAddress,
 		txHash.Hex())
@@ -198,8 +198,8 @@ func FundOperatorWithTokens(ctx context.Context, ethClient *ethclient.Client, rp
 	return nil
 }
 
-// FundOperatorsWithStrategyTokens funds all operators with the specified strategy tokens
-func FundOperatorsWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, tokenAddresses []string) error {
+// FundStakersWithStrategyTokens funds all stakers with the specified strategy tokens
+func FundStakersWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, tokenAddresses []string) error {
 	if os.Getenv("SKIP_TOKEN_FUNDING") == "true" {
 		log.Println("🔧 Skipping token funding (test mode)")
 		return nil
@@ -220,9 +220,9 @@ func FundOperatorsWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, 
 
 	ctx := context.Background()
 
-	// Fund each operator with each requested token
-	for _, operator := range cfg.Context[DEVNET_CONTEXT].Operators {
-		operatorAddr := common.HexToAddress(operator.Address)
+	// Fund each staker with each requested token
+	for _, staker := range cfg.Context[DEVNET_CONTEXT].Stakers {
+		stakerAddr := common.HexToAddress(staker.StakerAddress)
 
 		for _, tokenAddressStr := range tokenAddresses {
 			tokenAddress := common.HexToAddress(tokenAddressStr)
@@ -233,9 +233,9 @@ func FundOperatorsWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, 
 				continue
 			}
 
-			err := FundOperatorWithTokens(ctx, ethClient, rpcClient, operatorAddr, tokenFunding, tokenAddress, rpcURL)
+			err := FundStakerWithTokens(ctx, ethClient, rpcClient, stakerAddr, tokenFunding, tokenAddress, rpcURL)
 			if err != nil {
-				log.Printf("❌ Failed to fund %s with %s (%s): %v", operatorAddr.Hex(), tokenFunding.TokenName, tokenAddressStr, err)
+				log.Printf("❌ Failed to fund %s with %s (%s): %v", stakerAddr.Hex(), tokenFunding.TokenName, tokenAddressStr, err)
 				continue
 			}
 		}
