@@ -76,7 +76,9 @@ func TestLoadGlobalSettings_MalformedYAML(t *testing.T) {
 
 	// Create config dir and invalid YAML
 	d := filepath.Join(tmp, ".devkit")
-	os.MkdirAll(d, 0755)
+	if err := os.MkdirAll(d, 0755); err != nil {
+		t.Fatalf("mkdir failed: %v", err)
+	}
 	cfg := filepath.Join(d, GlobalConfigFile)
 	if err := os.WriteFile(cfg, []byte("not: [valid: yaml"), 0644); err != nil {
 		t.Fatalf("write malformed YAML: %v", err)
