@@ -55,27 +55,36 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 
 	// Test stakers parsing - verify that stakers configuration is loaded correctly
 	assert.NotEmpty(t, cfg.Context["devnet"].Stakers, "Stakers should be loaded from context")
-	assert.Len(t, cfg.Context["devnet"].Stakers, 1, "Should have one staker configured")
+	assert.Len(t, cfg.Context["devnet"].Stakers, 2, "Should have two stakers configured")
 
 	staker := cfg.Context["devnet"].Stakers[0]
 	assert.Equal(t, "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f", staker.StakerAddress)
 	assert.Equal(t, "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97", staker.StakerECDSAKey)
 
-	// assert.Len(t, staker.Delegations, 2, "Staker should have two delegations")
+	// Test deposits structure
+	assert.Len(t, staker.Deposits, 2, "First staker should have two deposits")
 
-	// // Test first delegation
-	// delegation1 := staker.Delegations[0]
-	// assert.Equal(t, "0x93c4b944D05dfe6df7645A86cd2206016c51564D", delegation1.StrategyAddress)
-	// assert.Equal(t, "stETH_Strategy", delegation1.Name)
-	// assert.Equal(t, "5ETH", delegation1.DepositAmount)
-	// assert.Equal(t, "0x90F79bf6EB2c4f870365E785982E1f101E93b906", delegation1.OperatorAddress)
+	// Test first deposit
+	deposit1 := staker.Deposits[0]
+	assert.Equal(t, "0x93c4b944D05dfe6df7645A86cd2206016c51564D", deposit1.StrategyAddress)
+	assert.Equal(t, "stETH_Strategy", deposit1.Name)
+	assert.Equal(t, "5ETH", deposit1.DepositAmount)
 
-	// // Test second delegation
-	// delegation2 := staker.Delegations[1]
-	// assert.Equal(t, "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7", delegation2.StrategyAddress)
-	// assert.Equal(t, "Eigen_Strategy", delegation2.Name)
-	// assert.Equal(t, "5ETH", delegation2.DepositAmount)
-	// assert.Equal(t, "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", delegation2.OperatorAddress)
+	// Test second deposit
+	deposit2 := staker.Deposits[1]
+	assert.Equal(t, "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7", deposit2.StrategyAddress)
+	assert.Equal(t, "Eigen_Strategy", deposit2.Name)
+	assert.Equal(t, "5ETH", deposit2.DepositAmount)
+
+	// Test operator delegation
+	assert.Equal(t, "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", staker.OperatorAddress)
+
+	// Test second staker
+	staker2 := cfg.Context["devnet"].Stakers[1]
+	assert.Equal(t, "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720", staker2.StakerAddress)
+	assert.Equal(t, "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6", staker2.StakerECDSAKey)
+	assert.Equal(t, "0x90F79bf6EB2c4f870365E785982E1f101E93b906", staker2.OperatorAddress)
+	assert.Len(t, staker2.Deposits, 2, "Second staker should have two deposits")
 
 	assert.Equal(t, "devnet", cfg.Context["devnet"].Name)
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l1"].RPCURL)
