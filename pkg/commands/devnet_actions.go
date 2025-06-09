@@ -1042,7 +1042,7 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 
 func depositIntoStrategy(cCtx *cli.Context, stakerSpec common.StakerSpec, logger iface.Logger) error {
 	if stakerSpec.StakerAddress == "" {
-		return fmt.Errorf("staker addreess parameter is required and cannot be empty")
+		return fmt.Errorf("staker address parameter is required and cannot be empty")
 	}
 
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
