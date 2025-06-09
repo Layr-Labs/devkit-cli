@@ -244,6 +244,22 @@ jobs:
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
 
+      - name: Install & Start Docker Desktop on macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          # launch Docker.app without stealing focus
+          open -g /Applications/Docker.app
+
+          # wait up to 60s for the daemon to be responsive
+          for i in {1..30}; do
+            docker info >/dev/null 2>&1 && break
+            echo "Waiting for Docker daemon… ($i/30)"
+            sleep 2
+          done
+
+          # fail if it never started
+          docker info || (echo "Docker daemon failed to start" && exit 1)
+
       - name: Run devkit avs build
         run: |
           cd ./my-awesome-avs/
