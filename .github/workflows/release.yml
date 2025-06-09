@@ -282,7 +282,13 @@ jobs:
           done
           docker info
           
+      - name: Install Docker Buildx (macOS)
+        if: matrix.os == 'macos-latest'
+        run: brew install docker-buildx
+
       - name: Run devkit avs build
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
           cd ./my-awesome-avs/
           devkit avs build
