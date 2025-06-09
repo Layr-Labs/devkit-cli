@@ -56,7 +56,6 @@ context:
       allocations:
         - strategy_address: "0x93c4b944D05dfe6df7645A86cd2206016c51564D"
           name: "stETH_Strategy"
-          deposit_amount: "5ETH" # depositIntoStrategy amount 
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
             - operator_set: "0" 
@@ -65,7 +64,6 @@ context:
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
         - strategy_address: "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7"
           name: "Eigen_Strategy"
-          deposit_amount: "5ETH" # depositIntoStrategy amount 
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
             - operator_set: "0"
@@ -79,7 +77,6 @@ context:
       allocations:
         - strategy_address: "0x93c4b944D05dfe6df7645A86cd2206016c51564D"
           name: "stETH_Strategy"
-          deposit_amount: "5ETH" # depositIntoStrategy amount 
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
             - operator_set: "0" 
@@ -88,7 +85,6 @@ context:
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
         - strategy_address: "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7"
           name: "Eigen_Strategy"
-          deposit_amount: "5ETH" # depositIntoStrategy amount 
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
             - operator_set: "0"

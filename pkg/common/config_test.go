@@ -51,7 +51,6 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.NotEmpty(t, cfg.Context["devnet"].Operators[0].Allocations)
 	assert.Equal(t, "0x93c4b944D05dfe6df7645A86cd2206016c51564D", cfg.Context["devnet"].Operators[0].Allocations[0].StrategyAddress)
 	assert.Equal(t, "stETH_Strategy", cfg.Context["devnet"].Operators[0].Allocations[0].Name)
-	assert.Equal(t, "5ETH", cfg.Context["devnet"].Operators[0].Allocations[0].DepositAmount)
 
 	// Test stakers parsing - verify that stakers configuration is loaded correctly
 	assert.NotEmpty(t, cfg.Context["devnet"].Stakers, "Stakers should be loaded from context")

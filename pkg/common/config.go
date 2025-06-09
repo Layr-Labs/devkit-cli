@@ -44,7 +44,6 @@ type OperatorSpec struct {
 type OperatorAllocation struct {
 	StrategyAddress        string                  `json:"strategy_address" yaml:"strategy_address"`
 	Name                   string                  `json:"name" yaml:"name"`
-	DepositAmount          string                  `json:"deposit_amount" yaml:"deposit_amount"`
 	OperatorSetAllocations []OperatorSetAllocation `json:"operator_set_allocations" yaml:"operator_set_allocations"`
 }
 
