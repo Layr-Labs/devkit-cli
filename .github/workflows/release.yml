@@ -211,6 +211,9 @@ jobs:
           arch -x86_64 /usr/local/bin/brew shellenv \
             | sed 's/^export //g' >> $GITHUB_ENV
           
+          # make sure 'brew' always runs under x86_64
+          echo "alias brew='arch -x86_64 brew'" >> $BASH_ENV
+
           # verify brew is on PATH and running under x86_64
           which brew
           file "$(which brew)"
