@@ -57,7 +57,7 @@ func WithAppEnvironment(ctx *cli.Context) {
 }
 
 func withAppEnvironmentFromLocation(ctx *cli.Context, location string) {
-	user := getUserUUIDFromGlobalSettings()
+	user := getUserUUIDFromGlobalConfig()
 	if user == "" {
 		user = uuid.New().String()
 	}

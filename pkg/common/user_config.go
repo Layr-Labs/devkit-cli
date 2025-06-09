@@ -50,7 +50,7 @@ func SaveUserId(userUuid string) error {
 	return nil
 }
 
-func getUserUUIDFromGlobalSettings() string {
+func getUserUUIDFromGlobalConfig() string {
 	config, err := LoadGlobalConfig()
 	if err != nil {
 		return ""

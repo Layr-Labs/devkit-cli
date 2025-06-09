@@ -66,12 +66,12 @@ func TestSaveUserIdAndLoadGlobalSettings(t *testing.T) {
 	}
 }
 
-func TestGetUserUUIDFromGlobalSettings_Empty(t *testing.T) {
+func TestgetUserUUIDFromGlobalConfig_Empty(t *testing.T) {
 	// Unset HOME
 	os.Unsetenv("XDG_CONFIG_HOME")
 
 	// Ensure no config and HOME unset
-	uuid := getUserUUIDFromGlobalSettings()
+	uuid := getUserUUIDFromGlobalConfig()
 	if uuid != "" {
 		t.Errorf("expected empty UUID when XDG_CONFIG_HOME unset, got %q", uuid)
 	}
