@@ -252,6 +252,7 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 		metrics.Properties["os"] = appEnv.OS
 		metrics.Properties["arch"] = appEnv.Arch
 		metrics.Properties["project_uuid"] = appEnv.ProjectUUID
+		metrics.Properties["user_uuid"] = appEnv.UserUUID
 	}
 
 	for k, v := range collectFlagValues(ctx) {

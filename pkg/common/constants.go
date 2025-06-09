@@ -11,6 +11,9 @@ const (
 	// ContractsMakefile is the name of the makefile used for contract level operations
 	ContractsMakefile = "Makefile"
 
+	// GlobalConfigFile is the name of the global YAML used to store global config details (eg, user_id)
+	GlobalConfigFile = ".global.devkit.yaml"
+
 	// Filename for devkit project config
 	BaseConfig = "config.yaml"
 

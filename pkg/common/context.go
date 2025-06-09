@@ -39,14 +39,16 @@ type AppEnvironment struct {
 	OS          string
 	Arch        string
 	ProjectUUID string
+	UserUUID    string
 }
 
-func NewAppEnvironment(os string, arch string, projectUuid string) *AppEnvironment {
+func NewAppEnvironment(os, arch, projectUuid, userUuid string) *AppEnvironment {
 	return &AppEnvironment{
 		CLIVersion:  embeddedDevkitReleaseVersion,
 		OS:          os,
 		Arch:        arch,
 		ProjectUUID: projectUuid,
+		UserUUID:    userUuid,
 	}
 }
 
@@ -55,6 +57,11 @@ func WithAppEnvironment(ctx *cli.Context) {
 }
 
 func withAppEnvironmentFromLocation(ctx *cli.Context, location string) {
+	user := getUserUUIDFromGlobalSettings()
+	if user == "" {
+		user = uuid.New().String()
+	}
+
 	id := getProjectUUIDFromLocation(location)
 	if id == "" {
 		id = uuid.New().String()
@@ -63,6 +70,7 @@ func withAppEnvironmentFromLocation(ctx *cli.Context, location string) {
 		runtime.GOOS,
 		runtime.GOARCH,
 		id,
+		user,
 	))
 }
 

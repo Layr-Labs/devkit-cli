@@ -370,7 +370,6 @@ const contractsBasePath = ".devkit/contracts"
 
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error {
-
 	logger.Debug("Removing existing .git directory in %s (if any)...", targetDir)
 
 	// remove the old .git dir
