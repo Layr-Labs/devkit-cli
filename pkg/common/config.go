@@ -133,7 +133,7 @@ This can cause context corruption if you proceed. Please update your devkit CLI 
 
   # Update devkit CLI to latest version
 
-VERSION=v0.0.8
+VERSION=%s
 ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
 DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
 
@@ -147,7 +147,7 @@ After updating, verify the CLI version supports your context:
   devkit --version
 
 DO NOT edit the context file until you update the CLI version.
-`, e.ContextFile, e.ContextVersion, e.CLIVersion, e.LatestSupported)
+`, e.ContextFile, e.ContextVersion, e.CLIVersion, e.LatestSupported, embeddedDevkitReleaseVersion)
 }
 
 // parseVersion converts version string like "0.0.5" to comparable integers
