@@ -284,7 +284,20 @@ jobs:
           
       - name: Install Docker Buildx (macOS)
         if: matrix.os == 'macos-latest'
-        run: brew install docker-buildx
+        run:  |
+          brew install docker-buildx
+
+          # ensure the CLI-plugins dir exists
+          mkdir -p ~/.docker/cli-plugins
+
+          # symlink the Homebrew buildx into Dockers plugin folder
+          ln -sf "$(brew --prefix)/bin/docker-buildx" ~/.docker/cli-plugins/docker-buildx
+
+          # install it as the default builder
+          docker buildx install
+
+          # verify
+          docker buildx version
 
       - name: Run devkit avs build
         env:
