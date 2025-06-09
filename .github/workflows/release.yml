@@ -197,41 +197,27 @@ jobs:
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
 
-      - name: Install Homebrew on macOS ARM64
-        if: matrix.os == 'macos-latest' && matrix.arch == 'arm64'
-        run: |
-          # enable Rosetta  
-          sudo softwareupdate --install-rosetta --agree-to-license || true
-
-          # install ARM Homebrew into /opt/homebrew  
-          arch -arm64 /bin/bash -c \
-            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-          # load /opt/homebrew/bin/brew into your PATH
-          echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-          eval "$(/opt/homebrew/bin/brew shellenv)"
-
-          # force all brew calls under arm64  
-          echo "alias brew='arch -arm64 brew'" >> ~/.bashrc
-          source ~/.bashrc
-
-      - name: Install Homebrew on macOS AMD64
+      - name: Install Homebrew on macOS x64
         if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
         run: |
-          # enable Rosetta (so you can run x86_64 processes on Apple Silicon hosts)
+          # enable Rosetta (needed only on Apple Silicon hosts)
           sudo softwareupdate --install-rosetta --agree-to-license || true
 
           # install Intel Homebrew into /usr/local
           arch -x86_64 /bin/bash -c \
             "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-          # load /usr/local/bin/brew into your PATH
-          echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.bash_profile
+          # load /usr/local/bin/brew into PATH
           eval "$(/usr/local/bin/brew shellenv)"
 
-          # force all future brew invocations under x86_64
-          echo "alias brew='arch -x86_64 brew'" >> ~/.bashrc
-          source ~/.bashrc
+          # persist the shellenv to login profile
+          echo 'eval "$(/usr/local/bin/brew shellenv)"' >> $GITHUB_ENV
+
+          # alias all future brew invocations to x86_64
+          echo "alias brew='arch -x86_64 brew'" >> $GITHUB_ENV
+
+          # verify
+          brew --version
           
       - name: Set up Go
         uses: actions/setup-go@v5
