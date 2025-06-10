@@ -239,21 +239,13 @@ jobs:
       - name: Install Orbstack & Docker CLI (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install --cask orbstack
-          brew install docker
-          # make the orbstack binary visible
-          echo "/Applications/Orbstack.app/Contents/MacOS" >> $GITHUB_PATH
+          brew install docker orbstack
 
       - name: Start OrbStacks Docker engine
         if: matrix.os == 'macos-latest'
-        env:
-          ORBSTACK_CLI_SKIP_ANALYTICS: "1"
-          ORBSTACK_CLI_SKIP_UPDATES_CHECK: "1"
         run: |
-          # start OrbStacks VM & Docker engine without blocking
-          nohup orbstack start docker --wait=false >/dev/null 2>&1 &
-          # source init script
-          source ~/.orbstack/shell/init.bash 2>/dev/null || true
+          orb config set setup.use_admin false
+          orb start
           # wire Docker CLI to OrbStacks engine
           docker context use orbstack
           # wait for Docker daemon
