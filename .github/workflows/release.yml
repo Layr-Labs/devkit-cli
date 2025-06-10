@@ -240,9 +240,13 @@ jobs:
         if: matrix.os == 'macos-latest'
         run: |
           brew install lima colima docker
+
           # this provides the missing guest-agent bits for various arches
           brew install lima-additional-guestagents
 
+          # ensure Homebrews bin is on PATH for all later steps
+          echo "/usr/local/bin" >> $GITHUB_PATH
+          
       - name: Run devkit avs create
         run: devkit avs create --disable-telemetry my-awesome-avs
 
