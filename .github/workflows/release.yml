@@ -334,9 +334,8 @@ jobs:
 
       - name: Start devnet (macOS)
         if: matrix.os == 'macos-latest'
-        env:
-          DOCKER_HOST: unix://${HOME}/.colima/default/docker.sock
         run: |
+          export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
           docker context use colima
           cd ./my-awesome-avs/
           devkit avs devnet start &
