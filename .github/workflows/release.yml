@@ -197,7 +197,7 @@ jobs:
       - name: Add ~/bin to PATH
         run: echo "$HOME/bin" >> $GITHUB_PATH
 
-      - name: Install Homebrew on macOS x64
+      - name: Install Homebrew (macOS -x64)
         if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
         run: |
           # enable Rosetta (needed only on Apple Silicon hosts)
@@ -236,7 +236,7 @@ jobs:
         with:
           version: stable
 
-      - name: Install Colima, Lima guestagents & Docker CLI on macOS
+      - name: Install Colima, Lima guestagents & Docker CLI (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           # use the ARM-native Homebrew for host tools
@@ -259,26 +259,28 @@ jobs:
           which docker
           docker --version
 
-      - name: Start Colima under QEMU
+      - name: Start Colima under QEMU (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           # boot the VM + Docker
           colima start \
             --vm-type qemu \
+            --runtime docker \
             --arch x86_64 \
             --cpu 2 \
             --memory 4 \
             --disk 50 \
             --activate
 
-          # switch your CLI to that context
-          docker context use colima
+      - name: Switch Docker context (macOS)
+        if: matrix.os == 'macos-latest'
+        run: docker context use colima
 
-      - name: Link Docker socket for Docker CLI
+      - name: Link Docker socket for Docker CLI (macOS)
         if: matrix.os == 'macos-latest'
         run: sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
 
-      - name: Verify Docker daemon
+      - name: Verify Docker daemon (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           for i in {1..30}; do
@@ -330,14 +332,22 @@ jobs:
           cd ./my-awesome-avs/
           devkit avs build
 
-      - name: Start devnet
+      - name: Start devnet (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          DOCKER_HOST: unix://${HOME}/.colima/default/docker.sock
+        run: |
+          docker context use colima
+          cd ./my-awesome-avs/
+          devkit avs devnet start &
+          until nc -z localhost 9090 && nc -z localhost 8081; do sleep 1; done
+
+      - name: Start devnet (Linux)
+        if: matrix.os != 'macos-latest'
         run: |
           cd ./my-awesome-avs/
           devkit avs devnet start &
-          # wait until executor and aggregator are available
-          until nc -z localhost 9090 && nc -z localhost 8081; do
-            sleep 1
-          done
+          until nc -z localhost 9090 && nc -z localhost 8081; do sleep 1; done
 
       - name: Check devnet RPC is live
         run: |
