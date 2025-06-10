@@ -236,29 +236,56 @@ jobs:
         with:
           version: stable
 
-      - name: Install Colima & Docker CLI (macOS)
+      - name: Install Colima, Lima guestagents & Docker CLI on macOS
         if: matrix.os == 'macos-latest'
         run: |
-          brew install docker colima
-          brew install lima-additional-guestagents
+          # use the ARM-native Homebrew for host tools
+          BREW_ARM=/opt/homebrew/bin/brew
 
-      - name: Start Colima Docker engine
+          echo "Using ARM Homebrew at $BREW_ARM"
+
+          # install Lima, Colima and Docker CLI natively
+          $BREW_ARM install lima colima docker
+          $BREW_ARM install lima-additional-guestagents
+
+          # ensure ARM brews bin is on PATH for all later steps
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+          # sanity-check
+          which colima
+          file "$(which colima)"
+          colima version
+          which docker
+          docker --version
+
+      - name: Start Colima under QEMU
         if: matrix.os == 'macos-latest'
         run: |
-          # start Colima headlessly under QEMU
-          colima start --vm-type qemu --cpu 2 --memory 4 --disk 50
-          # wire Docker CLI to Colima engine
+          # boot the VM + Docker
+          colima start \
+            --vm-type qemu \
+            --arch x86_64 \
+            --cpu 2 \
+            --memory 4 \
+            --disk 50 \
+            --activate
+
+          # ensure the 'colima' Docker context is registered (idempotent)
+          colima docker context create colima || true
+
+          # switch your CLI to that context
           docker context use colima
-          # wait for Docker daemon
-          for i in {1..30}; do
-            docker info >/dev/null && break
-            echo "Waiting for Colima Docker... ($i/30)"
-            sleep 2
-          done
 
       - name: Verify Docker daemon
         if: matrix.os == 'macos-latest'
-        run: docker info
+        run: |
+          for i in {1..30}; do
+            docker info &>/dev/null && break
+            echo "Waiting for Colima Docker context... ($i/30)"
+            sleep 2
+          done
+          docker info
 
       - name: Run devkit avs create
         run: devkit avs create --disable-telemetry my-awesome-avs
