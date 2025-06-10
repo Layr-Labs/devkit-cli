@@ -286,6 +286,23 @@ jobs:
           # verify
           docker compose version
 
+      - name: Install Docker Buildx (macOS)
+        if: matrix.os == 'macos-latest'
+        run:  |
+          brew install docker-buildx
+
+          # ensure the CLI-plugins dir exists
+          mkdir -p ~/.docker/cli-plugins
+
+          # symlink the Homebrew buildx into Dockers plugin folder
+          ln -sf "$(brew --prefix)/bin/docker-buildx" ~/.docker/cli-plugins/docker-buildx
+
+          # install it as the default builder
+          docker buildx install
+
+          # verify
+          docker buildx version
+
       - name: Start Colima under QEMU (macOS)
         if: matrix.os == 'macos-latest'
         run: |
@@ -320,13 +337,6 @@ jobs:
       - name: Run devkit avs create
         run: devkit avs create --disable-telemetry my-awesome-avs
 
-      - name: Source shell profile
-        # force a login shell so it actually reads ~/.bashrc / ~/.bash_profile
-        shell: bash -l {0}
-        run: |
-          source ~/.bashrc       2>/dev/null || true
-          source ~/.bash_profile 2>/dev/null || true
-
       - name: Verify AVS project created
         run: |
           if [ ! -f "./my-awesome-avs/config/config.yaml" ]; then
@@ -335,23 +345,6 @@ jobs:
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
 
-      - name: Install Docker Buildx (macOS)
-        if: matrix.os == 'macos-latest'
-        run:  |
-          brew install docker-buildx
-
-          # ensure the CLI-plugins dir exists
-          mkdir -p ~/.docker/cli-plugins
-
-          # symlink the Homebrew buildx into Dockers plugin folder
-          ln -sf "$(brew --prefix)/bin/docker-buildx" ~/.docker/cli-plugins/docker-buildx
-
-          # install it as the default builder
-          docker buildx install
-
-          # verify
-          docker buildx version
-
       - name: Run devkit avs build
         env:
           DOCKER_BUILDKIT: 1
@@ -359,29 +352,7 @@ jobs:
           cd ./my-awesome-avs/
           devkit avs build
 
-      - name: Start devnet (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          set -euxo pipefail
-          docker context use colima
-          cd ./my-awesome-avs/
-
-          # redirect stdout/stderr to a file for later inspection
-          devkit avs devnet start >devnet.log 2>&1 &
-          pid=$!
-
-          # give it a second to crash if its going to
-          sleep 3
-          if ! kill -0 $pid 2>/dev/null; then
-            cat devnet.log
-            docker compose logs --no-color
-            exit 1
-          fi
-
-          until nc -z localhost 9090 && nc -z localhost 8081; do sleep 1; done
-
-      - name: Start devnet (Linux)
-        if: matrix.os != 'macos-latest'
+      - name: Start devnet
         run: |
           cd ./my-awesome-avs/
           devkit avs devnet start &
