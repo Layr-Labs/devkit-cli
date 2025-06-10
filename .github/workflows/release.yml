@@ -259,6 +259,20 @@ jobs:
           which docker
           docker --version
 
+      - name: Install Docker Compose plugin (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # install the official Compose V2 plugin
+          brew tap docker/compose
+          brew install docker-compose-plugin
+
+          # ensure its picked up by the Docker CLI
+          mkdir -p ~/.docker/cli-plugins
+          ln -sf "$(brew --prefix)/bin/docker-compose" ~/.docker/cli-plugins/docker-compose
+
+          # verify
+          docker compose version
+
       - name: Start Colima under QEMU (macOS)
         if: matrix.os == 'macos-latest'
         run: |
