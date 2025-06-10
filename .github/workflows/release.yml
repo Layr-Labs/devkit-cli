@@ -236,28 +236,29 @@ jobs:
         with:
           version: stable
 
-      - name: Install Colima, Lima guestagents & Docker CLI on macOS
+      - name: Install Orbstack (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # use the ARM-native Homebrew for host tools
-          BREW_ARM=/opt/homebrew/bin/brew
+          brew install --cask orbstack
+          # ensure CLI is on PATH
+          echo "/Applications/Orbstack.app/Contents/Resources/cli" >> $GITHUB_PATH
 
-          echo "Using ARM Homebrew at $BREW_ARM"
+      - name: Start Orbstacks Docker service
+        if: matrix.os == 'macos-latest'
+        run: |
+          orbstack start docker
+          # wait until Docker daemon is ready
+          for i in {1..30}; do
+            command -v docker >/dev/null \
+              && docker info >/dev/null 2>&1 && break
+            echo "Waiting for Orbstack Docker... ($i/30)"
+            sleep 2
+          done
 
-          # install Lima, Colima and Docker CLI natively
-          $BREW_ARM install lima colima docker
-          $BREW_ARM install lima-additional-guestagents
-
-          # ensure ARM brews bin is on PATH for all later steps
-          echo "/opt/homebrew/bin" >> $GITHUB_PATH
-          echo "$HOME/bin" >> $GITHUB_PATH
-
-          # sanity-check
-          which colima
-          file "$(which colima)"
-          colima version
-          which docker
-          docker --version
+      - name: Verify Docker daemon
+        if: matrix.os == 'macos-latest'
+        run: |
+          docker info
                 
       - name: Run devkit avs create
         run: devkit avs create --disable-telemetry my-awesome-avs
@@ -276,48 +277,6 @@ jobs:
             exit 1
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
-
-      - name: Start Colima under QEMU
-        if: matrix.os == 'macos-latest'
-        run: |
-          colima start \
-            --vm-type qemu \
-            --arch x86_64 \
-            --cpu 2 \
-            --memory 4 \
-            --disk 50 \
-            --activate
-
-          # instruct docker to use colima socket
-          docker context use colima
-          
-      - name: Verify Docker daemon
-        if: matrix.os == 'macos-latest'
-        run: |
-          for i in {1..30}; do
-            command -v docker >/dev/null \
-              && docker info >/dev/null 2>&1 && break
-            echo "Waiting for Colima/QEMU Docker... ($i/30)"
-            sleep 2
-          done
-          docker info
-          
-      - name: Install Docker Buildx (macOS)
-        if: matrix.os == 'macos-latest'
-        run:  |
-          brew install docker-buildx
-
-          # ensure the CLI-plugins dir exists
-          mkdir -p ~/.docker/cli-plugins
-
-          # symlink the Homebrew buildx into Dockers plugin folder
-          ln -sf "$(brew --prefix)/bin/docker-buildx" ~/.docker/cli-plugins/docker-buildx
-
-          # install it as the default builder
-          docker buildx install
-
-          # verify
-          docker buildx version
 
       - name: Run devkit avs build
         env:
