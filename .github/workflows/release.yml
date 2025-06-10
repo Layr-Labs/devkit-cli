@@ -251,7 +251,7 @@ jobs:
           ORBSTACK_CLI_SKIP_UPDATES_CHECK: "1"
         run: |
           # start OrbStacks VM & Docker engine without blocking
-          orbstack start --wait=false
+          orbstack start docker --wait=false
           # wire Docker CLI to OrbStacks engine
           eval "$(orbstack docker env --shell=posix)"
           # wait for Docker daemon
