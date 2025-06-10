@@ -271,14 +271,12 @@ jobs:
             --disk 50 \
             --activate
 
-          # ensure the 'colima' Docker context is registered (idempotent)
-          colima docker context create colima || true
-
           # switch your CLI to that context
           docker context use colima
 
-          # put env into GITHUB_ENV
-          colima docker-env --shell bash >> $GITHUB_ENV
+      - name: Link Docker socket for Docker CLI
+        if: matrix.os == 'macos-latest'
+        run: sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
 
       - name: Verify Docker daemon
         if: matrix.os == 'macos-latest'
