@@ -335,9 +335,25 @@ jobs:
       - name: Start devnet (macOS)
         if: matrix.os == 'macos-latest'
         run: |
+          set -euxo pipefail
           docker context use colima
           cd ./my-awesome-avs/
-          devkit avs devnet start &
+
+          # show resolved compose file
+          docker compose config
+
+          # redirect stdout/stderr to a file for later inspection
+          devkit avs devnet start >devnet.log 2>&1 &
+          pid=$!
+
+          # give it a second to crash if its going to
+          sleep 3
+          if ! kill -0 $pid 2>/dev/null; then
+            cat devnet.log
+            docker compose logs --no-color
+            exit 1
+          fi
+
           until nc -z localhost 9090 && nc -z localhost 8081; do sleep 1; done
 
       - name: Start devnet (Linux)
