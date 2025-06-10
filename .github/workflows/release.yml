@@ -239,21 +239,19 @@ jobs:
       - name: Install Colima & Docker CLI (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install docker colima lima
-          brew install lima-additional-guestagents
+          brew install docker colima
 
       - name: Start Colima Docker engine
         if: matrix.os == 'macos-latest'
         run: |
           # start Colima headlessly under QEMU
-          limactl start --name colima --cpus 2 --memory 4 --disk 50 --agent 0.0.0
-          colima start --vm-type lima --cpu 2 --memory 4 --disk 50 --mount-type virtiofs
+          colima start --cpu 2 --memory 4 --disk 50
           # wire Docker CLI to Colima engine
           docker context use colima
           # wait for Docker daemon
           for i in {1..30}; do
             docker info >/dev/null && break
-            echo "Waiting for Orbstack Docker... ($i/30)"
+            echo "Waiting for Colima Docker... ($i/30)"
             sleep 2
           done
 
