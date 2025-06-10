@@ -236,18 +236,20 @@ jobs:
         with:
           version: stable
 
-      - name: Install Orbstack & Docker CLI (macOS)
+      - name: Install Colima & Docker CLI (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          brew install docker orbstack
+          brew install docker colima lima
+          brew install lima-additional-guestagents
 
-      - name: Start OrbStacks Docker engine
+      - name: Start Colima Docker engine
         if: matrix.os == 'macos-latest'
         run: |
-          orb config set setup.use_admin false
-          orb start
-          # wire Docker CLI to OrbStacks engine
-          docker context use orbstack
+          # start Colima headlessly under QEMU
+          limactl start --name colima --cpus 2 --memory 4 --disk 50 --agent 0.0.0
+          colima start --vm-type lima --cpu 2 --memory 4 --disk 50 --mount-type virtiofs
+          # wire Docker CLI to Colima engine
+          docker context use colima
           # wait for Docker daemon
           for i in {1..30}; do
             docker info >/dev/null && break
