@@ -239,14 +239,25 @@ jobs:
       - name: Install Colima, Lima guestagents & Docker CLI on macOS
         if: matrix.os == 'macos-latest'
         run: |
-          brew install lima colima docker
+          # use the ARM-native Homebrew for host tools
+          BREW_ARM=/opt/homebrew/bin/brew
 
-          # this provides the missing guest-agent bits for various arches
-          brew install lima-additional-guestagents
+          echo "Using ARM Homebrew at $BREW_ARM"
 
-          # ensure Homebrews bin is on PATH for all later steps
-          echo "/usr/local/bin" >> $GITHUB_PATH
-          
+          # install Lima, Colima and Docker CLI natively
+          $BREW_ARM install lima colima docker
+          $BREW_ARM install lima-additional-guestagents
+
+          # ensure ARM brews bin is on PATH for all later steps
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+
+          # sanity-check
+          which colima
+          file "$(which colima)"
+          colima version
+          which docker
+          docker --version
+                
       - name: Run devkit avs create
         run: devkit avs create --disable-telemetry my-awesome-avs
 
