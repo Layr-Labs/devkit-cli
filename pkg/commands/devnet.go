@@ -48,7 +48,7 @@ var DevnetCommand = &cli.Command{
 				},
 				&cli.BoolFlag{
 					Name:  "use-zeus",
-					Usage: "Use Zeus CLI to fetch mainnet core addresses",
+					Usage: "Use Zeus CLI to fetch holesky core addresses",
 					Value: false,
 				},
 			}, common.GlobalFlags...),
@@ -86,7 +86,7 @@ var DevnetCommand = &cli.Command{
 		},
 		{
 			Name:   "fetch-addresses",
-			Usage:  "Fetches current EigenLayer core addresses from mainnet using Zeus CLI",
+			Usage:  "Fetches current EigenLayer core addresses from holesky using Zeus CLI",
 			Action: FetchZeusAddressesAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{

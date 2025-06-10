@@ -35,7 +35,7 @@ const eigenUnwrapABI = `[{"constant":false,"inputs":[{"name":"amount","type":"ui
 // EIGEN contract address
 const eigenContractAddress = "0x3B78576F7D6837500bA3De27A60c7f594934027E"
 
-// Common mainnet token holders with large balances - mapped by token address
+// Common holesky token holders with large balances - mapped by token address
 var DefaultTokenHolders = map[common.Address]TokenFunding{
 	common.HexToAddress("0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034"): { // stETH token address
 		TokenName:     "stETH",
@@ -298,7 +298,7 @@ func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
 	output, err := balanceCmd.CombinedOutput()
 	if err != nil {
 		if strings.Contains(string(output), "Error: error sending request for url") {
-			log.Printf(" Please check if your mainnet fork rpc url is up")
+			log.Printf(" Please check if your holesky fork rpc url is up")
 		}
 		return fmt.Errorf("failed to get balance for account %s", to.String())
 	}

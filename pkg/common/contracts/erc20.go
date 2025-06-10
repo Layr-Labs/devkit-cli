@@ -138,22 +138,6 @@ func NewERC20Contract(address common.Address, client *ethclient.Client) (*bind.B
 	return bind.NewBoundContract(address, parsedABI, client, client, client), nil
 }
 
-// Common ERC20 token addresses on mainnet
-var WellKnownTokens = map[string]common.Address{
-	"WETH":   common.HexToAddress("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"),
-	"USDC":   common.HexToAddress("0xA0b86a33E6417C1C8b6A82a8AA8877f1Df4b7F3f"),
-	"USDT":   common.HexToAddress("0xdAC17F958D2ee523a2206206994597C13D831ec7"),
-	"DAI":    common.HexToAddress("0x6B175474E89094C44Da98b954EedeAC495271d0F"),
-	"stETH":  common.HexToAddress("0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"),
-	"bEIGEN": common.HexToAddress("0x83E9115d334D248Ce39a6f36144aEaB5b3456e75"),
-}
-
-// GetTokenAddress returns the address for some known token symbols
-func GetTokenAddress(symbol string) (common.Address, bool) {
-	addr, exists := WellKnownTokens[symbol]
-	return addr, exists
-}
-
 // GetERC20ABI returns the parsed ERC20 ABI
 func GetERC20ABI() (abi.ABI, error) {
 	return abi.JSON(strings.NewReader(ERC20ABI))
