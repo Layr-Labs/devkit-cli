@@ -252,6 +252,8 @@ jobs:
         run: |
           # start OrbStacks VM & Docker engine without blocking
           nohup orbstack start docker --wait=false >/dev/null 2>&1 &
+          # source init script
+          source ~/.orbstack/shell/init.bash 2>/dev/null || true
           # wire Docker CLI to OrbStacks engine
           docker context use orbstack
           # wait for Docker daemon
