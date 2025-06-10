@@ -236,30 +236,32 @@ jobs:
         with:
           version: stable
 
-      - name: Install Orbstack (macOS)
+      - name: Install Orbstack & Docker CLI (macOS)
         if: matrix.os == 'macos-latest'
         run: |
           brew install --cask orbstack
-          # ensure CLI is on PATH
-          echo "/Applications/Orbstack.app/Contents/Resources/cli" >> $GITHUB_PATH
+          brew install docker
+          export PATH="/Applications/Orbstack.app/Contents/MacOS:$PATH"
 
-      - name: Start Orbstacks Docker service
+      - name: Start OrbStacks Docker engine
         if: matrix.os == 'macos-latest'
+        env:
+          ORBSTACK_CLI_SKIP_ANALYTICS: "1"
+          ORBSTACK_CLI_SKIP_UPDATES_CHECK: "1"
         run: |
           orbstack start docker
-          # wait until Docker daemon is ready
+          # point Docker CLI at Orbstacks daemon socket
+          eval "$(orbstack docker env --shell=posix)"
           for i in {1..30}; do
-            command -v docker >/dev/null \
-              && docker info >/dev/null 2>&1 && break
+            docker info >/dev/null && break
             echo "Waiting for Orbstack Docker... ($i/30)"
             sleep 2
           done
 
       - name: Verify Docker daemon
         if: matrix.os == 'macos-latest'
-        run: |
-          docker info
-                
+        run: docker info
+
       - name: Run devkit avs create
         run: devkit avs create --disable-telemetry my-awesome-avs
 
