@@ -250,6 +250,7 @@ jobs:
 
           # ensure ARM brews bin is on PATH for all later steps
           echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          echo "$HOME/bin" >> $GITHUB_PATH
 
           # sanity-check
           which colima
