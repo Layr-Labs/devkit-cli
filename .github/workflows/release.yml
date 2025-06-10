@@ -289,7 +289,7 @@ jobs:
             --activate
 
           # export the environment variables into GITHUB_ENV
-          colima docker-env | sed 's/^/export /' >> $GITHUB_ENV
+          colima docker-env | sed 's/^export //g' >> $GITHUB_ENV
           
       - name: Verify Docker daemon
         if: matrix.os == 'macos-latest'
