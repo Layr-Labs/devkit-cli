@@ -33,18 +33,18 @@ type TokenFunding struct {
 const eigenUnwrapABI = `[{"constant":false,"inputs":[{"name":"amount","type":"uint256"}],"name":"unwrap","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
 // EIGEN contract address
-const eigenContractAddress = "0xec53bF9167f50cDEB3Ae105f56099aaaB9061F83"
+const eigenContractAddress = "0x3B78576F7D6837500bA3De27A60c7f594934027E"
 
 // Common mainnet token holders with large balances - mapped by token address
 var DefaultTokenHolders = map[common.Address]TokenFunding{
-	common.HexToAddress("0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"): { // stETH token address
+	common.HexToAddress("0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034"): { // stETH token address
 		TokenName:     "stETH",
-		HolderAddress: common.HexToAddress("0x176F3DAb24a159341c0509bB36B833E7fdd0a132"), // Large stETH holder
+		HolderAddress: common.HexToAddress("0xC8088abD2FdaF4819230EB0FdA2D9766FDF9F409"), // Large stETH holder
 		Amount:        new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18)),              // 1000 tokens
 	},
-	common.HexToAddress("0x83E9115d334D248Ce39a6f36144aEaB5b3456e75"): { // bEIGEN token address
+	common.HexToAddress("0x275cCf9Be51f4a6C94aBa6114cdf2a4c45B9cb27"): { // bEIGEN token address
 		TokenName:     "bEIGEN",
-		HolderAddress: common.HexToAddress("0x564a1Bd9cFe0969d2A3880fcF9e228E9E1b29856"), // Large EIGEN holder that calls unwrap() to get bEIGEN
+		HolderAddress: common.HexToAddress("0x5f8C207382426D3f7F248E6321Cf93B34e66d6b9"), // Large EIGEN holder that calls unwrap() to get bEIGEN
 		Amount:        new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18)),              // 1000 tokens
 	},
 }
@@ -130,7 +130,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		if err != nil {
 			return fmt.Errorf("unwrap transaction failed: %w", err)
 		}
-		log.Printf("EIGEN to bEIGEN unwrap transaction eceipt: %v", unwrapReceipt.TxHash)
+		log.Printf("EIGEN to bEIGEN unwrap transaction receipt: %v", unwrapReceipt.TxHash)
 
 		if unwrapReceipt.Status == 0 {
 			return fmt.Errorf("EIGEN to bEIGEN unwrap transaction reverted")

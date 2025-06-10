@@ -482,7 +482,7 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 
 	t.Run("strategy_manager added to eigenlayer", func(t *testing.T) {
 		strategyMgr := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "strategy_manager"})
-		if strategyMgr == nil || strategyMgr.Value != "0x858646372CC42E1A627fcE94aa7A7033e7CF075A" {
+		if strategyMgr == nil || strategyMgr.Value != "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6" {
 			t.Errorf("Expected strategy_manager to be added, got %v", strategyMgr.Value)
 		}
 	})
@@ -497,7 +497,7 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 
 		// Check first allocation details
 		strategyAddr := migration.ResolveNode(migratedNode, []string{"context", "operators", "0", "allocations", "0", "strategy_address"})
-		if strategyAddr == nil || strategyAddr.Value != "0x93c4b944D05dfe6df7645A86cd2206016c51564D" {
+		if strategyAddr == nil || strategyAddr.Value != "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3" {
 			t.Errorf("Expected stETH strategy address, got %v", strategyAddr.Value)
 		}
 
@@ -530,7 +530,7 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 	t.Run("operator 1 has stETH allocation", func(t *testing.T) {
 		// Check that operator 1 also has stETH strategy allocation (same as operator 0)
 		strategyAddr := migration.ResolveNode(migratedNode, []string{"context", "operators", "1", "allocations", "0", "strategy_address"})
-		if strategyAddr == nil || strategyAddr.Value != "0x93c4b944D05dfe6df7645A86cd2206016c51564D" {
+		if strategyAddr == nil || strategyAddr.Value != "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3" {
 			t.Errorf("Expected stETH strategy address for operator 1, got %v", strategyAddr.Value)
 		}
 

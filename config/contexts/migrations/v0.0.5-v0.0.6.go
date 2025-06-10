@@ -35,7 +35,7 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Transform: func(_ *yaml.Node) *yaml.Node {
 					eigenLayerMap := migration.CloneNode(migration.ResolveNode(user, []string{"context", "eigenlayer"}))
 					strategyManagerKey := &yaml.Node{Kind: yaml.ScalarNode, Value: "strategy_manager"}
-					strategyManagerVal := &yaml.Node{Kind: yaml.ScalarNode, Value: "0x858646372CC42E1A627fcE94aa7A7033e7CF075A"}
+					strategyManagerVal := &yaml.Node{Kind: yaml.ScalarNode, Value: "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6"}
 					eigenLayerMap.Content = append(eigenLayerMap.Content, strategyManagerKey, strategyManagerVal)
 					return eigenLayerMap
 				},
