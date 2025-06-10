@@ -111,9 +111,16 @@ context:
     registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"
   # Core EigenLayer contract addresses
   eigenlayer:
-    allocation_manager: "0x78469728304326CBc65f8f95FA756B0B73164462"
-    delegation_manager: "0xA44151489861Fe9e3055d95adC98FbD462B948e7" 
-    strategy_manager: "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6"
+    l1: 
+      allocation_manager: "0x78469728304326CBc65f8f95FA756B0B73164462"
+      delegation_manager: "0xA44151489861Fe9e3055d95adC98FbD462B948e7" 
+      strategy_manager: "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6"
+      bn254_table_calculator: "0x033af59c1b030Cc6eEE07B150FD97668497dc74b"
+      cross_chain_registry: "0x0022d2014901F2AFBF5610dDFcd26afe2a65Ca6F"
+      key_registrar: "0x1C84Bb62fE7791e173014A879C706445fa893BbE"
+    l2: 
+      bn254_certificate_verifier: "0xf462d03A82C1F3496B0DFe27E978318eD1720E1f"
+      operator_table_updater: "0xd7230B89E5E2ed1FD068F0FF9198D7960243f12a"
   # Contracts deployed on `devnet start`
   deployed_contracts: []
   # Operator Sets registered on `devnet start`

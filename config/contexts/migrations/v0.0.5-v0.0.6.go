@@ -17,7 +17,7 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l1", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "22640530"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "3979053"}
 				},
 			},
 			// Update fork block for L2 chain
@@ -25,22 +25,19 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l2", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "22640530"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "3979053"}
 				},
 			},
-			// Add strategy_manager to eigenlayer config
+			// Replace eigenlayer config with new L1/L2 structure(We are not preserving the addresses since we are migrating to holesky)
 			{
 				Path:      []string{"context", "eigenlayer"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					eigenLayerMap := migration.CloneNode(migration.ResolveNode(user, []string{"context", "eigenlayer"}))
-					strategyManagerKey := &yaml.Node{Kind: yaml.ScalarNode, Value: "strategy_manager"}
-					strategyManagerVal := &yaml.Node{Kind: yaml.ScalarNode, Value: "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6"}
-					eigenLayerMap.Content = append(eigenLayerMap.Content, strategyManagerKey, strategyManagerVal)
-					return eigenLayerMap
+					// Get the new eigenlayer structure from v0.0.6 template
+					newEigenLayer := migration.ResolveNode(new, []string{"context", "eigenlayer"})
+					return migration.CloneNode(newEigenLayer)
 				},
 			},
-			// Remove stake field and add allocations for operator 1 (0x90F79bf6EB2c4f870365E785982E1f101E93b906)
 			{
 				Path:      []string{"context", "operators", "0"},
 				Condition: migration.Always{},

@@ -355,9 +355,9 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 		context.DeployerPrivateKey,
 		big.NewInt(1), // Chain ID doesn't matter for read operations
 		ethClient,
-		common.HexToAddress(eigenLayer.AllocationManager),
-		common.HexToAddress(eigenLayer.DelegationManager),
-		common.HexToAddress(eigenLayer.StrategyManager),
+		common.HexToAddress(eigenLayer.L1.AllocationManager),
+		common.HexToAddress(eigenLayer.L1.DelegationManager),
+		common.HexToAddress(eigenLayer.L1.StrategyManager),
 		logger,
 	)
 	if err != nil {
