@@ -261,14 +261,27 @@ jobs:
 
       - name: Install Docker Compose plugin (macOS)
         if: matrix.os == 'macos-latest'
+        env:
+          GHA_ARCH: ${{ matrix.arch }}
         run: |
-          # install the official Compose V2 plugin
-          brew tap docker/compose
-          brew install docker-compose-plugin
-
-          # ensure its picked up by the Docker CLI
+          # create plugin dir
           mkdir -p ~/.docker/cli-plugins
-          ln -sf "$(brew --prefix)/bin/docker-compose" ~/.docker/cli-plugins/docker-compose
+
+          # select binary according to arch
+          case "$GHA_ARCH" in
+            arm64) FILE=docker-compose-darwin-aarch64 ;;
+            x64)   FILE=docker-compose-darwin-x86_64 ;;
+            *)
+              echo "Unsupported arch: $GHA_ARCH"
+              exit 1
+              ;;
+          esac
+
+          # download the Compose V2 binary
+          curl -SL \
+            "https://github.com/docker/compose/releases/download/v2.36.2/${FILE}" \
+            -o ~/.docker/cli-plugins/docker-compose
+          chmod +x ~/.docker/cli-plugins/docker-compose
 
           # verify
           docker compose version
