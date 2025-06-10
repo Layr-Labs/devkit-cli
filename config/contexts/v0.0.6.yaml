@@ -9,14 +9,14 @@ context:
       chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
-        block: 3979053
+        block: 22640530
         url: ""
         block_time: 3
     l2:
       chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
-        block: 3979053
+        block: 22640530
         url: ""
         block_time: 3
   # All key material (BLS and ECDSA) within this file should be used for local testing ONLY
