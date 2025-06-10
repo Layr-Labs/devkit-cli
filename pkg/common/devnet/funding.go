@@ -293,6 +293,7 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 }
 
 func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
+	log.Printf("to_address %s , %s , %s", to, fromKey, rpcURL)
 	balanceCmd := exec.Command("cast", "balance", to.String(), "--rpc-url", rpcURL)
 	balanceCmd.Env = append(os.Environ(), "FOUNDRY_DISABLE_NIGHTLY_WARNING=1")
 	output, err := balanceCmd.CombinedOutput()
@@ -300,7 +301,7 @@ func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
 		if strings.Contains(string(output), "Error: error sending request for url") {
 			log.Printf(" Please check if your holesky fork rpc url is up")
 		}
-		return fmt.Errorf("failed to get balance for account %s", to.String())
+		return fmt.Errorf("failed to get balance for account %s %v", to.String(), err)
 	}
 	threshold := new(big.Int)
 	threshold.SetString(FUND_VALUE, 10)
