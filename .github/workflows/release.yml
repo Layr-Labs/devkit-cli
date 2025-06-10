@@ -277,6 +277,9 @@ jobs:
           # switch your CLI to that context
           docker context use colima
 
+          # put env into GITHUB_ENV
+          colima docker-env --shell bash >> $GITHUB_ENV
+
       - name: Verify Docker daemon
         if: matrix.os == 'macos-latest'
         run: |
