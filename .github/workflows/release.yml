@@ -366,9 +366,6 @@ jobs:
           docker context use colima
           cd ./my-awesome-avs/
 
-          # show resolved compose file
-          docker compose config
-
           # redirect stdout/stderr to a file for later inspection
           devkit avs devnet start >devnet.log 2>&1 &
           pid=$!
