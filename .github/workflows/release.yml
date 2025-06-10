@@ -288,8 +288,8 @@ jobs:
             --disk 50 \
             --activate
 
-          # export the environment variables into GITHUB_ENV
-          colima docker-env | sed 's/^export //g' >> $GITHUB_ENV
+          # instruct docker to use colima socket
+          docker context use colima
           
       - name: Verify Docker daemon
         if: matrix.os == 'macos-latest'
