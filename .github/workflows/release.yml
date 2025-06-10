@@ -311,8 +311,8 @@ jobs:
             --vm-type qemu \
             --runtime docker \
             --arch x86_64 \
-            --cpu 2 \
-            --memory 4 \
+            --cpu 4 \
+            --memory 8 \
             --disk 50 \
             --activate
 
