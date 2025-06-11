@@ -261,7 +261,7 @@ func TestNoopLogger_MessageFormatting(t *testing.T) {
 	assert.Contains(t, messages[1], "user alice has 5 items")
 }
 
-// Example test demonstrating typical usage in unit tests
+// Example test showing typical usage in unit tests
 func TestNoopLogger_UsageExample(t *testing.T) {
 	// Create logger for test
 	logger := NewNoopLogger()
