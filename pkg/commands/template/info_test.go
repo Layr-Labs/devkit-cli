@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"github.com/urfave/cli/v2"
 )
 
@@ -35,11 +36,12 @@ func TestInfoCommand(t *testing.T) {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
-	// Create test context
+	// Create test context with no-op logger
+	infoCmdWithLogger, _ := testutils.WithTestConfigAndNoopLoggerAndAccess(InfoCommand)
 	app := &cli.App{
 		Name: "test-app",
 		Commands: []*cli.Command{
-			InfoCommand,
+			infoCmdWithLogger,
 		},
 	}
 
@@ -58,12 +60,20 @@ func TestInfoCommand(t *testing.T) {
 
 	// Test info command
 	t.Run("Info command", func(t *testing.T) {
-		// Create a flag set and context
+		// Create a flag set and context with no-op logger
 		set := flag.NewFlagSet("test", 0)
 		ctx := cli.NewContext(app, set, nil)
 
+		// Execute the Before hook to set up the logger context
+		if infoCmdWithLogger.Before != nil {
+			err := infoCmdWithLogger.Before(ctx)
+			if err != nil {
+				t.Fatalf("Before hook failed: %v", err)
+			}
+		}
+
 		// Run the info command
-		err := InfoCommand.Action(ctx)
+		err := infoCmdWithLogger.Action(ctx)
 		if err != nil {
 			t.Errorf("InfoCommand action returned error: %v", err)
 		}

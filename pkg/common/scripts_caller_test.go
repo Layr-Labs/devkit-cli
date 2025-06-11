@@ -3,16 +3,16 @@ package common
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 )
 
 func TestCallTemplateScript(t *testing.T) {
-	logger, _ := GetLogger(false)
+	logger := logger.NewNoopLogger()
 	// JSON response case
 	scriptJSON := `#!/bin/bash
 input=$1
@@ -70,40 +70,25 @@ echo "This is plain text output"`
 	}
 
 	// Empty response case
-	empty := `#!/bin/bash`
+	empty := `#!/bin/bash
+exit 0`
 
 	emptyPath := filepath.Join(tmpDir, "empty.sh")
 	if err := os.WriteFile(emptyPath, []byte(empty), 0755); err != nil {
 		t.Fatalf("failed to write empty test script: %v", err)
 	}
 
-	// Prepare pipes
-	oldOut, oldErr := os.Stdout, os.Stderr
-	rOut, wOut, _ := os.Pipe()
-	rErr, wErr, _ := os.Pipe()
-	os.Stdout, os.Stderr = wOut, wErr
-
-	// Run the empty script
-	out, err = CallTemplateScript(context.Background(), logger, "", textScriptPath, ExpectNonJSONResponse)
+	// Run the empty script expecting JSON (this should generate a warning)
+	out, err = CallTemplateScript(context.Background(), logger, "", emptyPath, ExpectJSONResponse)
 	if err != nil {
-		t.Fatalf("CallTemplateScript (non-JSON) failed: %v", err)
+		t.Fatalf("CallTemplateScript (empty JSON) failed: %v", err)
 	}
-	if out != nil {
-		t.Errorf("expected nil output for non-JSON response, got: %v", out)
+	if len(out) != 0 {
+		t.Errorf("expected empty map for empty JSON response, got: %v", out)
 	}
 
-	// Restore and close writers
-	wOut.Close()
-	wErr.Close()
-	os.Stdout, os.Stderr = oldOut, oldErr
-
-	// Read captured output
-	bufOut, _ := io.ReadAll(rOut)
-	bufErr, _ := io.ReadAll(rErr)
-	captured := string(bufOut) + string(bufErr)
-
-	// Assert no warning
-	if strings.Contains(captured, "returning empty result") {
-		t.Errorf("unexpected warning in output: %q", captured)
+	// Check logger buffer for warning instead of capturing stdout
+	if !logger.Contains("returning empty result") {
+		t.Errorf("expected warning 'returning empty result' in logger buffer, but not found")
 	}
 }

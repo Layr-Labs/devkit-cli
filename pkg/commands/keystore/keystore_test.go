@@ -2,13 +2,15 @@ package keystore
 
 import (
 	"bytes"
-	"github.com/stretchr/testify/require"
-	"github.com/urfave/cli/v2"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
+	"github.com/stretchr/testify/require"
+	"github.com/urfave/cli/v2"
 )
 
 func TestKeystoreCreateAndRead(t *testing.T) {
@@ -18,11 +20,22 @@ func TestKeystoreCreateAndRead(t *testing.T) {
 	password := "testpass"
 	path := filepath.Join(tmpDir, "operator1.keystore.json")
 
-	// Create keystore
+	// Create keystore with no-op logger
+	createCmdWithLogger, _ := testutils.WithTestConfigAndNoopLoggerAndAccess(CreateCommand)
 	app := &cli.App{
 		Name: "devkit",
 		Commands: []*cli.Command{
-			{Name: "keystore", Subcommands: []*cli.Command{CreateCommand}},
+			{
+				Name:        "keystore",
+				Subcommands: []*cli.Command{createCmdWithLogger},
+				Before: func(cCtx *cli.Context) error {
+					// Execute the subcommand's Before hook to set up logger context
+					if createCmdWithLogger.Before != nil {
+						return createCmdWithLogger.Before(cCtx)
+					}
+					return nil
+				},
+			},
 		},
 	}
 	err := app.Run([]string{
@@ -38,11 +51,22 @@ func TestKeystoreCreateAndRead(t *testing.T) {
 	_, err = os.Stat(path)
 	require.NoError(t, err, "expected keystore file to be created")
 
-	// Read keystore
+	// Read keystore with no-op logger
+	readCmdWithLogger, _ := testutils.WithTestConfigAndNoopLoggerAndAccess(ReadCommand)
 	readApp := &cli.App{
 		Name: "devkit",
 		Commands: []*cli.Command{
-			{Name: "keystore", Subcommands: []*cli.Command{ReadCommand}},
+			{
+				Name:        "keystore",
+				Subcommands: []*cli.Command{readCmdWithLogger},
+				Before: func(cCtx *cli.Context) error {
+					// Execute the subcommand's Before hook to set up logger context
+					if readCmdWithLogger.Before != nil {
+						return readCmdWithLogger.Before(cCtx)
+					}
+					return nil
+				},
+			},
 		},
 	}
 

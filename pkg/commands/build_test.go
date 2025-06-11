@@ -3,12 +3,13 @@ package commands
 import (
 	"context"
 	"errors"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/urfave/cli/v2"
 )
@@ -57,7 +58,7 @@ build:
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
 	if err := app.Run([]string{"app", "build"}); err != nil {
@@ -95,7 +96,7 @@ echo "Mock build executed"`
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
 	if err := app.Run([]string{"app", "build"}); err != nil {
@@ -131,7 +132,7 @@ echo "Mock build executed"`
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
 	done := make(chan error, 1)

@@ -727,7 +727,7 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) e
 }
 
 func FetchZeusAddressesAction(cCtx *cli.Context) error {
-	logger, _ := common.GetLoggerFromCLIContext(cCtx)
+	logger := common.LoggerFromContext(cCtx.Context)
 	contextName := cCtx.String("context")
 
 	// Set path for context yaml
@@ -917,7 +917,7 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 }
 
 func extractContractOutputs(cCtx *cli.Context, context string, contractsList []DeployContractTransport) error {
-	logger, _ := common.GetLoggerFromCLIContext(cCtx)
+	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Push contract artefacts to ./contracts/outputs
 	outDir := filepath.Join("contracts", "outputs", context)

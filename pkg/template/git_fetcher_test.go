@@ -8,7 +8,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
@@ -85,7 +84,7 @@ func (s *spyTrackerDedup) ProgressRows() []iface.ProgressRow { return make([]ifa
 // getFetcherWithRunner returns a GitFetcher and its underlying LogProgressTracker.
 func getFetcherWithRunner(r template.Runner) (*template.GitFetcher, *spyTrackerDedup) {
 	client := template.NewGitClientWithRunner(r)
-	log, _ := common.GetLogger(false)
+	log := logger.NewNoopLogger()
 
 	// Inject our spyTracker instead of the real one:
 	spy := newSpyTrackerDedup()
@@ -154,7 +153,7 @@ func TestCloneRealRepo(t *testing.T) {
 
 	// Use real runner
 	client := template.NewGitClient()
-	log, _ := common.GetLogger(false)
+	log := logger.NewNoopLogger()
 	tracker := progress.NewLogProgressTracker(100, log)
 	prog := logger.NewProgressLogger(log, tracker)
 
