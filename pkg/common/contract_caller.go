@@ -14,6 +14,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
+	keyregistrar "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/KeyRegistrar"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -32,9 +33,10 @@ type ContractCaller struct {
 	allocationManagerAddr common.Address
 	delegationManagerAddr common.Address
 	strategyManagerAddr   common.Address
+	keyRegistrarAddr      common.Address
 }
 
-func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr, strategyManagerAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
+func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, keyRegistrarAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
@@ -42,7 +44,7 @@ func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient
 
 	// Build contract registry with core EigenLayer contracts
 	builder := contracts.NewRegistryBuilder(client)
-	builder, err = builder.AddEigenLayerCore(allocationManagerAddr, delegationManagerAddr, strategyManagerAddr)
+	builder, err = builder.AddEigenLayerCore(allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, keyRegistrarAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add EigenLayer core contracts: %w", err)
 	}
@@ -58,6 +60,7 @@ func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient
 		allocationManagerAddr: allocationManagerAddr,
 		delegationManagerAddr: delegationManagerAddr,
 		strategyManagerAddr:   strategyManagerAddr,
+		keyRegistrarAddr:      keyRegistrarAddr,
 	}, nil
 }
 
@@ -509,6 +512,25 @@ func (cc *ContractCaller) RegisterTokensFromStrategies(cfg *OperatorSpec) error 
 		}
 	}
 	return nil
+}
+
+func (cc *ContractCaller) ConfigureOpSetCurveType(ctx context.Context, avsAddress common.Address, opSetId uint32, curveType uint8) error {
+	opts, err := cc.buildTxOpts()
+	if err != nil {
+		return fmt.Errorf("failed to build transaction options: %w", err)
+	}
+
+	keyRegistrar, err := cc.registry.GetKeyRegistrar(cc.keyRegistrarAddr)
+	if err != nil {
+		return fmt.Errorf("failed to get KeyRegistrar: %w", err)
+	}
+
+	operatorSet := keyregistrar.OperatorSet{Avs: avsAddress, Id: opSetId}
+	err = cc.SendAndWaitForTransaction(ctx, "ConfigureOpSetCurveType", func() (*types.Transaction, error) {
+		tx, err := keyRegistrar.ConfigureOperatorSet(opts, operatorSet, curveType)
+		return tx, err
+	})
+	return err
 }
 
 // GetRegistry returns the contract registry for external access
