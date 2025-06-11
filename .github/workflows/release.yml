@@ -225,7 +225,7 @@ jobs:
           which brew
           file "$(which brew)"
           brew --version
-          
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -344,6 +344,12 @@ jobs:
             exit 1
           fi
           echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
+
+      - name: Link gomplate (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p "${GOPATH:-$HOME/go}/bin"
+          ln -sf "$(brew --prefix)/bin/gomplate" "${GOPATH:-$HOME/go}/bin/gomplate"
 
       - name: Run devkit avs build
         env:
