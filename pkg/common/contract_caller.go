@@ -13,6 +13,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/contracts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	crosschainregistry "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/CrossChainRegistry"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	keyregistrar "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/KeyRegistrar"
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -25,18 +26,19 @@ import (
 
 // ContractCaller provides a high-level interface for interacting with contracts
 type ContractCaller struct {
-	registry              *contracts.ContractRegistry
-	ethclient             *ethclient.Client
-	privateKey            *ecdsa.PrivateKey
-	chainID               *big.Int
-	logger                iface.Logger
-	allocationManagerAddr common.Address
-	delegationManagerAddr common.Address
-	strategyManagerAddr   common.Address
-	keyRegistrarAddr      common.Address
+	registry               *contracts.ContractRegistry
+	ethclient              *ethclient.Client
+	privateKey             *ecdsa.PrivateKey
+	chainID                *big.Int
+	logger                 iface.Logger
+	allocationManagerAddr  common.Address
+	delegationManagerAddr  common.Address
+	strategyManagerAddr    common.Address
+	keyRegistrarAddr       common.Address
+	crossChainRegistryAddr common.Address
 }
 
-func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, keyRegistrarAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
+func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, keyRegistrarAddr common.Address, crossChainRegistryAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
@@ -44,7 +46,7 @@ func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient
 
 	// Build contract registry with core EigenLayer contracts
 	builder := contracts.NewRegistryBuilder(client)
-	builder, err = builder.AddEigenLayerCore(allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, keyRegistrarAddr)
+	builder, err = builder.AddEigenLayerCore(allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, keyRegistrarAddr, crossChainRegistryAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add EigenLayer core contracts: %w", err)
 	}
@@ -52,15 +54,16 @@ func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient
 	registry := builder.Build()
 
 	return &ContractCaller{
-		registry:              registry,
-		ethclient:             client,
-		privateKey:            privateKey,
-		chainID:               chainID,
-		logger:                logger,
-		allocationManagerAddr: allocationManagerAddr,
-		delegationManagerAddr: delegationManagerAddr,
-		strategyManagerAddr:   strategyManagerAddr,
-		keyRegistrarAddr:      keyRegistrarAddr,
+		registry:               registry,
+		ethclient:              client,
+		privateKey:             privateKey,
+		chainID:                chainID,
+		logger:                 logger,
+		allocationManagerAddr:  allocationManagerAddr,
+		delegationManagerAddr:  delegationManagerAddr,
+		strategyManagerAddr:    strategyManagerAddr,
+		keyRegistrarAddr:       keyRegistrarAddr,
+		crossChainRegistryAddr: crossChainRegistryAddr,
 	}, nil
 }
 
@@ -528,6 +531,31 @@ func (cc *ContractCaller) ConfigureOpSetCurveType(ctx context.Context, avsAddres
 	operatorSet := keyregistrar.OperatorSet{Avs: avsAddress, Id: opSetId}
 	err = cc.SendAndWaitForTransaction(ctx, "ConfigureOpSetCurveType", func() (*types.Transaction, error) {
 		tx, err := keyRegistrar.ConfigureOperatorSet(opts, operatorSet, curveType)
+		return tx, err
+	})
+	return err
+}
+
+func (cc *ContractCaller) CreateGenerationReservation(ctx context.Context, opSetId uint32, operatorTableCalculator common.Address, avsAddress common.Address) error {
+	opts, err := cc.buildTxOpts()
+	if err != nil {
+		return fmt.Errorf("failed to build transaction options: %w", err)
+	}
+
+	crossChainRegistry, err := cc.registry.GetCrossChainRegistry(cc.crossChainRegistryAddr)
+	if err != nil {
+		return fmt.Errorf("failed to get CrossChainRegistry: %w", err)
+	}
+
+	operatorSet := crosschainregistry.OperatorSet{Avs: avsAddress, Id: opSetId}
+	operatorSetConfig := crosschainregistry.ICrossChainRegistryTypesOperatorSetConfig{
+		Owner:              common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		MaxStalenessPeriod: 66666666,
+	}
+	// add 31337 to chainids
+	chainIds := []*big.Int{big.NewInt(int64(cc.chainID.Int64())), big.NewInt(31337)}
+	err = cc.SendAndWaitForTransaction(ctx, "CreateGenerationReservation", func() (*types.Transaction, error) {
+		tx, err := crossChainRegistry.CreateGenerationReservation(opts, operatorSet, operatorTableCalculator, operatorSetConfig, chainIds)
 		return tx, err
 	})
 	return err

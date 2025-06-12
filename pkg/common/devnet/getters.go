@@ -115,14 +115,14 @@ func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName stri
 
 // GetEigenLayerAddresses returns EigenLayer L1 addresses from the context config
 // Falls back to constants if not found in context
-func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationManager, delegationManager string, strategyManager string, keyRegistrar string) {
+func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationManager, delegationManager string, strategyManager string, keyRegistrar string, crossChainRegistry string, bn254TableCalculator string) {
 	if cfg == nil || cfg.Context == nil {
-		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS
+		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS
 	}
 
 	devnetCtx, found := cfg.Context[DEVNET_CONTEXT]
 	if !found || devnetCtx.EigenLayer == nil {
-		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS
+		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS
 	}
 
 	allocationManager = devnetCtx.EigenLayer.L1.AllocationManager
@@ -143,5 +143,14 @@ func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationMana
 		keyRegistrar = KEY_REGISTRAR_ADDRESS
 	}
 
-	return allocationManager, delegationManager, strategyManager, keyRegistrar
+	crossChainRegistry = devnetCtx.EigenLayer.L1.CrossChainRegistry
+	if crossChainRegistry == "" {
+		crossChainRegistry = CROSS_CHAIN_REGISTRY_ADDRESS
+	}
+	bn254TableCalculator = devnetCtx.EigenLayer.L1.BN254TableCalculator
+	if bn254TableCalculator == "" {
+		bn254TableCalculator = BN254_TABLE_CALCULATOR_ADDRESS
+	}
+
+	return allocationManager, delegationManager, strategyManager, keyRegistrar, crossChainRegistry, bn254TableCalculator
 }

@@ -360,6 +360,7 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 		common.HexToAddress(eigenLayer.L1.DelegationManager),
 		common.HexToAddress(eigenLayer.L1.StrategyManager),
 		common.HexToAddress(eigenLayer.L1.KeyRegistrar),
+		common.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
