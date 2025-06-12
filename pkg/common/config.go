@@ -34,11 +34,40 @@ type ForkConfig struct {
 }
 
 type OperatorSpec struct {
-	Address             string `json:"address" yaml:"address"`
-	ECDSAKey            string `json:"ecdsa_key" yaml:"ecdsa_key"`
-	BlsKeystorePath     string `json:"bls_keystore_path" yaml:"bls_keystore_path"`
-	BlsKeystorePassword string `json:"bls_keystore_password" yaml:"bls_keystore_password"`
-	Stake               string `json:"stake" yaml:"stake"`
+	Address             string               `json:"address" yaml:"address"`
+	ECDSAKey            string               `json:"ecdsa_key" yaml:"ecdsa_key"`
+	BlsKeystorePath     string               `json:"bls_keystore_path" yaml:"bls_keystore_path"`
+	BlsKeystorePassword string               `json:"bls_keystore_password" yaml:"bls_keystore_password"`
+	Stake               string               `json:"stake,omitempty" yaml:"stake,omitempty"`
+	Allocations         []OperatorAllocation `json:"allocations,omitempty" yaml:"allocations,omitempty"`
+}
+
+// OperatorAllocation defines strategy allocation for an operator
+type OperatorAllocation struct {
+	StrategyAddress        string                  `json:"strategy_address" yaml:"strategy_address"`
+	Name                   string                  `json:"name" yaml:"name"`
+	OperatorSetAllocations []OperatorSetAllocation `json:"operator_set_allocations" yaml:"operator_set_allocations"`
+}
+
+// OperatorSetAllocation defines allocation for a specific operator set
+type OperatorSetAllocation struct {
+	OperatorSet      string `json:"operator_set" yaml:"operator_set"`
+	AllocationInWads string `json:"allocation_in_wads" yaml:"allocation_in_wads"`
+}
+
+// StakerSpec defines a staker configuration with address, key, and deposits
+type StakerSpec struct {
+	StakerAddress   string           `json:"address" yaml:"address"`
+	StakerECDSAKey  string           `json:"ecdsa_key" yaml:"ecdsa_key"`
+	Deposits        []StakerDeposits `json:"deposits" yaml:"deposits"`
+	OperatorAddress string           `json:"operator" yaml:"operator"`
+}
+
+// StakerDeposits defines a deposit to a strategy
+type StakerDeposits struct {
+	StrategyAddress string `json:"strategy_address" yaml:"strategy_address"`
+	Name            string `json:"name" yaml:"name"`
+	DepositAmount   string `json:"deposit_amount" yaml:"deposit_amount"`
 }
 
 type AvsConfig struct {
@@ -51,6 +80,7 @@ type AvsConfig struct {
 type EigenLayerConfig struct {
 	AllocationManager string `json:"allocation_manager" yaml:"allocation_manager"`
 	DelegationManager string `json:"delegation_manager" yaml:"delegation_manager"`
+	StrategyManager   string `json:"strategy_manager" yaml:"strategy_manager"`
 }
 
 type ChainConfig struct {
@@ -106,6 +136,7 @@ type ChainContextConfig struct {
 	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
 	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
+	Stakers               []StakerSpec           `json:"stakers" yaml:"stakers"`
 }
 
 func LoadBaseConfig() (map[string]interface{}, error) {
