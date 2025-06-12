@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/hooks"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 )
 
@@ -284,6 +285,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Start offchain AVS components after starting devnet and deploying contracts unless skipped
 	if !skipDeployContracts && !skipAvsRun {
+		// Update project stage to running before starting AVS components (since AVSRun is long-running)
+		logger.Info("Updating project stage to running...")
+		if err := hooks.UpdateProjectStage(hooks.StageRunning, logger); err != nil {
+			logger.Warn("Failed to update project stage: %v", err)
+		}
+
 		if err := AVSRun(cCtx); err != nil && !errors.Is(err, context.Canceled) {
 			return fmt.Errorf("avs run failed: %w", err)
 		}

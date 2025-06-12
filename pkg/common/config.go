@@ -97,6 +97,7 @@ type OperatorRegistration struct {
 
 type ChainContextConfig struct {
 	Name                  string                 `json:"name" yaml:"name"`
+	Stage                 string                 `json:"stage,omitempty" yaml:"stage,omitempty"`
 	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
 	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
 	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`
