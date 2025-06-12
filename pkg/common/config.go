@@ -6,8 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/internal/version"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
 )
 
@@ -108,6 +111,138 @@ type ChainContextConfig struct {
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 }
 
+// VersionCompatibilityError represents a version mismatch error in migration
+type VersionCompatibilityError struct {
+	ContextVersion  string
+	CLIVersion      string
+	LatestSupported string
+	ContextFile     string
+}
+
+func (e *VersionCompatibilityError) Error() string {
+	return fmt.Sprintf(`
+⚠️  VERSION COMPATIBILITY WARNING ⚠️
+
+Your context file version is newer than what this devkit 
+CLI version supports:
+
+  Current Context file:     %s
+  Current Context version:  %s  
+  Current CLI version:      %s
+  Latest supported context version: %s
+
+This can cause context corruption if you proceed. Please update your devkit CLI first:
+
+  # Update devkit CLI to latest version
+
+VERSION=%s
+ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
+DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+mkdir -p $HOME/bin
+curl -sL "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | tar xv -C "$HOME/bin"
+  
+  # Or build from source
+  git pull origin main && make install
+
+After updating, verify the CLI version supports your context:
+  devkit --version
+
+DO NOT edit the context file until you update the CLI version.
+`, e.ContextFile, e.ContextVersion, e.CLIVersion, e.LatestSupported, embeddedDevkitReleaseVersion)
+}
+
+// parseVersion converts version string like "0.0.5" to comparable integers
+func parseVersion(v string) (major, minor, patch int, err error) {
+	parts := strings.Split(v, ".")
+	if len(parts) != 3 {
+		return 0, 0, 0, fmt.Errorf("invalid version format: %s", v)
+	}
+
+	major, err = strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid major version: %s", parts[0])
+	}
+
+	minor, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid minor version: %s", parts[1])
+	}
+
+	patch, err = strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid patch version: %s", parts[2])
+	}
+
+	return major, minor, patch, nil
+}
+
+// compareVersions returns true if v1 > v2
+func compareVersions(v1, v2 string) (bool, error) {
+	major1, minor1, patch1, err := parseVersion(v1)
+	if err != nil {
+		return false, fmt.Errorf("parse version %s: %w", v1, err)
+	}
+
+	major2, minor2, patch2, err := parseVersion(v2)
+	if err != nil {
+		return false, fmt.Errorf("parse version %s: %w", v2, err)
+	}
+
+	if major1 > major2 {
+		return true, nil
+	}
+	if major1 < major2 {
+		return false, nil
+	}
+
+	if minor1 > minor2 {
+		return true, nil
+	}
+	if minor1 < minor2 {
+		return false, nil
+	}
+
+	return patch1 > patch2, nil
+}
+
+// checkVersionCompatibility validates that the context version is supported by the current CLI
+// Logs a warning if there's a version mismatch, but allows execution to continue
+func checkVersionCompatibility(contextVersion, contextFile string, logger iface.Logger) {
+	if contextVersion == "" {
+		// Missing version - could be very old context, warn but allow
+		if logger != nil {
+			logger.Info("⚠️  Context file %s is missing version field - this may be an old context that needs migration", contextFile)
+		}
+		return
+	}
+
+	// Get the latest version supported by this CLI
+	latestSupported := DevkitLatestContextVersion // This should match contexts.LatestVersion , but cannot check due to import cycle error
+
+	// Compare versions
+	isNewer, err := compareVersions(contextVersion, latestSupported)
+	if err != nil {
+		if logger != nil {
+			logger.Info("⚠️  Failed to compare versions: %v", err)
+		}
+		return
+	}
+
+	// If context version is newer than what we support, log compatibility warning
+	if isNewer {
+		compatError := &VersionCompatibilityError{
+			ContextVersion:  contextVersion,
+			CLIVersion:      version.GetVersion(),
+			LatestSupported: latestSupported,
+			ContextFile:     contextFile,
+		}
+		if logger != nil {
+			logger.Info("%s", compatError.Error())
+		}
+	}
+}
+
 func LoadBaseConfig() (map[string]interface{}, error) {
 	path := filepath.Join(DefaultConfigWithContextConfigPath, "config.yaml")
 	data, err := os.ReadFile(path)
@@ -122,6 +257,10 @@ func LoadBaseConfig() (map[string]interface{}, error) {
 }
 
 func LoadContextConfig(ctxName string) (map[string]interface{}, error) {
+	return LoadContextConfigWithLogger(ctxName, nil)
+}
+
+func LoadContextConfigWithLogger(ctxName string, logger iface.Logger) (map[string]interface{}, error) {
 	// Default to devnet
 	if ctxName == "" {
 		ctxName = "devnet"
@@ -135,6 +274,12 @@ func LoadContextConfig(ctxName string) (map[string]interface{}, error) {
 	if err := yaml.Unmarshal(data, &ctx); err != nil {
 		return nil, fmt.Errorf("parse context %q: %w", ctxName, err)
 	}
+
+	// Check version compatibility
+	if version, ok := ctx["version"].(string); ok {
+		checkVersionCompatibility(version, path, logger)
+	}
+
 	return ctx, nil
 }
 
@@ -152,6 +297,10 @@ func LoadBaseConfigYaml() (*Config, error) {
 }
 
 func LoadConfigWithContextConfig(ctxName string) (*ConfigWithContextConfig, error) {
+	return LoadConfigWithContextConfigAndLogger(ctxName, nil)
+}
+
+func LoadConfigWithContextConfigAndLogger(ctxName string, logger iface.Logger) (*ConfigWithContextConfig, error) {
 	// Default to devnet
 	if ctxName == "" {
 		ctxName = "devnet"
@@ -184,6 +333,9 @@ func LoadConfigWithContextConfig(ctxName string) (*ConfigWithContextConfig, erro
 	if err := yaml.Unmarshal(ctxData, &wrapper); err != nil {
 		return nil, fmt.Errorf("failed to parse context file %q: %w", contextFile, err)
 	}
+
+	// Check version compatibility before proceeding
+	checkVersionCompatibility(wrapper.Version, contextFile, logger)
 
 	cfg.Context = map[string]ChainContextConfig{
 		ctxName: wrapper.Context,
