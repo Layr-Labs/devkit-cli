@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/urfave/cli/v2"
 )
@@ -29,6 +30,7 @@ func IsPortAvailable(port int) bool {
 
 // / Stops the container and removes it
 func StopAndRemoveContainer(ctx *cli.Context, containerName string) {
+	logger := common.LoggerFromContext(ctx.Context)
 	if err := exec.CommandContext(ctx.Context, "docker", "stop", containerName).Run(); err != nil {
 		logger.ErrorWithActor(iface.ActorSystem, "⚠️  Failed to stop container %s: %v", containerName, err)
 	} else {

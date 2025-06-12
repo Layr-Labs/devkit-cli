@@ -79,7 +79,7 @@ var Command = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("setting value %s failed: %w", item, err)
 				}
-				logger.InfoWithActor(iface.ActorConfig, "Set %s = %s", pathStr, val)
+				logger.InfoWithActor(iface.ActorConfig, "Set %s = %s", parts[0], val)
 			}
 			if err := common.WriteYAML(cfgPath, rootDoc); err != nil {
 				return fmt.Errorf("write config YAML: %w", err)

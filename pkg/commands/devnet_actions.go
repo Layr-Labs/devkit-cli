@@ -31,6 +31,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DeployContractTransport represents a deployed contract for transport
+type DeployContractTransport struct {
+	Name    string `json:"name" yaml:"name"`
+	Address string `json:"address" yaml:"address"`
+	ABI     string `json:"abi" yaml:"abi"`
+}
+
+// DeployContractJson represents the contract output JSON structure
+type DeployContractJson struct {
+	Name    string      `json:"name"`
+	Address string      `json:"address"`
+	ABI     interface{} `json:"abi"`
+}
+
 func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Check if docker is running, else try to start it
@@ -81,7 +95,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Fetch EigenLayer addresses using Zeus if requested
 	if useZeus {
 		logger.InfoWithActor(iface.ActorSystem, "Fetching EigenLayer core addresses from Zeus...")
-		err = common.UpdateContextWithZeusAddresses(logger, contextNode, devnet.CONTEXT)
+		err = common.UpdateConfigWithZeusAddresses(logger, config, devnet.CONTEXT)
 		if err != nil {
 			logger.WarnWithActor(iface.ActorSystem, "Failed to fetch addresses from Zeus: %v", err)
 			logger.InfoWithActor(iface.ActorSystem, "Continuing with addresses from config...")
@@ -185,25 +199,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	rpcUrl := devnet.GetRPCURL(port)
 	logger.InfoWithActor(iface.ActorSystem, "Waiting for devnet to be ready...")
 
-	// Get chains node
-	chainsNode := common.GetChildByKey(contextNode, "chains")
-	if chainsNode == nil {
-		return fmt.Errorf("missing 'chains' key in context")
-	}
-
-	// Update RPC URLs for both L1 and L2 chains
-	for i := 0; i < len(chainsNode.Content); i += 2 {
-		chainNode := chainsNode.Content[i+1]
-
-		rpcUrlNode := common.GetChildByKey(chainNode, "rpc_url")
-		if rpcUrlNode != nil {
-			rpcUrlNode.Value = rpcUrl
-		}
-	}
-
-	// Write yaml back to project directory
-	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
-		return err
+	// Update RPC URLs in the config struct
+	for chainName, chainConfig := range config.Context[devnet.CONTEXT].Chains {
+		chainConfig.RPCURL = rpcUrl
+		config.Context[devnet.CONTEXT].Chains[chainName] = chainConfig
 	}
 
 	// Sleep for 4 second to ensure the devnet is fully started
@@ -360,7 +359,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	}
 	// Empty log line to split these logs from the main body for easy identification
 	logger.TitleWithActor(iface.ActorSystem, "Save contract artefacts")
-	err = extractContractOutputs(cCtx, context, contractsList)
+	err = extractContractOutputs(cCtx, "devnet", contractsList)
 	if err != nil {
 		return fmt.Errorf("failed to write contract artefacts: %w", err)
 	}
@@ -749,15 +748,6 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 	return nil
 }
 
-func extractHostPort(portStr string) string {
-	if strings.Contains(portStr, "->") {
-		beforeArrow := strings.Split(portStr, "->")[0]
-		hostPort := strings.Split(beforeArrow, ":")
-		return hostPort[len(hostPort)-1]
-	}
-	return portStr
-}
-
 func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.Logger) error {
 	if operatorAddress == "" {
 		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
@@ -1014,51 +1004,4 @@ func migrateContexts(logger iface.Logger) (int, error) {
 	}
 
 	return contextsMigrated, nil
-}
-
-func FetchZeusAddressesAction(cCtx *cli.Context) error {
-	logger, _ := common.GetLoggerFromCLIContext(cCtx)
-	contextName := cCtx.String("context")
-
-	// Load config for the specified context
-	config, err := common.LoadConfigWithContextConfig(contextName)
-	if err != nil {
-		return fmt.Errorf("failed to load config for context %s: %w", contextName, err)
-	}
-
-	// Fetch addresses from Zeus
-	logger.InfoWithActor("User", "Fetching EigenLayer core addresses from Zeus...")
-	addresses, err := common.GetZeusAddresses(logger)
-	if err != nil {
-		return fmt.Errorf("failed to get addresses from Zeus: %w", err)
-	}
-
-	// Print the fetched addresses
-	logger.InfoWithActor("User", "Found addresses:")
-	logger.InfoWithActor("User", "AllocationManager: %s", addresses.AllocationManager)
-	logger.InfoWithActor("User", "DelegationManager: %s", addresses.DelegationManager)
-
-	// Update the context with the fetched addresses
-	err = common.UpdateContextWithZeusAddresses(logger, config, contextName)
-	if err != nil {
-		return fmt.Errorf("failed to update context with Zeus addresses: %w", err)
-	}
-
-	// Write the updated config to disk
-	contextFile := filepath.Join("config", "contexts", contextName+".yaml")
-	yamlData, err := yaml.Marshal(map[string]interface{}{
-		"version": "0.0.4", // This should ideally use the latest version dynamically
-		"context": config.Context[contextName],
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal updated context: %w", err)
-	}
-
-	err = os.WriteFile(contextFile, yamlData, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write updated context file: %w", err)
-	}
-
-	logger.InfoWithActor("User", "Successfully updated %s context with EigenLayer core addresses", contextName)
-	return nil
 }

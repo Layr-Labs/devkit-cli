@@ -37,46 +37,33 @@ func resetColor() string {
 	return "\033[0m"
 }
 
-func (l *BasicLogger) InfoWithActor(actor string, msg string, args ...any) {
+func (l *BasicLogger) Title(msg string, args ...any) {
 	formatted := fmt.Sprintf(msg, args...)
-	lines := strings.Split(strings.TrimSuffix(formatted, "\n"), "\n")
-	color := colorForActor(actor)
-	reset := resetColor()
-	for _, line := range lines {
-		log.Printf("%s[%s] %s%s", color, actor, line, reset)
-	}
-}
-
-func (l *BasicLogger) WarnWithActor(actor string, msg string, args ...any) {
-	formatted := fmt.Sprintf(msg, args...)
-	lines := strings.Split(strings.TrimSuffix(formatted, "\n"), "\n")
-	color := colorForActor(actor)
-	reset := resetColor()
-	for _, line := range lines {
-		log.Printf("%s[%s][Warning] %s%s", color, actor, line, reset)
-	}
-}
-
-func (l *BasicLogger) ErrorWithActor(actor string, msg string, args ...any) {
-	formatted := fmt.Sprintf(msg, args...)
-	lines := strings.Split(strings.TrimSuffix(formatted, "\n"), "\n")
-	color := colorForActor(actor)
-	reset := resetColor()
-	for _, line := range lines {
-		log.Printf("%s[%s][Error] %s%s", color, actor, line, reset)
-	}
+	log.Printf("\n%s\n", formatted)
 }
 
 func (l *BasicLogger) Info(msg string, args ...any) {
-	l.InfoWithActor("System", msg, args...)
+	formatted := fmt.Sprintf(msg, args...)
+	lines := strings.Split(strings.TrimSuffix(formatted, "\n"), "\n")
+	for _, line := range lines {
+		log.Printf("%s", line)
+	}
 }
 
 func (l *BasicLogger) Warn(msg string, args ...any) {
-	l.WarnWithActor("System", msg, args...)
+	formatted := fmt.Sprintf(msg, args...)
+	lines := strings.Split(strings.TrimSuffix(formatted, "\n"), "\n")
+	for _, line := range lines {
+		log.Printf("[Warning] %s", line)
+	}
 }
 
 func (l *BasicLogger) Error(msg string, args ...any) {
-	l.ErrorWithActor("System", msg, args...)
+	formatted := fmt.Sprintf(msg, args...)
+	lines := strings.Split(strings.TrimSuffix(formatted, "\n"), "\n")
+	for _, line := range lines {
+		log.Printf("[Error] %s", line)
+	}
 }
 
 func (l *BasicLogger) Debug(msg string, args ...any) {
@@ -97,7 +84,7 @@ func (l *BasicLogger) Debug(msg string, args ...any) {
 	}
 }
 
-// Actor-based methods - basic implementations without color (delegating to regular methods)
+// Actor-based methods
 func (l *BasicLogger) TitleWithActor(actor iface.Actor, msg string, args ...any) {
 	l.Title(msg, args...)
 }

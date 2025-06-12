@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
@@ -94,4 +95,24 @@ func ProgressTrackerFromContext(ctx context.Context) iface.ProgressTracker {
 	// Fallback to non-verbose tracker if not found in context
 	_, tracker := GetLogger(false)
 	return tracker
+}
+
+// IsValidABI validates that the provided interface represents a valid Ethereum contract ABI
+func IsValidABI(abi interface{}) error {
+	// Basic validation: ABI should be a slice of interface{}
+	switch v := abi.(type) {
+	case []interface{}:
+		// ABI is an array, which is correct
+		for i, item := range v {
+			// Each item should be a map representing an ABI element
+			if _, ok := item.(map[string]interface{}); !ok {
+				return fmt.Errorf("ABI element at index %d is not a valid object", i)
+			}
+		}
+		return nil
+	case nil:
+		return fmt.Errorf("ABI cannot be nil")
+	default:
+		return fmt.Errorf("ABI must be an array, got %T", v)
+	}
 }

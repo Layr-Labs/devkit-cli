@@ -120,7 +120,7 @@ var Command = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("setting value %s failed: %w", item, err)
 				}
-				logger.InfoWithActor(iface.ActorConfig, "Set %s = %s", pathStr, val)
+				logger.InfoWithActor(iface.ActorConfig, "Set %s = %s", parts[0], val)
 			}
 			if err := common.WriteYAML(contextPath, rootDoc); err != nil {
 				return fmt.Errorf("write context YAML: %w", err)

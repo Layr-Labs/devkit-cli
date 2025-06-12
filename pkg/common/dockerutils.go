@@ -11,8 +11,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
-	"github.com/docker/docker/client"
-	"github.com/urfave/cli/v2"
 )
 
 // EnsureDockerIsRunning checks if Docker is running and attempts to launch Docker Desktop if not.

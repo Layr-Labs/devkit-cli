@@ -57,15 +57,34 @@ func GetZeusAddresses(logger iface.Logger) (*ZeusAddressData, error) {
 	return addresses, nil
 }
 
-// UpdateContextWithZeusAddresses updates the context configuration with addresses from Zeus
-func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *ConfigWithContextConfig, contextName string) error {
+// SetMappingValue sets or updates a key-value pair in a YAML mapping node
+func SetMappingValue(mappingNode *yaml.Node, keyNode, valueNode *yaml.Node) {
+	if mappingNode == nil || mappingNode.Kind != yaml.MappingNode {
+		return
+	}
+
+	// Look for existing key
+	for i := 0; i < len(mappingNode.Content); i += 2 {
+		if i+1 < len(mappingNode.Content) && mappingNode.Content[i].Value == keyNode.Value {
+			// Replace existing value
+			mappingNode.Content[i+1] = valueNode
+			return
+		}
+	}
+
+	// Key not found, append new key-value pair
+	mappingNode.Content = append(mappingNode.Content, keyNode, valueNode)
+}
+
+// UpdateContextWithZeusAddresses updates the context node with addresses from Zeus
+func UpdateContextWithZeusAddresses(logger iface.Logger, contextNode *yaml.Node, contextName string) error {
 	addresses, err := GetZeusAddresses(logger)
 	if err != nil {
 		return err
 	}
 
 	// Find or create "eigenlayer" mapping entry
-	parentMap := GetChildByKey(ctx, "eigenlayer")
+	parentMap := GetChildByKey(contextNode, "eigenlayer")
 	if parentMap == nil {
 		// Create key node
 		keyNode := &yaml.Node{
@@ -79,7 +98,7 @@ func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *ConfigWithContextC
 			Tag:     "!!map",
 			Content: []*yaml.Node{},
 		}
-		ctx.Content = append(ctx.Content, keyNode, parentMap)
+		contextNode.Content = append(contextNode.Content, keyNode, parentMap)
 	}
 
 	// Print the fetched addresses
@@ -94,14 +113,53 @@ func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *ConfigWithContextC
 	logger.InfoWithActor(iface.ActorSystem, "Found addresses: %s", b)
 
 	// Prepare nodes
-	amKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "AllocationManager"}
+	amKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "allocation_manager"}
 	amVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.AllocationManager}
-	dmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "DelegationManager"}
+	dmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "delegation_manager"}
 	dmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.DelegationManager}
 
 	// Replace existing or append new entries
 	SetMappingValue(parentMap, amKey, amVal)
 	SetMappingValue(parentMap, dmKey, dmVal)
+
+	return nil
+}
+
+// UpdateConfigWithZeusAddresses updates a ConfigWithContextConfig struct with addresses from Zeus
+func UpdateConfigWithZeusAddresses(logger iface.Logger, config *ConfigWithContextConfig, contextName string) error {
+	addresses, err := GetZeusAddresses(logger)
+	if err != nil {
+		return err
+	}
+
+	// Get the context configuration
+	contextConfig, exists := config.Context[contextName]
+	if !exists {
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
+	}
+
+	// Initialize EigenLayer config if it doesn't exist
+	if contextConfig.EigenLayer == nil {
+		contextConfig.EigenLayer = &EigenLayerConfig{}
+	}
+
+	// Update the addresses
+	contextConfig.EigenLayer.AllocationManager = addresses.AllocationManager
+	contextConfig.EigenLayer.DelegationManager = addresses.DelegationManager
+
+	// Update the config map
+	config.Context[contextName] = contextConfig
+
+	// Print the fetched addresses
+	payload := ZeusAddressData{
+		AllocationManager: addresses.AllocationManager,
+		DelegationManager: addresses.DelegationManager,
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Found addresses (marshal failed): %w", err)
+	}
+	logger.InfoWithActor(iface.ActorSystem, "Found addresses: %s", b)
 
 	return nil
 }
