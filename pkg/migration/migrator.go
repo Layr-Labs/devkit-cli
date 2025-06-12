@@ -117,7 +117,7 @@ func MigrateYaml(logger iface.Logger, path string, latestVersion string, migrati
 	if from == to {
 		return ErrAlreadyUpToDate
 	}
-	logger.Info("Migrating %s v%s -> v%s", path, from, to)
+	logger.InfoWithActor(iface.ActorSystem, "Migrating %s v%s -> v%s", path, from, to)
 
 	// Perform node-based migration
 	migrated, err := MigrateNode(userNode, from, to, migrationChain)

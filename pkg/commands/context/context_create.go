@@ -8,52 +8,53 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/urfave/cli/v2"
 )
 
-// CreateCommand defines the "create context" subcommand
+// CreateContextCommand defines the "create context" subcommand
 var CreateContextCommand = &cli.Command{
 	Name:  "create",
-	Usage: "Create a new context",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "context",
-			Usage: "Select the context to work over",
-		},
+	Usage: "Create a new context file template",
+	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
 			Name:  "force",
-			Usage: "Force context to be overwritten",
+			Usage: "Force overwrite existing context file",
 		},
-	},
+	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		logger := common.LoggerFromContext(cCtx.Context)
 
-		ctxName := cCtx.String("context")
-		if args := cCtx.Args().Slice(); len(args) > 0 {
-			ctxName = args[0]
+		// Get first positional argument as context name
+		ctxName := cCtx.Args().First()
+		if ctxName == "" {
+			return fmt.Errorf("context name is required")
 		}
 
-		// path + ensure dir
-		ctxPath := filepath.Join("config", "contexts", fmt.Sprintf("%s.yaml", ctxName))
-		if err := os.MkdirAll(filepath.Dir(ctxPath), 0755); err != nil {
-			return fmt.Errorf("failed to make contexts dir: %w", err)
+		// Check if context directory exists
+		contextDir := filepath.Join("config", "contexts")
+		if err := os.MkdirAll(contextDir, 0755); err != nil {
+			return fmt.Errorf("failed to create contexts directory: %w", err)
 		}
+
+		// Set context file path
+		ctxPath := filepath.Join(contextDir, ctxName+".yaml")
 
 		// create if missing or forced
 		if _, err := os.Stat(ctxPath); err != nil || cCtx.Bool("force") {
-			logger.InfoWithActor("User", "Creating a new context for %s", ctxName)
+			logger.InfoWithActor(iface.ActorConfig, "Creating a new context for %s", ctxName)
 			if err := CreateContext(ctxPath, ctxName); err != nil {
 				return fmt.Errorf("failed to create new context: %w", err)
 			}
 		} else {
-			return fmt.Errorf("context already exists, if you want to recreate try `devkit avs context create --force %s`", ctxName)
+			return fmt.Errorf("context %s already exists (use --force to overwrite)", ctxName)
 		}
 
-		logger.InfoWithActor("User", "Context successfully created at %s", ctxPath)
-		logger.InfoWithActor("User", "")
-		logger.InfoWithActor("User", "  - To view your new context call: `devkit avs context --list %s`", ctxName)
-		logger.InfoWithActor("User", "  - To edit your new context call: `devkit avs context --edit %s`", ctxName)
-		logger.InfoWithActor("User", "")
+		logger.InfoWithActor(iface.ActorConfig, "Context successfully created at %s", ctxPath)
+		logger.InfoWithActor(iface.ActorConfig, "")
+		logger.InfoWithActor(iface.ActorConfig, "  - To view your new context call: `devkit avs context --list %s`", ctxName)
+		logger.InfoWithActor(iface.ActorConfig, "  - To edit your new context call: `devkit avs context --edit %s`", ctxName)
+		logger.InfoWithActor(iface.ActorConfig, "")
 		return nil
 	},
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math/big"
 	"os"
 	"os/exec"
@@ -52,23 +53,23 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Migrate config
 	configMigrated, err := migrateConfig(logger)
 	if err != nil {
-		logger.Error("config migration failed: %w", err)
+		logger.ErrorWithActor(iface.ActorConfig, "config migration failed: %w", err)
 	}
 	if configMigrated > 0 {
-		logger.Info("Config migration complete")
+		logger.InfoWithActor(iface.ActorConfig, "Config migration complete")
 	}
 
 	// Migrate contexts
 	contextsMigrated, err := migrateContexts(logger)
 	if err != nil {
-		logger.Error("context migrations failed: %w", err)
+		logger.ErrorWithActor(iface.ActorConfig, "context migrations failed: %w", err)
 	}
 	if contextsMigrated > 0 {
 		suffix := "s"
 		if contextsMigrated == 1 {
 			suffix = ""
 		}
-		logger.Info("%d context migration%s complete", contextsMigrated, suffix)
+		logger.InfoWithActor(iface.ActorConfig, "%d context migration%s complete", contextsMigrated, suffix)
 	}
 
 	// Load config for devnet
@@ -79,13 +80,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Fetch EigenLayer addresses using Zeus if requested
 	if useZeus {
-		logger.Info("Fetching EigenLayer core addresses from Zeus...")
-		err = common.UpdateContextWithZeusAddresses(logger, config, devnet.CONTEXT)
+		logger.InfoWithActor(iface.ActorSystem, "Fetching EigenLayer core addresses from Zeus...")
+		err = common.UpdateContextWithZeusAddresses(logger, contextNode, devnet.CONTEXT)
 		if err != nil {
-			logger.Warn("Failed to fetch addresses from Zeus: %v", err)
-			logger.Info("Continuing with addresses from config...")
+			logger.WarnWithActor(iface.ActorSystem, "Failed to fetch addresses from Zeus: %v", err)
+			logger.InfoWithActor(iface.ActorSystem, "Continuing with addresses from config...")
 		} else {
-			logger.Info("Successfully updated context with addresses from Zeus")
+			logger.InfoWithActor(iface.ActorSystem, "Successfully updated context with addresses from Zeus")
 
 			// Save the updated context to disk
 			contextFile := filepath.Join("config", "contexts", devnet.CONTEXT+".yaml")
@@ -112,16 +113,16 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Start timer
 	startTime := time.Now()
 
-	logger.InfoWithActor("User", "Starting devnet...\n")
+	logger.InfoWithActor(iface.ActorSystem, "Starting devnet...\n")
 
 	if cCtx.Bool("reset") {
-		logger.Debug("Resetting devnet...")
+		logger.DebugWithActor(iface.ActorSystem, "Resetting devnet...")
 	}
 	if fork := cCtx.String("fork"); fork != "" {
-		logger.Debug("Forking from chain: %s", fork)
+		logger.DebugWithActor(iface.ActorSystem, "Forking from chain: %s", fork)
 	}
 	if cCtx.Bool("headless") {
-		logger.Debug("Running in headless mode")
+		logger.DebugWithActor(iface.ActorSystem, "Running in headless mode")
 	}
 
 	// Docker-compose for anvil devnet
@@ -166,31 +167,23 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
+
+	// On cancel, always call down if skipAvsRun=false
+	if !skipDeployContracts && !skipAvsRun {
+		defer func() {
+			logger.InfoWithActor(iface.ActorSystem, "Stopping containers")
+			// clone cCtx but overwrite the context to Background
+			cloned := *cCtx
+			cloned.Context = context.Background()
+			if err := StopDevnetAction(&cloned); err != nil {
+				logger.WarnWithActor(iface.ActorSystem, "automatic StopDevnetAction failed: %v", err)
+			}
+		}()
+	}
+
+	// Construct RPC url to pass to scripts
 	rpcUrl := devnet.GetRPCURL(port)
-	logger.Info("Waiting for devnet to be ready...")
-
-	// Set path for context yamls
-	contextDir := filepath.Join("config", "contexts")
-	yamlPath := path.Join(contextDir, "devnet.yaml")
-
-	// Load YAML as *yaml.Node
-	rootNode, err := common.LoadYAML(yamlPath)
-	if err != nil {
-		return err
-	}
-
-	// YAML is parsed into a DocumentNode:
-	//   - rootNode.Content[0] is the top-level MappingNode
-	//   - It contains the 'context' mapping we're interested in
-	if len(rootNode.Content) == 0 {
-		return fmt.Errorf("empty YAML root node")
-	}
-
-	// Check for context
-	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
-	if contextNode == nil {
-		return fmt.Errorf("missing 'context' key in ./config/contexts/devnet.yaml")
-	}
+	logger.InfoWithActor(iface.ActorSystem, "Waiting for devnet to be ready...")
 
 	// Get chains node
 	chainsNode := common.GetChildByKey(contextNode, "chains")
@@ -224,7 +217,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 1 second to make sure wallets are funded
 	time.Sleep(1 * time.Second)
-	logger.InfoWithActor("User", "\nDevnet started successfully in %s", elapsed)
+	logger.InfoWithActor(iface.ActorSystem, "\nDevnet started successfully in %s", elapsed)
 
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
@@ -235,7 +228,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		// Sleep for 1 second to make sure new context values have been written
 		time.Sleep(1 * time.Second)
 
-		logger.InfoWithActor("User", "Registering AVS with EigenLayer...")
+		logger.TitleWithActor(iface.ActorOperator, "Registering AVS with EigenLayer...")
 
 		if !cCtx.Bool("skip-setup") {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
@@ -247,13 +240,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			if err := CreateAVSOperatorSetsAction(cCtx, logger); err != nil {
 				return fmt.Errorf("creating AVS operator sets failed: %w", err)
 			}
-			logger.InfoWithActor("User", "AVS registered with EigenLayer successfully.")
+			logger.InfoWithActor(iface.ActorOperator, "AVS registered with EigenLayer successfully.")
 
 			if err := RegisterOperatorsFromConfigAction(cCtx, logger); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
 		} else {
-			logger.InfoWithActor("User", "Skipping AVS setup steps...")
+			logger.InfoWithActor(iface.ActorAVSDev, "Skipping AVS setup steps...")
 		}
 	}
 
@@ -318,7 +311,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Loop scripts with cloned context
 	for _, name := range scriptNames {
 		// Log the script name that's about to be executed
-		logger.Info("Executing script: %s", name)
+		logger.InfoWithActor(iface.ActorSystem, "Executing script: %s", name)
 		// Clone context node and convert to map
 		clonedCtxNode := common.CloneNode(contextNode)
 		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
@@ -356,6 +349,22 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		common.DeepMerge(contextNode, outNode)
 	}
 
+	// Create output .json files for each of the deployed contracts
+	contracts := common.GetChildByKey(contextNode, "deployed_contracts")
+	if contracts == nil {
+		return fmt.Errorf("deployed_contracts node not found")
+	}
+	var contractsList []DeployContractTransport
+	if err := contracts.Decode(&contractsList); err != nil {
+		return fmt.Errorf("decode deployed_contracts: %w", err)
+	}
+	// Empty log line to split these logs from the main body for easy identification
+	logger.TitleWithActor(iface.ActorSystem, "Save contract artefacts")
+	err = extractContractOutputs(cCtx, context, contractsList)
+	if err != nil {
+		return fmt.Errorf("failed to write contract artefacts: %w", err)
+	}
+
 	// Write yaml back to project directory
 	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
 		return err
@@ -363,7 +372,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Measure how long we ran for
 	elapsed := time.Since(startTime).Round(time.Second)
-	logger.InfoWithActor("User", "\nDevnet contracts deployed successfully in %s", elapsed)
+	logger.InfoWithActor(iface.ActorSystem, "\nDevnet contracts deployed successfully in %s", elapsed)
 	return nil
 }
 
@@ -391,7 +400,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		}
 
 		if cCtx.Bool("verbose") {
-			log.InfoWithActor("System", "Attempting to stop devnet containers...")
+			log.InfoWithActor(iface.ActorSystem, "Attempting to stop devnet containers...")
 		}
 
 		for _, name := range containerNames {
@@ -424,7 +433,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 			output, err := cmd.Output()
 			if err != nil {
-				log.Warn("Failed to list running devnet containers: %v", err)
+				log.WarnWithActor(iface.ActorSystem, "Failed to list running devnet containers: %v", err)
 			}
 
 			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -443,13 +452,13 @@ func StopDevnetAction(cCtx *cli.Context) error {
 					projectName := strings.TrimPrefix(containerName, "devkit-devnet-")
 					devnet.StopAndRemoveContainer(cCtx, containerName)
 
-					log.InfoWithActor("System", "Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
+					log.InfoWithActor(iface.ActorSystem, "Stopped devnet container running on port %d, project.name %s", projectPort, projectName)
 					containerFoundUsingthePort = true
 					break
 				}
 			}
 			if !containerFoundUsingthePort {
-				log.InfoWithActor("User", "No container found with port %d. Try devkit avs devnet list to get a list of running devnet containers", projectPort)
+				log.InfoWithActor(iface.ActorSystem, "No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers", projectPort, devnet.Cyan, devnet.Reset)
 			}
 
 		}
@@ -468,7 +477,7 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		devnet.StopAndRemoveContainer(cCtx, container)
 
 	} else {
-		log.InfoWithActor("User", "Run this command from the avs directory or run devkit avs devnet stop --help for available commands")
+		log.InfoWithActor(iface.ActorSystem, "Run this command from the avs directory  or run %sdevkit avs devnet stop --help%s for available commands", devnet.Cyan, devnet.Reset)
 	}
 
 	return nil
@@ -584,12 +593,12 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	var registrarAddr ethcommon.Address
-	logger.Info("Attempting to find AvsRegistrar in deployed contracts...")
+	logger.InfoWithActor(iface.ActorOperator, "Attempting to find AvsRegistrar in deployed contracts...")
 	foundInDeployed := false
 	for _, contract := range envCtx.DeployedContracts {
 		if strings.Contains(strings.ToLower(contract.Name), "avsregistrar") {
 			registrarAddr = ethcommon.HexToAddress(contract.Address)
-			logger.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
+			logger.InfoWithActor(iface.ActorOperator, "Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
 			foundInDeployed = true
 			break
 		}
@@ -638,7 +647,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 
 	avsAddr := ethcommon.HexToAddress(envCtx.Avs.Address)
 	if len(envCtx.OperatorSets) == 0 {
-		logger.Info("No operator sets to create.")
+		logger.InfoWithActor(iface.ActorOperator, "No operator sets to create.")
 		return nil
 	}
 	createSetParams := make([]allocationmanager.IAllocationManagerTypesCreateSetParams, len(envCtx.OperatorSets))
@@ -666,26 +675,87 @@ func RegisterOperatorsFromConfigAction(cCtx *cli.Context, logger iface.Logger) e
 		return fmt.Errorf("context '%s' not found in configuration", devnet.CONTEXT)
 	}
 
-	logger.Info("Registering operators with EigenLayer...")
+	logger.InfoWithActor(iface.ActorOperator, "Registering operators with EigenLayer...")
 	if len(envCtx.OperatorRegistrations) == 0 {
-		logger.Info("No operator registrations found in context, skipping operator registration.")
+		logger.InfoWithActor(iface.ActorOperator, "No operator registrations found in context, skipping operator registration.")
 		return nil
 	}
 
 	for _, opReg := range envCtx.OperatorRegistrations {
-		logger.Info("Processing registration for operator at address %s", opReg.Address)
+		logger.InfoWithActor(iface.ActorOperator, "Processing registration for operator at address %s", opReg.Address)
 		if err := registerOperatorEL(cCtx, opReg.Address, logger); err != nil {
-			logger.Error("Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
+			logger.ErrorWithActor(iface.ActorOperator, "Failed to register operator %s with EigenLayer: %v. Continuing...", opReg.Address, err)
 			continue
 		}
 		if err := registerOperatorAVS(cCtx, logger, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
-			logger.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
+			logger.ErrorWithActor(iface.ActorOperator, "Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
 			continue
 		}
-		logger.Info("Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
+		logger.InfoWithActor(iface.ActorOperator, "Successfully registered operator %s for OperatorSetID %d", opReg.Address, opReg.OperatorSetID)
 	}
-	logger.Info("Operator registration with EigenLayer completed.")
+	logger.InfoWithActor(iface.ActorOperator, "Operator registration with EigenLayer completed.")
 	return nil
+}
+
+func FetchZeusAddressesAction(cCtx *cli.Context) error {
+	logger := common.LoggerFromContext(cCtx.Context)
+	contextName := cCtx.String("context")
+
+	// Set path for context yaml
+	contextDir := filepath.Join("config", "contexts")
+	yamlPath := path.Join(contextDir, fmt.Sprintf("%s.%s", contextName, "yaml"))
+
+	// Load YAML as *yaml.Node
+	rootNode, err := common.LoadYAML(yamlPath)
+	if err != nil {
+		return err
+	}
+	// Check for context
+	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
+	if contextNode == nil {
+		return fmt.Errorf("missing 'context' key in ./config/contexts/%s.yaml", contextName)
+	}
+
+	// Fetch addresses from Zeus
+	logger.InfoWithActor(iface.ActorSystem, "Fetching EigenLayer core addresses from Zeus...")
+	addresses, err := common.GetZeusAddresses(logger)
+	if err != nil {
+		return fmt.Errorf("failed to get addresses from Zeus for %s: %w", contextName, err)
+	}
+
+	// Print the fetched addresses
+	payload := common.ZeusAddressData{
+		AllocationManager: addresses.AllocationManager,
+		DelegationManager: addresses.DelegationManager,
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("Found addresses (marshal failed): %w", err)
+	}
+	logger.InfoWithActor(iface.ActorSystem, "Found addresses: %s", b)
+
+	// Update the context with the fetched addresses
+	err = common.UpdateContextWithZeusAddresses(logger, contextNode, contextName)
+	if err != nil {
+		return fmt.Errorf("failed to update context (%s) with Zeus addresses: %w", contextName, err)
+	}
+
+	// Write yaml back to project directory
+	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
+		return fmt.Errorf("Failed to save updated context: %v", err)
+	}
+
+	logger.InfoWithActor(iface.ActorSystem, "Successfully updated %s context with EigenLayer core addresses", contextName)
+	return nil
+}
+
+func extractHostPort(portStr string) string {
+	if strings.Contains(portStr, "->") {
+		beforeArrow := strings.Split(portStr, "->")[0]
+		hostPort := strings.Split(beforeArrow, ":")
+		return hostPort[len(hostPort)-1]
+	}
+	return portStr
 }
 
 func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.Logger) error {
@@ -817,6 +887,64 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 	)
 }
 
+func extractContractOutputs(cCtx *cli.Context, context string, contractsList []DeployContractTransport) error {
+	logger := common.LoggerFromContext(cCtx.Context)
+
+	// Push contract artefacts to ./contracts/outputs
+	outDir := filepath.Join("contracts", "outputs", context)
+	if err := os.MkdirAll(outDir, fs.ModePerm); err != nil {
+		return fmt.Errorf("create output dir: %w", err)
+	}
+
+	// For each contract extract details and produce json file in outputs/<context>/<contract.name>.json
+	for _, contract := range contractsList {
+		nameVal := contract.Name
+		addressVal := contract.Address
+		abiVal := contract.ABI
+
+		// Read the ABI file
+		raw, err := os.ReadFile(abiVal)
+		if err != nil {
+			return fmt.Errorf("read ABI for %s (%s) from %q: %w", nameVal, addressVal, abiVal, err)
+		}
+
+		// Temporary struct to pick only the "abi" field from the artifact
+		var abi struct {
+			ABI interface{} `json:"abi"`
+		}
+		if err := json.Unmarshal(raw, &abi); err != nil {
+			return fmt.Errorf("unmarshal artifact JSON for %s (%s) failed: %w", nameVal, addressVal, err)
+		}
+
+		// Check if provided abi is valid
+		if err := common.IsValidABI(abi.ABI); err != nil {
+			return fmt.Errorf("ABI for %s (%s) is invalid: %v", nameVal, addressVal, err)
+		}
+
+		// Build the output struct
+		out := DeployContractJson{
+			Name:    nameVal,
+			Address: addressVal,
+			ABI:     abi.ABI,
+		}
+
+		// Marshal with indentation
+		data, err := json.MarshalIndent(out, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal output for %s (%s): %w", nameVal, addressVal, err)
+		}
+
+		// Write to ./contracts/outputs/<context>/<name>.json
+		outPath := filepath.Join(outDir, nameVal+".json")
+		if err := os.WriteFile(outPath, data, 0o644); err != nil {
+			return fmt.Errorf("write output to %s (%s): %w", outPath, addressVal, err)
+		}
+
+		logger.InfoWithActor(iface.ActorSystem, "Written contract output: %s\n", outPath)
+	}
+	return nil
+}
+
 func migrateConfig(logger iface.Logger) (int, error) {
 
 	// Set path for context yamls
@@ -835,7 +963,7 @@ func migrateConfig(logger iface.Logger) (int, error) {
 
 	// If config was migrated
 	if !alreadyUptoDate {
-		logger.Info("Migrated %s\n", configPath)
+		logger.InfoWithActor(iface.ActorConfig, "Migrated %s\n", configPath)
 
 		return 1, nil
 	}
@@ -871,7 +999,7 @@ func migrateContexts(logger iface.Logger) (int, error) {
 
 		// For every other error, migration failed
 		if err != nil && !alreadyUptoDate {
-			logger.Error("failed to migrate: %v", err)
+			logger.ErrorWithActor(iface.ActorConfig, "failed to migrate: %v", err)
 			continue
 		}
 
@@ -881,7 +1009,7 @@ func migrateContexts(logger iface.Logger) (int, error) {
 			contextsMigrated += 1
 
 			// If migration succeeds
-			logger.Info("Migrated %s\n", contextPath)
+			logger.InfoWithActor(iface.ActorConfig, "Migrated %s\n", contextPath)
 		}
 	}
 

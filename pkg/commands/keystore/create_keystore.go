@@ -47,9 +47,9 @@ var CreateCommand = &cli.Command{
 		curve := cCtx.String("type")
 		password := cCtx.String("password")
 
-		logger.Debug("🔐 Starting Bls keystore creation")
-		logger.Debug("• Curve: %s", curve)
-		logger.Debug("• Output Path: %s", path)
+		logger.DebugWithActor(iface.ActorOperator, "🔐 Starting Bls keystore creation")
+		logger.DebugWithActor(iface.ActorOperator, "• Curve: %s", curve)
+		logger.DebugWithActor(iface.ActorOperator, "• Output Path: %s", path)
 
 		return CreateBLSKeystore(logger, privateKey, path, password, curve)
 	},
@@ -65,9 +65,9 @@ func CreateBLSKeystore(logger iface.Logger, privateKey, path, password, curve st
 		return fmt.Errorf("unsupported curve: %s", curve)
 	}
 
-	logger.Debug("🔐 Starting Bls keystore creation")
-	logger.Debug("• Curve: %s", curve)
-	logger.Debug("• Output Path: %s", path)
+	logger.DebugWithActor(iface.ActorOperator, "🔐 Starting Bls keystore creation")
+	logger.DebugWithActor(iface.ActorOperator, "• Curve: %s", curve)
+	logger.DebugWithActor(iface.ActorOperator, "• Output Path: %s", path)
 
 	scheme := bn254.NewScheme()
 	cleanedKey := strings.TrimPrefix(privateKey, "0x")
@@ -91,9 +91,9 @@ func CreateBLSKeystore(logger iface.Logger, privateKey, path, password, curve st
 		return errors.New("failed to extract the private key from the keystore file")
 	}
 
-	logger.Info("✅ Keystore generated successfully")
-	logger.Info("🔑 Save this BLS private key in a secure location:")
-	logger.Info("    %s\n", privateKeyData.Bytes())
+	logger.InfoWithActor(iface.ActorOperator, "✅ Keystore generated successfully")
+	logger.InfoWithActor(iface.ActorOperator, "🔑 Save this BLS private key in a secure location:")
+	logger.InfoWithActor(iface.ActorOperator, "    %s\n", privateKeyData.Bytes())
 
 	return nil
 }

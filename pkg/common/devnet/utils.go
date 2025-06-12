@@ -2,7 +2,6 @@ package devnet
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/urfave/cli/v2"
 )
 
@@ -30,14 +30,14 @@ func IsPortAvailable(port int) bool {
 // / Stops the container and removes it
 func StopAndRemoveContainer(ctx *cli.Context, containerName string) {
 	if err := exec.CommandContext(ctx.Context, "docker", "stop", containerName).Run(); err != nil {
-		log.Printf("⚠️ Failed to stop container %s: %v", containerName, err)
+		logger.ErrorWithActor(iface.ActorSystem, "⚠️  Failed to stop container %s: %v", containerName, err)
 	} else {
-		log.Printf("✅ Stopped container %s", containerName)
+		logger.InfoWithActor(iface.ActorSystem, "✅ Stopped container %s", containerName)
 	}
 	if err := exec.CommandContext(ctx.Context, "docker", "rm", containerName).Run(); err != nil {
-		log.Printf("⚠️ Failed to remove container %s: %v", containerName, err)
+		logger.ErrorWithActor(iface.ActorSystem, "⚠️  Failed to remove container %s: %v", containerName, err)
 	} else {
-		log.Printf("✅ Removed container %s", containerName)
+		logger.InfoWithActor(iface.ActorSystem, "✅ Removed container %s", containerName)
 	}
 }
 

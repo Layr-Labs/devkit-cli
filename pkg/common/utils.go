@@ -45,10 +45,14 @@ func GetLogger(verbose bool) (iface.Logger, iface.ProgressTracker) {
 	var tracker iface.ProgressTracker
 
 	if progress.IsTTY() {
-		log = logger.NewLogger(verbose)
+		baseLogger := logger.NewLogger(verbose)
+		// Wrap with ColoredLogger for TTY environments to enable color-coded logging
+		log = logger.NewColoredLogger(baseLogger)
 		tracker = progress.NewTTYProgressTracker(10, os.Stdout)
 	} else {
-		log = logger.NewZapLogger(verbose)
+		baseLogger := logger.NewZapLogger(verbose)
+		// Wrap with ColoredLogger for non-TTY environments too (colors will be stripped by most log processors)
+		log = logger.NewColoredLogger(baseLogger)
 		tracker = progress.NewLogProgressTracker(10, log)
 	}
 

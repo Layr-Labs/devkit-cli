@@ -67,7 +67,7 @@ func (s *LogProgressTracker) Set(id string, pct int, label string) {
 	// print to logger on first 100% progress report
 	info := s.progress[id]
 	if info.Percentage == 100 {
-		s.logger.Info(fmt.Sprintf("Progress: %s - %d%%", info.DisplayText, info.Percentage))
+		s.logger.InfoWithActor(iface.ActorSystem, fmt.Sprintf("Progress: %s - %d%%", info.DisplayText, info.Percentage))
 	}
 }
 

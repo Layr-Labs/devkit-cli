@@ -65,11 +65,10 @@ func EditConfig(cCtx *cli.Context, configPath string, editTarget EditTarget, con
 	newData, err := ValidateConfig(configPath, editTarget)
 	// Check for validation errs
 	if err != nil {
-		logger.ErrorWithActor("System", "Error validating config: %v", err)
-		logger.InfoWithActor("User", "Reverting changes...")
+		logger.ErrorWithActor(iface.ActorConfig, "Error validating config: %v", err)
+		logger.InfoWithActor(iface.ActorConfig, "Reverting changes...")
 		if restoreErr := restoreBackup(configPath, backupData); restoreErr != nil {
-			logger.ErrorWithActor("System", "Failed to restore backup after validation error: %w", restoreErr)
-			return restoreErr
+			logger.ErrorWithActor(iface.ActorConfig, "Failed to restore backup after validation error: %w", restoreErr)
 		}
 		return err
 	}
@@ -77,11 +76,10 @@ func EditConfig(cCtx *cli.Context, configPath string, editTarget EditTarget, con
 	// Collect changes
 	changes, err := validateConfigChanges(backupData, newData)
 	if err != nil {
-		logger.ErrorWithActor("System", "Error validating config: %v", err)
-		logger.InfoWithActor("User", "Reverting changes...")
+		logger.ErrorWithActor(iface.ActorConfig, "Error validating config: %v", err)
+		logger.InfoWithActor(iface.ActorConfig, "Reverting changes...")
 		if restoreErr := restoreBackup(configPath, backupData); restoreErr != nil {
-			logger.ErrorWithActor("System", "Failed to restore backup after validation error: %w", restoreErr)
-			return restoreErr
+			logger.ErrorWithActor(iface.ActorConfig, "Failed to restore backup after validation error: %w", restoreErr)
 		}
 		return err
 	}
@@ -92,7 +90,7 @@ func EditConfig(cCtx *cli.Context, configPath string, editTarget EditTarget, con
 	// Send telemetry
 	sendConfigChangeTelemetry(cCtx.Context, changes, logger)
 
-	logger.InfoWithActor("User", "Config file updated successfully.")
+	logger.InfoWithActor(iface.ActorConfig, "Config file updated successfully.")
 	return nil
 }
 
@@ -155,7 +153,7 @@ func backupConfig(configPath string, editTarget EditTarget, context string) (map
 
 // openEditor launches the editor for the config file
 func openEditor(editorPath, filePath string, logger iface.Logger) error {
-	logger.InfoWithActor("User", "Opening config file in %s...", editorPath)
+	logger.InfoWithActor(iface.ActorConfig, "Opening config file in %s...", editorPath)
 
 	cmd := exec.Command(editorPath, filePath)
 	cmd.Stdin = os.Stdin
@@ -336,7 +334,7 @@ func join(base, field string) string {
 // logConfigChanges logs the configuration changes
 func logConfigChanges(changes []ConfigChange, logger iface.Logger) {
 	if len(changes) == 0 {
-		logger.InfoWithActor("User", "No changes detected in configuration.")
+		logger.InfoWithActor(iface.ActorConfig, "No changes detected in configuration.")
 		return
 	}
 
@@ -352,7 +350,7 @@ func logConfigChanges(changes []ConfigChange, logger iface.Logger) {
 
 	// Log changes by section
 	for section, sectionChanges := range sections {
-		logger.InfoWithActor("User", "%s changes:", titleCaser.String(section))
+		logger.InfoWithActor(iface.ActorConfig, "%s changes:", titleCaser.String(section))
 		for _, change := range sectionChanges {
 			formatAndLogChange(change, logger)
 		}
@@ -363,33 +361,33 @@ func logConfigChanges(changes []ConfigChange, logger iface.Logger) {
 func formatAndLogChange(change ConfigChange, logger iface.Logger) {
 	// Additions
 	if change.OldValue == nil && change.NewValue != nil {
-		logger.InfoWithActor("User", "  - %s added (value: %v)", change.Path, change.NewValue)
+		logger.InfoWithActor(iface.ActorConfig, "  - %s added (value: %v)", change.Path, change.NewValue)
 		return
 	}
 	// Removals
 	if change.NewValue == nil && change.OldValue != nil {
-		logger.InfoWithActor("User", "  - %s removed (was: %v)", change.Path, change.OldValue)
+		logger.InfoWithActor(iface.ActorConfig, "  - %s removed (was: %v)", change.Path, change.OldValue)
 		return
 	}
 	// Updates (both non-nil)
 	switch oldVal := change.OldValue.(type) {
 	case string:
 		if newVal, ok := change.NewValue.(string); ok {
-			logger.InfoWithActor("User", "  - %s changed from '%s' to '%s'", change.Path, oldVal, newVal)
+			logger.InfoWithActor(iface.ActorConfig, "  - %s changed from '%s' to '%s'", change.Path, oldVal, newVal)
 		} else {
-			logger.InfoWithActor("User", "  - %s changed from '%v' to '%v'", change.Path, change.OldValue, change.NewValue)
+			logger.InfoWithActor(iface.ActorConfig, "  - %s changed from '%v' to '%v'", change.Path, change.OldValue, change.NewValue)
 		}
 	case bool:
 		if newVal, ok := change.NewValue.(bool); ok {
-			logger.InfoWithActor("User", "  - %s changed from %v to %v", change.Path, oldVal, newVal)
+			logger.InfoWithActor(iface.ActorConfig, "  - %s changed from %v to %v", change.Path, oldVal, newVal)
 		} else {
-			logger.InfoWithActor("User", "  - %s changed from %v to %v", change.Path, change.OldValue, change.NewValue)
+			logger.InfoWithActor(iface.ActorConfig, "  - %s changed from %v to %v", change.Path, change.OldValue, change.NewValue)
 		}
 	case int, int8, int16, int32, int64, float32, float64:
-		logger.InfoWithActor("User", "  - %s changed from %v to %v", change.Path, change.OldValue, change.NewValue)
+		logger.InfoWithActor(iface.ActorConfig, "  - %s changed from %v to %v", change.Path, change.OldValue, change.NewValue)
 	default:
 		// Fallback for slices, maps, structs, etc.
-		logger.InfoWithActor("User", "  - %s changed", change.Path)
+		logger.InfoWithActor(iface.ActorConfig, "  - %s changed", change.Path)
 	}
 }
 
@@ -402,7 +400,7 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange, logg
 	// Get metrics context
 	metrics, err := telemetry.MetricsFromContext(ctx)
 	if err != nil {
-		logger.WarnWithActor("System", "Error while getting telemetry client from context.", zap.Error(err))
+		logger.WarnWithActor(iface.ActorConfig, "Error while getting telemetry client from context.", zap.Error(err))
 	}
 
 	// Add section change counts
@@ -417,7 +415,7 @@ func sendConfigChangeTelemetry(ctx context.Context, changes []ConfigChange, logg
 	changeDimensions := make(map[string]string)
 	for i, change := range changes {
 		if i >= maxChangesToInclude {
-			logger.WarnWithActor("System", "Reached max change limit of ", maxChangesToInclude, " for ", change.Path)
+			logger.WarnWithActor(iface.ActorConfig, "Reached max change limit of ", maxChangesToInclude, " for ", change.Path)
 			break
 		}
 

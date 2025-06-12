@@ -9,9 +9,9 @@ type ProgressLogger struct {
 	tracker iface.ProgressTracker // TTY or Log tracker
 }
 
-func NewProgressLogger(base iface.Logger, tracker iface.ProgressTracker) *ProgressLogger {
+func NewProgressLogger(baseLogger iface.Logger, tracker iface.ProgressTracker) *ProgressLogger {
 	return &ProgressLogger{
-		base:    base,
+		base:    baseLogger,
 		tracker: tracker,
 	}
 }
@@ -24,8 +24,9 @@ func (p *ProgressLogger) WarnWithActor(actor string, msg string, args ...any) {
 	p.base.WarnWithActor(actor, msg, args...)
 }
 
-func (p *ProgressLogger) ErrorWithActor(actor string, msg string, args ...any) {
-	p.base.ErrorWithActor(actor, msg, args...)
+func (p *ProgressLogger) Title(msg string, args ...any) {
+	p.tracker.Clear()
+	p.base.Title(msg, args...)
 }
 
 func (p *ProgressLogger) Info(msg string, args ...any) {
@@ -37,11 +38,33 @@ func (p *ProgressLogger) Warn(msg string, args ...any) {
 }
 
 func (p *ProgressLogger) Error(msg string, args ...any) {
-	p.ErrorWithActor("System", msg, args...)
+	p.base.Error(msg, args...)
 }
 
-func (p *ProgressLogger) ProgressRows() []iface.ProgressRow {
-	return p.tracker.ProgressRows()
+func (p *ProgressLogger) Debug(msg string, args ...any) {
+	p.base.Debug(msg, args...)
+}
+
+// Actor-based methods
+func (p *ProgressLogger) TitleWithActor(actor iface.Actor, msg string, args ...any) {
+	p.tracker.Clear()
+	p.base.TitleWithActor(actor, msg, args...)
+}
+
+func (p *ProgressLogger) InfoWithActor(actor iface.Actor, msg string, args ...any) {
+	p.base.InfoWithActor(actor, msg, args...)
+}
+
+func (p *ProgressLogger) WarnWithActor(actor iface.Actor, msg string, args ...any) {
+	p.base.WarnWithActor(actor, msg, args...)
+}
+
+func (p *ProgressLogger) ErrorWithActor(actor iface.Actor, msg string, args ...any) {
+	p.base.ErrorWithActor(actor, msg, args...)
+}
+
+func (p *ProgressLogger) DebugWithActor(actor iface.Actor, msg string, args ...any) {
+	p.base.DebugWithActor(actor, msg, args...)
 }
 
 func (p *ProgressLogger) SetProgress(name string, percent int, displayText string) {

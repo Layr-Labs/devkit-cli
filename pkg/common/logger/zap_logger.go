@@ -3,6 +3,7 @@ package logger
 import (
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"go.uber.org/zap"
 )
 
@@ -64,4 +65,25 @@ func (l *ZapLogger) Debug(msg string, args ...any) {
 		return
 	}
 	l.log.Debugf(msg, args...)
+}
+
+// Actor-based methods - basic implementations without color (delegating to regular methods)
+func (l *ZapLogger) TitleWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Title(msg, args...)
+}
+
+func (l *ZapLogger) InfoWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Info(msg, args...)
+}
+
+func (l *ZapLogger) WarnWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Warn(msg, args...)
+}
+
+func (l *ZapLogger) ErrorWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Error(msg, args...)
+}
+
+func (l *ZapLogger) DebugWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Debug(msg, args...)
 }

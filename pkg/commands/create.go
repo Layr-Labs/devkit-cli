@@ -134,7 +134,7 @@ var CreateCommand = &cli.Command{
 		readMePath := filepath.Join(targetDir, "README.md")
 		readMeTemplate, err := os.ReadFile(readMePath)
 		if err != nil {
-			logger.Warn("Project README.md is missing: %w", err)
+			logger.WarnWithActor(iface.ActorAVSDev, "Project README.md is missing: %w", err)
 		}
 		readMeTemplate = append(readMeTemplate, project.RawReadme...)
 		err = os.WriteFile(readMePath, readMeTemplate, 0644)
@@ -194,7 +194,7 @@ var CreateCommand = &cli.Command{
 			logger.WarnWithActor("User", "Failed to initialize Git repository in %s: %v", targetDir, err)
 		}
 
-		logger.Info("\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
+		logger.InfoWithActor(iface.ActorAVSDev, "\nProject %s created successfully in %s. Run 'cd %s' to get started.", projectName, targetDir, targetDir)
 		return nil
 	},
 }
@@ -299,7 +299,7 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName stri
 			return fmt.Errorf("failed to write %s: %w", entryName, err)
 		}
 
-		logger.Debug("Copied context file: %s", entryName)
+		logger.DebugWithActor(iface.ActorAVSDev, "Copied context file: %s", entryName)
 	}
 
 	return nil
@@ -315,7 +315,7 @@ func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string) error 
 		return fmt.Errorf("failed to create keystores directory: %w", err)
 	}
 
-	logger.Debug("Created directory: %s", destKeystoreDir)
+	logger.DebugWithActor(iface.ActorAVSDev, "Created directory: %s", destKeystoreDir)
 
 	// Read files embedded keystore
 	files := config.KeystoreEmbeds
@@ -333,7 +333,7 @@ func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string) error 
 			return fmt.Errorf("failed to write file %s: %w", fileName, err)
 		}
 
-		logger.Debug("Copied keystore: %s", fileName)
+		logger.DebugWithActor(iface.ActorAVSDev, "Copied keystore: %s", fileName)
 	}
 
 	return nil
@@ -351,7 +351,7 @@ func copyZeusFileToProject(logger iface.Logger, targetDir string) error {
 		return fmt.Errorf("failed to write file %s: %w", common.ZeusConfig, err)
 	}
 
-	logger.Debug("Copied zeus config: %s", common.ZeusConfig)
+	logger.DebugWithActor(iface.ActorAVSDev, "Copied zeus config: %s", common.ZeusConfig)
 
 	return nil
 }
@@ -360,7 +360,7 @@ const contractsBasePath = ".devkit/contracts"
 
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error {
-	logger.Debug("Removing existing .git directory in %s (if any)...", targetDir)
+	logger.DebugWithActor(iface.ActorAVSDev, "Removing existing .git directory in %s (if any)...", targetDir)
 
 	// remove the old .git dir
 	gitDir := filepath.Join(targetDir, ".git")
@@ -368,7 +368,7 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 		return fmt.Errorf("failed to remove existing .git directory: %w", err)
 	}
 
-	logger.Debug("Initializing Git repository in %s...", targetDir)
+	logger.DebugWithActor(iface.ActorAVSDev, "Initializing Git repository in %s...", targetDir)
 
 	cmd := exec.CommandContext(ctx.Context, "git", "init")
 	cmd.Dir = targetDir
@@ -395,9 +395,9 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 
-	logger.Debug("Git repository initialized successfully.")
+	logger.DebugWithActor(iface.ActorAVSDev, "Git repository initialized successfully.")
 	if len(output) > 0 {
-		logger.Debug("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
+		logger.DebugWithActor(iface.ActorAVSDev, "Git init output: \"%s\"", strings.Trim(string(output), "\n"))
 	}
 	return nil
 }

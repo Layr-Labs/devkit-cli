@@ -323,7 +323,7 @@ func ListYaml(filePath string, logger iface.Logger) error {
 	}
 
 	// header
-	logger.Info("--- %s ---", filePath)
+	logger.InfoWithActor(iface.ActorSystem, "--- %s ---", filePath)
 
 	// encode the node back to YAML on stdout, preserving order & comments
 	enc := yaml.NewEncoder(os.Stdout)

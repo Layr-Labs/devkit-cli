@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 )
 
 type BasicLogger struct {
@@ -93,4 +95,25 @@ func (l *BasicLogger) Debug(msg string, args ...any) {
 	for _, line := range lines {
 		log.Printf("Debug: %s", line)
 	}
+}
+
+// Actor-based methods - basic implementations without color (delegating to regular methods)
+func (l *BasicLogger) TitleWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Title(msg, args...)
+}
+
+func (l *BasicLogger) InfoWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Info(msg, args...)
+}
+
+func (l *BasicLogger) WarnWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Warn(msg, args...)
+}
+
+func (l *BasicLogger) ErrorWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Error(msg, args...)
+}
+
+func (l *BasicLogger) DebugWithActor(actor iface.Actor, msg string, args ...any) {
+	l.Debug(msg, args...)
 }

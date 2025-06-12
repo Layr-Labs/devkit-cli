@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 )
 
@@ -32,7 +33,7 @@ func (f *GitFetcher) Fetch(ctx context.Context, repoURL, ref, targetDir string) 
 	}
 
 	// Print job initiation
-	f.Logger.Info("\nCloning repo: %s → %s\n\n", repoURL, targetDir)
+	f.Logger.InfoWithActor(iface.ActorSystem, "\nCloning repo: %s → %s\n\n", repoURL, targetDir)
 
 	// Report to metrics
 	if f.Metrics != nil {
@@ -52,6 +53,6 @@ func (f *GitFetcher) Fetch(ctx context.Context, repoURL, ref, targetDir string) 
 	}
 
 	// Print job completion
-	f.Logger.Info("Clone repo complete: %s\n\n", repoURL)
+	f.Logger.InfoWithActor(iface.ActorSystem, "Clone repo complete: %s\n\n", repoURL)
 	return nil
 }

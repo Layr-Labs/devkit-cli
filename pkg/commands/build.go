@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/urfave/cli/v2"
@@ -51,8 +52,8 @@ var BuildCommand = &cli.Command{
 			}
 		}
 
-		logger.Debug("Project Name: %s", cfg.Config.Project.Name)
-		logger.Debug("Building AVS components...")
+		logger.DebugWithActor(iface.ActorAVSDev, "Project Name: %s", cfg.Config.Project.Name)
+		logger.DebugWithActor(iface.ActorAVSDev, "Building AVS components...")
 
 		// All scripts contained here
 		scriptsDir := filepath.Join(".devkit", "scripts")
@@ -62,7 +63,7 @@ var BuildCommand = &cli.Command{
 			return fmt.Errorf("build failed: %w", err)
 		}
 
-		logger.Info("Build completed successfully")
+		logger.InfoWithActor(iface.ActorAVSDev, "Build completed successfully")
 		return nil
 	},
 }

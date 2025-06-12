@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
 
 	"github.com/urfave/cli/v2"
@@ -36,7 +37,7 @@ var Command = &cli.Command{
 
 		// Open editor for the project level config
 		if cCtx.Bool("edit") {
-			logger.InfoWithActor("User", "Opening config file for editing...")
+			logger.InfoWithActor(iface.ActorConfig, "Opening config file for editing...")
 			return EditConfig(cCtx, cfgPath, Config, "")
 		}
 
@@ -78,8 +79,7 @@ var Command = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("setting value %s failed: %w", item, err)
 				}
-				logger.InfoWithActor("User", "Set %s = %s", parts[0], val)
-
+				logger.InfoWithActor(iface.ActorConfig, "Set %s = %s", pathStr, val)
 			}
 			if err := common.WriteYAML(cfgPath, rootDoc); err != nil {
 				return fmt.Errorf("write config YAML: %w", err)
@@ -101,10 +101,10 @@ var Command = &cli.Command{
 		}
 
 		// Log top level details
-		logger.InfoWithActor("User", "Displaying current configuration... \n\n")
-		logger.InfoWithActor("User", "Telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
-		logger.InfoWithActor("User", "Project: %s\n", config.Config.Project.Name)
-		logger.InfoWithActor("User", "Version: %s\n\n", config.Config.Project.Version)
+		logger.InfoWithActor(iface.ActorConfig, "Displaying current configuration... \n\n")
+		logger.InfoWithActor(iface.ActorConfig, "Telemetry enabled: %t \n", projectSettings.TelemetryEnabled)
+		logger.InfoWithActor(iface.ActorConfig, "Project: %s\n", config.Config.Project.Name)
+		logger.InfoWithActor(iface.ActorConfig, "Version: %s\n\n", config.Config.Project.Version)
 
 		// err = listConfig(config, projectSetting)
 		err = common.ListYaml(cfgPath, logger)

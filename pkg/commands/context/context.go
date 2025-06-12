@@ -8,6 +8,7 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/config"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
 
 	"github.com/urfave/cli/v2"
@@ -80,7 +81,7 @@ var Command = &cli.Command{
 
 		// Open editor for the context level config
 		if cCtx.Bool("edit") {
-			logger.InfoWithActor("User", "Opening context file for editing...")
+			logger.InfoWithActor(iface.ActorConfig, "Opening context file for editing...")
 			return config.EditConfig(cCtx, contextPath, config.Context, context)
 		}
 
@@ -119,8 +120,7 @@ var Command = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("setting value %s failed: %w", item, err)
 				}
-				logger.InfoWithActor("User", "Set %s = %s", parts[0], val)
-
+				logger.InfoWithActor(iface.ActorConfig, "Set %s = %s", pathStr, val)
 			}
 			if err := common.WriteYAML(contextPath, rootDoc); err != nil {
 				return fmt.Errorf("write context YAML: %w", err)
@@ -164,7 +164,7 @@ var Command = &cli.Command{
 			if err := common.WriteYAML(cfgPath, doc); err != nil {
 				return fmt.Errorf("write config: %w", err)
 			}
-			logger.InfoWithActor("User", "Global context successfully set to %s", context)
+			logger.InfoWithActor(iface.ActorConfig, "Global context successfully set to %s", context)
 			return nil
 		}
 

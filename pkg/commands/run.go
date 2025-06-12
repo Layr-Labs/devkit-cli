@@ -6,15 +6,21 @@ import (
 	"path/filepath"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
-
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/urfave/cli/v2"
 )
 
 // RunCommand defines the "run" command
 var RunCommand = &cli.Command{
 	Name:  "run",
-	Usage: "Start offchain AVS components",
-	Flags: append([]cli.Flag{}, common.GlobalFlags...),
+	Usage: "Start offchain AVS components (aggregator, operator) for real-world scenarios",
+	Flags: append([]cli.Flag{
+		&cli.StringFlag{
+			Name:  "context",
+			Usage: "devnet ,testnet or mainnet",
+			Value: "devnet",
+		},
+	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		// Invoke and return AVSRun
 		return AVSRun(cCtx)
@@ -26,7 +32,7 @@ func AVSRun(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Print task if verbose
-	logger.Debug("Starting offchain AVS components...")
+	logger.DebugWithActor(iface.ActorAVSDev, "Starting offchain AVS components...")
 
 	// Run the script from root of project dir
 	// (@TODO (GD): this should always be the root of the project, but we need to do this everywhere (ie reading ctx/config etc))
@@ -48,7 +54,7 @@ func AVSRun(cCtx *cli.Context) error {
 		return fmt.Errorf("run failed: %w", err)
 	}
 
-	logger.Info("Offchain AVS components started successfully!")
+	logger.InfoWithActor(iface.ActorAVSDev, "Offchain AVS components started successfully!")
 
 	return nil
 }

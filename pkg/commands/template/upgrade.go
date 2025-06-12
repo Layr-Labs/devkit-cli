@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	progresslogger "github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
@@ -68,7 +69,7 @@ func createUpgradeCommand(
 				if templateBaseURL == "" {
 					return fmt.Errorf("no template URL found in config and no default available")
 				}
-				logger.InfoWithActor("User", "No template URL found in config, using default: %s", templateBaseURL)
+				logger.InfoWithActor(iface.ActorAVSDev, "No template URL found in config, using default: %s", templateBaseURL)
 			}
 
 			// Get project's absolute path
@@ -90,12 +91,12 @@ func createUpgradeCommand(
 			}
 			defer os.RemoveAll(tempCacheDir) // Clean up on exit
 
-			logger.InfoWithActor("User", "Upgrading project template:")
-			logger.InfoWithActor("User", "  Project: %s", projectName)
-			logger.InfoWithActor("User", "  Template URL: %s", templateBaseURL)
-			logger.InfoWithActor("User", "  Current version: %s", currentVersion)
-			logger.InfoWithActor("User", "  Target version: %s", requestedVersion)
-			logger.InfoWithActor("User", "")
+			logger.InfoWithActor(iface.ActorAVSDev, "Upgrading project template:")
+			logger.InfoWithActor(iface.ActorAVSDev, "  Project: %s", projectName)
+			logger.InfoWithActor(iface.ActorAVSDev, "  Template URL: %s", templateBaseURL)
+			logger.InfoWithActor(iface.ActorAVSDev, "  Current version: %s", currentVersion)
+			logger.InfoWithActor(iface.ActorAVSDev, "  Target version: %s", requestedVersion)
+			logger.InfoWithActor(iface.ActorAVSDev, "")
 
 			// Extract base URL without .git suffix for consistency
 			baseRepoURL := strings.TrimSuffix(templateBaseURL, ".git")
@@ -111,7 +112,7 @@ func createUpgradeCommand(
 					Verbose: cCtx.Bool("verbose"),
 				},
 			}
-			logger.InfoWithActor("User", "Cloning template repository...")
+			logger.InfoWithActor(iface.ActorAVSDev, "Cloning template repository...")
 			if err := fetcher.Fetch(cCtx.Context, baseRepoURL, requestedVersion, tempDir); err != nil {
 				return fmt.Errorf("failed to fetch template from %s with version %s: %w", baseRepoURL, requestedVersion, err)
 			}
@@ -122,7 +123,7 @@ func createUpgradeCommand(
 				return fmt.Errorf("upgrade script not found in template version %s", requestedVersion)
 			}
 
-			logger.InfoWithActor("User", "Running upgrade script...")
+			logger.InfoWithActor(iface.ActorAVSDev, "Running upgrade script...")
 
 			// Execute the upgrade script, passing the project path as an argument
 			_, err = common.CallTemplateScript(cCtx.Context, logger, tempDir, upgradeScriptPath, common.ExpectNonJSONResponse, []byte(absProjectPath))
@@ -152,7 +153,7 @@ func createUpgradeCommand(
 					if _, ok := projectMap["templateBaseUrl"]; !ok {
 						// Use the non-.git version for the config
 						projectMap["templateBaseUrl"] = strings.TrimSuffix(baseRepoURL, ".git")
-						logger.InfoWithActor("User", "Added missing template URL to config")
+						logger.InfoWithActor(iface.ActorAVSDev, "Added missing template URL to config")
 					}
 				}
 			}
@@ -168,9 +169,9 @@ func createUpgradeCommand(
 				return fmt.Errorf("failed to write updated config: %w", err)
 			}
 
-			logger.InfoWithActor("User", "")
-			logger.InfoWithActor("User", "Template upgrade completed successfully!")
-			logger.InfoWithActor("User", "Project is now using template version: %s", requestedVersion)
+			logger.InfoWithActor(iface.ActorAVSDev, "")
+			logger.InfoWithActor(iface.ActorAVSDev, "Template upgrade completed successfully!")
+			logger.InfoWithActor(iface.ActorAVSDev, "Project is now using template version: %s", requestedVersion)
 
 			return nil
 		},

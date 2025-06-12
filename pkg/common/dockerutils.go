@@ -3,11 +3,16 @@ package common
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/client"
-	"github.com/urfave/cli/v2"
 	"os/exec"
 	"runtime"
 	"time"
+
+	"github.com/docker/docker/client"
+	"github.com/urfave/cli/v2"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	"github.com/docker/docker/client"
+	"github.com/urfave/cli/v2"
 )
 
 // EnsureDockerIsRunning checks if Docker is running and attempts to launch Docker Desktop if not.
@@ -22,7 +27,7 @@ func EnsureDockerIsRunning(ctx *cli.Context) error {
 		return nil
 	}
 
-	logger.Info(" Docker is installed but not running. Attempting to start Docker Desktop...")
+	logger.InfoWithActor(iface.ActorSystem, " Docker is installed but not running. Attempting to start Docker Desktop...")
 
 	switch runtime.GOOS {
 	case "darwin":
@@ -50,7 +55,7 @@ func EnsureDockerIsRunning(ctx *cli.Context) error {
 		return fmt.Errorf("unsupported OS for automatic Docker launch! please start Docker manually")
 	}
 
-	logger.Info("⏳ Waiting for Docker to start")
+	logger.InfoWithActor(iface.ActorSystem, "⏳ Waiting for Docker to start")
 	ticker := time.NewTicker(DockerOpenRetryIntervalMilliseconds * time.Millisecond)
 	defer ticker.Stop()
 
@@ -67,7 +72,7 @@ func EnsureDockerIsRunning(ctx *cli.Context) error {
 				time.Since(start).Round(time.Millisecond), lastErr)
 		case <-ticker.C:
 			if err := isDockerRunning(ctx.Context, dockerPingTimeout); err == nil {
-				logger.Info("\n✅ Docker is now running.")
+				logger.InfoWithActor(iface.ActorSystem, "\n✅ Docker is now running.")
 				return nil
 			} else {
 				lastErr = err

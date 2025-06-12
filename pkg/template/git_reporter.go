@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 )
 
@@ -54,15 +55,15 @@ func (r *cloneReporter) Report(e CloneEvent) {
 			// Clear prev progress before starting next set
 			r.logger.ClearProgress()
 			// Print submodule discoveries
-			r.logger.Info("Discovered submodules for %s", header)
+			r.logger.InfoWithActor(iface.ActorSystem, "Discovered submodules for %s", header)
 			for _, d := range r.discovered {
 				// Log all details of the discovery
-				r.logger.Info(" - %s → %s (%s)\n", d.Name, d.Dest, d.URL)
+				r.logger.InfoWithActor(iface.ActorSystem, " - %s → %s (%s)\n", d.Name, d.Dest, d.URL)
 				// Set progress to report all at 0 at start of cloning layer
 				r.logger.SetProgress(d.Name, 0, d.Name)
 			}
 			// Spacing line
-			r.logger.Info("")
+			r.logger.InfoWithActor(iface.ActorSystem, "")
 			// Clear discoveries after printing
 			r.discovered = nil
 		}

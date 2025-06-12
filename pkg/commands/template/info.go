@@ -2,15 +2,15 @@ package template
 
 import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/urfave/cli/v2"
 )
 
-// InfoCommand defines the "template info" subcommand
+// InfoCommand defines the "info" command for templates
 var InfoCommand = &cli.Command{
 	Name:  "info",
-	Usage: "Display information about the current project template",
+	Usage: "Display template information for current project",
 	Action: func(cCtx *cli.Context) error {
-		// Get logger
 		logger := common.LoggerFromContext(cCtx.Context)
 
 		// Get template information
@@ -20,12 +20,12 @@ var InfoCommand = &cli.Command{
 		}
 
 		// Display template information
-		logger.InfoWithActor("User", "Project template information:")
+		logger.InfoWithActor(iface.ActorAVSDev, "Project template information:")
 		if projectName != "" {
-			logger.InfoWithActor("User", "  Project name: %s", projectName)
+			logger.InfoWithActor(iface.ActorAVSDev, "  Project name: %s", projectName)
 		}
-		logger.InfoWithActor("User", "  Template URL: %s", templateBaseURL)
-		logger.InfoWithActor("User", "  Version: %s", templateVersion)
+		logger.InfoWithActor(iface.ActorAVSDev, "  Template URL: %s", templateBaseURL)
+		logger.InfoWithActor(iface.ActorAVSDev, "  Version: %s", templateVersion)
 
 		return nil
 	},
