@@ -6,14 +6,14 @@ context:
   # Chains available to this context
   chains:
     l1:
-      chain_id: 31337
+      chain_id: 17000
       rpc_url: "http://localhost:8545"
       fork:
         block: 3990633
         url: ""
         block_time: 3
     l2:
-      chain_id: 31337
+      chain_id: 17000
       rpc_url: "http://localhost:8545"
       fork:
         block: 3990633
@@ -113,7 +113,7 @@ context:
   eigenlayer:
     l1: 
       allocation_manager: "0xFdD5749e11977D60850E06bF5B13221Ad95eb6B4"
-      delegation_manager: "0xA44151489861Fe9e3055d95adC98FbD462B948e7" 
+      delegation_manager: "0x75dfE5B44C2E530568001400D3f704bC8AE350CC" 
       strategy_manager: "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6"
       bn254_table_calculator: "0x033af59c1b030Cc6eEE07B150FD97668497dc74b"
       cross_chain_registry: "0x0022d2014901F2AFBF5610dDFcd26afe2a65Ca6F"

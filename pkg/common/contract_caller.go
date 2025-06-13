@@ -546,19 +546,150 @@ func (cc *ContractCaller) CreateGenerationReservation(ctx context.Context, opSet
 	if err != nil {
 		return fmt.Errorf("failed to get CrossChainRegistry: %w", err)
 	}
+	cc.logger.Info("Creating generation reservation for operator set %d", opSetId)
+	cc.logger.Info("Operator table calculator: %s", operatorTableCalculator.Hex())
+	cc.logger.Info("AVS address: %s", avsAddress.Hex())
 
 	operatorSet := crosschainregistry.OperatorSet{Avs: avsAddress, Id: opSetId}
 	operatorSetConfig := crosschainregistry.ICrossChainRegistryTypesOperatorSetConfig{
-		Owner:              common.HexToAddress("0x0000000000000000000000000000000000000000"),
+		Owner:              avsAddress,
 		MaxStalenessPeriod: 66666666,
 	}
-	// add 31337 to chainids
-	chainIds := []*big.Int{big.NewInt(int64(cc.chainID.Int64())), big.NewInt(31337)}
+
+	// add 17000 to chainids
+	chainIds := []*big.Int{big.NewInt(int64(cc.chainID.Int64()))}
 	err = cc.SendAndWaitForTransaction(ctx, "CreateGenerationReservation", func() (*types.Transaction, error) {
 		tx, err := crossChainRegistry.CreateGenerationReservation(opts, operatorSet, operatorTableCalculator, operatorSetConfig, chainIds)
 		return tx, err
 	})
 	return err
+}
+
+func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, operatorTableUpdater common.Address, chainId uint64) error {
+	var (
+		err      error
+		nonce    uint64
+		gasPrice *big.Int
+		signedTx *types.Transaction
+		receipt  *types.Receipt
+	)
+
+	chainIds := []*big.Int{big.NewInt(int64(chainId))}
+	cc.logger.Info("Impersonating cross chain registry owner")
+	ownerCrossChainRegistry := common.HexToAddress("0xC5dc0d145a21FDAD791Df8eDC7EbCB5330A3FdB5")
+
+	// Get RPC client from ethclient
+	rpcClient := cc.ethclient.Client()
+
+	// Fund the cross chain registry owner with 1 ETH if needed
+	anvilKey := "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(anvilKey, "0x"))
+	if err != nil {
+		return fmt.Errorf("failed to parse anvil private key: %w", err)
+	}
+
+	// Get the nonce for the sender
+	fromAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+	nonce, err = cc.ethclient.PendingNonceAt(ctx, fromAddress)
+	if err != nil {
+		return fmt.Errorf("failed to get nonce: %w", err)
+	}
+
+	// Get gas price
+	gasPrice, err = cc.ethclient.SuggestGasPrice(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	// Create the transaction
+	tx := types.NewTransaction(
+		nonce,
+		ownerCrossChainRegistry,
+		big.NewInt(1000000000000000000), // 1 ETH in wei
+		21000,                           // Standard ETH transfer gas limit
+		gasPrice,
+		nil,
+	)
+
+	// Sign the transaction
+	signedTx, err = types.SignTx(tx, types.NewEIP155Signer(cc.chainID), privateKey)
+	if err != nil {
+		return fmt.Errorf("failed to sign transaction: %w", err)
+	}
+
+	// Send the transaction
+	if err = cc.ethclient.SendTransaction(ctx, signedTx); err != nil {
+		return fmt.Errorf("failed to send transaction: %w", err)
+	}
+
+	// Wait for transaction to be mined
+	receipt, err = bind.WaitMined(ctx, cc.ethclient, signedTx)
+	if err != nil {
+		return fmt.Errorf("failed to wait for transaction: %w", err)
+	}
+
+	if receipt.Status == 0 {
+		return fmt.Errorf("transaction failed")
+	}
+
+	if err := ImpersonateAccount(rpcClient, ownerCrossChainRegistry); err != nil {
+		return fmt.Errorf("failed to impersonate account: %w", err)
+	}
+
+	defer func() {
+		if err := StopImpersonatingAccount(rpcClient, ownerCrossChainRegistry); err != nil {
+			cc.logger.Error("failed to stop impersonating account: %w", err)
+		}
+	}()
+
+	// Get gas price
+	gasPrice, err = cc.ethclient.SuggestGasPrice(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	// Get the ABI from the metadata
+	parsed, err := crosschainregistry.CrossChainRegistryMetaData.GetAbi()
+	if err != nil {
+		return fmt.Errorf("failed to get ABI: %w", err)
+	}
+
+	// Pack the function call data
+	addChainIDsToWhitelistData, err := parsed.Pack("addChainIDsToWhitelist", chainIds, []common.Address{operatorTableUpdater})
+	if err != nil {
+		return fmt.Errorf("failed to pack addChainIDsToWhitelist call: %w", err)
+	}
+
+	// Send addChainIDsToWhitelist transaction from impersonated account using RPC
+	var txHash common.Hash
+	err = rpcClient.Call(&txHash, "eth_sendTransaction", map[string]interface{}{
+		"from":     ownerCrossChainRegistry.Hex(),
+		"to":       cc.crossChainRegistryAddr.Hex(),
+		"gas":      "0x186a0", // 100000 in hex
+		"gasPrice": fmt.Sprintf("0x%x", gasPrice),
+		"value":    "0x0",
+		"data":     fmt.Sprintf("0x%x", addChainIDsToWhitelistData),
+	})
+	if err != nil {
+		cc.logger.Error("failed to send addChainIDsToWhitelist transaction: %w", err)
+		return fmt.Errorf("failed to send addChainIDsToWhitelist transaction: %w", err)
+	}
+
+	// Wait for transaction receipt
+	receipt, err = cc.ethclient.TransactionReceipt(ctx, txHash)
+	if err != nil {
+		cc.logger.Error("failed to get transaction receipt: %w", err)
+		return fmt.Errorf("addChainIDsToWhitelist transaction failed: %w", err)
+	}
+
+	if receipt.Status == 0 {
+		cc.logger.Error("addChainIDsToWhitelist transaction reverted")
+		return fmt.Errorf("addChainIDsToWhitelist transaction reverted")
+	}
+
+	cc.logger.Info("Successfully whitelisted chain ID %d in CrossChainRegistry (tx: %s)", chainId, txHash.Hex())
+
+	return nil
 }
 
 // GetRegistry returns the contract registry for external access

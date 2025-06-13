@@ -173,7 +173,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Get the chain_id from env/config
-	chainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1)
+	chainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1,logger)
 	if err != nil {
 		chainId = common.DefaultAnvilChainId
 	}
@@ -279,6 +279,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(1 * time.Second)
 	logger.Info("\nDevnet started successfully in %s", elapsed)
 
+
+	
+	if err := WhitelistChainIdInCrossRegistryAction(cCtx, logger); err != nil {
+		return fmt.Errorf("whitelisting chain id in cross registry failed: %w", err)
+	}
+
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
 		if err := DeployContractsAction(cCtx); err != nil { // Assumes DeployContractsAction remains as is or is also refactored if needed
@@ -314,6 +320,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			}
 			logger.Info("AVS registered with EigenLayer successfully.")
 
+			
 			if err := DepositIntoStrategiesAction(cCtx, logger); err != nil {
 				return fmt.Errorf("depositing into strategies failed: %w", err)
 			}
@@ -1675,10 +1682,64 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 		if err != nil {
 			return fmt.Errorf("failed to request op set generation reservation: %w", err)
 		}
-
+	
 	}
 
 	logger.Info("Successfully requested op set generation reservation")
 
+	return nil
+}
+
+func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logger) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+	}
+
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+	}
+
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer client.Close()
+
+	crossChainRegistryAddr := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
+	operatorTableUpdater := ethcommon.HexToAddress(envCtx.EigenLayer.L2.OperatorTableUpdater)
+
+	code, err := client.CodeAt(cCtx.Context, operatorTableUpdater, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get code: %w", err)
+	}
+	codeLength := len(code)
+	
+	logger.Info("Code length of operatortableupdater: %d", codeLength)
+	avsPrivateKeyOrGivenPermissionByAvs := envCtx.Avs.AVSPrivateKey
+
+	contractCaller, err := common.NewContractCaller(
+		avsPrivateKeyOrGivenPermissionByAvs,
+		big.NewInt(int64(l1Cfg.ChainID)),	
+		client,
+		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
+		crossChainRegistryAddr,
+		ethcommon.HexToAddress(""),
+		logger,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
+	}
+
+	contractCaller.WhitelistChainIdInCrossRegistry(cCtx.Context, operatorTableUpdater, uint64(l1Cfg.ChainID))
+
+	logger.Info("Successfully whitelisted chain id in cross registry")
 	return nil
 }
