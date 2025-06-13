@@ -49,26 +49,6 @@ var DefaultTokenHolders = map[common.Address]TokenFunding{
 	},
 }
 
-// ImpersonateAccount enables impersonation of an account on Anvil
-func ImpersonateAccount(client *rpc.Client, address common.Address) error {
-	var result interface{}
-	err := client.Call(&result, "anvil_impersonateAccount", address.Hex())
-	if err != nil {
-		return fmt.Errorf("failed to impersonate account %s: %w", address.Hex(), err)
-	}
-	return nil
-}
-
-// StopImpersonatingAccount disables impersonation of an account on Anvil
-func StopImpersonatingAccount(client *rpc.Client, address common.Address) error {
-	var result interface{}
-	err := client.Call(&result, "anvil_stopImpersonatingAccount", address.Hex())
-	if err != nil {
-		return fmt.Errorf("failed to stop impersonating account %s: %w", address.Hex(), err)
-	}
-	return nil
-}
-
 // FundStakerWithTokens funds staker with strategy tokens using impersonation
 func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, stakerAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, rpcURL string) error {
 	if tokenFunding.TokenName == "bEIGEN" {
@@ -82,7 +62,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		}
 
 		// Start impersonating the token holder for unwrap call
-		if err := ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
+		if err := devkitcommon.ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 			return fmt.Errorf("failed to impersonate token holder for unwrap: %w", err)
 		}
 
@@ -137,18 +117,18 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		}
 
 		// Stop impersonating for unwrap (we'll impersonate again for transfer)
-		if err := StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
+		if err := devkitcommon.StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 			log.Printf("⚠️  Failed to stop impersonating after unwrap %s: %v", tokenFunding.HolderAddress.Hex(), err)
 		}
 	}
 
 	// Start impersonating the token holder
-	if err := ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
+	if err := devkitcommon.ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 		return fmt.Errorf("failed to impersonate token holder: %w", err)
 	}
 
 	defer func() {
-		if err := StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
+		if err := devkitcommon.StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 			log.Printf("⚠️  Failed to stop impersonating %s: %v", tokenFunding.HolderAddress.Hex(), err)
 		}
 	}()
@@ -284,11 +264,12 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 		if err != nil {
 			log.Fatalf("invalid private key %q: %v", key.ECDSAKey, err)
 		}
-		err = fundIfNeeded(crypto.PubkeyToAddress(privateKey.PublicKey), key.ECDSAKey, rpcURL)
+		err = fundIfNeeded(crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_1_KEY, rpcURL)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -359,6 +340,8 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 		common.HexToAddress(eigenLayer.L1.AllocationManager),
 		common.HexToAddress(eigenLayer.L1.DelegationManager),
 		common.HexToAddress(eigenLayer.L1.StrategyManager),
+		common.HexToAddress(eigenLayer.L1.KeyRegistrar),
+		common.HexToAddress(""),
 		logger,
 	)
 	if err != nil {

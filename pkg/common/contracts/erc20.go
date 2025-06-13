@@ -8,6 +8,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+
+	crosschainregistry "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/CrossChainRegistry"
 )
 
 // Standard ERC20 ABI
@@ -150,4 +152,13 @@ func PackTransferCall(to common.Address, amount *big.Int) ([]byte, error) {
 		return nil, err
 	}
 	return parsedABI.Pack("transfer", to, amount)
+}
+
+// PackAddChainIDsToWhitelistCall creates the call data for CrossChainRegistry addChainIDsToWhitelist
+func PackAddChainIDsToWhitelistCall(chainIds []*big.Int, operatorTableUpdaters []common.Address) ([]byte, error) {
+	parsedABI, err := abi.JSON(strings.NewReader(crosschainregistry.CrossChainRegistryMetaData.ABI))
+	if err != nil {
+		return nil, err
+	}
+	return parsedABI.Pack("addChainIDsToWhitelist", chainIds, operatorTableUpdaters)
 }

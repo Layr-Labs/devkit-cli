@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"github.com/ethereum/go-ethereum/rpc"
 	"os"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/urfave/cli/v2"
 )
@@ -136,4 +138,25 @@ func ParseETHAmount(amountStr string) (*big.Int, error) {
 	}
 
 	return weiAmount, nil
+}
+
+
+// ImpersonateAccount enables impersonation of an account on Anvil
+func ImpersonateAccount(client *rpc.Client, address common.Address) error {
+	var result interface{}
+	err := client.Call(&result, "anvil_impersonateAccount", address.Hex())
+	if err != nil {
+		return fmt.Errorf("failed to impersonate account %s: %w", address.Hex(), err)
+	}
+	return nil
+}
+
+// StopImpersonatingAccount disables impersonation of an account on Anvil
+func StopImpersonatingAccount(client *rpc.Client, address common.Address) error {
+	var result interface{}
+	err := client.Call(&result, "anvil_stopImpersonatingAccount", address.Hex())
+	if err != nil {
+		return fmt.Errorf("failed to stop impersonating account %s: %w", address.Hex(), err)
+	}
+	return nil
 }
