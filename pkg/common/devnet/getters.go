@@ -36,7 +36,7 @@ func FileExistsInRoot(filename string) bool {
 	return err == nil || !os.IsNotExist(err)
 }
 
-func GetDevnetChainIdOrDefault(cfg *common.ConfigWithContextConfig, chainName string,logger iface.Logger) (int, error) {
+func GetDevnetChainIdOrDefault(cfg *common.ConfigWithContextConfig, chainName string, logger iface.Logger) (int, error) {
 	// Check in env first for L1 chain id
 	l1ChainId := os.Getenv("L1_CHAIN_ID")
 	l1ChainIdInt, err := strconv.Atoi(l1ChainId)

@@ -692,6 +692,25 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	return nil
 }
 
+func (cc *ContractCaller) RegisterKeyInKeyRegistrar(ctx context.Context, operatorAddress common.Address, avsAddress common.Address, opSetId uint32, keyData []byte, signature []byte) error {
+	opts, err := cc.buildTxOpts()
+	if err != nil {
+		return fmt.Errorf("failed to build transaction options: %w", err)
+	}
+
+	keyRegistrar, err := cc.registry.GetKeyRegistrar(cc.keyRegistrarAddr)
+	if err != nil {
+		return fmt.Errorf("failed to get KeyRegistrar: %w", err)
+	}
+
+	operatorSet := keyregistrar.OperatorSet{Avs: avsAddress, Id: opSetId}
+	err = cc.SendAndWaitForTransaction(ctx, "RegisterKeyInKeyRegistrar", func() (*types.Transaction, error) {
+		tx, err := keyRegistrar.RegisterKey(opts, operatorAddress, operatorSet, keyData, signature)
+		return tx, err
+	})
+	return err
+}
+
 // GetRegistry returns the contract registry for external access
 func (cc *ContractCaller) GetRegistry() *contracts.ContractRegistry {
 	return cc.registry

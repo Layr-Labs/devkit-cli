@@ -3,8 +3,8 @@ package common
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"github.com/ethereum/go-ethereum/rpc"
+	"math/big"
 	"os"
 	"strconv"
 	"strings"
@@ -13,7 +13,6 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
 	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/urfave/cli/v2"
 )
 
@@ -139,7 +138,6 @@ func ParseETHAmount(amountStr string) (*big.Int, error) {
 
 	return weiAmount, nil
 }
-
 
 // ImpersonateAccount enables impersonation of an account on Anvil
 func ImpersonateAccount(client *rpc.Client, address common.Address) error {

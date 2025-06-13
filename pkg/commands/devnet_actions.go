@@ -24,6 +24,8 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
+	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
+	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
 
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -173,7 +175,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Get the chain_id from env/config
-	chainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1,logger)
+	chainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1, logger)
 	if err != nil {
 		chainId = common.DefaultAnvilChainId
 	}
@@ -279,8 +281,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(1 * time.Second)
 	logger.Info("\nDevnet started successfully in %s", elapsed)
 
-
-	
 	if err := WhitelistChainIdInCrossRegistryAction(cCtx, logger); err != nil {
 		return fmt.Errorf("whitelisting chain id in cross registry failed: %w", err)
 	}
@@ -318,9 +318,11 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			if err := RegisterOperatorsToEigenLayerFromConfigAction(cCtx, logger); err != nil {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
-			logger.Info("AVS registered with EigenLayer successfully.")
 
-			
+			// if err := RegisterKeyInKeyRegistrarAction(cCtx, logger); err != nil {
+			// 	return fmt.Errorf("registering key in key registrar failed: %w", err)
+			// }
+
 			if err := DepositIntoStrategiesAction(cCtx, logger); err != nil {
 				return fmt.Errorf("depositing into strategies failed: %w", err)
 			}
@@ -1682,7 +1684,7 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 		if err != nil {
 			return fmt.Errorf("failed to request op set generation reservation: %w", err)
 		}
-	
+
 	}
 
 	logger.Info("Successfully requested op set generation reservation")
@@ -1719,13 +1721,13 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 		return fmt.Errorf("failed to get code: %w", err)
 	}
 	codeLength := len(code)
-	
+
 	logger.Info("Code length of operatortableupdater: %d", codeLength)
 	avsPrivateKeyOrGivenPermissionByAvs := envCtx.Avs.AVSPrivateKey
 
 	contractCaller, err := common.NewContractCaller(
 		avsPrivateKeyOrGivenPermissionByAvs,
-		big.NewInt(int64(l1Cfg.ChainID)),	
+		big.NewInt(int64(l1Cfg.ChainID)),
 		client,
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
@@ -1741,5 +1743,79 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 	contractCaller.WhitelistChainIdInCrossRegistry(cCtx.Context, operatorTableUpdater, uint64(l1Cfg.ChainID))
 
 	logger.Info("Successfully whitelisted chain id in cross registry")
+	return nil
+}
+
+func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
+	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	if err != nil {
+		return fmt.Errorf("failed to load configurations for register key in key registrar: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+	}
+
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+	}
+
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+
+	avsAddress := ethcommon.HexToAddress(envCtx.Avs.Address)
+	_, _, _, keyRegistrarAddr, _, _ := devnet.GetEigenLayerAddresses(cfg)
+
+	for _, op := range envCtx.OperatorRegistrations {
+
+		for _, operator := range envCtx.Operators {
+
+			if op.Address == operator.Address {
+				operatorPrivateKey := strings.Trim(operator.ECDSAKey, "0x")
+				operatorAddress := ethcommon.HexToAddress(op.Address)
+				contractCaller, err := common.NewContractCaller(
+					operatorPrivateKey,
+					big.NewInt(int64(l1Cfg.ChainID)),
+					client,
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(keyRegistrarAddr),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					logger,
+				)
+				if err != nil {
+					return fmt.Errorf("failed to create contract caller: %w", err)
+				}
+				blskeystorePath := operator.BlsKeystorePath
+				blskeystorePassword := operator.BlsKeystorePassword
+				scheme := bn254.NewScheme()
+				keystoreData, err := keystore.LoadKeystoreFile(blskeystorePath)
+
+				if err != nil {
+					return fmt.Errorf("failed to load the keystore file from given path %s", blskeystorePath)
+				}
+
+				privateKeyData, err := keystoreData.GetPrivateKey(blskeystorePassword, scheme)
+				if err != nil {
+					return fmt.Errorf("failed to extract the private key from the keystore file")
+
+				}
+				signature := privateKeyData.Bytes() // TODO: wait for updated hourglass-monorepo branch to be merged https://github.com/Layr-Labs/hourglass-monorepo/tree/sm-multichain
+				keydata := privateKeyData.Bytes()   // TODO : same as above
+				logger.Info("Registering key in key registrar for operator %s", operator.Address)
+				err = contractCaller.RegisterKeyInKeyRegistrar(cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keydata, signature)
+				if err != nil {
+					return fmt.Errorf("failed to register key in key registrar: %w", err)
+				}
+				logger.Info("Successfully registered key in key registrar for operator %s", operator.Address)
+			}
+		}
+
+	}
+	logger.Info("Successfully registered key in key registrar")
 	return nil
 }
