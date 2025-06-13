@@ -6,17 +6,17 @@ context:
   # Chains available to this context
   chains:
     l1:
-      chain_id: 31337
+      chain_id: 17000
       rpc_url: "http://localhost:8545"
       fork:
-        block: 22640530
+        block: 3990633
         url: ""
         block_time: 3
     l2:
-      chain_id: 31337
+      chain_id: 17000
       rpc_url: "http://localhost:8545"
       fork:
-        block: 22640530
+        block: 3990633
         url: ""
         block_time: 3
   # All key material (BLS and ECDSA) within this file should be used for local testing ONLY
@@ -30,20 +30,20 @@ context:
     - address: "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f"
       ecdsa_key: "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97" # Anvil 8
       deposits:
-        - strategy_address: "0x93c4b944D05dfe6df7645A86cd2206016c51564D"
+        - strategy_address: "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
           name: "stETH_Strategy"
           deposit_amount: "5ETH" # depositIntoStrategy amount 
-        - strategy_address: "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7"
+        - strategy_address: "0x43252609bff8a13dFe5e057097f2f45A24387a84"
           name: "Eigen_Strategy"
           deposit_amount: "5ETH" 
       operator: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65" # Operator to delegate the stake via delegationManager.delegateTo()
     - address: "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720" 
       ecdsa_key: "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
       deposits:
-        - strategy_address: "0x93c4b944D05dfe6df7645A86cd2206016c51564D"
+        - strategy_address: "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
           name: "stETH_Strategy"
           deposit_amount: "5ETH" # depositIntoStrategy amount 
-        - strategy_address: "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7"
+        - strategy_address: "0x43252609bff8a13dFe5e057097f2f45A24387a84"
           name: "Eigen_Strategy"
           deposit_amount: "5ETH"
       operator: "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
@@ -54,7 +54,7 @@ context:
       bls_keystore_path: "keystores/operator1.keystore.json"
       bls_keystore_password: "testpass"
       allocations:
-        - strategy_address: "0x93c4b944D05dfe6df7645A86cd2206016c51564D"
+        - strategy_address: "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
           name: "stETH_Strategy"
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
@@ -62,7 +62,7 @@ context:
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
             - operator_set: "1"
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
-        - strategy_address: "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7"
+        - strategy_address: "0x43252609bff8a13dFe5e057097f2f45A24387a84"
           name: "Eigen_Strategy"
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
@@ -75,7 +75,7 @@ context:
       bls_keystore_path: "keystores/operator2.keystore.json"
       bls_keystore_password: "testpass"
       allocations:
-        - strategy_address: "0x93c4b944D05dfe6df7645A86cd2206016c51564D"
+        - strategy_address: "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
           name: "stETH_Strategy"
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
@@ -83,7 +83,7 @@ context:
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
             - operator_set: "1"
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
-        - strategy_address: "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7"
+        - strategy_address: "0x43252609bff8a13dFe5e057097f2f45A24387a84"
           name: "Eigen_Strategy"
           # Only allocate if these operator set IDs exist in the deployed operator_sets 
           operator_set_allocations:
@@ -111,9 +111,16 @@ context:
     registrar_address: "0x0123456789abcdef0123456789ABCDEF01234567"
   # Core EigenLayer contract addresses
   eigenlayer:
-    allocation_manager: "0x948a420b8CC1d6BFd0B6087C2E7c344a2CD0bc39"
-    delegation_manager: "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A" 
-    strategy_manager: "0x858646372CC42E1A627fcE94aa7A7033e7CF075A"
+    l1: 
+      allocation_manager: "0xFdD5749e11977D60850E06bF5B13221Ad95eb6B4"
+      delegation_manager: "0x75dfE5B44C2E530568001400D3f704bC8AE350CC" 
+      strategy_manager: "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6"
+      bn254_table_calculator: "0x033af59c1b030Cc6eEE07B150FD97668497dc74b"
+      cross_chain_registry: "0x0022d2014901F2AFBF5610dDFcd26afe2a65Ca6F"
+      key_registrar: "0x1C84Bb62fE7791e173014A879C706445fa893BbE"
+    l2: 
+      bn254_certificate_verifier: "0xf462d03A82C1F3496B0DFe27E978318eD1720E1f"
+      operator_table_updater: "0xd7230B89E5E2ed1FD068F0FF9198D7960243f12a"
   # Contracts deployed on `devnet start`
   deployed_contracts: []
   # Operator Sets registered on `devnet start`

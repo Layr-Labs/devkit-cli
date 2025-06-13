@@ -9,8 +9,10 @@ import (
 
 	// EigenLayer contract bindings
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	crosschainregistry "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/CrossChainRegistry"
 	delegationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	istrategy "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IStrategy"
+	keyregistrar "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/KeyRegistrar"
 	strategymanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/StrategyManager"
 )
 
@@ -18,11 +20,13 @@ import (
 type ContractType string
 
 const (
-	AllocationManagerContract ContractType = "AllocationManager"
-	DelegationManagerContract ContractType = "DelegationManager"
-	StrategyManagerContract   ContractType = "StrategyManager"
-	StrategyContract          ContractType = "Strategy"
-	ERC20Contract             ContractType = "ERC20"
+	AllocationManagerContract  ContractType = "AllocationManager"
+	DelegationManagerContract  ContractType = "DelegationManager"
+	StrategyManagerContract    ContractType = "StrategyManager"
+	StrategyContract           ContractType = "Strategy"
+	ERC20Contract              ContractType = "ERC20"
+	KeyRegistrarContract       ContractType = "KeyRegistrar"
+	CrossChainRegistryContract ContractType = "CrossChainRegistry"
 )
 
 // ContractInfo holds metadata about a contract
@@ -150,6 +154,36 @@ func (cr *ContractRegistry) GetStrategy(address common.Address) (*istrategy.IStr
 	return strategy, nil
 }
 
+// GetKeyRegistrar returns a KeyRegistrar instance
+func (cr *ContractRegistry) GetKeyRegistrar(address common.Address) (*keyregistrar.KeyRegistrar, error) {
+	instance, err := cr.GetContract(KeyRegistrarContract, address)
+	if err != nil {
+		return nil, err
+	}
+
+	keyRegistrar, ok := instance.Instance.(*keyregistrar.KeyRegistrar)
+	if !ok {
+		return nil, fmt.Errorf("contract at %s is not a KeyRegistrar", address.Hex())
+	}
+
+	return keyRegistrar, nil
+}
+
+// GetCrossChainRegistry returns a CrossChainRegistry instance
+func (cr *ContractRegistry) GetCrossChainRegistry(address common.Address) (*crosschainregistry.CrossChainRegistry, error) {
+	instance, err := cr.GetContract(CrossChainRegistryContract, address)
+	if err != nil {
+		return nil, err
+	}
+
+	crossChainRegistry, ok := instance.Instance.(*crosschainregistry.CrossChainRegistry)
+	if !ok {
+		return nil, fmt.Errorf("contract at %s is not a CrossChainRegistry", address.Hex())
+	}
+
+	return crossChainRegistry, nil
+}
+
 // GetERC20 returns an ERC20 bound contract instance
 func (cr *ContractRegistry) GetERC20(address common.Address) (*bind.BoundContract, error) {
 	instance, err := cr.GetContract(ERC20Contract, address)
@@ -191,6 +225,10 @@ func (cr *ContractRegistry) createContractInstance(info ContractInfo) (interface
 		return istrategy.NewIStrategy(info.Address, cr.client)
 	case ERC20Contract:
 		return NewERC20Contract(info.Address, cr.client)
+	case KeyRegistrarContract:
+		return keyregistrar.NewKeyRegistrar(info.Address, cr.client)
+	case CrossChainRegistryContract:
+		return crosschainregistry.NewCrossChainRegistry(info.Address, cr.client)
 	default:
 		return nil, fmt.Errorf("unsupported contract type: %s", info.Type)
 	}
@@ -210,7 +248,7 @@ func NewRegistryBuilder(client *ethclient.Client) *RegistryBuilder {
 
 // AddEigenLayerCore adds the core EigenLayer contracts
 func (rb *RegistryBuilder) AddEigenLayerCore(
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr common.Address,
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr common.Address, keystoreRegistrarAddr common.Address, crossChainRegistryAddr common.Address,
 ) (*RegistryBuilder, error) {
 	// Register AllocationManager
 	err := rb.registry.RegisterContract(ContractInfo{
@@ -240,6 +278,26 @@ func (rb *RegistryBuilder) AddEigenLayerCore(
 		Type:        StrategyManagerContract,
 		Address:     strategyManagerAddr,
 		Description: "EigenLayer StrategyManager contract",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = rb.registry.RegisterContract(ContractInfo{
+		Name:        "KeyRegistrar",
+		Type:        KeyRegistrarContract,
+		Address:     keystoreRegistrarAddr,
+		Description: "EigenLayer KeyRegistrar contract",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = rb.registry.RegisterContract(ContractInfo{
+		Name:        "CrossChainRegistry",
+		Type:        CrossChainRegistryContract,
+		Address:     crossChainRegistryAddr,
+		Description: "EigenLayer CrossChainRegistry contract",
 	})
 	if err != nil {
 		return nil, err

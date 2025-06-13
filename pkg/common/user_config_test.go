@@ -67,13 +67,32 @@ func TestSaveUserIdAndLoadGlobalConfig(t *testing.T) {
 }
 
 func TestGetUserUUIDFromGlobalConfig_Empty(t *testing.T) {
-	// Unset XDG_CONFIG_HOME
-	os.Unsetenv("XDG_CONFIG_HOME")
+	// Save original env vars
+	originalXDG := os.Getenv("XDG_CONFIG_HOME")
+	originalHome := os.Getenv("HOME")
 
-	// Ensure no config and HOME unset
+	// Clean up after test
+	defer func() {
+		if originalXDG != "" {
+			os.Setenv("XDG_CONFIG_HOME", originalXDG)
+		} else {
+			os.Unsetenv("XDG_CONFIG_HOME")
+		}
+		if originalHome != "" {
+			os.Setenv("HOME", originalHome)
+		} else {
+			os.Unsetenv("HOME")
+		}
+	}()
+
+	// Unset both XDG_CONFIG_HOME and HOME to ensure no config directory can be found
+	os.Unsetenv("XDG_CONFIG_HOME")
+	os.Unsetenv("HOME")
+
+	// Should return empty UUID when no config directory can be determined
 	uuid := getUserUUIDFromGlobalConfig()
 	if uuid != "" {
-		t.Errorf("expected empty UUID when XDG_CONFIG_HOME unset, got %q", uuid)
+		t.Errorf("expected empty UUID when no config directory available, got %q", uuid)
 	}
 }
 

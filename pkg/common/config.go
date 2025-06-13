@@ -78,9 +78,22 @@ type AvsConfig struct {
 }
 
 type EigenLayerConfig struct {
-	AllocationManager string `json:"allocation_manager" yaml:"allocation_manager"`
-	DelegationManager string `json:"delegation_manager" yaml:"delegation_manager"`
-	StrategyManager   string `json:"strategy_manager" yaml:"strategy_manager"`
+	L1 EigenLayerL1Config `json:"l1" yaml:"l1"`
+	L2 EigenLayerL2Config `json:"l2" yaml:"l2"`
+}
+
+type EigenLayerL1Config struct {
+	AllocationManager    string `json:"allocation_manager" yaml:"allocation_manager"`
+	DelegationManager    string `json:"delegation_manager" yaml:"delegation_manager"`
+	StrategyManager      string `json:"strategy_manager" yaml:"strategy_manager"`
+	BN254TableCalculator string `json:"bn254_table_calculator" yaml:"bn254_table_calculator"`
+	CrossChainRegistry   string `json:"cross_chain_registry" yaml:"cross_chain_registry"`
+	KeyRegistrar         string `json:"key_registrar" yaml:"key_registrar"`
+}
+
+type EigenLayerL2Config struct {
+	BN254CertificateVerifier string `json:"bn254_certificate_verifier" yaml:"bn254_certificate_verifier"`
+	OperatorTableUpdater     string `json:"operator_table_updater" yaml:"operator_table_updater"`
 }
 
 type ChainConfig struct {

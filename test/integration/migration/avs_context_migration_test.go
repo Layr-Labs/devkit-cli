@@ -470,20 +470,20 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 
 	t.Run("fork blocks updated", func(t *testing.T) {
 		l1Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l1", "fork", "block"})
-		if l1Block == nil || l1Block.Value != "22640530" {
-			t.Errorf("Expected L1 fork block to be updated to 22640530, got %v", l1Block.Value)
+		if l1Block == nil || l1Block.Value != "3979053" {
+			t.Errorf("Expected L1 fork block to be updated to 3979053, got %v", l1Block.Value)
 		}
 
 		l2Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "fork", "block"})
-		if l2Block == nil || l2Block.Value != "22640530" {
-			t.Errorf("Expected L2 fork block to be updated to 22640530, got %v", l2Block.Value)
+		if l2Block == nil || l2Block.Value != "3979053" {
+			t.Errorf("Expected L2 fork block to be updated to 3979053, got %v", l2Block.Value)
 		}
 	})
 
-	t.Run("strategy_manager added to eigenlayer", func(t *testing.T) {
-		strategyMgr := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "strategy_manager"})
-		if strategyMgr == nil || strategyMgr.Value != "0x858646372CC42E1A627fcE94aa7A7033e7CF075A" {
-			t.Errorf("Expected strategy_manager to be added, got %v", strategyMgr.Value)
+	t.Run("strategy_manager added to eigenlayer L1", func(t *testing.T) {
+		strategyMgr := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "strategy_manager"})
+		if strategyMgr == nil || strategyMgr.Value != "0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6" {
+			t.Errorf("Expected strategy_manager to be added to L1, got %v", strategyMgr.Value)
 		}
 	})
 
@@ -497,7 +497,7 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 
 		// Check first allocation details
 		strategyAddr := migration.ResolveNode(migratedNode, []string{"context", "operators", "0", "allocations", "0", "strategy_address"})
-		if strategyAddr == nil || strategyAddr.Value != "0x93c4b944D05dfe6df7645A86cd2206016c51564D" {
+		if strategyAddr == nil || strategyAddr.Value != "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3" {
 			t.Errorf("Expected stETH strategy address, got %v", strategyAddr.Value)
 		}
 
@@ -530,7 +530,7 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 	t.Run("operator 1 has stETH allocation", func(t *testing.T) {
 		// Check that operator 1 also has stETH strategy allocation (same as operator 0)
 		strategyAddr := migration.ResolveNode(migratedNode, []string{"context", "operators", "1", "allocations", "0", "strategy_address"})
-		if strategyAddr == nil || strategyAddr.Value != "0x93c4b944D05dfe6df7645A86cd2206016c51564D" {
+		if strategyAddr == nil || strategyAddr.Value != "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3" {
 			t.Errorf("Expected stETH strategy address for operator 1, got %v", strategyAddr.Value)
 		}
 
@@ -559,11 +559,22 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 		}
 	})
 
-	t.Run("existing configuration preserved", func(t *testing.T) {
-		// Ensure other configs aren't affected
-		eigenlayer := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "allocation_manager"})
-		if eigenlayer == nil || eigenlayer.Value != "0x948a420b8CC1d6BFd0B6087C2E7c344a2CD0bc39" {
-			t.Errorf("Expected existing allocation_manager to be preserved, got %v", eigenlayer.Value)
+	t.Run("eigenlayer converted to L1/L2 structure", func(t *testing.T) {
+		// Check that eigenlayer now has L1/L2 structure
+		allocationMgr := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "allocation_manager"})
+		if allocationMgr == nil || allocationMgr.Value != "0x78469728304326CBc65f8f95FA756B0B73164462" {
+			t.Errorf("Expected allocation_manager in L1 structure, got %v", allocationMgr.Value)
+		}
+
+		delegationMgr := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "delegation_manager"})
+		if delegationMgr == nil || delegationMgr.Value != "0xA44151489861Fe9e3055d95adC98FbD462B948e7" {
+			t.Errorf("Expected delegation_manager in L1 structure, got %v", delegationMgr.Value)
+		}
+
+		// Check L2 contracts exist
+		certVerifier := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l2", "bn254_certificate_verifier"})
+		if certVerifier == nil || certVerifier.Value != "0xf462d03A82C1F3496B0DFe27E978318eD1720E1f" {
+			t.Errorf("Expected bn254_certificate_verifier in L2 structure, got %v", certVerifier.Value)
 		}
 
 		// Check that operator sets are preserved
@@ -615,9 +626,9 @@ func TestAVSContextMigration_FullChain(t *testing.T) {
 		}
 
 		// Check that strategy_manager was added (from 0.0.5→0.0.6)
-		strategyManager := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "strategy_manager"})
+		strategyManager := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "strategy_manager"})
 		if strategyManager == nil {
-			t.Error("Expected strategy_manager to be added")
+			t.Error("Expected strategy_manager to be added to L1 structure")
 		}
 	})
 

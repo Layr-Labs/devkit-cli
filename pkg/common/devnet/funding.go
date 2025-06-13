@@ -33,40 +33,20 @@ type TokenFunding struct {
 const eigenUnwrapABI = `[{"constant":false,"inputs":[{"name":"amount","type":"uint256"}],"name":"unwrap","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
 // EIGEN contract address
-const eigenContractAddress = "0xec53bF9167f50cDEB3Ae105f56099aaaB9061F83"
+const eigenContractAddress = "0x3B78576F7D6837500bA3De27A60c7f594934027E"
 
-// Common mainnet token holders with large balances - mapped by token address
+// Common holesky token holders with large balances - mapped by token address
 var DefaultTokenHolders = map[common.Address]TokenFunding{
-	common.HexToAddress("0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84"): { // stETH token address
+	common.HexToAddress("0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034"): { // stETH token address
 		TokenName:     "stETH",
-		HolderAddress: common.HexToAddress("0x176F3DAb24a159341c0509bB36B833E7fdd0a132"), // Large stETH holder
+		HolderAddress: common.HexToAddress("0xC8088abD2FdaF4819230EB0FdA2D9766FDF9F409"), // Large stETH holder
 		Amount:        new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18)),              // 1000 tokens
 	},
-	common.HexToAddress("0x83E9115d334D248Ce39a6f36144aEaB5b3456e75"): { // bEIGEN token address
+	common.HexToAddress("0x275cCf9Be51f4a6C94aBa6114cdf2a4c45B9cb27"): { // bEIGEN token address
 		TokenName:     "bEIGEN",
-		HolderAddress: common.HexToAddress("0x564a1Bd9cFe0969d2A3880fcF9e228E9E1b29856"), // Large EIGEN holder that calls unwrap() to get bEIGEN
+		HolderAddress: common.HexToAddress("0x5f8C207382426D3f7F248E6321Cf93B34e66d6b9"), // Large EIGEN holder that calls unwrap() to get bEIGEN
 		Amount:        new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18)),              // 1000 tokens
 	},
-}
-
-// ImpersonateAccount enables impersonation of an account on Anvil
-func ImpersonateAccount(client *rpc.Client, address common.Address) error {
-	var result interface{}
-	err := client.Call(&result, "anvil_impersonateAccount", address.Hex())
-	if err != nil {
-		return fmt.Errorf("failed to impersonate account %s: %w", address.Hex(), err)
-	}
-	return nil
-}
-
-// StopImpersonatingAccount disables impersonation of an account on Anvil
-func StopImpersonatingAccount(client *rpc.Client, address common.Address) error {
-	var result interface{}
-	err := client.Call(&result, "anvil_stopImpersonatingAccount", address.Hex())
-	if err != nil {
-		return fmt.Errorf("failed to stop impersonating account %s: %w", address.Hex(), err)
-	}
-	return nil
 }
 
 // FundStakerWithTokens funds staker with strategy tokens using impersonation
@@ -82,7 +62,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		}
 
 		// Start impersonating the token holder for unwrap call
-		if err := ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
+		if err := devkitcommon.ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 			return fmt.Errorf("failed to impersonate token holder for unwrap: %w", err)
 		}
 
@@ -130,25 +110,25 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		if err != nil {
 			return fmt.Errorf("unwrap transaction failed: %w", err)
 		}
-		log.Printf("EIGEN to bEIGEN unwrap transaction eceipt: %v", unwrapReceipt.TxHash)
+		log.Printf("EIGEN to bEIGEN unwrap transaction receipt: %v", unwrapReceipt.TxHash)
 
 		if unwrapReceipt.Status == 0 {
 			return fmt.Errorf("EIGEN to bEIGEN unwrap transaction reverted")
 		}
 
 		// Stop impersonating for unwrap (we'll impersonate again for transfer)
-		if err := StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
+		if err := devkitcommon.StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 			log.Printf("⚠️  Failed to stop impersonating after unwrap %s: %v", tokenFunding.HolderAddress.Hex(), err)
 		}
 	}
 
 	// Start impersonating the token holder
-	if err := ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
+	if err := devkitcommon.ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 		return fmt.Errorf("failed to impersonate token holder: %w", err)
 	}
 
 	defer func() {
-		if err := StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
+		if err := devkitcommon.StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 			log.Printf("⚠️  Failed to stop impersonating %s: %v", tokenFunding.HolderAddress.Hex(), err)
 		}
 	}()
@@ -284,23 +264,25 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 		if err != nil {
 			log.Fatalf("invalid private key %q: %v", key.ECDSAKey, err)
 		}
-		err = fundIfNeeded(crypto.PubkeyToAddress(privateKey.PublicKey), key.ECDSAKey, rpcURL)
+		err = fundIfNeeded(crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_1_KEY, rpcURL)
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
 func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
+	log.Printf("to_address %s , %s , %s", to, fromKey, rpcURL)
 	balanceCmd := exec.Command("cast", "balance", to.String(), "--rpc-url", rpcURL)
 	balanceCmd.Env = append(os.Environ(), "FOUNDRY_DISABLE_NIGHTLY_WARNING=1")
 	output, err := balanceCmd.CombinedOutput()
 	if err != nil {
 		if strings.Contains(string(output), "Error: error sending request for url") {
-			log.Printf(" Please check if your mainnet fork rpc url is up")
+			log.Printf(" Please check if your holesky fork rpc url is up")
 		}
-		return fmt.Errorf("failed to get balance for account %s", to.String())
+		return fmt.Errorf("failed to get balance for account %s %v", to.String(), err)
 	}
 	threshold := new(big.Int)
 	threshold.SetString(FUND_VALUE, 10)
@@ -355,9 +337,11 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 		context.DeployerPrivateKey,
 		big.NewInt(1), // Chain ID doesn't matter for read operations
 		ethClient,
-		common.HexToAddress(eigenLayer.AllocationManager),
-		common.HexToAddress(eigenLayer.DelegationManager),
-		common.HexToAddress(eigenLayer.StrategyManager),
+		common.HexToAddress(eigenLayer.L1.AllocationManager),
+		common.HexToAddress(eigenLayer.L1.DelegationManager),
+		common.HexToAddress(eigenLayer.L1.StrategyManager),
+		common.HexToAddress(eigenLayer.L1.KeyRegistrar),
+		common.HexToAddress(""),
 		logger,
 	)
 	if err != nil {

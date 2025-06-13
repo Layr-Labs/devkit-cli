@@ -49,7 +49,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 
 	// In v0.0.6, operators use allocations instead of stake
 	assert.NotEmpty(t, cfg.Context["devnet"].Operators[0].Allocations)
-	assert.Equal(t, "0x93c4b944D05dfe6df7645A86cd2206016c51564D", cfg.Context["devnet"].Operators[0].Allocations[0].StrategyAddress)
+	assert.Equal(t, "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3", cfg.Context["devnet"].Operators[0].Allocations[0].StrategyAddress)
 	assert.Equal(t, "stETH_Strategy", cfg.Context["devnet"].Operators[0].Allocations[0].Name)
 
 	// Test stakers parsing - verify that stakers configuration is loaded correctly
@@ -65,13 +65,13 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 
 	// Test first deposit
 	deposit1 := staker.Deposits[0]
-	assert.Equal(t, "0x93c4b944D05dfe6df7645A86cd2206016c51564D", deposit1.StrategyAddress)
+	assert.Equal(t, "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3", deposit1.StrategyAddress)
 	assert.Equal(t, "stETH_Strategy", deposit1.Name)
 	assert.Equal(t, "5ETH", deposit1.DepositAmount)
 
 	// Test second deposit
 	deposit2 := staker.Deposits[1]
-	assert.Equal(t, "0xaCB55C530Acdb2849e6d4f36992Cd8c9D50ED8F7", deposit2.StrategyAddress)
+	assert.Equal(t, "0x43252609bff8a13dFe5e057097f2f45A24387a84", deposit2.StrategyAddress)
 	assert.Equal(t, "Eigen_Strategy", deposit2.Name)
 	assert.Equal(t, "5ETH", deposit2.DepositAmount)
 
@@ -90,8 +90,8 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l2"].RPCURL)
 
 	// Fork blocks updated to v0.0.6 values
-	assert.Equal(t, 22640530, cfg.Context["devnet"].Chains["l1"].Fork.Block)
-	assert.Equal(t, 22640530, cfg.Context["devnet"].Chains["l2"].Fork.Block)
+	assert.Equal(t, 3979053, cfg.Context["devnet"].Chains["l1"].Fork.Block)
+	assert.Equal(t, 3979053, cfg.Context["devnet"].Chains["l2"].Fork.Block)
 
 	assert.Equal(t, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", cfg.Context["devnet"].Avs.Address)
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
