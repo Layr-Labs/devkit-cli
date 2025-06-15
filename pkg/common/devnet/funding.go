@@ -32,9 +32,6 @@ type TokenFunding struct {
 // EIGEN contract ABI for unwrap function
 const eigenUnwrapABI = `[{"constant":false,"inputs":[{"name":"amount","type":"uint256"}],"name":"unwrap","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
-// EIGEN contract address
-const eigenContractAddress = "0x3B78576F7D6837500bA3De27A60c7f594934027E"
-
 // Common holesky token holders with large balances - mapped by token address
 var DefaultTokenHolders = map[common.Address]TokenFunding{
 	common.HexToAddress("0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034"): { // stETH token address
@@ -95,7 +92,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		var unwrapTxHash common.Hash
 		err = rpcClient.Call(&unwrapTxHash, "eth_sendTransaction", map[string]interface{}{
 			"from":     tokenFunding.HolderAddress.Hex(),
-			"to":       eigenContractAddress,
+			"to":       HOLESKY_EIGEN_CONTRACT_ADDRESS,
 			"gas":      "0x30d40", // 200000 in hex
 			"gasPrice": fmt.Sprintf("0x%x", gasPrice),
 			"value":    "0x0",
