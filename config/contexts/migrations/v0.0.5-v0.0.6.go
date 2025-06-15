@@ -17,7 +17,7 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l1", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "3979053"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "3990633"}
 				},
 			},
 			// Update fork block for L2 chain
@@ -25,7 +25,22 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l2", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "3979053"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "3990633"}
+				},
+			},
+			{
+				Path:      []string{"context", "chains", "l1","chain_id"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "17000"}
+				},
+			},
+			// Update fork block for L2 chain
+			{
+				Path:      []string{"context", "chains", "l2","chain_id"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "17000"}
 				},
 			},
 			// Replace eigenlayer config with new L1/L2 structure(We are not preserving the addresses since we are migrating to holesky)
