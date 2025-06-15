@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	devkitcommon "github.com/Layr-Labs/devkit-cli/pkg/common"
@@ -29,20 +30,18 @@ type TokenFunding struct {
 	Amount        *big.Int       `json:"amount"`
 }
 
-// EIGEN contract ABI for unwrap function
-const eigenUnwrapABI = `[{"constant":false,"inputs":[{"name":"amount","type":"uint256"}],"name":"unwrap","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"}]`
 
 // Common holesky token holders with large balances - mapped by token address
 var DefaultTokenHolders = map[common.Address]TokenFunding{
-	common.HexToAddress("0x3F1c547b21f65e10480dE3ad8E19fAAC46C95034"): { // stETH token address
+	common.HexToAddress(ST_ETH_TOKEN_ADDRESS): { // stETH token address
 		TokenName:     "stETH",
 		HolderAddress: common.HexToAddress("0xC8088abD2FdaF4819230EB0FdA2D9766FDF9F409"), // Large stETH holder
-		Amount:        new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18)),              // 1000 tokens
+		Amount:        new(big.Int).Mul(big.NewInt(STRATEGY_TOKEN_FUNDING_AMOUNT_BY_LARGE_HOLDER_IN_ETH), big.NewInt(1e18)),              // 1000 tokens
 	},
-	common.HexToAddress("0x275cCf9Be51f4a6C94aBa6114cdf2a4c45B9cb27"): { // bEIGEN token address
+	common.HexToAddress(B_EIGEN_TOKEN_ADDRESS): { // bEIGEN token address
 		TokenName:     "bEIGEN",
 		HolderAddress: common.HexToAddress("0x5f8C207382426D3f7F248E6321Cf93B34e66d6b9"), // Large EIGEN holder that calls unwrap() to get bEIGEN
-		Amount:        new(big.Int).Mul(big.NewInt(1000), big.NewInt(1e18)),              // 1000 tokens
+		Amount:        new(big.Int).Mul(big.NewInt(STRATEGY_TOKEN_FUNDING_AMOUNT_BY_LARGE_HOLDER_IN_ETH), big.NewInt(1e18)),              // 1000 tokens
 	},
 }
 
@@ -53,7 +52,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		// to convert EIGEN tokens to bEIGEN tokens
 
 		// Parse EIGEN unwrap ABI
-		eigenABI, err := abi.JSON(strings.NewReader(eigenUnwrapABI))
+		eigenABI, err := abi.JSON(strings.NewReader(contracts.EIGEN_CONTRACT_ABI))
 		if err != nil {
 			return fmt.Errorf("failed to parse EIGEN unwrap ABI: %w", err)
 		}
@@ -81,7 +80,8 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		}
 
 		// if holder balance < 0.1 ether, fund it
-		if balance.Cmp(big.NewInt(100000000000000000)) < 0 {
+		fundValue, _ := strconv.ParseInt(FUND_VALUE, 10, 64)
+		if balance.Cmp(big.NewInt(fundValue)) < 0 {
 			err = fundIfNeeded(tokenFunding.HolderAddress, ANVIL_1_KEY, rpcURL)
 			if err != nil {
 				return fmt.Errorf("failed to fund holder address: %w", err)
@@ -271,7 +271,6 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 }
 
 func fundIfNeeded(to common.Address, fromKey string, rpcURL string) error {
-	log.Printf("to_address %s , %s , %s", to, fromKey, rpcURL)
 	balanceCmd := exec.Command("cast", "balance", to.String(), "--rpc-url", rpcURL)
 	balanceCmd.Env = append(os.Environ(), "FOUNDRY_DISABLE_NIGHTLY_WARNING=1")
 	output, err := balanceCmd.CombinedOutput()
