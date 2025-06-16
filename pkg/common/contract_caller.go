@@ -577,7 +577,7 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 
 	chainIds := []*big.Int{big.NewInt(int64(chainId))}
 	cc.logger.Info("Impersonating cross chain registry owner")
-	ownerCrossChainRegistry := common.HexToAddress("0xC5dc0d145a21FDAD791Df8eDC7EbCB5330A3FdB5")
+	ownerCrossChainRegistry := common.HexToAddress("0xDA29BB71669f46F2a779b4b62f03644A84eE3479")
 
 	// Get RPC client from ethclient
 	rpcClient := cc.ethclient.Client()
@@ -675,6 +675,9 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 		cc.logger.Error("failed to send addChainIDsToWhitelist transaction: %w", err)
 		return fmt.Errorf("failed to send addChainIDsToWhitelist transaction: %w", err)
 	}
+
+	// Force the tx to be mined
+	_ = rpcClient.Call(nil, "evm_mine")
 
 	// Wait for transaction receipt
 	receipt, err = cc.ethclient.TransactionReceipt(ctx, txHash)
