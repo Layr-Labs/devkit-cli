@@ -1742,7 +1742,7 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 
 	err = contractCaller.WhitelistChainIdInCrossRegistry(cCtx.Context, operatorTableUpdater, uint64(l1Cfg.ChainID))
 	if err != nil {
-		return fmt.Errorf("failed to whitelist chain id in cross registry: %w", err)
+		return fmt.Errorf("failed to whitelist ChainId in CrossChainRegistry: %w", err)
 	}
 
 	logger.Info("Successfully whitelisted chain id in cross registry")

@@ -42,7 +42,7 @@ var TransportCommand = &cli.Command{
 			Flags: append([]cli.Flag{
 				&cli.StringFlag{
 					Name:  "cron-expr",
-					Usage: "Specify a custom schedule to overide config schedule",
+					Usage: "Specify a custom schedule to override config schedule",
 					Value: "",
 				},
 			}, common.GlobalFlags...),
@@ -64,7 +64,10 @@ var TransportCommand = &cli.Command{
 				}
 
 				// Invoke ScheduleTransport with configured schedule
-				ScheduleTransport(cCtx, schedule)
+				err = ScheduleTransport(cCtx, schedule)
+				if err != nil {
+					return fmt.Errorf("ScheduleTransport failed: %v", err)
+				}
 
 				// Keep process alive
 				select {}
