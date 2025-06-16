@@ -94,6 +94,30 @@ func GetDevnetBlockTimeOrDefault(cfg *common.ConfigWithContextConfig, chainName 
 	return chainConfig.Fork.BlockTime, nil
 }
 
+func GetDevnetRPCUrlDefault(cfg *common.ConfigWithContextConfig, chainName string) (string, error) {
+	// Check in env first for L1 RPC url
+	l1RPCUrl := os.Getenv("L1_RPC_URL")
+	if chainName == "l1" && l1RPCUrl != "" {
+		return l1RPCUrl, nil
+	}
+
+	// Check in env first for L2 RPC url
+	l2RPCUrl := os.Getenv("L2_RPC_URL")
+	if chainName == "l2" && l2RPCUrl != "" {
+		return l2RPCUrl, nil
+	}
+
+	// Fallback to context defined value
+	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
+	if !found {
+		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+	}
+	if chainConfig.RPCURL == "" {
+		return "", fmt.Errorf("rpc_url not set for %s; set rpc_url in ./config/context/devnet.yaml or .env and consult README for guidance", chainName)
+	}
+	return chainConfig.RPCURL, nil
+}
+
 func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName string) (string, error) {
 	// Check in env first for L1 fork url
 	l1ForkUrl := os.Getenv("L1_FORK_URL")

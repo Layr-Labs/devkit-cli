@@ -9,7 +9,7 @@ import (
 )
 
 // Set the latest version
-const LatestVersion = "0.0.6"
+const LatestVersion = "0.0.7"
 
 // Array of default contexts to create in project
 var DefaultContexts = [...]string{
@@ -37,6 +37,9 @@ var v0_0_5_default []byte
 
 //go:embed v0.0.6.yaml
 var v0_0_6_default []byte
+
+//go:embed v0.0.7.yaml
+var v0_0_7_default []byte
 
 // Map of context name -> content
 var ContextYamls = map[string][]byte{
@@ -84,5 +87,12 @@ var MigrationChain = []migration.MigrationStep{
 		Apply:   contextMigrations.Migration_0_0_5_to_0_0_6,
 		OldYAML: v0_0_5_default,
 		NewYAML: v0_0_6_default,
+	},
+	{
+		From:    "0.0.6",
+		To:      "0.0.7",
+		Apply:   contextMigrations.Migration_0_0_6_to_0_0_7,
+		OldYAML: v0_0_6_default,
+		NewYAML: v0_0_7_default,
 	},
 }

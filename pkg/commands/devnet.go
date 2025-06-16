@@ -37,6 +37,11 @@ var DevnetCommand = &cli.Command{
 					Value: false,
 				},
 				&cli.BoolFlag{
+					Name:  "skip-transporter",
+					Usage: "Skip starting/submitting Stake Root via transporter",
+					Value: false,
+				},
+				&cli.BoolFlag{
 					Name:  "skip-deploy-contracts",
 					Usage: "Skip deploying contracts and only start local devnet",
 					Value: false,

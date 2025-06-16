@@ -470,13 +470,13 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 
 	t.Run("fork blocks updated", func(t *testing.T) {
 		l1Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l1", "fork", "block"})
-		if l1Block == nil || l1Block.Value != "3979053" {
-			t.Errorf("Expected L1 fork block to be updated to 3979053, got %v", l1Block.Value)
+		if l1Block == nil || l1Block.Value != "3990633" {
+			t.Errorf("Expected L1 fork block to be updated to 3990633, got %v", l1Block.Value)
 		}
 
 		l2Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "fork", "block"})
-		if l2Block == nil || l2Block.Value != "3979053" {
-			t.Errorf("Expected L2 fork block to be updated to 3979053, got %v", l2Block.Value)
+		if l2Block == nil || l2Block.Value != "3990633" {
+			t.Errorf("Expected L2 fork block to be updated to 3990633, got %v", l2Block.Value)
 		}
 	})
 
@@ -581,6 +581,77 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 		operatorSets := migration.ResolveNode(migratedNode, []string{"context", "operator_sets"})
 		if operatorSets == nil {
 			t.Error("Expected operator_sets section to be preserved")
+		}
+	})
+}
+
+// TestAVSContextMigration_0_0_6_to_0_0_7 tests the migration from version 0.0.6 to 0.0.7
+// which adds the transporter section to the context
+func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
+	userYAML := string(contexts.ContextYamls["0.0.6"])
+	userNode := testNode(t, userYAML)
+
+	var migrationStep migration.MigrationStep
+	for _, step := range contexts.MigrationChain {
+		if step.From == "0.0.6" && step.To == "0.0.7" {
+			migrationStep = step
+			break
+		}
+	}
+	if migrationStep.Apply == nil {
+		t.Fatal("Could not find 0.0.6 -> 0.0.7 migration step")
+	}
+
+	migratedNode, err := migration.MigrateNode(userNode, "0.0.6", "0.0.7", []migration.MigrationStep{migrationStep})
+	if err != nil {
+		t.Fatalf("Migration failed: %v", err)
+	}
+
+	t.Run("version updated", func(t *testing.T) {
+		v := migration.ResolveNode(migratedNode, []string{"version"})
+		if v == nil || v.Value != "0.0.7" {
+			t.Errorf("Expected version 0.0.7, got %v", v.Value)
+		}
+	})
+
+	t.Run("transporter section added with expected keys", func(t *testing.T) {
+		schedule := migration.ResolveNode(migratedNode, []string{"context", "transporter", "schedule"})
+		if schedule == nil || schedule.Value != "0 */2 * * *" {
+			t.Errorf("Expected schedule '0 */2 * * *', got %v", schedule.Value)
+		}
+		privKey := migration.ResolveNode(migratedNode, []string{"context", "transporter", "private_key"})
+		if privKey == nil {
+			t.Error("Expected private_key field to be present")
+		}
+		blsPrivKey := migration.ResolveNode(migratedNode, []string{"context", "transporter", "bls_private_key"})
+		if blsPrivKey == nil {
+			t.Error("Expected bls_private_key field to be present")
+		}
+	})
+
+	t.Run("transporter inserted after chains", func(t *testing.T) {
+		ctxNode := migration.ResolveNode(migratedNode, []string{"context"})
+		if ctxNode == nil || ctxNode.Kind != yaml.MappingNode {
+			t.Fatal("context node not found or invalid")
+		}
+		var keys []string
+		for i := 0; i < len(ctxNode.Content)-1; i += 2 {
+			keys = append(keys, ctxNode.Content[i].Value)
+		}
+		chainsIdx, transpIdx := -1, -1
+		for i, key := range keys {
+			if key == "chains" {
+				chainsIdx = i
+			}
+			if key == "transporter" {
+				transpIdx = i
+			}
+		}
+		if chainsIdx == -1 || transpIdx == -1 {
+			t.Fatal("chains or transporter key missing in context")
+		}
+		if transpIdx <= chainsIdx {
+			t.Errorf("Expected transporter to appear after chains, got chains at %d, transporter at %d", chainsIdx, transpIdx)
 		}
 	})
 }

@@ -61,6 +61,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Extract vars
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+	skipTransporter := cCtx.Bool("skip-transporter")
 	useZeus := cCtx.Bool("use-zeus")
 
 	// Migrate config
@@ -343,6 +344,24 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			}
 		} else {
 			logger.Info("Skipping AVS setup steps...")
+		}
+	}
+
+	// Run Transport against schedule - exit when AVSRun exits
+	if !skipTransporter {
+		// Post initial stake roots to L1
+		if err := Transport(cCtx); err != nil && !errors.Is(err, context.Canceled) {
+			return fmt.Errorf("transport run failed: %w", err)
+		}
+		go func() {
+			err := ScheduleTransport(cCtx, config.Context[devnet.DEVNET_CONTEXT].Transporter.Schedule)
+			if err != nil {
+				logger.Error("ScheduleTransport failed: %v", err)
+			}
+		}()
+		// Keep scheduler alive
+		if skipAvsRun {
+			select {}
 		}
 	}
 

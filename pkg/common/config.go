@@ -138,9 +138,16 @@ type OperatorRegistration struct {
 	Payload       string `json:"payload" yaml:"payload"`
 }
 
+type Transporter struct {
+	Schedule        string `json:"schedule" yaml:"schedule"`
+	BlsPrivateKey   string `json:"bls_private_key" yaml:"bls_private_key"`
+	EcdsaPrivateKey string `json:"ecdsa_private_key" yaml:"ecdsa_private_key"`
+}
+
 type ChainContextConfig struct {
 	Name                  string                 `json:"name" yaml:"name"`
 	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
+	Transporter           Transporter            `json:"transporter" yaml:"transporter"`
 	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
 	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`
 	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
