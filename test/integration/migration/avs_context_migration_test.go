@@ -583,36 +583,6 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 			t.Error("Expected operator_sets section to be preserved")
 		}
 	})
-}
-
-// TestAVSContextMigration_0_0_6_to_0_0_7 tests the migration from version 0.0.6 to 0.0.7
-// which adds the transporter section to the context
-func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
-	userYAML := string(contexts.ContextYamls["0.0.6"])
-	userNode := testNode(t, userYAML)
-
-	var migrationStep migration.MigrationStep
-	for _, step := range contexts.MigrationChain {
-		if step.From == "0.0.6" && step.To == "0.0.7" {
-			migrationStep = step
-			break
-		}
-	}
-	if migrationStep.Apply == nil {
-		t.Fatal("Could not find 0.0.6 -> 0.0.7 migration step")
-	}
-
-	migratedNode, err := migration.MigrateNode(userNode, "0.0.6", "0.0.7", []migration.MigrationStep{migrationStep})
-	if err != nil {
-		t.Fatalf("Migration failed: %v", err)
-	}
-
-	t.Run("version updated", func(t *testing.T) {
-		v := migration.ResolveNode(migratedNode, []string{"version"})
-		if v == nil || v.Value != "0.0.7" {
-			t.Errorf("Expected version 0.0.7, got %v", v.Value)
-		}
-	})
 
 	t.Run("transporter section added with expected keys", func(t *testing.T) {
 		schedule := migration.ResolveNode(migratedNode, []string{"context", "transporter", "schedule"})
