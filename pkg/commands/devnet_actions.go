@@ -24,10 +24,10 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
-	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
-	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
-
+	// "github.com/Layr-Labs/crypto-libs/pkg/bn254"
+	"github.com/Layr-Labs/crypto-libs/pkg/keystore"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	ponosbn254 "github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -319,9 +319,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 				return fmt.Errorf("registering operators failed: %w", err)
 			}
 
-			// if err := RegisterKeyInKeyRegistrarAction(cCtx, logger); err != nil {
-			// 	return fmt.Errorf("registering key in key registrar failed: %w", err)
-			// }
+			if err := RegisterKeyInKeyRegistrarAction(cCtx, logger); err != nil {
+				return fmt.Errorf("registering key in key registrar failed: %w", err)
+			}
 
 			if err := DepositIntoStrategiesAction(cCtx, logger); err != nil {
 				return fmt.Errorf("depositing into strategies failed: %w", err)
@@ -1774,21 +1774,42 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 				}
 				blskeystorePath := operator.BlsKeystorePath
 				blskeystorePassword := operator.BlsKeystorePassword
-				scheme := bn254.NewScheme()
 				keystoreData, err := keystore.LoadKeystoreFile(blskeystorePath)
 
 				if err != nil {
-					return fmt.Errorf("failed to load the keystore file from given path %s", blskeystorePath)
+					return fmt.Errorf("failed to load the keystore file from given path %s error %w", blskeystorePath, err)
 				}
 
-				privateKeyData, err := keystoreData.GetPrivateKey(blskeystorePassword, scheme)
+				privateKey, err := keystoreData.GetBN254PrivateKey(blskeystorePassword)
 				if err != nil {
 					return fmt.Errorf("failed to extract the private key from the keystore file")
 
 				}
-				signature := privateKeyData.Bytes() // TODO: wait for updated hourglass-monorepo branch to be merged https://github.com/Layr-Labs/hourglass-monorepo/tree/sm-multichain
-				keydata := privateKeyData.Bytes()   // TODO : same as above
-				err = contractCaller.RegisterKeyInKeyRegistrar(cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keydata, signature)
+
+				keyData, err := contractCaller.EncodeBN254KeyData(privateKey.Public())
+				if err != nil {
+					return fmt.Errorf("failed to encode key data: %w", err)
+				}
+
+				messageHash, err := contractCaller.GetOperatorRegistrationMessageHash(cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keyData)
+				if err != nil {
+					return fmt.Errorf("failed to get operator registration message hash: %w", err)
+				}
+				// crypto-libs does not have SignSolidityCompatible right now, so using ponos for it
+				ponosPrivateKey, err := ponosbn254.NewPrivateKeyFromBytes(privateKey.Bytes())
+				if err != nil {
+					return fmt.Errorf("failed to create ponos private key: %w", err)
+				}
+
+				signature, err := ponosPrivateKey.SignSolidityCompatible(messageHash)
+				if err != nil {
+					return fmt.Errorf("failed to sign message hash: %w", err)
+				}
+
+				// Convert ponos signature to bn254 signature
+				bn254Signature := ponosbn254.Signature(*signature)
+
+				err = contractCaller.RegisterKeyInKeyRegistrar(cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keyData, bn254Signature)
 				if err != nil {
 					return fmt.Errorf("failed to register key in key registrar: %w", err)
 				}
