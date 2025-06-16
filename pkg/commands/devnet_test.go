@@ -653,7 +653,6 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 	}
 }
 
-<<<<<<< nova/slashable_stake_for_operators
 // Zeus is not being used temporarily.
 // func TestStartDevnet_UseZeus(t *testing.T) {
 // 	os.Setenv("SKIP_DEVNET_FUNDING", "true")
@@ -714,42 +713,3 @@ func TestStartDevnet_ContextCancellation(t *testing.T) {
 // 	}
 // 	_ = stopApp.Run([]string{"devkit", "--port", port})
 // }
-=======
-func TestStartDevnet_UseZeus(t *testing.T) {
-	os.Setenv("SKIP_DEVNET_FUNDING", "true")
-	originalCwd, err := os.Getwd()
-	assert.NoError(t, err)
-	t.Cleanup(func() { _ = os.Chdir(originalCwd) })
-
-	projectDir, err := testutils.CreateTempAVSProject(t)
-	assert.NoError(t, err)
-	defer os.RemoveAll(projectDir)
-
-	err = os.Chdir(projectDir)
-	assert.NoError(t, err)
-
-	port, err := getFreePort()
-	assert.NoError(t, err)
-
-	app, logger := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
-		&cli.IntFlag{Name: "port"},
-		&cli.BoolFlag{Name: "verbose"},
-		&cli.BoolFlag{Name: "skip-deploy-contracts"},
-		&cli.BoolFlag{Name: "use-zeus"},
-	}, StartDevnetAction)
-
-	err = app.Run([]string{"devkit", "--port", port, "--verbose", "--skip-deploy-contracts", "--use-zeus"})
-	// Check error is nil
-	assert.NoError(t, err, "Running devnet with --use-zeus flag should not produce an error")
-
-	// Check that zeus is mentioned in the logs
-	assert.True(t, logger.Contains("zeus"), "Logger should contain 'zeus' when --use-zeus flag is used")
-	assert.Equal(t, 0, len(logger.GetEntriesByLevel("ERROR")), "Logger should not contain ERROR-level messages")
-
-	stopApp, _ := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
-		&cli.IntFlag{Name: "port"},
-	}, StopDevnetAction)
-
-	_ = stopApp.Run([]string{"devkit", "--port", port})
-}
->>>>>>> main

@@ -67,15 +67,9 @@ func TestSaveUserIdAndLoadGlobalConfig(t *testing.T) {
 }
 
 func TestGetUserUUIDFromGlobalConfig_Empty(t *testing.T) {
-<<<<<<< nova/slashable_stake_for_operators
-	// Save original env vars
-	originalXDG := os.Getenv("XDG_CONFIG_HOME")
-	originalHome := os.Getenv("HOME")
-=======
 	// Save original environment
 	originalXDG := os.Getenv("XDG_CONFIG_HOME")
 	originalHOME := os.Getenv("HOME")
->>>>>>> main
 
 	// Clean up after test
 	defer func() {
@@ -84,28 +78,13 @@ func TestGetUserUUIDFromGlobalConfig_Empty(t *testing.T) {
 		} else {
 			os.Unsetenv("XDG_CONFIG_HOME")
 		}
-<<<<<<< nova/slashable_stake_for_operators
-		if originalHome != "" {
-			os.Setenv("HOME", originalHome)
-=======
 		if originalHOME != "" {
 			os.Setenv("HOME", originalHOME)
->>>>>>> main
 		} else {
 			os.Unsetenv("HOME")
 		}
 	}()
 
-<<<<<<< nova/slashable_stake_for_operators
-	// Unset both XDG_CONFIG_HOME and HOME to ensure no config directory can be found
-	os.Unsetenv("XDG_CONFIG_HOME")
-	os.Unsetenv("HOME")
-
-	// Should return empty UUID when no config directory can be determined
-	uuid := getUserUUIDFromGlobalConfig()
-	if uuid != "" {
-		t.Errorf("expected empty UUID when no config directory available, got %q", uuid)
-=======
 	// Unset XDG_CONFIG_HOME and set HOME to a temp directory with no config
 	os.Unsetenv("XDG_CONFIG_HOME")
 	tempHome := t.TempDir()
@@ -115,7 +94,6 @@ func TestGetUserUUIDFromGlobalConfig_Empty(t *testing.T) {
 	uuid := getUserUUIDFromGlobalConfig()
 	if uuid != "" {
 		t.Errorf("expected empty UUID when no config exists, got %q", uuid)
->>>>>>> main
 	}
 }
 
