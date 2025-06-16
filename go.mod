@@ -9,9 +9,11 @@ replace github.com/Layr-Labs/devkit-cli => ./
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.6.0-rc.0.0.20250611220551-5932d4c4233e
 	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737
+	github.com/Layr-Labs/multichain-go v0.0.3-0.20250613170051-947a06c1e417 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/posthog/posthog-go v1.4.10
+	github.com/robfig/cron/v3 v3.0.1
 	github.com/urfave/cli/v2 v2.27.6
 	golang.org/x/text v0.26.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -22,6 +24,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bits-and-blooms/bitset v1.20.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
@@ -51,6 +54,8 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
+	github.com/iden3/go-iden3-crypto v0.0.16 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -70,6 +75,7 @@ require (
 	github.com/supranational/blst v0.3.14 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
+	github.com/wealdtech/go-merkletree/v2 v2.6.1 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.54.0 // indirect

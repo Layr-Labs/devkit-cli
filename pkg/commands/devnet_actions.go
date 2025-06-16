@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"math/big"
 	"os"
 	"os/exec"
@@ -61,6 +62,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Extract vars
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
+	skipTransporter := cCtx.Bool("skip-transporter")
 	useZeus := cCtx.Bool("use-zeus")
 
 	// Migrate config
@@ -343,6 +345,24 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			}
 		} else {
 			logger.Info("Skipping AVS setup steps...")
+		}
+	}
+
+	// Run Transport against schedule - exit when AVSRun exits
+	if !skipTransporter {
+		// Post initial stake roots to L1
+		if err := Transport(cCtx); err != nil && !errors.Is(err, context.Canceled) {
+			return fmt.Errorf("transport run failed: %w", err)
+		}
+		go func() {
+			err := ScheduleTransport(cCtx, config.Context[devnet.DEVNET_CONTEXT].Transporter.Schedule)
+			if err != nil {
+				logger.Error("ScheduleTransport failed: %v", err)
+			}
+		}()
+		// Keep scheduler alive
+		if skipAvsRun {
+			select {}
 		}
 	}
 
@@ -1681,6 +1701,12 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 }
 
 func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logger) error {
+	// Skip this call if funding is disabled
+	if os.Getenv("SKIP_DEVNET_FUNDING") == "true" {
+		log.Println("🔧 Skipping WhitelistChainIdInCrossRegistry (test mode)")
+		return nil
+	}
+
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
@@ -1723,7 +1749,7 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 
 	err = contractCaller.WhitelistChainIdInCrossRegistry(cCtx.Context, operatorTableUpdater, uint64(l1Cfg.ChainID))
 	if err != nil {
-		return fmt.Errorf("failed to whitelist chain id in cross registry: %w", err)
+		return fmt.Errorf("failed to whitelist ChainId in CrossChainRegistry: %w", err)
 	}
 
 	logger.Info("Successfully whitelisted chain id in cross registry")

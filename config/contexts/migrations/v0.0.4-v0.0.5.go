@@ -7,7 +7,7 @@ import (
 )
 
 func Migration_0_0_4_to_0_0_5(user, old, new *yaml.Node) (*yaml.Node, error) {
-	engine := migration.PatchEngine{ /* … */ }
+	engine := migration.PatchEngine{}
 	if err := engine.Apply(); err != nil {
 		return nil, err
 	}

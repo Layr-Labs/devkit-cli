@@ -246,7 +246,6 @@ func waitForTransaction(ctx context.Context, client *ethclient.Client, txHash co
 // FundWallets sends ETH to a list of addresses using `cast send`
 // Only funds wallets with balance < 10 ether.
 func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) error {
-
 	if os.Getenv("SKIP_DEVNET_FUNDING") == "true" {
 		log.Println("🔧 Skipping devnet wallet funding (test mode)")
 		return nil

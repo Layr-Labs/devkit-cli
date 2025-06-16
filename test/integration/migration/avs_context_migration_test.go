@@ -583,6 +583,47 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 			t.Error("Expected operator_sets section to be preserved")
 		}
 	})
+
+	t.Run("transporter section added with expected keys", func(t *testing.T) {
+		schedule := migration.ResolveNode(migratedNode, []string{"context", "transporter", "schedule"})
+		if schedule == nil || schedule.Value != "0 */2 * * *" {
+			t.Errorf("Expected schedule '0 */2 * * *', got %v", schedule.Value)
+		}
+		privKey := migration.ResolveNode(migratedNode, []string{"context", "transporter", "private_key"})
+		if privKey == nil {
+			t.Error("Expected private_key field to be present")
+		}
+		blsPrivKey := migration.ResolveNode(migratedNode, []string{"context", "transporter", "bls_private_key"})
+		if blsPrivKey == nil {
+			t.Error("Expected bls_private_key field to be present")
+		}
+	})
+
+	t.Run("transporter inserted after chains", func(t *testing.T) {
+		ctxNode := migration.ResolveNode(migratedNode, []string{"context"})
+		if ctxNode == nil || ctxNode.Kind != yaml.MappingNode {
+			t.Fatal("context node not found or invalid")
+		}
+		var keys []string
+		for i := 0; i < len(ctxNode.Content)-1; i += 2 {
+			keys = append(keys, ctxNode.Content[i].Value)
+		}
+		chainsIdx, transpIdx := -1, -1
+		for i, key := range keys {
+			if key == "chains" {
+				chainsIdx = i
+			}
+			if key == "transporter" {
+				transpIdx = i
+			}
+		}
+		if chainsIdx == -1 || transpIdx == -1 {
+			t.Fatal("chains or transporter key missing in context")
+		}
+		if transpIdx <= chainsIdx {
+			t.Errorf("Expected transporter to appear after chains, got chains at %d, transporter at %d", chainsIdx, transpIdx)
+		}
+	})
 }
 
 // TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.6
