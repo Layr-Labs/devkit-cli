@@ -630,18 +630,15 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
-
-	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
-	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
-	strategyManagerAddr := ethcommon.HexToAddress(devnet.STRATEGY_MANAGER_ADDRESS)
-
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
 		big.NewInt(int64(l1ChainCfg.ChainID)),
 		client,
-		allocationManagerAddr,
-		delegationManagerAddr,
-		strategyManagerAddr,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
+		ethcommon.HexToAddress(strategyManagerAddr),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -673,17 +670,15 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
-	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
-	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
-	strategyManagerAddr := ethcommon.HexToAddress(devnet.STRATEGY_MANAGER_ADDRESS)
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
 		big.NewInt(int64(l1ChainCfg.ChainID)),
 		client,
-		allocationManagerAddr,
-		delegationManagerAddr,
-		strategyManagerAddr,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
+		ethcommon.HexToAddress(strategyManagerAddr),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -730,17 +725,15 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
-	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
-	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
-	strategyManagerAddr := ethcommon.HexToAddress(devnet.STRATEGY_MANAGER_ADDRESS)
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
 		big.NewInt(int64(l1ChainCfg.ChainID)),
 		client,
-		allocationManagerAddr,
-		delegationManagerAddr,
-		strategyManagerAddr,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
+		ethcommon.HexToAddress(strategyManagerAddr),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -969,17 +962,15 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 	if operatorPrivateKey == "" {
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
-
-	allocationManagerAddr := ethcommon.HexToAddress(devnet.ALLOCATION_MANAGER_ADDRESS)
-	delegationManagerAddr := ethcommon.HexToAddress(devnet.DELEGATION_MANAGER_ADDRESS)
-	strategyManagerAddr := ethcommon.HexToAddress(devnet.STRATEGY_MANAGER_ADDRESS)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
 		big.NewInt(int64(l1Cfg.ChainID)),
 		client,
-		allocationManagerAddr,
-		delegationManagerAddr,
-		strategyManagerAddr,
+		ethcommon.HexToAddress(allocationManagerAddr),
+		ethcommon.HexToAddress(delegationManagerAddr),
+		ethcommon.HexToAddress(strategyManagerAddr),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
