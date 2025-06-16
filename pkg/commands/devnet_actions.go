@@ -837,7 +837,7 @@ func RegisterOperatorsToEigenLayerFromConfigAction(cCtx *cli.Context, logger ifa
 			continue
 		}
 	}
-	logger.Info("Operator registration with EigenLayer completed.")
+	logger.Info("Operators registration with EigenLayer completed.")
 	return nil
 }
 
