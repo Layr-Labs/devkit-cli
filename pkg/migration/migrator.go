@@ -69,43 +69,20 @@ type VersionComparator func(string, string) bool
 var ErrAlreadyUpToDate = errors.New("already up to date")
 
 // checkVersionCompatibility validates that the context version is supported by the current CLI
-func checkVersionCompatibility(contextVersion, latestSupported, contextFile string) error {
+func checkVersionCompatibility(contextVersion, contextFile string) error {
 	if contextVersion == "" {
 		// Missing version - could be very old context, warn but allow
 		return fmt.Errorf("context file %s is missing version field - this may be an old context that needs migration", contextFile)
 	}
 
-	// For CLI version v0.0.8, we can support up to context version 0.0.5
-	// Override the latestSupported if this CLI version supports higher
 	cliVersion := version.GetVersion()
-	if cliVersion == "v0.0.8" || cliVersion == "0.0.8" {
-		latestSupported = "0.0.5"
-	}
-	if cliVersion == "v0.0.7" || cliVersion == "0.0.7" {
-		latestSupported = "0.0.3"
-	}
-	if cliVersion == "v0.0.6" || cliVersion == "0.0.6" {
-		latestSupported = "0.0.3"
-	}
-	if cliVersion == "v0.0.4" || cliVersion == "0.0.4" {
-		latestSupported = "0.0.3"
-	}
-	if cliVersion == "v0.0.3" || cliVersion == "0.0.3" {
-		latestSupported = "0.0.3"
-	}
-	if cliVersion == "v0.0.2" || cliVersion == "0.0.2" {
-		latestSupported = "0.0.3"
-	}
-	if cliVersion == "v0.0.1" || cliVersion == "0.0.1" {
-		latestSupported = "0.0.1"
-	}
 
 	// If context version is newer than what we support, return compatibility error
-	if versionGreaterThan(contextVersion, latestSupported) {
+	if versionGreaterThan(contextVersion, common.DevkitLatestContextVersion) {
 		return &common.VersionCompatibilityError{
 			ContextVersion:  contextVersion,
-			CLIVersion:      version.GetVersion(),
-			LatestSupported: latestSupported,
+			CLIVersion:      cliVersion,
+			LatestSupported: common.DevkitLatestContextVersion,
 			ContextFile:     contextFile,
 		}
 	}
@@ -160,7 +137,7 @@ func MigrateYaml(logger iface.Logger, path string, latestVersion string, migrati
 	to := latestVersion
 
 	// Check version compatibility BEFORE attempting migration
-	if err := checkVersionCompatibility(from, latestVersion, path); err != nil {
+	if err := checkVersionCompatibility(from, path); err != nil {
 		return err
 	}
 
