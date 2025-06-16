@@ -1353,7 +1353,7 @@ func ModifyAllocationsAction(cCtx *cli.Context, logger iface.Logger) error {
 
 func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivateKey string, logger iface.Logger) error {
 	if operatorAddress == "" {
-		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
+		return fmt.Errorf("modifyAllocations:operatorAddress parameter is required and cannot be empty")
 	}
 
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
