@@ -562,12 +562,12 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 	t.Run("eigenlayer converted to L1/L2 structure", func(t *testing.T) {
 		// Check that eigenlayer now has L1/L2 structure
 		allocationMgr := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "allocation_manager"})
-		if allocationMgr == nil || allocationMgr.Value != "0x78469728304326CBc65f8f95FA756B0B73164462" {
+		if allocationMgr == nil || allocationMgr.Value != "0xFdD5749e11977D60850E06bF5B13221Ad95eb6B4" {
 			t.Errorf("Expected allocation_manager in L1 structure, got %v", allocationMgr.Value)
 		}
 
 		delegationMgr := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "delegation_manager"})
-		if delegationMgr == nil || delegationMgr.Value != "0xA44151489861Fe9e3055d95adC98FbD462B948e7" {
+		if delegationMgr == nil || delegationMgr.Value != "0x75dfE5B44C2E530568001400D3f704bC8AE350CC" {
 			t.Errorf("Expected delegation_manager in L1 structure, got %v", delegationMgr.Value)
 		}
 
