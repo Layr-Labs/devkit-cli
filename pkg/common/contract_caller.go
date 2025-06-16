@@ -17,7 +17,6 @@ import (
 	crosschainregistry "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/CrossChainRegistry"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	keyregistrar "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/KeyRegistrar"
-	ponosbn254 "github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -694,7 +693,7 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	return nil
 }
 
-func (cc *ContractCaller) RegisterKeyInKeyRegistrar(ctx context.Context, operatorAddress common.Address, avsAddress common.Address, opSetId uint32, keyData []byte, signature ponosbn254.Signature) error {
+func (cc *ContractCaller) RegisterKeyInKeyRegistrar(ctx context.Context, operatorAddress common.Address, avsAddress common.Address, opSetId uint32, keyData []byte, signature bn254.Signature) error {
 	opts, err := cc.buildTxOpts()
 	if err != nil {
 		return fmt.Errorf("failed to build transaction options: %w", err)

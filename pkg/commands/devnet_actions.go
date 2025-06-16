@@ -18,16 +18,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Layr-Labs/crypto-libs/pkg/bn254"
+	"github.com/Layr-Labs/crypto-libs/pkg/keystore"
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
-	// "github.com/Layr-Labs/crypto-libs/pkg/bn254"
-	"github.com/Layr-Labs/crypto-libs/pkg/keystore"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
-	ponosbn254 "github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -1795,19 +1794,13 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 				if err != nil {
 					return fmt.Errorf("failed to get operator registration message hash: %w", err)
 				}
-				// crypto-libs does not have SignSolidityCompatible right now, so using ponos for it
-				ponosPrivateKey, err := ponosbn254.NewPrivateKeyFromBytes(privateKey.Bytes())
-				if err != nil {
-					return fmt.Errorf("failed to create ponos private key: %w", err)
-				}
 
-				signature, err := ponosPrivateKey.SignSolidityCompatible(messageHash)
+				signature, err := privateKey.SignSolidityCompatible(messageHash)
 				if err != nil {
 					return fmt.Errorf("failed to sign message hash: %w", err)
 				}
 
-				// Convert ponos signature to bn254 signature
-				bn254Signature := ponosbn254.Signature(*signature)
+				bn254Signature := bn254.Signature(*signature)
 
 				err = contractCaller.RegisterKeyInKeyRegistrar(cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keyData, bn254Signature)
 				if err != nil {
