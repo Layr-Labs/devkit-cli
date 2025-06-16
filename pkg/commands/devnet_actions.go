@@ -631,7 +631,7 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 	}
 	defer client.Close()
 	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
-	
+
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
 		big.NewInt(int64(l1ChainCfg.ChainID)),
@@ -963,7 +963,7 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
 	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
-	
+
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
 		big.NewInt(int64(l1Cfg.ChainID)),
