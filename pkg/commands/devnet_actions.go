@@ -859,7 +859,7 @@ func RegisterOperatorsToAvsFromConfigAction(cCtx *cli.Context, logger iface.Logg
 	}
 
 	for _, opReg := range envCtx.OperatorRegistrations {
-		logger.Info("Processing registration for operator at address %s", opReg.Address)
+		logger.Info("Processing avs registration for operator at address %s", opReg.Address)
 		if err := registerOperatorAVS(cCtx, logger, opReg.Address, uint32(opReg.OperatorSetID), opReg.Payload); err != nil {
 			logger.Error("Failed to register operator %s for AVS: %v. Continuing...", opReg.Address, err)
 			continue
