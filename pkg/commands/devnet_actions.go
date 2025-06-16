@@ -1714,13 +1714,6 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 	crossChainRegistryAddr := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
 	operatorTableUpdater := ethcommon.HexToAddress(envCtx.EigenLayer.L2.OperatorTableUpdater)
 
-	code, err := client.CodeAt(cCtx.Context, operatorTableUpdater, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get code: %w", err)
-	}
-	codeLength := len(code)
-
-	logger.Info("Code length of operatortableupdater: %d", codeLength)
 	avsPrivateKeyOrGivenPermissionByAvs := envCtx.Avs.AVSPrivateKey
 
 	contractCaller, err := common.NewContractCaller(
@@ -1804,7 +1797,6 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 				}
 				signature := privateKeyData.Bytes() // TODO: wait for updated hourglass-monorepo branch to be merged https://github.com/Layr-Labs/hourglass-monorepo/tree/sm-multichain
 				keydata := privateKeyData.Bytes()   // TODO : same as above
-				logger.Info("Registering key in key registrar for operator %s", operator.Address)
 				err = contractCaller.RegisterKeyInKeyRegistrar(cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keydata, signature)
 				if err != nil {
 					return fmt.Errorf("failed to register key in key registrar: %w", err)
@@ -1814,6 +1806,6 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 		}
 
 	}
-	logger.Info("Successfully registered key in key registrar")
+	logger.Info("Successfully registered keys in key registrar")
 	return nil
 }
