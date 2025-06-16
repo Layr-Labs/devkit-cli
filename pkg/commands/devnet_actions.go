@@ -842,7 +842,6 @@ func RegisterOperatorsToEigenLayerFromConfigAction(cCtx *cli.Context, logger ifa
 }
 
 func RegisterOperatorsToAvsFromConfigAction(cCtx *cli.Context, logger iface.Logger) error {
-	logger.Info("Registering operators to AVS from config...")
 
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
 	if err != nil {
