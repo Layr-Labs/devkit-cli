@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"math/big"
 	"os"
 	"os/exec"
@@ -1700,6 +1701,12 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 }
 
 func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logger) error {
+	// Skip this call if funding is disabled
+	if os.Getenv("SKIP_DEVNET_FUNDING") == "true" {
+		log.Println("🔧 Skipping WhitelistChainIdInCrossRegistry (test mode)")
+		return nil
+	}
+
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
