@@ -1,5 +1,7 @@
 [files]
 extend-exclude = [
+    "go.mod",
+    "go.sum",
     "**/lib/**",
     "**/docs/images/**",
     # Not present locally, but is in remote (github).
