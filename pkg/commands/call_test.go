@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func setupCallApp(t *testing.T) (tmpDir string, restore func(), app *cli.App) {
+func setupCallApp(t *testing.T) (tmpDir string, restore func(), app *cli.App, noopLogger *logger.NoopLogger) {
 	tmpDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 
@@ -28,16 +29,17 @@ func setupCallApp(t *testing.T) (tmpDir string, restore func(), app *cli.App) {
 		os.RemoveAll(tmpDir)
 	}
 
+	cmdWithLogger, noopLogger := testutils.WithTestConfigAndNoopLoggerAndAccess(CallCommand)
 	app = &cli.App{
 		Name:     "call",
-		Commands: []*cli.Command{CallCommand},
+		Commands: []*cli.Command{cmdWithLogger},
 	}
 
-	return tmpDir, restore, app
+	return tmpDir, restore, app, noopLogger
 }
 
 func TestCallCommand_ExecutesSuccessfully(t *testing.T) {
-	_, restore, app := setupCallApp(t)
+	_, restore, app, _ := setupCallApp(t)
 	defer restore()
 
 	err := app.Run([]string{"app", "call", "--", "payload=0x1"})
@@ -45,7 +47,7 @@ func TestCallCommand_ExecutesSuccessfully(t *testing.T) {
 }
 
 func TestCallCommand_MissingDevnetYAML(t *testing.T) {
-	tmpDir, restore, app := setupCallApp(t)
+	tmpDir, restore, app, _ := setupCallApp(t)
 	defer restore()
 
 	os.Remove(filepath.Join(tmpDir, "config", "contexts", "devnet.yaml"))
@@ -56,7 +58,7 @@ func TestCallCommand_MissingDevnetYAML(t *testing.T) {
 }
 
 func TestCallCommand_MissingParams(t *testing.T) {
-	_, restore, app := setupCallApp(t)
+	_, restore, app, _ := setupCallApp(t)
 	defer restore()
 
 	err := app.Run([]string{"app", "call"})
@@ -73,7 +75,7 @@ func TestParseParams_MultipleParams(t *testing.T) {
 }
 
 func TestCallCommand_MalformedParams(t *testing.T) {
-	_, restore, app := setupCallApp(t)
+	_, restore, app, _ := setupCallApp(t)
 	defer restore()
 
 	err := app.Run([]string{"app", "call", "--", "badparam"})
@@ -82,7 +84,7 @@ func TestCallCommand_MalformedParams(t *testing.T) {
 }
 
 func TestCallCommand_MalformedYAML(t *testing.T) {
-	tmpDir, restore, app := setupCallApp(t)
+	tmpDir, restore, app, _ := setupCallApp(t)
 	defer restore()
 
 	yamlPath := filepath.Join(tmpDir, "config", "contexts", "devnet.yaml")
@@ -95,7 +97,7 @@ func TestCallCommand_MalformedYAML(t *testing.T) {
 }
 
 func TestCallCommand_MissingScript(t *testing.T) {
-	tmpDir, restore, app := setupCallApp(t)
+	tmpDir, restore, app, _ := setupCallApp(t)
 	defer restore()
 
 	err := os.Remove(filepath.Join(tmpDir, ".devkit", "scripts", "call"))
@@ -107,7 +109,7 @@ func TestCallCommand_MissingScript(t *testing.T) {
 }
 
 func TestCallCommand_ScriptReturnsNonZero(t *testing.T) {
-	tmpDir, restore, app := setupCallApp(t)
+	tmpDir, restore, app, _ := setupCallApp(t)
 	defer restore()
 
 	scriptPath := filepath.Join(tmpDir, ".devkit", "scripts", "call")
@@ -121,7 +123,7 @@ func TestCallCommand_ScriptReturnsNonZero(t *testing.T) {
 }
 
 func TestCallCommand_ScriptOutputsInvalidJSON(t *testing.T) {
-	tmpDir, restore, app := setupCallApp(t)
+	tmpDir, restore, app, logger := setupCallApp(t)
 	defer restore()
 
 	scriptPath := filepath.Join(tmpDir, ".devkit", "scripts", "call")
@@ -129,16 +131,15 @@ func TestCallCommand_ScriptOutputsInvalidJSON(t *testing.T) {
 	err := os.WriteFile(scriptPath, []byte(badJSON), 0755)
 	assert.NoError(t, err)
 
-	stdout, stderr := testutils.CaptureOutput(func() {
-		err := app.Run([]string{"app", "call", "--", "payload=0x1"})
-		assert.NoError(t, err)
-	})
+	err = app.Run([]string{"app", "call", "--", "payload=0x1"})
+	assert.NoError(t, err, "Call command should succeed with non-JSON output")
 
-	assert.Contains(t, stdout+stderr, "not-json")
+	// Check that the output was logged
+	assert.True(t, logger.Contains("not-json"), "Expected 'not-json' to be logged as output")
 }
 
 func TestCallCommand_Cancelled(t *testing.T) {
-	_, restore, app := setupCallApp(t)
+	_, restore, app, _ := setupCallApp(t)
 	defer restore()
 
 	ctx, cancel := context.WithCancel(context.Background())

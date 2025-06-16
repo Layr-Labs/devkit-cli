@@ -10,6 +10,7 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -52,13 +53,21 @@ config:
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	// ⚙️ Run the CLI app with nested subcommands
+	// ⚙️ Run the CLI app with nested subcommands and no-op logger
+	cmdWithLogger, _ := testutils.WithTestConfigAndNoopLoggerAndAccess(Command)
 	app := &cli.App{
 		Commands: []*cli.Command{
 			{
 				Name: "avs",
 				Subcommands: []*cli.Command{
-					Command,
+					cmdWithLogger,
+				},
+				Before: func(cCtx *cli.Context) error {
+					// Execute the command's Before hook to set up logger context
+					if cmdWithLogger.Before != nil {
+						return cmdWithLogger.Before(cCtx)
+					}
+					return nil
 				},
 			},
 		},

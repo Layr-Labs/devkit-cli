@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
@@ -45,7 +44,7 @@ func (f *mockTracker) Clear() {
 func (s *mockTracker) ProgressRows() []iface.ProgressRow { return make([]iface.ProgressRow, 0) }
 
 func TestCloneReporterEndToEnd(t *testing.T) {
-	log, _ := common.GetLogger(false)
+	log := logger.NewNoopLogger()
 	mock := newMockTracker()
 	progLogger := *logger.NewProgressLogger(log, mock)
 
@@ -87,7 +86,7 @@ func TestCloneReporterEndToEnd(t *testing.T) {
 }
 
 func TestCloneReporterSubmoduleDiscoveryGrouping(t *testing.T) {
-	log, _ := common.GetLogger(false)
+	log := logger.NewNoopLogger()
 	mock := newMockTracker()
 	progLogger := *logger.NewProgressLogger(log, mock)
 
@@ -106,7 +105,7 @@ func TestCloneReporterSubmoduleDiscoveryGrouping(t *testing.T) {
 }
 
 func TestCloneReporterFallbackRootProgress(t *testing.T) {
-	log, _ := common.GetLogger(false)
+	log := logger.NewNoopLogger()
 	mock := newMockTracker()
 	progLogger := *logger.NewProgressLogger(log, mock)
 

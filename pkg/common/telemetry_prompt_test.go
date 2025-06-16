@@ -10,7 +10,7 @@ import (
 )
 
 func TestTelemetryPromptWithOptions(t *testing.T) {
-	logger := logger.NewZapLogger(false)
+	logger := logger.NewNoopLogger()
 
 	t.Run("EnableTelemetry enables telemetry", func(t *testing.T) {
 		opts := TelemetryPromptOptions{
@@ -111,7 +111,7 @@ func TestIsStdinAvailable(t *testing.T) {
 }
 
 func TestHandleFirstRunTelemetryPromptWithOptions(t *testing.T) {
-	logger := logger.NewZapLogger(false)
+	logger := logger.NewNoopLogger()
 
 	t.Run("Non-first run returns existing preference", func(t *testing.T) {
 		// This test would need to set up a mock environment

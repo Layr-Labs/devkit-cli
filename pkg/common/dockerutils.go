@@ -3,16 +3,17 @@ package common
 import (
 	"context"
 	"fmt"
-	"github.com/docker/docker/client"
-	"github.com/urfave/cli/v2"
 	"os/exec"
 	"runtime"
 	"time"
+
+	"github.com/docker/docker/client"
+	"github.com/urfave/cli/v2"
 )
 
 // EnsureDockerIsRunning checks if Docker is running and attempts to launch Docker Desktop if not.
 func EnsureDockerIsRunning(ctx *cli.Context) error {
-	logger, _ := GetLoggerFromCLIContext(ctx)
+	logger := LoggerFromContext(ctx.Context)
 	dockerPingTimeout := 2 * time.Second
 	if !isDockerInstalled() {
 		return fmt.Errorf("docker is not installed. Please install Docker Desktop from https://www.docker.com/products/docker-desktop")

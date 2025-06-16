@@ -10,6 +10,7 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )
@@ -126,13 +127,24 @@ func TestUpgradeCommand(t *testing.T) {
 
 	// Test upgrade command with version flag
 	t.Run("Upgrade command with version", func(t *testing.T) {
-		// Create a flag set and context
+		// Create a flag set and context with no-op logger
 		set := flag.NewFlagSet("test", 0)
 		set.String("version", "v0.0.4", "")
+
+		// Create context with no-op logger and call Before hook
+		cmdWithLogger, _ := testutils.WithTestConfigAndNoopLoggerAndAccess(testCmd)
 		ctx := cli.NewContext(app, set, nil)
 
+		// Execute the Before hook to set up the logger context
+		if cmdWithLogger.Before != nil {
+			err := cmdWithLogger.Before(ctx)
+			if err != nil {
+				t.Fatalf("Before hook failed: %v", err)
+			}
+		}
+
 		// Run the upgrade command (which is our test command with mocks)
-		err := app.Commands[0].Action(ctx)
+		err := cmdWithLogger.Action(ctx)
 		if err != nil {
 			t.Errorf("UpgradeCommand action returned error: %v", err)
 		}
@@ -164,12 +176,22 @@ func TestUpgradeCommand(t *testing.T) {
 
 	// Test upgrade command without version flag
 	t.Run("Upgrade command without version", func(t *testing.T) {
-		// Create a flag set and context without version flag
+		// Create a flag set and context without version flag, with no-op logger
 		set := flag.NewFlagSet("test", 0)
+
+		cmdWithLogger, _ := testutils.WithTestConfigAndNoopLoggerAndAccess(testCmd)
 		ctx := cli.NewContext(app, set, nil)
 
+		// Execute the Before hook to set up the logger context
+		if cmdWithLogger.Before != nil {
+			err := cmdWithLogger.Before(ctx)
+			if err != nil {
+				t.Fatalf("Before hook failed: %v", err)
+			}
+		}
+
 		// Run the upgrade command
-		err := app.Commands[0].Action(ctx)
+		err := cmdWithLogger.Action(ctx)
 		if err == nil {
 			t.Errorf("UpgradeCommand action should return error when version flag is missing")
 		}
@@ -195,20 +217,29 @@ func TestUpgradeCommand(t *testing.T) {
 			shouldReturnError: true,
 		}
 
-		// Create command with error getter
+		// Create command with error getter and no-op logger
 		errorCmd := createUpgradeCommand(errorInfoGetter)
+		errorCmdWithLogger, _ := testutils.WithTestConfigAndNoopLoggerAndAccess(errorCmd)
 
 		errorApp := &cli.App{
 			Name: "test-app",
 			Commands: []*cli.Command{
-				errorCmd,
+				errorCmdWithLogger,
 			},
 		}
 
-		// Create a flag set and context
+		// Create a flag set and context with no-op logger
 		set := flag.NewFlagSet("test", 0)
 		set.String("version", "v2.0.0", "")
 		ctx := cli.NewContext(errorApp, set, nil)
+
+		// Execute the Before hook to set up the logger context
+		if errorCmdWithLogger.Before != nil {
+			err := errorCmdWithLogger.Before(ctx)
+			if err != nil {
+				t.Fatalf("Before hook failed: %v", err)
+			}
+		}
 
 		// Run the upgrade command
 		err := errorApp.Commands[0].Action(ctx)
