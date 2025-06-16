@@ -1509,7 +1509,7 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 	}
 	defer client.Close()
 
-	// Instead of mining blocks(because it's infeasible for 126000 blocks), use anvil_setStorageAt to bypass ALLOCATION_CONFIGURATION_DELAY
+	// Instead of mining blocks(because it's infeasible for 126000 blocks(for mainnet) or 30 on holesky), use anvil_setStorageAt to bypass ALLOCATION_CONFIGURATION_DELAY
 	// We need to manipulate the storage that tracks when allocation delays were set for each operator by modifying
 	// the effectBlock field in the AllocationDelayInfo struct.
 	logger.Info("Bypassing allocation configuration delay using anvil_setStorageAt...")
@@ -1533,7 +1533,6 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 
 		encoded := append(keyBytes, slotBytes...)
 		storageKey := ethcommon.BytesToHash(crypto.Keccak256(encoded))
-		logger.Info("storageKey: %s", storageKey)
 
 		// Define struct fields
 		var (
