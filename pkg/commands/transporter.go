@@ -120,7 +120,7 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("Failed to get chain for ID %d: %v", holeskyConfig.ChainID, err)
 	}
 
-	txSign, err := txSigner.NewPrivateKeySigner(envCtx.Transporter.EcdsaPrivateKey)
+	txSign, err := txSigner.NewPrivateKeySigner(envCtx.Transporter.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("Failed to create private key signer: %v", err)
 	}
