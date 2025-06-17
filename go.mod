@@ -9,7 +9,7 @@ replace github.com/Layr-Labs/devkit-cli => ./
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.6.0-rc.0.0.20250611220551-5932d4c4233e
 	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737
-	github.com/Layr-Labs/multichain-go v0.0.3-0.20250613170051-947a06c1e417 // indirect
+	github.com/Layr-Labs/multichain-go v0.0.3-0.20250613170051-947a06c1e417
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/posthog/posthog-go v1.4.10
@@ -22,7 +22,6 @@ require (
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect
-	github.com/Layr-Labs/hourglass-monorepo/contracts v0.0.0-20250530201420-ae8ff1382f1e // indirect
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.7 // indirect
