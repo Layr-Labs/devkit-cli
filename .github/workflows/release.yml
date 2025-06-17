@@ -5,6 +5,11 @@ on:
     tags:
       - "*"
 
+env:
+  FOUNDRY_PROFILE: ci
+  L1_FORK_URL: ${{ secrets.L1_FORK_URL }}
+  L2_FORK_URL: ${{ secrets.L2_FORK_URL }}
+
 jobs:
   lint:
     name: lint
@@ -188,3 +193,197 @@ jobs:
             exit 1
           fi
           echo "✔ version $installed matches expected $ver"
+
+      - name: Add ~/bin to PATH
+        run: echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Install Homebrew (macOS -x64)
+        if: matrix.os == 'macos-latest' && matrix.arch == 'x64'
+        run: |
+          # enable Rosetta (needed only on Apple Silicon hosts)
+          sudo softwareupdate --install-rosetta --agree-to-license || true
+
+          # install Intel Homebrew into /usr/local
+          arch -x86_64 /bin/bash -c \
+            "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+          # capture the brew-env exports into GITHUB_ENV
+          arch -x86_64 /usr/local/bin/brew shellenv \
+            | sed 's/^export //g' >> $GITHUB_ENV
+
+          # alias brew via a shim
+          mkdir -p $HOME/bin
+          printf '%s\n' '#!/usr/bin/env bash' \
+            'exec arch -x86_64 /usr/local/bin/brew "$@"' \
+            > "$HOME/bin/brew"
+          chmod +x "$HOME/bin/brew"
+
+          # make sure our shim comes first
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+          # verify brew is on PATH and running under x86_64
+          which brew
+          file "$(which brew)"
+          brew --version
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Install Colima, Lima guestagents & Docker CLI (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # use the ARM-native Homebrew for host tools
+          BREW_ARM=/opt/homebrew/bin/brew
+
+          echo "Using ARM Homebrew at $BREW_ARM"
+
+          # install Lima, Colima and Docker CLI natively
+          $BREW_ARM install lima colima docker
+          $BREW_ARM install lima-additional-guestagents
+
+          # ensure ARM brews bin is on PATH for all later steps
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+          # sanity-check
+          which colima
+          file "$(which colima)"
+          colima version
+          which docker
+          docker --version
+
+      - name: Install Docker Compose plugin (macOS)
+        if: matrix.os == 'macos-latest'
+        env:
+          GHA_ARCH: ${{ matrix.arch }}
+        run: |
+          # create plugin dir
+          mkdir -p ~/.docker/cli-plugins
+
+          # select binary according to arch
+          case "$GHA_ARCH" in
+            arm64) FILE=docker-compose-darwin-aarch64 ;;
+            x64)   FILE=docker-compose-darwin-x86_64 ;;
+            *)
+              echo "Unsupported arch: $GHA_ARCH"
+              exit 1
+              ;;
+          esac
+
+          # download the Compose V2 binary
+          curl -SL \
+            "https://github.com/docker/compose/releases/download/v2.36.2/${FILE}" \
+            -o ~/.docker/cli-plugins/docker-compose
+          chmod +x ~/.docker/cli-plugins/docker-compose
+
+          # verify
+          docker compose version
+
+      - name: Install Docker Buildx (macOS)
+        if: matrix.os == 'macos-latest'
+        run:  |
+          brew install docker-buildx
+
+          # ensure the CLI-plugins dir exists
+          mkdir -p ~/.docker/cli-plugins
+
+          # symlink the Homebrew buildx into Dockers plugin folder
+          ln -sf "$(brew --prefix)/bin/docker-buildx" ~/.docker/cli-plugins/docker-buildx
+
+          # install it as the default builder
+          docker buildx install
+
+          # verify
+          docker buildx version
+
+      - name: Start Colima under QEMU (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          # boot the VM + Docker
+          colima start \
+            --vm-type qemu \
+            --runtime docker \
+            --arch x86_64 \
+            --cpu 4 \
+            --memory 8 \
+            --disk 50 \
+            --activate
+
+      - name: Switch Docker context (macOS)
+        if: matrix.os == 'macos-latest'
+        run: docker context use colima
+
+      - name: Link Docker socket for Docker CLI (macOS)
+        if: matrix.os == 'macos-latest'
+        run: sudo ln -sf $HOME/.colima/default/docker.sock /var/run/docker.sock
+
+      - name: Verify Docker daemon (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          for i in {1..30}; do
+            docker info &>/dev/null && break
+            echo "Waiting for Colima Docker context... ($i/30)"
+            sleep 2
+          done
+          docker info
+
+      - name: Run devkit avs create
+        run: devkit avs create --disable-telemetry my-awesome-avs
+
+      - name: Verify AVS project created
+        run: |
+          if [ ! -f "./my-awesome-avs/config/config.yaml" ]; then
+            echo "❌ AVS project config/config.yaml not found!"
+            exit 1
+          fi
+          echo "✅ AVS project created successfully at ${GITHUB_WORKSPACE}/my-awesome-avs/"
+
+      - name: Link gomplate (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p "${GOPATH:-$HOME/go}/bin"
+          ln -sf "$(brew --prefix)/bin/gomplate" "${GOPATH:-$HOME/go}/bin/gomplate"
+
+      - name: Run devkit avs build
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs build
+
+      - name: Start devnet
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs devnet start &
+          until nc -z localhost 9090 && nc -z localhost 8081; do sleep 1; done
+
+      - name: Check devnet RPC is live
+        run: |
+          for i in {1..10}; do
+            bn=$(cast block-number --rpc-url http://localhost:8545 || echo "error")
+            if [ "$bn" != "error" ]; then
+              echo "Current block number: $bn"
+              exit 0
+            fi
+            echo "Waiting for devnet... retrying in 2s"
+            sleep 2
+          done
+          echo "❌ Devnet failed to start"
+          exit 1
+
+      - name: Call AVS
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
+
+      - name: Stop devnet
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs devnet stop
