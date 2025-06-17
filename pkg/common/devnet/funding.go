@@ -17,7 +17,7 @@ import (
 )
 
 // FundWallets sends ETH to a list of addresses
-// Only funds wallets with balance < 10 ether.
+// Only funds wallets with balance < 0.3 ether.
 func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) error {
 	if os.Getenv("SKIP_DEVNET_FUNDING") == "true" {
 		log.Println("🔧 Skipping devnet wallet funding (test mode)")
