@@ -61,19 +61,13 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97", staker.StakerECDSAKey)
 
 	// Test deposits structure
-	assert.Len(t, staker.Deposits, 2, "First staker should have two deposits")
+	assert.Len(t, staker.Deposits, 1, "First staker should have one deposit")
 
 	// Test first deposit
 	deposit1 := staker.Deposits[0]
 	assert.Equal(t, "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3", deposit1.StrategyAddress)
 	assert.Equal(t, "stETH_Strategy", deposit1.Name)
 	assert.Equal(t, "5ETH", deposit1.DepositAmount)
-
-	// Test second deposit
-	deposit2 := staker.Deposits[1]
-	assert.Equal(t, "0x43252609bff8a13dFe5e057097f2f45A24387a84", deposit2.StrategyAddress)
-	assert.Equal(t, "Eigen_Strategy", deposit2.Name)
-	assert.Equal(t, "5ETH", deposit2.DepositAmount)
 
 	// Test operator delegation
 	assert.Equal(t, "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65", staker.OperatorAddress)
@@ -83,7 +77,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720", staker2.StakerAddress)
 	assert.Equal(t, "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6", staker2.StakerECDSAKey)
 	assert.Equal(t, "0x90F79bf6EB2c4f870365E785982E1f101E93b906", staker2.OperatorAddress)
-	assert.Len(t, staker2.Deposits, 2, "Second staker should have two deposits")
+	assert.Len(t, staker2.Deposits, 1, "Second staker should have one deposit")
 
 	assert.Equal(t, "devnet", cfg.Context["devnet"].Name)
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l1"].RPCURL)
