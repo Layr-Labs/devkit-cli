@@ -38,9 +38,6 @@ context:
         - strategy_address: "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
           name: "stETH_Strategy"
           deposit_amount: "5ETH" # depositIntoStrategy amount 
-        - strategy_address: "0x43252609bff8a13dFe5e057097f2f45A24387a84"
-          name: "Eigen_Strategy"
-          deposit_amount: "5ETH" 
       operator: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65" # Operator to delegate the stake via delegationManager.delegateTo()
     - address: "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720" 
       ecdsa_key: "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"
@@ -48,9 +45,6 @@ context:
         - strategy_address: "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
           name: "stETH_Strategy"
           deposit_amount: "5ETH" # depositIntoStrategy amount 
-        - strategy_address: "0x43252609bff8a13dFe5e057097f2f45A24387a84"
-          name: "Eigen_Strategy"
-          deposit_amount: "5ETH"
       operator: "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
   # List of Operators and their private keys / stake details
   operators:
@@ -67,14 +61,6 @@ context:
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
             - operator_set: "1"
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
-        - strategy_address: "0x43252609bff8a13dFe5e057097f2f45A24387a84"
-          name: "Eigen_Strategy"
-          # Only allocate if these operator set IDs exist in the deployed operator_sets 
-          operator_set_allocations:
-            - operator_set: "0"
-              allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
-            - operator_set: "1"
-              allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
     - address: "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
       ecdsa_key: "0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926a" # Anvil Private Key 4
       bls_keystore_path: "keystores/operator2.keystore.json"
@@ -88,14 +74,6 @@ context:
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
             - operator_set: "1"
               allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
-        - strategy_address: "0x43252609bff8a13dFe5e057097f2f45A24387a84"
-          name: "Eigen_Strategy"
-          # Only allocate if these operator set IDs exist in the deployed operator_sets 
-          operator_set_allocations:
-            - operator_set: "0"
-              allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation
-            - operator_set: "1"
-              allocation_in_wads: "500000000000000000" # 5e17 i.e 50% of max allocation 
     - address: "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
       ecdsa_key: "0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba" # Anvil Private Key 5
       bls_keystore_path: "keystores/operator3.keystore.json"

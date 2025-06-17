@@ -3,7 +3,7 @@ architectures:
     languages:
       go:
         baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
-        version: "nova/holesky_preprod"
+        version: "rajath/multichain"
       ts:
         baseUrl: ""
         version: ""
