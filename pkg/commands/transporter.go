@@ -202,9 +202,10 @@ func Transport(cCtx *cli.Context) error {
 		)
 		if err != nil {
 			return fmt.Errorf("Failed to sign and transport AVS stake table for opset %v: %v", opset, err)
-		} else {
-			return fmt.Errorf("Successfully signed and transported AVS stake table for opset %v", opset)
 		}
+
+		// log success
+		logger.Info("Successfully signed and transported AVS stake table for opset %v", opset)
 	}
 
 	return nil
