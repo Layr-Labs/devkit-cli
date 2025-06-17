@@ -17,7 +17,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	expectedBaseURL := "https://github.com/Layr-Labs/hourglass-avs-template"
-	expectedVersion := "rajath/multichain" // TODO: move back to version once nova/holesky_preprod is merged and tagged
+	expectedVersion := "nova/update_contracts_submodule"
 
 	if mainBaseURL != expectedBaseURL {
 		t.Errorf("Unexpected main template base URL: got %s, want %s", mainBaseURL, expectedBaseURL)
