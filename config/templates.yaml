@@ -3,7 +3,7 @@ architectures:
     languages:
       go:
         baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
-        version: "ea78a1873f5207d75301636e2337ed17c23d6f67"
+        version: "master"
       ts:
         baseUrl: ""
         version: ""
