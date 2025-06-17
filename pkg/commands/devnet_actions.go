@@ -213,6 +213,32 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}()
 	}
 
+	// Wait for container to be ready
+	logger.Info("Waiting for devnet to be ready...")
+	maxRetries := 10
+	baseDelay := 2 * time.Second
+	for i := 0; i < maxRetries; i++ {
+		// Check if container is running
+		checkCmd := exec.CommandContext(cCtx.Context, "docker", "ps", "--filter", fmt.Sprintf("name=%s", containerName), "--format", "{{.Status}}")
+		output, err := checkCmd.CombinedOutput()
+		if err == nil && len(output) > 0 {
+			// Container is running, now check if RPC is responding
+			ethClient, err := ethclient.Dial(fmt.Sprintf("http://localhost:%d", port))
+			if err == nil {
+				_, err = ethClient.BlockNumber(cCtx.Context)
+				if err == nil {
+					break
+				}
+			}
+		}
+		if i == maxRetries-1 {
+			return fmt.Errorf("devnet failed to start after %d retries", maxRetries)
+		}
+		delay := baseDelay * time.Duration(1<<uint(i))
+		logger.Info("Devnet not ready yet, retrying in %v...", delay)
+		time.Sleep(delay)
+	}
+
 	// Construct RPC url to pass to scripts
 	rpcUrl := devnet.GetRPCURL(port)
 	logger.Info("Waiting for devnet to be ready...")
