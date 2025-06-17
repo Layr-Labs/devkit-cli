@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/internal/version"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
@@ -67,6 +68,28 @@ type VersionComparator func(string, string) bool
 // Known errors which we can ignore
 var ErrAlreadyUpToDate = errors.New("already up to date")
 
+// checkVersionCompatibility validates that the context version is supported by the current CLI
+func checkVersionCompatibility(contextVersion, contextFile string) error {
+	if contextVersion == "" {
+		// Missing version - could be very old context, warn but allow
+		return fmt.Errorf("context file %s is missing version field - this may be an old context that needs migration", contextFile)
+	}
+
+	cliVersion := version.GetVersion()
+
+	// If context version is newer than what we support, return compatibility error
+	if versionGreaterThan(contextVersion, common.DevkitLatestContextVersion) {
+		return &common.VersionCompatibilityError{
+			ContextVersion:  contextVersion,
+			CLIVersion:      cliVersion,
+			LatestSupported: common.DevkitLatestContextVersion,
+			ContextFile:     contextFile,
+		}
+	}
+
+	return nil
+}
+
 // Apply walks each rule, and when Condition is met, either removes the node or replaces it with a (transformed) copy
 func (e *PatchEngine) Apply() error {
 	for _, rule := range e.Rules {
@@ -113,6 +136,11 @@ func MigrateYaml(logger iface.Logger, path string, latestVersion string, migrati
 	from := verNode.Value
 	to := latestVersion
 
+	// Check version compatibility BEFORE attempting migration
+	if err := checkVersionCompatibility(from, path); err != nil {
+		return err
+	}
+
 	// Continue and don't say anything if the user version is latest
 	if from == to {
 		return ErrAlreadyUpToDate
@@ -148,6 +176,7 @@ func MigrateNode(
 		if step.From != current {
 			continue
 		}
+
 		if versionGreaterThan(step.To, to) {
 			break
 		}

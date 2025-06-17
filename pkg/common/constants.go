@@ -28,4 +28,7 @@ const (
 
 	// Default chainId for Anvil
 	DefaultAnvilChainId = 31337
+
+	// DevkitLatestContextVersion is the latest version of the context file
+	DevkitLatestContextVersion = "0.0.5"
 )

@@ -4,12 +4,12 @@ import (
 	_ "embed"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
-
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	contextMigrations "github.com/Layr-Labs/devkit-cli/config/contexts/migrations"
 )
 
 // Set the latest version
-const LatestVersion = "0.0.5"
+const LatestVersion =common.DevkitLatestContextVersion
 
 // Array of default contexts to create in project
 var DefaultContexts = [...]string{
