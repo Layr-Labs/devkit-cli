@@ -139,9 +139,9 @@ type OperatorRegistration struct {
 }
 
 type Transporter struct {
-	Schedule        string `json:"schedule" yaml:"schedule"`
-	BlsPrivateKey   string `json:"bls_private_key" yaml:"bls_private_key"`
-	EcdsaPrivateKey string `json:"ecdsa_private_key" yaml:"ecdsa_private_key"`
+	Schedule      string `json:"schedule" yaml:"schedule"`
+	PrivateKey    string `json:"private_key" yaml:"private_key"`
+	BlsPrivateKey string `json:"bls_private_key" yaml:"bls_private_key"`
 }
 
 type ChainContextConfig struct {
