@@ -19,6 +19,7 @@ import (
 	"github.com/Layr-Labs/multichain-go/pkg/txSigner"
 
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/robfig/cron/v3"
 )
@@ -132,12 +133,7 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("Failed to create StakeTableRootCalculator: %v", err)
 	}
 
-	blockNumber, err := holeskyClient.RPCClient.BlockNumber(cCtx.Context)
-	if err != nil {
-		return fmt.Errorf("Failed to get block number: %v", err)
-	}
-	blockNumber = blockNumber - 100 // Use a block number 100 blocks in the past for testing
-	block, err := holeskyClient.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(blockNumber)))
+	block, err := holeskyClient.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
 	if err != nil {
 		return fmt.Errorf("Failed to get block by number: %v", err)
 	}
@@ -181,15 +177,14 @@ func Transport(cCtx *cli.Context) error {
 	err = stakeTransport.SignAndTransportGlobalTableRoot(
 		root,
 		referenceTimestamp,
-		blockNumber,
-		// []*big.Int{new(big.Int).SetUint64(17000)},
+		block.NumberU64(),
 		nil,
 	)
 	if err != nil {
 		return fmt.Errorf("Failed to sign and transport global table root: %v", err)
 	}
-	logger.Info("Successfully signed and transported global table root, sleeping for 15 seconds")
-	time.Sleep(15 * time.Second)
+	logger.Info("Successfully signed and transported global table root, sleeping for 25 seconds")
+	time.Sleep(25 * time.Second)
 
 	opsets := dist.GetOperatorSets()
 	if len(opsets) == 0 {
@@ -198,12 +193,11 @@ func Transport(cCtx *cli.Context) error {
 	for _, opset := range opsets {
 		err = stakeTransport.SignAndTransportAvsStakeTable(
 			referenceTimestamp,
-			blockNumber,
+			block.NumberU64(),
 			opset,
 			root,
 			tree,
 			dist,
-			// []*big.Int{new(big.Int).SetUint64(17000)},
 			nil,
 		)
 		if err != nil {
