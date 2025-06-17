@@ -1792,8 +1792,8 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 					client,
 					ethcommon.HexToAddress(""),
 					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(keyRegistrarAddr),
 					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(keyRegistrarAddr),
 					ethcommon.HexToAddress(""),
 					logger,
 				)

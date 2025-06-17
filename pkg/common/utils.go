@@ -3,6 +3,7 @@ package common
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/big"
 	"os"
 	"strconv"
@@ -180,6 +181,7 @@ func (cc *ContractCaller) GetOperatorRegistrationMessageHash(
 }
 
 func (cc *ContractCaller) EncodeBN254KeyData(pubKey *bn254.PublicKey) ([]byte, error) {
+
 	// Convert G1 point
 	g1Point := &bn254.G1Point{
 		G1Affine: pubKey.GetG1Point(),
@@ -211,6 +213,7 @@ func (cc *ContractCaller) EncodeBN254KeyData(pubKey *bn254.PublicKey) ([]byte, e
 		},
 	}
 
+	log.Printf("keyRegistrarAddr: %s", cc.keyRegistrarAddr)
 	keyRegistrarContract, err := IKeyRegistrar.NewIKeyRegistrar(cc.keyRegistrarAddr, cc.ethclient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key registrar contract: %w", err)
