@@ -14,8 +14,8 @@ import (
 
 	"context"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -82,7 +82,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		// if holder balance < 0.1 ether, fund it
 		fundValue, _ := strconv.ParseInt(FUND_VALUE, 10, 64)
 		if balance.Cmp(big.NewInt(fundValue)) < 0 {
-			err = fundIfNeeded(tokenFunding.HolderAddress, ANVIL_1_KEY, rpcURL)
+			err = fundIfNeeded(ethClient, tokenFunding.HolderAddress, ANVIL_1_KEY)
 			if err != nil {
 				return fmt.Errorf("failed to fund holder address: %w", err)
 			}
@@ -279,7 +279,7 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string) error {
 	balance, err := ethClient.BalanceAt(context.Background(), to, nil)
 	if err != nil {
-			log.Printf(" Please check if your holesky fork rpc url is up")
+		log.Printf(" Please check if your holesky fork rpc url is up")
 		return fmt.Errorf("failed to get balance for account %s %v", to.String(), err)
 	}
 	threshold := new(big.Int)
