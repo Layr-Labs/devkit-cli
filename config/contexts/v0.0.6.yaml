@@ -104,6 +104,7 @@ context:
     l2: 
       bn254_certificate_verifier: "0xf462d03A82C1F3496B0DFe27E978318eD1720E1f"
       operator_table_updater: "0xd7230B89E5E2ed1FD068F0FF9198D7960243f12a"
+  # Release manager address
   release_manager: "0x0000000000000000000000000000000000000000"
     
   # Contracts deployed on `devnet start`

@@ -102,29 +102,6 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return migration.CloneNode(newOperator)
 				},
 			},
-			// Add artifacts field with comment
-			{
-				Path:      []string{"context", "artifacts"},
-				Condition: migration.Always{},
-				Transform: func(_ *yaml.Node) *yaml.Node {
-					artifactsNode := &yaml.Node{
-						Kind:        yaml.MappingNode,
-						HeadComment: "# Release artifacts",
-					}
-					return artifactsNode
-				},
-			},
-			// Add release_manager field
-			{
-				Path:      []string{"context", "release_manager"},
-				Condition: migration.Always{},
-				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{
-						Kind:  yaml.ScalarNode,
-						Value: "0x0000000000000000000000000000000000000000",
-					}
-				},
-			},
 		},
 	}
 	if err := engine.Apply(); err != nil {
@@ -164,6 +141,70 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 			newContent = append(newContent, stakersKey, stakersValue)
 			newContent = append(newContent, contextNode.Content[insertIndex:]...)
 			contextNode.Content = newContent
+		}
+	}
+
+	// Add artifacts at the end and release_manager after eigenlayer
+	if contextNode != nil && contextNode.Kind == yaml.MappingNode {
+		// --- Artifacts (at the end) ---
+		artifactsKey := &yaml.Node{
+			Kind:        yaml.ScalarNode,
+			Value:       "artifacts",
+			HeadComment: "# Release artifacts",
+		}
+		artifactsValue := &yaml.Node{
+			Kind: yaml.MappingNode,
+			Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Value: "image_digest", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "registry_url", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
+			},
+		}
+		// Only add artifacts if not present
+		foundArtifacts := false
+		for i := 0; i < len(contextNode.Content)-1; i += 2 {
+			if contextNode.Content[i].Value == "artifacts" {
+				foundArtifacts = true
+				break
+			}
+		}
+		if !foundArtifacts {
+			contextNode.Content = append(contextNode.Content, artifactsKey, artifactsValue)
+		}
+
+		// --- Release manager (after eigenlayer) ---
+		releaseManagerKey := &yaml.Node{
+			Kind:        yaml.ScalarNode,
+			Value:       "release_manager",
+			HeadComment: "# Release manager address",
+		}
+		releaseManagerValue := &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Value: "0x0000000000000000000000000000000000000000",
+			Tag:   "!!str",
+		}
+		// Only add release_manager if not present
+		foundReleaseManager := false
+		for i := 0; i < len(contextNode.Content)-1; i += 2 {
+			if contextNode.Content[i].Value == "release_manager" {
+				foundReleaseManager = true
+				break
+			}
+		}
+		if !foundReleaseManager {
+			// Find eigenlayer key and insert after it
+			for i := 0; i < len(contextNode.Content)-1; i += 2 {
+				if contextNode.Content[i].Value == "eigenlayer" {
+					insertIdx := i + 2
+					newContent := make([]*yaml.Node, 0, len(contextNode.Content)+2)
+					newContent = append(newContent, contextNode.Content[:insertIdx]...)
+					newContent = append(newContent, releaseManagerKey, releaseManagerValue)
+					newContent = append(newContent, contextNode.Content[insertIdx:]...)
+					contextNode.Content = newContent
+					break
+				}
+			}
 		}
 	}
 
