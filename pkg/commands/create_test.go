@@ -21,6 +21,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const contractsBasePath = ".devkit/contracts"
+
 func TestCreateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
 	logger := logger.NewNoopLogger()
