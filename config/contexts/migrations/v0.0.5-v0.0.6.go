@@ -102,6 +102,29 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return migration.CloneNode(newOperator)
 				},
 			},
+			// Add artifacts field with comment
+			{
+				Path:      []string{"context", "artifacts"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					artifactsNode := &yaml.Node{
+						Kind:        yaml.MappingNode,
+						HeadComment: "# Release artifacts",
+					}
+					return artifactsNode
+				},
+			},
+			// Add release_manager field
+			{
+				Path:      []string{"context", "release_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{
+						Kind:  yaml.ScalarNode,
+						Value: "0x0000000000000000000000000000000000000000",
+					}
+				},
+			},
 		},
 	}
 	if err := engine.Apply(); err != nil {

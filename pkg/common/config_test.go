@@ -91,6 +91,8 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
 	assert.Equal(t, "https://my-org.com/avs/metadata.json", cfg.Context["devnet"].Avs.MetadataUri)
 
+	assert.Equal(t, "0x0000000000000000000000000000000000000000", cfg.Context["devnet"].ReleaseManager)
+
 }
 
 func LoadConfigWithContextConfigFromPath(contextName string, config_directory_path string) (*common.ConfigWithContextConfig, error) {
