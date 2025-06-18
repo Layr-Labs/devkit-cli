@@ -125,7 +125,7 @@ func createUpgradeCommand(
 			logger.Info("Running upgrade script...")
 
 			// Execute the upgrade script, passing the project path as an argument
-			_, err = common.CallTemplateScript(cCtx.Context, logger, tempDir, upgradeScriptPath, common.ExpectNonJSONResponse, []byte(absProjectPath))
+			_, err = common.CallTemplateScript(cCtx.Context, logger, tempDir, upgradeScriptPath, common.ExpectNonJSONResponse, []byte(absProjectPath), []byte(currentVersion), []byte(requestedVersion))
 			if err != nil {
 				return fmt.Errorf("upgrade script execution failed: %w", err)
 			}
