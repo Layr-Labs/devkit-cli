@@ -144,7 +144,7 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 		}
 	}
 
-	// Add artifacts at the end and release_manager after eigenlayer
+	// Add artifacts at the end
 	if contextNode != nil && contextNode.Kind == yaml.MappingNode {
 		// --- Artifacts (at the end) ---
 		artifactsKey := &yaml.Node{
@@ -155,7 +155,11 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 		artifactsValue := &yaml.Node{
 			Kind: yaml.MappingNode,
 			Content: []*yaml.Node{
-				{Kind: yaml.ScalarNode, Value: "image_digest", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "component", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "artifactId", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "digest", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "registry_url", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
@@ -171,40 +175,6 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 		}
 		if !foundArtifacts {
 			contextNode.Content = append(contextNode.Content, artifactsKey, artifactsValue)
-		}
-
-		// --- Release manager (after eigenlayer) ---
-		releaseManagerKey := &yaml.Node{
-			Kind:        yaml.ScalarNode,
-			Value:       "release_manager",
-			HeadComment: "# Release manager address",
-		}
-		releaseManagerValue := &yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Value: "0x0000000000000000000000000000000000000000",
-			Tag:   "!!str",
-		}
-		// Only add release_manager if not present
-		foundReleaseManager := false
-		for i := 0; i < len(contextNode.Content)-1; i += 2 {
-			if contextNode.Content[i].Value == "release_manager" {
-				foundReleaseManager = true
-				break
-			}
-		}
-		if !foundReleaseManager {
-			// Find eigenlayer key and insert after it
-			for i := 0; i < len(contextNode.Content)-1; i += 2 {
-				if contextNode.Content[i].Value == "eigenlayer" {
-					insertIdx := i + 2
-					newContent := make([]*yaml.Node, 0, len(contextNode.Content)+2)
-					newContent = append(newContent, contextNode.Content[:insertIdx]...)
-					newContent = append(newContent, releaseManagerKey, releaseManagerValue)
-					newContent = append(newContent, contextNode.Content[insertIdx:]...)
-					contextNode.Content = newContent
-					break
-				}
-			}
 		}
 	}
 
