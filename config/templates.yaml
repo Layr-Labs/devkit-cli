@@ -3,7 +3,7 @@ architectures:
     languages:
       go:
         baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
-        version: "nova/rms/performer_digest"
+        version: "master"
       ts:
         baseUrl: ""
         version: ""
