@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
@@ -16,6 +17,19 @@ import (
 
 func TestBuildCommand(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Create config directory and devnet.yaml
+	configDir := filepath.Join(tmpDir, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	contextsDir := filepath.Join(configDir, "contexts")
+	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create build script
 	scriptsDir := filepath.Join(tmpDir, ".devkit", "scripts")
@@ -70,6 +84,19 @@ build:
 func TestBuildCommand_NoContracts(t *testing.T) {
 	tmpDir := t.TempDir()
 
+	// Create config directory and devnet.yaml
+	configDir := filepath.Join(tmpDir, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	contextsDir := filepath.Join(configDir, "contexts")
+	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
+		t.Fatal(err)
+	}
+
 	// Create build script
 	scriptsDir := filepath.Join(tmpDir, ".devkit", "scripts")
 	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
@@ -106,6 +133,19 @@ echo "Mock build executed"`
 
 func TestBuildCommand_ContextCancellation(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Create config directory and devnet.yaml
+	configDir := filepath.Join(tmpDir, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	contextsDir := filepath.Join(configDir, "contexts")
+	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create build script
 	scriptsDir := filepath.Join(tmpDir, ".devkit", "scripts")
