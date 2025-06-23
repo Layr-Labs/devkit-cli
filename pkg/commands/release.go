@@ -2,6 +2,7 @@ package commands
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"os/exec"
@@ -221,22 +222,33 @@ func pushSingleContainer(ctx context.Context, logger iface.Logger, avs, registry
 
 	logger.Info("Push output: %s", string(pushOutput))
 
-	// Get the image digest
-	logger.Info("Getting image digest...")
-	inspectCmd := exec.CommandContext(ctx, "docker", "inspect", "--format={{index .RepoDigests 0}}", fullImageName)
-	digestOutput, err := inspectCmd.Output()
+	// Create Image Index for consistency with multi-arch case
+	logger.Info("Creating Image Index for single platform...")
+
+	// Use docker buildx imagetools to create Image Index from the pushed image
+	createCmd := exec.CommandContext(ctx, "docker", "buildx", "imagetools", "create",
+		"--tag", fullImageName, fullImageName)
+
+	createOutput, err := createCmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("failed to get image digest: %w", err)
+		logger.Error("Image Index creation failed: %s", string(createOutput))
+		return "", fmt.Errorf("failed to create Image Index: %w", err)
 	}
 
-	// Parse digest from output (format: registry/image@sha256:...)
-	repoDigest := strings.TrimSpace(string(digestOutput))
-	if strings.Contains(repoDigest, "@") {
-		parts := strings.Split(repoDigest, "@")
-		if len(parts) == 2 {
-			return parts[1], nil
-		}
+	logger.Info("Image Index creation output: %s", string(createOutput))
+
+	// Get the Image Index digest
+	logger.Info("Getting Image Index digest...")
+	inspectCmd := exec.CommandContext(ctx, "docker", "buildx", "imagetools", "inspect", "--raw", fullImageName)
+	rawManifest, err := inspectCmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect Image Index: %w", err)
 	}
 
-	return "", fmt.Errorf("could not parse digest from: %s", repoDigest)
+	// Calculate digest from raw manifest
+	hasher := sha256.New()
+	hasher.Write(rawManifest)
+	digest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
+
+	return digest, nil
 }
