@@ -5,4 +5,6 @@ config:
     version: "0.1.0"
     context: "devnet"
     project_uuid: ""
-    telemetry_enabled: false 
+    telemetry_enabled: false
+    templateBaseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
+    templateVersion: "v0.0.10"
