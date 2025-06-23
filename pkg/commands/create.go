@@ -3,6 +3,7 @@ package commands
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -264,7 +265,6 @@ func createProjectDir(logger iface.Logger, targetDir string, overwrite bool) err
 
 // copyDefaultConfigToProject copies config to the project directory with updated project name, UUID, and telemetry settings
 func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName, projectUUID string, templateBaseURL, templateVersion string, telemetryEnabled bool) error {
-
 	// Create and ensure target config directory exists
 	destConfigDir := filepath.Join(targetDir, "config")
 	if err := os.MkdirAll(destConfigDir, 0755); err != nil {
@@ -320,7 +320,7 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName, pro
 	return nil
 }
 
-// / Creates a keystores directory with default keystore json files
+// Creates a keystores directory with default keystore json files
 func copyDefaultKeystoresToProject(logger iface.Logger, targetDir string) error {
 	// Construct keystore dest
 	destKeystoreDir := filepath.Join(targetDir, "keystores")
@@ -371,11 +371,15 @@ func copyZeusFileToProject(logger iface.Logger, targetDir string) error {
 	return nil
 }
 
-const contractsBasePath = ".devkit/contracts"
-
 // initGitRepo initializes a new Git repository in the target directory.
 func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error {
 	logger.Debug("Removing existing .git directory in %s (if any)...", targetDir)
+
+	// backup gitmodules before deleting .git
+	err := backupSubmodules(targetDir)
+	if err != nil {
+		return fmt.Errorf("git submodule backup failed: %w", err)
+	}
 
 	// remove the old .git dir
 	gitDir := filepath.Join(targetDir, ".git")
@@ -390,6 +394,18 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("git init failed: %w\nOutput: %s", err, string(output))
+	}
+
+	// reinstate gitmodules
+	err = registerSubmodules(targetDir)
+	if err != nil {
+		return fmt.Errorf("git submodule registration failed: %w", err)
+	}
+
+	// cleanup submodule backups
+	err = deleteBackup(targetDir)
+	if err != nil {
+		return fmt.Errorf("git submodule cleanup failed: %w", err)
 	}
 
 	// write a .gitignore into the new dir
@@ -426,5 +442,111 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 	if len(output) > 0 {
 		logger.Debug("Git init output: \"%s\"", strings.Trim(string(output), "\n"))
 	}
+
 	return nil
+}
+
+// backupSubmodules copies .git/modules and .git/config for later restoration
+func backupSubmodules(targetDir string) error {
+	gitDir := filepath.Join(targetDir, ".git")
+	modulesDir := filepath.Join(gitDir, "modules")
+	configPath := filepath.Join(gitDir, "config")
+
+	// backup .git/config
+	configBackup := filepath.Join(targetDir, ".git_config_backup")
+	if _, err := os.Stat(configPath); err == nil {
+		data, err := os.ReadFile(configPath)
+		if err != nil {
+			return fmt.Errorf("failed to read .git/config: %w", err)
+		}
+		if err := os.WriteFile(configBackup, data, 0644); err != nil {
+			return fmt.Errorf("failed to write .git_config_backup: %w", err)
+		}
+	}
+
+	// backup .git/modules directory
+	modulesBackup := filepath.Join(targetDir, ".git_modules_backup")
+	if _, err := os.Stat(modulesDir); err == nil {
+		err := copyDir(modulesDir, modulesBackup)
+		if err != nil {
+			return fmt.Errorf("failed to backup .git/modules: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// registerSubmodules restores .git/config and .git/modules for submodule recognition
+func registerSubmodules(targetDir string) error {
+	// restore .git/config
+	configBackup := filepath.Join(targetDir, ".git_config_backup")
+	configTarget := filepath.Join(targetDir, ".git", "config")
+	if _, err := os.Stat(configBackup); err == nil {
+		data, err := os.ReadFile(configBackup)
+		if err != nil {
+			return fmt.Errorf("failed to read config backup: %w", err)
+		}
+		if err := os.WriteFile(configTarget, data, 0644); err != nil {
+			return fmt.Errorf("failed to restore .git/config: %w", err)
+		}
+	}
+
+	// erstore .git/modules directory
+	modulesBackup := filepath.Join(targetDir, ".git_modules_backup")
+	modulesTarget := filepath.Join(targetDir, ".git", "modules")
+	if _, err := os.Stat(modulesBackup); err == nil {
+		err := copyDir(modulesBackup, modulesTarget)
+		if err != nil {
+			return fmt.Errorf("failed to restore .git/modules: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// deleteBackup will delete the backup of .git/modules & .git/config
+func deleteBackup(targetDir string) error {
+	// remove .git_modules_backup dir
+	gitModulesBackupDir := filepath.Join(targetDir, ".git_modules_backup")
+	if err := os.RemoveAll(gitModulesBackupDir); err != nil {
+		return fmt.Errorf("failed to remove .git_modules_backup directory: %w", err)
+	}
+
+	// remove .git_config_backup file
+	gitConfigBackupFile := filepath.Join(targetDir, ".git_config_backup")
+	if err := os.Remove(gitConfigBackupFile); err != nil {
+		return fmt.Errorf("failed to remove .git_config_backup file: %w", err)
+	}
+
+	return nil
+}
+
+// copyDir is a helper to copy src to dest
+func copyDir(src string, dest string) error {
+	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+		destPath := filepath.Join(dest, relPath)
+
+		if d.IsDir() {
+			return os.MkdirAll(destPath, 0755)
+		}
+
+		// ensure parent dir exists
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			return err
+		}
+
+		// copy file
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(destPath, data, 0644)
+	})
 }
