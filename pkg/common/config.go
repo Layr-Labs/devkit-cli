@@ -147,10 +147,12 @@ type Transporter struct {
 
 // ArtifactsConfig defines the structure for release artifacts
 type ArtifactsConfig struct {
-	Component   string `json:"component" yaml:"component"`
-	ArtifactId  string `json:"artifactId" yaml:"artifactId"`
-	Digest      string `json:"digest" yaml:"digest"`
-	RegistryUrl string `json:"registry_url" yaml:"registry_url"`
+	ArtifactId   string `json:"artifactId" yaml:"artifactId"`
+	Component    string `json:"component" yaml:"component"`
+	Digest       string `json:"digest" yaml:"digest"`
+	RegistryUrl  string `json:"registry_url" yaml:"registry_url"`
+	Amd64ImageId string `json:"amd64_image_id" yaml:"amd64_image_id"`
+	Arm64ImageId string `json:"arm64_image_id" yaml:"arm64_image_id"`
 }
 
 type ChainContextConfig struct {

@@ -114,3 +114,9 @@ context:
   operator_registrations: []
   # Release artifacts
   artifacts:
+    artifactId: ""
+    component: ""
+    digest: ""
+    registry_url: "supernovahs"
+    amd64_image_id: ""
+    arm64_image_id: ""
