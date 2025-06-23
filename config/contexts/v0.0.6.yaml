@@ -101,7 +101,7 @@ context:
       bn254_table_calculator: "0x033af59c1b030Cc6eEE07B150FD97668497dc74b"
       cross_chain_registry: "0x0022d2014901F2AFBF5610dDFcd26afe2a65Ca6F"
       key_registrar: "0x1C84Bb62fE7791e173014A879C706445fa893BbE"
-      release_manager: "0x0000000000000000000000000000000000000000"
+      release_manager: "0x323A9FcB2De80d04B5C4B0F72ee7799100D32F0F"
     l2: 
       bn254_certificate_verifier: "0xf462d03A82C1F3496B0DFe27E978318eD1720E1f"
       operator_table_updater: "0xd7230B89E5E2ed1FD068F0FF9198D7960243f12a"
