@@ -46,6 +46,43 @@ func readBuildConfig() (*BuildConfig, error) {
 	return &config, nil
 }
 
+// updateContextWithDigest updates the context YAML file with the digest after successful release
+func updateContextWithDigest(digest string) error {
+	// Load the context yaml file
+	contextPath := filepath.Join("config", "contexts", "devnet.yaml") // TODO: make context configurable
+	contextNode, err := common.LoadYAML(contextPath)
+	if err != nil {
+		return fmt.Errorf("failed to load context yaml: %w", err)
+	}
+
+	// Get the root node (first content node)
+	rootNode := contextNode.Content[0]
+
+	// Get the context section
+	contextSection := common.GetChildByKey(rootNode, "context")
+	if contextSection == nil {
+		return fmt.Errorf("context section not found in yaml")
+	}
+
+	// Get or create artifacts section
+	artifactsSection := common.GetChildByKey(contextSection, "artifacts")
+	if artifactsSection == nil {
+		return fmt.Errorf("artifacts section not found in context")
+	}
+
+	// Update digest field only - registry_url should already be set from build
+	common.SetMappingValue(artifactsSection,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "digest"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: digest})
+
+	// Write the updated yaml back to file
+	if err := common.WriteYAML(contextPath, contextNode); err != nil {
+		return fmt.Errorf("failed to write updated yaml: %w", err)
+	}
+
+	return nil
+}
+
 // performMultiArchBuildAndPush performs multi-architecture build and push using buildx
 func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, registryUrl string) (string, error) {
 	// Read build configuration to get image details
@@ -267,6 +304,15 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	if err := PublishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(operatorSetId), upgradeByTime, artifactArray); err != nil {
 		logger.Error("Failed to publish release to ReleaseManager: %s", err)
 		return fmt.Errorf("failed to publish release to ReleaseManager: %w", err)
+	}
+
+	// Update context with the digest after successful release
+	logger.Info("Updating context with release digest...")
+	if err := updateContextWithDigest(imageDigest); err != nil {
+		logger.Warn("Failed to update context with digest: %v", err)
+		// Don't fail the release if context update fails
+	} else {
+		logger.Info("Successfully updated context with digest: %s", imageDigest)
 	}
 
 	return nil
