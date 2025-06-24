@@ -118,3 +118,9 @@ context:
     component: ""
     digest: ""
     registry_url: ""
+    aggregator:
+      digest: "sha256:070a39857503d50e20b7227ea9481cf03f483d2d5026d03e6b217e04872c18e8"
+      registry_url: "public.ecr.aws/z6g0f8n7"
+    executor:
+      digest: "sha256:070a39857503d50e20b7227ea9481cf03f483d2d5026d03e6b217e04872c18e8"
+      registry_url: "public.ecr.aws/z6g0f8n7"
