@@ -84,15 +84,10 @@ var BuildCommand = &cli.Command{
 			)
 		}
 
-		// Convert output to yaml node
-		outputNode, err := common.InterfaceToNode(output)
-		if err != nil {
-			return fmt.Errorf("failed to convert build output to yaml node: %w", err)
+		// Update artifacts in context, preserving existing non-empty values
+		if err := updateArtifactsFromBuild(contextSection, output); err != nil {
+			return fmt.Errorf("failed to update artifacts: %w", err)
 		}
-
-		// Deep merge the build output into the context section
-		mergedNode := common.DeepMerge(contextSection, outputNode)
-		contextSection.Content = mergedNode.Content
 
 		// Write the merged yaml back to file
 		if err := common.WriteYAML(contextPath, contextNode); err != nil {
@@ -102,4 +97,49 @@ var BuildCommand = &cli.Command{
 		logger.Info("Build completed successfully")
 		return nil
 	},
+}
+
+// updateArtifactsFromBuild updates the artifacts section with build output, preserving existing non-empty values
+func updateArtifactsFromBuild(contextSection *yaml.Node, buildOutput interface{}) error {
+	// Convert build output to map for easier access
+	outputMap, ok := buildOutput.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("build output is not a map")
+	}
+
+	// Get or create artifacts section
+	artifactsSection := common.GetChildByKey(contextSection, "artifacts")
+	if artifactsSection == nil {
+		artifactsSection = &yaml.Node{Kind: yaml.MappingNode}
+		common.SetMappingValue(contextSection,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "artifacts"},
+			artifactsSection)
+	}
+
+	// Update artifacts fields from build output, preserving existing non-empty values
+	if artifacts, ok := outputMap["artifacts"].(map[string]interface{}); ok {
+		for key, value := range artifacts {
+			// Skip updating registry_url if it's empty and we already have a non-empty value
+			if key == "registry_url" {
+				existingValue := common.GetChildByKey(artifactsSection, key)
+				if existingValue != nil && existingValue.Value != "" &&
+					(value == nil || value == "") {
+					continue // Preserve existing non-empty registry_url
+				}
+			}
+
+			// Convert value to string
+			valueStr := ""
+			if value != nil {
+				valueStr = fmt.Sprintf("%v", value)
+			}
+
+			// Update the field
+			common.SetMappingValue(artifactsSection,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: key},
+				&yaml.Node{Kind: yaml.ScalarNode, Value: valueStr})
+		}
+	}
+
+	return nil
 }

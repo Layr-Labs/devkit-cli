@@ -2,8 +2,9 @@ package commands
 
 import (
 	"context"
-	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,9 +13,131 @@ import (
 	"time"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	releasemanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ReleaseManager"
+	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
+
+// BuildConfig represents the structure of .hourglass/build.yaml
+type BuildConfig struct {
+	Container struct {
+		Registry string `yaml:"registry"`
+		Image    string `yaml:"image"`
+		Version  string `yaml:"version"`
+	} `yaml:"container"`
+}
+
+// readBuildConfig reads and parses the .hourglass/build.yaml file
+func readBuildConfig() (*BuildConfig, error) {
+	data, err := os.ReadFile(".hourglass/build.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read .hourglass/build.yaml: %w", err)
+	}
+
+	var config BuildConfig
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return nil, fmt.Errorf("failed to parse .hourglass/build.yaml: %w", err)
+	}
+
+	return &config, nil
+}
+
+// performMultiArchBuildAndPush performs multi-architecture build and push using buildx
+func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, registryUrl string) (string, error) {
+	// Read build configuration to get image details
+	buildConfig, err := readBuildConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to read build config: %w", err)
+	}
+
+	imageName := buildConfig.Container.Image
+	version := buildConfig.Container.Version
+	if imageName == "" || version == "" {
+		return "", fmt.Errorf("image name or version not found in .hourglass/build.yaml")
+	}
+
+	fullImageName := fmt.Sprintf("%s/%s:%s", registryUrl, imageName, version)
+
+	logger.Info("Building multi-architecture image: %s", fullImageName)
+	logger.Info("Platforms: linux/amd64,linux/arm64")
+
+	// Setup buildx for multi-platform
+	logger.Info("Setting up multi-platform builder...")
+	if err := setupBuildx(ctx); err != nil {
+		return "", fmt.Errorf("failed to setup buildx: %w", err)
+	}
+
+	// Build and push multi-arch
+	logger.Info("Building and pushing multi-architecture image...")
+	buildCmd := exec.CommandContext(ctx, "docker", "buildx", "build",
+		"--platform", "linux/amd64,linux/arm64",
+		"--tag", fullImageName,
+		"--push",
+		".")
+
+	buildOutput, err := buildCmd.CombinedOutput()
+	if err != nil {
+		logger.Error("Multi-arch build failed: %s", string(buildOutput))
+		return "", fmt.Errorf("failed to build and push multi-arch image: %w", err)
+	}
+
+	logger.Info("✅ Built and pushed multi-architecture image: %s", fullImageName)
+
+	// Get the Image Index digest (first Digest line is the manifest list digest)
+	logger.Info("Getting Image Index digest...")
+	inspectCmd := exec.CommandContext(ctx, "docker", "buildx", "imagetools", "inspect", fullImageName)
+	inspectOutput, err := inspectCmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to inspect image: %w", err)
+	}
+
+	// Parse the digest from the output - get the FIRST "Digest:" line (Image Index)
+	inspectStr := string(inspectOutput)
+	lines := strings.Split(inspectStr, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "Digest:") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				digest := parts[1]
+				logger.Info("📋 Image Index Digest: %s", digest)
+				return digest, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("could not find digest in inspect output")
+}
+
+// setupBuildx sets up the buildx builder for multi-platform builds
+func setupBuildx(ctx context.Context) error {
+	// Check if multiarch builder exists
+	inspectCmd := exec.CommandContext(ctx, "docker", "buildx", "inspect", "multiarch")
+	if inspectCmd.Run() != nil {
+		// Create multi-platform builder
+		createCmd := exec.CommandContext(ctx, "docker", "buildx", "create", "--name", "multiarch", "--driver", "docker-container", "--use")
+		if err := createCmd.Run(); err != nil {
+			return fmt.Errorf("failed to create buildx builder: %w", err)
+		}
+
+		// Bootstrap the builder
+		bootstrapCmd := exec.CommandContext(ctx, "docker", "buildx", "inspect", "--bootstrap")
+		if err := bootstrapCmd.Run(); err != nil {
+			return fmt.Errorf("failed to bootstrap buildx builder: %w", err)
+		}
+	} else {
+		// Use existing builder
+		useCmd := exec.CommandContext(ctx, "docker", "buildx", "use", "multiarch")
+		if err := useCmd.Run(); err != nil {
+			return fmt.Errorf("failed to use buildx builder: %w", err)
+		}
+	}
+
+	return nil
+}
 
 // ReleaseCommand defines the "release" command
 var ReleaseCommand = &cli.Command{
@@ -24,18 +147,9 @@ var ReleaseCommand = &cli.Command{
 		{
 			Name:      "publish",
 			Usage:     "Publish a new AVS release",
-			ArgsUsage: "<avs> <operatorSetId> <registryUrl> <version> <deadlineTimestamp>",
-			Flags: append([]cli.Flag{
-				&cli.BoolFlag{
-					Name:  "dry-run",
-					Usage: "Show what would be published without executing the operation",
-				},
-				&cli.BoolFlag{
-					Name:  "multi-arch",
-					Usage: "Deploy as multi-architecture (invokes release.sh script)",
-				},
-			}, common.GlobalFlags...),
-			Action: publishReleaseAction,
+			ArgsUsage: "<avs> <operatorSetId> <upgradeByTime>",
+			Flags:     common.GlobalFlags,
+			Action:    publishReleaseAction,
 		},
 	},
 }
@@ -44,16 +158,14 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Validate argument count
-	if cCtx.NArg() != 5 {
-		return fmt.Errorf("expected 5 arguments: <avs> <operatorSetId> <registryUrl> <version> <deadlineTimestamp>")
+	if cCtx.NArg() != 3 {
+		return fmt.Errorf("expected 3 arguments: <avs> <operatorSetId> <upgradeByTime>")
 	}
 
 	// Parse arguments
 	avs := cCtx.Args().Get(0)
 	operatorSetIdStr := cCtx.Args().Get(1)
-	registryUrl := cCtx.Args().Get(2)
-	version := cCtx.Args().Get(3)
-	deadlineTimestampStr := cCtx.Args().Get(4)
+	upgradeByTimeStr := cCtx.Args().Get(2)
 
 	// Validate and parse operatorSetId
 	operatorSetId, err := strconv.ParseUint(operatorSetIdStr, 10, 64)
@@ -61,30 +173,18 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		return fmt.Errorf("invalid operatorSetId: %w", err)
 	}
 
-	// Validate and parse deadline timestamp
-	deadlineTimestamp, err := strconv.ParseInt(deadlineTimestampStr, 10, 64)
+	// Validate and parse upgradeByTime timestamp
+	upgradeByTime, err := strconv.ParseInt(upgradeByTimeStr, 10, 64)
 	if err != nil {
-		return fmt.Errorf("invalid deadlineTimestamp: %w", err)
+		return fmt.Errorf("invalid upgradeByTime: %w", err)
 	}
 
-	// Validate deadline is in the future
-	if deadlineTimestamp <= time.Now().Unix() {
-		return fmt.Errorf("deadline timestamp must be in the future")
+	// Validate upgradeByTime is in the future
+	if upgradeByTime <= time.Now().Unix() {
+		return fmt.Errorf("upgradeByTime timestamp must be in the future")
 	}
 
-	logger.Info("Publishing AVS release...")
-	logger.Info("  AVS address: %s", avs)
-	logger.Info("  Operator Set ID: %d", operatorSetId)
-	logger.Info("  Registry URL: %s", registryUrl)
-	logger.Info("  Version: %s", version)
-	logger.Info("  Deadline: %s", time.Unix(deadlineTimestamp, 0).Format(time.RFC3339))
-
-	if cCtx.Bool("dry-run") {
-		logger.Info("Dry run mode - would publish release with above parameters")
-		return nil
-	}
-
-	// Get build artifacts from context
+	// Get build artifacts from context first to read registry URL
 	cfg, err := common.LoadConfigWithContextConfig("devnet") // TODO: make context configurable
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
@@ -95,160 +195,162 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	}
 
 	artifacts := cfg.Context["devnet"].Artifacts
-	localImageId := artifacts.ArtifactId
 
-	logger.Info("Found build artifacts:")
-	logger.Info("  Local Image ID: %s", localImageId)
+	logger.Info("Publishing AVS release...")
+	logger.Info("  AVS address: %s", avs)
+	logger.Info("  Operator Set ID: %d", operatorSetId)
+	logger.Info("  Registry URL: %s", artifacts.RegistryUrl)
+	logger.Info("  UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
-	if localImageId == "" {
-		return fmt.Errorf("no image ID found in artifacts. Please run 'devkit avs build' first")
+	// Check if artifactId is present (from local build)
+	if artifacts.ArtifactId == "" {
+		logger.Info("No artifact found in context. Please run 'devkit avs build' first to create a local build.")
+		return nil
 	}
 
-	// Check if multi-arch flag is specified
-	isMultiArch := cCtx.Bool("multi-arch")
+	// Call release.sh script to check if image has changed
+	logger.Info("Checking if image has changed since last build...")
+	scriptsDir := filepath.Join(".devkit", "scripts")
+	releaseScriptPath := filepath.Join(scriptsDir, "release.sh")
 
-	var imageDigest string
-
-	if isMultiArch {
-		logger.Info("Multi-architecture deployment requested")
-		logger.Info("Invoking release.sh script for multi-arch deployment...")
-
-		// Invoke release.sh script from AVS template
-		// The script will handle building other architectures and creating Image Index
-		imageDigest, err = invokeReleaseScript(cCtx.Context, logger, avs, registryUrl, version, localImageId)
-		if err != nil {
-			return fmt.Errorf("multi-arch release failed: %w", err)
-		}
-	} else {
-		logger.Info("Single-architecture deployment")
-		logger.Info("Pushing local container directly...")
-
-		// Push the single local container directly
-		imageDigest, err = pushSingleContainer(cCtx.Context, logger, avs, registryUrl, version, localImageId)
-		if err != nil {
-			return fmt.Errorf("single-arch release failed: %w", err)
-		}
+	// Execute release script (it returns exit code 0 if unchanged, 1 if changed)
+	_, err = common.CallTemplateScript(cCtx.Context, logger, "", releaseScriptPath, common.ExpectNonJSONResponse)
+	if err != nil {
+		// Script returned non-zero exit code, meaning image has changed
+		logger.Info("Image has changed since last build. Please ensure your build is stable before releasing.")
+		logger.Info("Run 'devkit avs build' again and verify no code changes were made.")
+		return nil
 	}
 
-	logger.Info("Container deployment completed!")
+	logger.Info("Image unchanged - proceeding with release...")
+
+	// In the new flow, digest is expected to be empty since build doesn't push
+	// We need to handle multi-arch build and push during release process
+	logger.Info("Starting multi-architecture build and push process...")
+
+	// Implement multi-arch build, push to registry, and get digest
+	finalRegistryUrl := artifacts.RegistryUrl
+
+	if finalRegistryUrl == "" {
+		return fmt.Errorf("registry URL not found in context. Please ensure it's set in your context configuration")
+	}
+
+	// Perform multi-arch build and push to get Image Index digest
+	imageDigest, err := performMultiArchBuildAndPush(cCtx.Context, logger, finalRegistryUrl)
+	if err != nil {
+		return fmt.Errorf("failed to perform multi-arch build and push: %w", err)
+	}
+
+	logger.Info("Multi-architecture build completed")
+	logger.Info("Registry URL: %s", finalRegistryUrl)
 	logger.Info("Image digest: %s", imageDigest)
 
-	// TODO: Bundle with Aggregator and Executor releases and push to ReleaseManager
-	logger.Info("Bundling with Aggregator and Executor releases...")
+	// Create artifact array with the Image Index digest
+	logger.Info("Creating artifact for ReleaseManager...")
+	digestBytes, err := hexStringToBytes32(imageDigest)
+	if err != nil {
+		return fmt.Errorf("failed to convert digest to bytes32: %w", err)
+	}
+
+	artifactArray := []releasemanager.IReleaseManagerTypesArtifact{
+		{
+			Digest:      digestBytes,
+			RegistryUrl: finalRegistryUrl,
+		},
+	}
+
+	logger.Info("Artifact created:")
+	logger.Info("  Digest: %s", imageDigest)
+	logger.Info("  Registry URL: %s", finalRegistryUrl)
 	logger.Info("Publishing to ReleaseManager contract...")
-	logger.Info("ReleaseManager integration not yet implemented")
+
+	if err := PublishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(operatorSetId), upgradeByTime, artifactArray); err != nil {
+		logger.Error("Failed to publish release to ReleaseManager: %s", err)
+		return fmt.Errorf("failed to publish release to ReleaseManager: %w", err)
+	}
 
 	return nil
 }
 
-func invokeReleaseScript(ctx context.Context, logger iface.Logger, avs, registryUrl, version, localImageId string) (string, error) {
-	// Sanitize AVS address for Docker repository naming
-	sanitizedAvs := strings.ToLower(avs)
-	sanitizedAvs = strings.TrimPrefix(sanitizedAvs, "0x")
+func PublishReleaseToReleaseManagerAction(ctx context.Context, logger iface.Logger, avs string, operatorSetId uint32, upgradeByTime int64, artifacts []releasemanager.IReleaseManagerTypesArtifact) error {
 
-	imageName := fmt.Sprintf("hourglass-performer-%s", sanitizedAvs)
-
-	// Look for release.sh script in AVS template
-	releaseScript := filepath.Join(".hourglass", "scripts", "release.sh")
-	if _, err := os.Stat(releaseScript); err != nil {
-		return "", fmt.Errorf("release.sh script not found at %s. Please ensure it exists in your AVS template", releaseScript)
-	}
-
-	logger.Info("Executing release script: %s", releaseScript)
-	logger.Info("   Registry: %s", registryUrl)
-	logger.Info("   Image: %s", imageName)
-	logger.Info("   Version: %s", version)
-
-	// Execute release.sh script
-	// The release script will handle multi-arch building and create the Image Index
-	cmd := exec.CommandContext(ctx, "bash", releaseScript, registryUrl, imageName, version, localImageId)
-	output, err := cmd.CombinedOutput()
+	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
 	if err != nil {
-		logger.Error("Release script failed: %s", string(output))
-		return "", fmt.Errorf("release script execution failed: %w", err)
+		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
+	}
+	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
 	}
 
-	logger.Info("Release script output: %s", string(output))
-
-	// Read the digest from release script output
-	digestFile := "/tmp/release_digest"
-	if _, err := os.Stat(digestFile); err != nil {
-		return "", fmt.Errorf("release script did not create digest file at %s", digestFile)
+	l1Cfg, ok := envCtx.Chains[devnet.L1]
+	if !ok {
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
 	}
 
-	digestData, err := os.ReadFile(digestFile)
+	client, err := ethclient.Dial(l1Cfg.RPCURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to read digest file: %w", err)
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer client.Close()
+
+	operatorSetId = uint32(operatorSetId)
+	upgradeByTime = int64(upgradeByTime)
+
+	avsPrivateKey := envCtx.Avs.AVSPrivateKey
+	if avsPrivateKey == "" {
+		return fmt.Errorf("AVS private key not found in context")
+	}
+	// Trim 0x
+	avsPrivateKey = strings.TrimPrefix(avsPrivateKey, "0x")
+	_, _, _, _, _, _, releaseManagerAddress := devnet.GetEigenLayerAddresses(cfg)
+
+	contractCaller, err := common.NewContractCaller(
+		avsPrivateKey,
+		big.NewInt(int64(l1Cfg.ChainID)),
+		client,
+		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(releaseManagerAddress),
+		logger,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create contract caller: %w", err)
 	}
 
-	// Parse digest from file (format: IMAGE_INDEX_DIGEST=sha256:...)
-	lines := strings.Split(string(digestData), "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "IMAGE_INDEX_DIGEST=") {
-			digest := strings.TrimPrefix(line, "IMAGE_INDEX_DIGEST=")
-			return strings.TrimSpace(digest), nil
-		}
+	// Use the artifacts array passed in
+	err = contractCaller.PublishRelease(ctx, ethcommon.HexToAddress(avs), artifacts, operatorSetId, upgradeByTime)
+	if err != nil {
+		return fmt.Errorf("failed to publish release: %w", err)
 	}
 
-	return "", fmt.Errorf("IMAGE_INDEX_DIGEST not found in release script output")
+	logger.Info("Successfully published release to ReleaseManager contract")
+	return nil
 }
 
-func pushSingleContainer(ctx context.Context, logger iface.Logger, avs, registryUrl, version, imageId string) (string, error) {
-	// Sanitize AVS address for Docker repository naming
-	sanitizedAvs := strings.ToLower(avs)
-	sanitizedAvs = strings.TrimPrefix(sanitizedAvs, "0x")
+// hexStringToBytes32 converts a hex string (like "sha256:abc123...") to [32]byte
+func hexStringToBytes32(hexStr string) ([32]byte, error) {
+	var result [32]byte
 
-	imageName := fmt.Sprintf("hourglass-performer-%s", sanitizedAvs)
-	fullImageName := fmt.Sprintf("%s/%s:%s", registryUrl, imageName, version)
-
-	logger.Info("Tagging image for registry...")
-	logger.Info("   Source: %s", imageId)
-	logger.Info("   Target: %s", fullImageName)
-
-	// Tag the image
-	tagCmd := exec.CommandContext(ctx, "docker", "tag", imageId, fullImageName)
-	if err := tagCmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to tag image: %w", err)
+	// Remove "sha256:" prefix if present
+	if strings.HasPrefix(hexStr, "sha256:") {
+		hexStr = strings.TrimPrefix(hexStr, "sha256:")
 	}
 
-	// Push the image
-	logger.Info("Pushing to registry...")
-	pushCmd := exec.CommandContext(ctx, "docker", "push", fullImageName)
-	pushOutput, err := pushCmd.CombinedOutput()
+	// Decode hex string
+	bytes, err := hex.DecodeString(hexStr)
 	if err != nil {
-		logger.Error("Push failed: %s", string(pushOutput))
-		return "", fmt.Errorf("failed to push image: %w", err)
+		return result, fmt.Errorf("failed to decode hex string: %w", err)
 	}
 
-	logger.Info("Push output: %s", string(pushOutput))
-
-	// Create Image Index for consistency with multi-arch case
-	logger.Info("Creating Image Index for single platform...")
-
-	// Use docker buildx imagetools to create Image Index from the pushed image
-	createCmd := exec.CommandContext(ctx, "docker", "buildx", "imagetools", "create",
-		"--tag", fullImageName, fullImageName)
-
-	createOutput, err := createCmd.CombinedOutput()
-	if err != nil {
-		logger.Error("Image Index creation failed: %s", string(createOutput))
-		return "", fmt.Errorf("failed to create Image Index: %w", err)
+	// Ensure we have exactly 32 bytes
+	if len(bytes) != 32 {
+		return result, fmt.Errorf("digest must be exactly 32 bytes, got %d", len(bytes))
 	}
 
-	logger.Info("Image Index creation output: %s", string(createOutput))
-
-	// Get the Image Index digest
-	logger.Info("Getting Image Index digest...")
-	inspectCmd := exec.CommandContext(ctx, "docker", "buildx", "imagetools", "inspect", "--raw", fullImageName)
-	rawManifest, err := inspectCmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("failed to inspect Image Index: %w", err)
-	}
-
-	// Calculate digest from raw manifest
-	hasher := sha256.New()
-	hasher.Write(rawManifest)
-	digest := fmt.Sprintf("sha256:%x", hasher.Sum(nil))
-
-	return digest, nil
+	copy(result[:], bytes)
+	return result, nil
 }

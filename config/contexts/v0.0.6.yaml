@@ -9,14 +9,14 @@ context:
       chain_id: 17000
       rpc_url: "http://localhost:8545"
       fork:
-        block: 4017700
+        block: 4056218
         url: ""
         block_time: 3
     l2:
       chain_id: 17000
       rpc_url: "http://localhost:8545"
       fork:
-        block: 4017700
+        block: 4056218
         url: ""
         block_time: 3
   # Stake Root Transporter configuration
@@ -117,6 +117,4 @@ context:
     artifactId: ""
     component: ""
     digest: ""
-    registry_url: "supernovahs"
-    amd64_image_id: ""
-    arm64_image_id: ""
+    registry_url: ""
