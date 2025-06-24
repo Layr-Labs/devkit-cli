@@ -165,7 +165,7 @@ source ~/.zprofile
 
 > Note: Projects are created with a specific template version. You can view your current template version with `devkit avs template info` and upgrade later using `devkit avs template upgrade`.
 
-> \[!IMPORTANT]
+> [!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
 <!-- Put in section about editing main.go file to replace comments with your actual business logic
@@ -190,13 +190,24 @@ These functions will be invoked automatically when using `devkit avs call`, enab
 > **💡 Tip:**  
 > You can add logging inside these methods using the `tw.logger.Sugar().Infow(...)` lines to debug and inspect task input and output during development.
 
-### 3️⃣ Configure Your AVS (`devkit avs config` & `devkit avs context`)
+### 3️⃣ Set RPC Endpoint URL
 
-<!-- TODO: Make it very clear and very specific that the one field we need to change is the fork_url and that they are in charge of supplying this.
-Also, keep stuff at the top about introducing config yaml files and what they do.
--->
+An RPC endpoint URL is needed to enable forking of the Testnet or Mainnet state to your local environment. These values are loaded from your `.env` file and automatically applied to your environment. This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
 
-Before running your AVS, you'll need to configure both project-level and context-specific settings. This is done through two configuration files:
+To configure them:
+
+```bash
+cp .env.example .env
+# edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
+```
+
+You are welcome to use any popular RPC provider (e.g., QuickNode, Alchemy) or a free provider to, such as https://ethereum-rpc.publicnode.com or https://www.1rpc.io .
+
+
+
+### 4️⃣ (Optional) Configure Your AVS (`devkit avs config` & `devkit avs context`)
+
+Configure both project-level and context-specific settings via the following files:
 
 - **`config.yaml`**  
   Defines project-wide settings such as AVS name, version, and available context names.  
@@ -206,6 +217,9 @@ Before running your AVS, you'll need to configure both project-level and context
 You can view or modify these configurations using the DevKit CLI or by editing the files manually.
 
 ---
+
+> [!IMPORTANT]
+> All `devkit avs` commands must be run from the **root of your AVS project** — the directory containing the `config` folder.
 
 #### View current settings
 
@@ -248,23 +262,10 @@ You can view or modify these configurations using the DevKit CLI or by editing t
 
 Alternatively, you can manually edit `config.yaml` or the `contexts/*.yaml` files in the text editor of your choice.
 
-> [!IMPORTANT]
-> All `devkit avs` commands must be run from the **root of your AVS project** — the directory containing the `config` folder.
 
-Before launching your local devnet, you must set valid Ethereum fork URLs to define the chain state your AVS will simulate against. These values are loaded from your `.env` file and automatically applied to your environment.
 
-To configure them:
 
-```bash
-cp .env.example .env
-# edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
-```
-
-Use any popular RPC provider (e.g., QuickNode, Alchemy) to obtain the URLs.
-
-This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
-
-### 4️⃣ Build Your AVS (`devkit avs build`)
+### 5️⃣ Build Your AVS (`devkit avs build`)
 
 Compiles your AVS contracts and offchain binaries. Required before running a devnet or simulating tasks to ensure all components are built and ready.
 
@@ -277,7 +278,7 @@ Ensure you're in your project directory before running:
 devkit avs build
 ```
 
-### 5️⃣ Launch Local DevNet (`devkit avs devnet`)
+### 6️⃣ Launch Local DevNet (`devkit avs devnet`)
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
@@ -306,7 +307,7 @@ DevNet management commands:
 | `stop --project.name`  | Stops the specific project's devnet                                  |
 | `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
 
-### 6️⃣ Simulate Task Execution (`devkit avs call`)
+### 7️⃣ Simulate Task Execution (`devkit avs call`)
 
 Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
 
