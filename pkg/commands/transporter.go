@@ -371,9 +371,15 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 		return nil, fmt.Errorf("Failed to add chain: %v", err)
 	}
 	holeskyClient, err := cm.GetChainForId(holeskyConfig.ChainID)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get chain for ID %d: %v", holeskyConfig.ChainID, err)
+	}
 
 	// Construct registry caller
 	ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, holeskyClient.RPCClient)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get CrossChainRegistryCaller for %s: %v", crossChainRegistryAddress, err)
+	}
 
 	// Get chains from contract
 	chainIds, addresses, err := ccRegistryCaller.GetSupportedChains(&bind.CallOpts{})
@@ -401,6 +407,9 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 		// Collect the current root from provided chainId
 		root, err := transactor.GetCurrentGlobalTableRoot(&bind.CallOpts{})
+		if err != nil {
+			return nil, fmt.Errorf("failed to get stake root: %w", err)
+		}
 
 		// Collect the provided root
 		roots[chainId.Uint64()] = root
