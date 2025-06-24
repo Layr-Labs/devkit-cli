@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -139,10 +140,16 @@ type OperatorRegistration struct {
 	Payload       string `json:"payload" yaml:"payload"`
 }
 
+type StakeRootEntry struct {
+	ChainID   uint64 `yaml:"chain_id" json:"chain_id"`
+	StakeRoot string `yaml:"stake_root" json:"stake_root"`
+}
+
 type Transporter struct {
-	Schedule      string `json:"schedule" yaml:"schedule"`
-	PrivateKey    string `json:"private_key" yaml:"private_key"`
-	BlsPrivateKey string `json:"bls_private_key" yaml:"bls_private_key"`
+	Schedule         string           `json:"schedule" yaml:"schedule"`
+	PrivateKey       string           `json:"private_key" yaml:"private_key"`
+	BlsPrivateKey    string           `json:"bls_private_key" yaml:"bls_private_key"`
+	ActiveStakeRoots []StakeRootEntry `json:"active_stake_roots,omitempty" yaml:"active_stake_roots,omitempty"`
 }
 
 // ArtifactsConfig defines the structure for release artifacts
@@ -253,18 +260,37 @@ func LoadConfigWithContextConfig(ctxName string) (*ConfigWithContextConfig, erro
 	return &cfg, nil
 }
 
-func LoadRawContext(yamlPath string) ([]byte, error) {
+func LoadContext(context string) (string, *yaml.Node, *yaml.Node, error) {
+	// Set path for context yaml
+	contextDir := filepath.Join("config", "contexts")
+	yamlPath := path.Join(contextDir, fmt.Sprintf("%s.%s", context, "yaml"))
+
+	// Load YAML as *yaml.Node
 	rootNode, err := LoadYAML(yamlPath)
 	if err != nil {
-		return nil, err
-	}
-	if len(rootNode.Content) == 0 {
-		return nil, fmt.Errorf("empty YAML root node")
+		return yamlPath, nil, nil, err
 	}
 
+	// YAML is parsed into a DocumentNode:
+	//   - rootNode.Content[0] is the top-level MappingNode
+	//   - It contains the 'context' mapping we're interested in
+	if len(rootNode.Content) == 0 {
+		return yamlPath, rootNode, nil, fmt.Errorf("empty YAML root node")
+	}
+
+	// Navigate context to arrive at context.transporter.active_stake_roots
 	contextNode := GetChildByKey(rootNode.Content[0], "context")
 	if contextNode == nil {
-		return nil, fmt.Errorf("missing 'context' key in %s", yamlPath)
+		return yamlPath, rootNode, nil, fmt.Errorf("missing 'context' key in ./config/contexts/%s.yaml", context)
+	}
+
+	return yamlPath, rootNode, contextNode, nil
+}
+
+func LoadRawContext(context string) ([]byte, error) {
+	_, _, contextNode, err := LoadContext(context)
+	if err != nil {
+		return nil, err
 	}
 
 	var ctxMap map[string]interface{}
@@ -272,12 +298,12 @@ func LoadRawContext(yamlPath string) ([]byte, error) {
 		return nil, fmt.Errorf("decode context node: %w", err)
 	}
 
-	context, err := json.Marshal(map[string]interface{}{"context": ctxMap})
+	contextBytes, err := json.Marshal(map[string]interface{}{"context": ctxMap})
 	if err != nil {
 		return nil, fmt.Errorf("marshal context: %w", err)
 	}
 
-	return context, nil
+	return contextBytes, nil
 }
 
 func RequireNonZero(s interface{}) error {

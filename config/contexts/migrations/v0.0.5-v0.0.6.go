@@ -205,6 +205,8 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "0x2ba58f64c57faa1073d63add89799f2a0101855a8b289b1330cb500758d5d1ee"},
 				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "bls_private_key"},
 				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "0x2ba58f64c57faa1073d63add89799f2a0101855a8b289b1330cb500758d5d1ee"},
+				{Kind: yaml.ScalarNode, Tag: "!!str", Value: "active_stake_roots"},
+				{Kind: yaml.SequenceNode, Tag: "!!seq"},
 			},
 		}
 

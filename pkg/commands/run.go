@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"path"
 	"path/filepath"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
@@ -36,9 +35,7 @@ func AVSRun(cCtx *cli.Context) error {
 	scriptPath := filepath.Join(".devkit", "scripts", "run")
 
 	// Set path for context yaml
-	contextDir := filepath.Join("config", "contexts")
-	yamlPath := path.Join(contextDir, "devnet.yaml") // @TODO: use selected context name
-	contextJSON, err := common.LoadRawContext(yamlPath)
+	contextJSON, err := common.LoadRawContext("devnet") // @TODO: use selected context name
 	if err != nil {
 		return fmt.Errorf("failed to load context: %w", err)
 	}

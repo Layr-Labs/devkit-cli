@@ -13,7 +13,6 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -93,27 +92,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	// Set path for context yamls
-	contextDir := filepath.Join("config", "contexts")
-	yamlPath := path.Join(contextDir, "devnet.yaml")
-
-	// Load YAML as *yaml.Node
-	rootNode, err := common.LoadYAML(yamlPath)
-	if err != nil {
-		return err
-	}
-
-	// YAML is parsed into a DocumentNode:
-	//   - rootNode.Content[0] is the top-level MappingNode
-	//   - It contains the 'context' mapping we're interested in
-	if len(rootNode.Content) == 0 {
-		return fmt.Errorf("empty YAML root node")
-	}
-
 	// Check for context
-	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
-	if contextNode == nil {
-		return fmt.Errorf("missing 'context' key in ./config/contexts/devnet.yaml")
+	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	if err != nil {
+		return fmt.Errorf("context loading failed: %w", err)
 	}
 
 	// Fetch EigenLayer addresses using Zeus if requested
@@ -395,16 +377,6 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	// Set path for .devkit scripts
 	scriptsDir := filepath.Join(".devkit", "scripts")
 
-	// Set path for context yaml
-	contextDir := filepath.Join("config", "contexts")
-	yamlPath := path.Join(contextDir, fmt.Sprintf("%s.%s", context, "yaml"))
-
-	// Load YAML as *yaml.Node
-	rootNode, err := common.LoadYAML(yamlPath)
-	if err != nil {
-		return err
-	}
-
 	// List of scripts we want to call and curry context through
 	scriptNames := []string{
 		"deployContracts",
@@ -412,17 +384,10 @@ func DeployContractsAction(cCtx *cli.Context) error {
 		"getOperatorRegistrationMetadata",
 	}
 
-	// YAML is parsed into a DocumentNode:
-	//   - rootNode.Content[0] is the top-level MappingNode
-	//   - It contains the 'context' mapping we're interested in
-	if len(rootNode.Content) == 0 {
-		return fmt.Errorf("empty YAML root node")
-	}
-
 	// Check for context
-	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
-	if contextNode == nil {
-		return fmt.Errorf("missing 'context' key in ./config/contexts/%s.yaml", context)
+	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	if err != nil {
+		return fmt.Errorf("context loading failed: %w", err)
 	}
 
 	// Loop scripts with cloned context
@@ -885,19 +850,10 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 	contextName := cCtx.String("context")
 
-	// Set path for context yaml
-	contextDir := filepath.Join("config", "contexts")
-	yamlPath := path.Join(contextDir, fmt.Sprintf("%s.%s", contextName, "yaml"))
-
-	// Load YAML as *yaml.Node
-	rootNode, err := common.LoadYAML(yamlPath)
-	if err != nil {
-		return err
-	}
 	// Check for context
-	contextNode := common.GetChildByKey(rootNode.Content[0], "context")
-	if contextNode == nil {
-		return fmt.Errorf("missing 'context' key in ./config/contexts/%s.yaml", contextName)
+	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	if err != nil {
+		return fmt.Errorf("context loading failed: %w", err)
 	}
 
 	// Fetch addresses from Zeus
