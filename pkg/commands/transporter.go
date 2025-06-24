@@ -214,18 +214,25 @@ func Transport(cCtx *cli.Context) error {
 func ScheduleTransport(cCtx *cli.Context, cronExpr string) error {
 	// Validate cron expression
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+
+	// Run the scheduler with transport func
+	return ScheduleTransportWithParserAndFunc(cCtx, cronExpr, parser, func() {
+		if err := Transport(cCtx); err != nil {
+			log.Printf("Scheduled transport failed: %v", err)
+		}
+	})
+}
+
+func ScheduleTransportWithParserAndFunc(cCtx *cli.Context, cronExpr string, parser cron.Parser, transportFunc func()) error {
+	// Validate cron expression
+	c := cron.New(cron.WithParser(parser))
 	_, err := parser.Parse(cronExpr)
 	if err != nil {
 		return fmt.Errorf("invalid cron expression: %w", err)
 	}
 
 	// Call Transport() against cronExpr
-	c := cron.New()
-	_, err = c.AddFunc(cronExpr, func() {
-		if err := Transport(cCtx); err != nil {
-			log.Printf("Scheduled transport failed: %v", err)
-		}
-	})
+	_, err = c.AddFunc(cronExpr, transportFunc)
 	if err != nil {
 		return fmt.Errorf("failed to add transport function to scheduler: %w", err)
 	}
