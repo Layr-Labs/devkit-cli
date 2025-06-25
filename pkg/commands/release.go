@@ -291,11 +291,11 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	}
 
 	logger.Info("Publishing AVS release...")
-	logger.Info("  AVS address: %s", avs)
-	logger.Info("  Version: %s", version)
-	logger.Info("  Operator Set ID: %d", operatorSetId)
-	logger.Info("  Registry URL: %s", artifact.RegistryUrl)
-	logger.Info("  UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
+	logger.Info("AVS address: %s", avs)
+	logger.Info("Version: %s", version)
+	logger.Info("Operator Set ID: %d", operatorSetId)
+	logger.Info("Registry URL: %s", artifact.RegistryUrl)
+	logger.Info("UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
 	// Check if component is present (from local build)
 	if artifact.Component == "" {
