@@ -199,7 +199,7 @@ func getVersionFromBuildYaml() (string, error) {
 }
 
 // performMultiArchBuildAndPush performs multi-architecture build and push using buildx
-func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, registryUrl, version string) (string, error) {
+func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, registryUrl, version string, operatorSetId uint64) (string, error) {
 	// Get project name from current directory
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -207,8 +207,8 @@ func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, regi
 	}
 	projectName := filepath.Base(cwd)
 
-	// Construct image name as {project-name}-performer
-	imageName := fmt.Sprintf("%s-performer", projectName)
+	// Image name as {project-name}-performer-op-set-{operator-set-id}
+	imageName := fmt.Sprintf("%s-performer-op-set-%d", projectName, operatorSetId)
 
 	fullImageName := fmt.Sprintf("%s/%s:%s", registryUrl, imageName, version)
 
@@ -429,7 +429,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	}
 
 	// Perform multi-arch build and push to get Image Index digest
-	imageDigest, err := performMultiArchBuildAndPush(cCtx.Context, logger, finalRegistryUrl, version)
+	imageDigest, err := performMultiArchBuildAndPush(cCtx.Context, logger, finalRegistryUrl, version, operatorSetId)
 	if err != nil {
 		return fmt.Errorf("failed to perform multi-arch build and push: %w", err)
 	}
