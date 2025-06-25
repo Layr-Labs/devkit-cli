@@ -396,8 +396,8 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("  Registry URL: %s", artifacts.RegistryUrl)
 	logger.Info("  UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
-	// Check if artifactId is present (from local build)
-	if artifacts.ArtifactId == "" {
+	// Check if component is present (from local build)
+	if artifacts.Component == "" {
 		logger.Info("No artifact found in context. Please run 'devkit avs build' first to create a local build.")
 		return nil
 	}

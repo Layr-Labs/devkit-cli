@@ -114,7 +114,6 @@ context:
   operator_registrations: []
   # Release artifacts
   artifacts:
-    artifactId: ""
     component: ""
     digest: ""
     registry_url: ""

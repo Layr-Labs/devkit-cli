@@ -681,11 +681,6 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 		if artifacts == nil {
 			t.Error("Expected artifacts section to be added")
 		}
-		// artifactId
-		artifactId := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "artifactId"})
-		if artifactId == nil || artifactId.Value != "" {
-			t.Errorf("Expected artifactId to be empty, got %v", artifactId.Value)
-		}
 		// component
 		component := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "component"})
 		if component == nil || component.Value != "" {

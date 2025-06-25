@@ -155,8 +155,6 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 		artifactsValue := &yaml.Node{
 			Kind: yaml.MappingNode,
 			Content: []*yaml.Node{
-				{Kind: yaml.ScalarNode, Value: "artifactId", Tag: "!!str"},
-				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "component", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "digest", Tag: "!!str"},
