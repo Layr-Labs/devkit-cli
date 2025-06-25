@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -83,19 +83,132 @@ func updateContextWithDigest(digest string) error {
 	return nil
 }
 
-// performMultiArchBuildAndPush performs multi-architecture build and push using buildx
-func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, registryUrl string) (string, error) {
-	// Read build configuration to get image details
-	buildConfig, err := readBuildConfig()
-	if err != nil {
-		return "", fmt.Errorf("failed to read build config: %w", err)
+// processVersionWithScript processes version using the version.sh script
+func processVersionWithScript(ctx context.Context, logger iface.Logger, versionInput string) (string, error) {
+	scriptsDir := filepath.Join(".hourglass", "scripts")
+	versionScriptPath := filepath.Join(scriptsDir, "version.sh")
+
+	// Check if version.sh exists
+	if _, err := os.Stat(versionScriptPath); os.IsNotExist(err) {
+		// If no version script, treat as literal version and validate
+		return validateAndFormatVersion(versionInput)
 	}
 
-	imageName := buildConfig.Container.Image
-	version := buildConfig.Container.Version
-	if imageName == "" || version == "" {
-		return "", fmt.Errorf("image name or version not found in .hourglass/build.yaml")
+	// Get config directory for version caching
+	configDir, err := common.GetGlobalConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get global config directory: %w", err)
 	}
+
+	var cmd *exec.Cmd
+
+	// Handle different version types
+	switch versionInput {
+	case "major", "minor", "patch":
+		// Bump version
+		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "bump", versionInput, "--config-dir", configDir)
+	case "git-tag":
+		// Use git tag
+		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "git-tag", "--config-dir", configDir)
+	case "commit":
+		// Use git commit
+		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "commit", "--config-dir", configDir)
+	case "timestamp":
+		// Use timestamp
+		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "timestamp", "--config-dir", configDir)
+	default:
+		// Set specific version
+		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "set", versionInput, "--config-dir", configDir)
+	}
+
+	logger.Info("Processing version with script: %s", versionInput)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		logger.Error("Version script failed: %s", string(output))
+		return "", fmt.Errorf("version script failed: %w", err)
+	}
+
+	logger.Info("Version script output: %s", strings.TrimSpace(string(output)))
+
+	// Get the updated version from cache (preferred) or build.yaml (fallback)
+	return getVersionFromCache()
+}
+
+// validateAndFormatVersion validates and formats a literal version string
+func validateAndFormatVersion(version string) (string, error) {
+	// Remove 'v' prefix if present for processing
+	cleanVersion := strings.TrimPrefix(version, "v")
+
+	// Basic semantic version validation
+	if !strings.Contains(cleanVersion, ".") {
+		return "", fmt.Errorf("version should follow semantic versioning format (e.g., 1.0.0)")
+	}
+
+	// Return without 'v' prefix (build.yaml expects clean version)
+	return cleanVersion, nil
+}
+
+// getVersionFromCache reads the version from the cached version file in global config
+func getVersionFromCache() (string, error) {
+	configDir, err := common.GetGlobalConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get global config directory: %w", err)
+	}
+
+	// Get project name for cache file
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+	projectName := filepath.Base(cwd)
+
+	// Read cached version
+	versionCacheFile := filepath.Join(configDir, "versions", projectName+"_version")
+	data, err := os.ReadFile(versionCacheFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// If no cached version, fall back to build.yaml
+			return getVersionFromBuildYaml()
+		}
+		return "", fmt.Errorf("failed to read cached version: %w", err)
+	}
+
+	version := strings.TrimSpace(string(data))
+	if version == "" {
+		// If cached version is empty, fall back to build.yaml
+		return getVersionFromBuildYaml()
+	}
+
+	return version, nil
+}
+
+// getVersionFromBuildYaml reads the version from build.yaml (fallback)
+func getVersionFromBuildYaml() (string, error) {
+	buildYamlPath := filepath.Join(".hourglass", "build.yaml")
+	data, err := os.ReadFile(buildYamlPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read build.yaml: %w", err)
+	}
+
+	var buildConfig BuildConfig
+	if err := yaml.Unmarshal(data, &buildConfig); err != nil {
+		return "", fmt.Errorf("failed to parse build.yaml: %w", err)
+	}
+
+	return buildConfig.Container.Version, nil
+}
+
+// performMultiArchBuildAndPush performs multi-architecture build and push using buildx
+func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, registryUrl, version string) (string, error) {
+	// Get project name from current directory
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current directory: %w", err)
+	}
+	projectName := filepath.Base(cwd)
+
+	// Construct image name as {project-name}-performer
+	imageName := fmt.Sprintf("%s-performer", projectName)
 
 	fullImageName := fmt.Sprintf("%s/%s:%s", registryUrl, imageName, version)
 
@@ -122,7 +235,7 @@ func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, regi
 		return "", fmt.Errorf("failed to build and push multi-arch image: %w", err)
 	}
 
-	logger.Info("✅ Built and pushed multi-architecture image: %s", fullImageName)
+	logger.Info("Built and pushed multi-architecture image: %s", fullImageName)
 
 	// Get the Image Index digest (first Digest line is the manifest list digest)
 	logger.Info("Getting Image Index digest...")
@@ -182,11 +295,30 @@ var ReleaseCommand = &cli.Command{
 	Usage: "Manage AVS releases and artifacts",
 	Subcommands: []*cli.Command{
 		{
-			Name:      "publish",
-			Usage:     "Publish a new AVS release",
-			ArgsUsage: "<avs> <operatorSetId> <upgradeByTime>",
-			Flags:     common.GlobalFlags,
-			Action:    publishReleaseAction,
+			Name:  "publish",
+			Usage: "Publish a new AVS release",
+			Flags: append(common.GlobalFlags, []cli.Flag{
+				&cli.StringFlag{
+					Name:     "avs",
+					Usage:    "AVS contract address",
+					Required: true,
+				},
+				&cli.Uint64Flag{
+					Name:     "operator-set-id",
+					Usage:    "Operator set ID",
+					Required: true,
+				},
+				&cli.Int64Flag{
+					Name:     "upgrade-by-time",
+					Usage:    "Unix timestamp by which the upgrade must be completed",
+					Required: true,
+				},
+				&cli.StringFlag{
+					Name:  "version",
+					Usage: "Version to release (e.g., v1.0.0, major, minor, patch, git-tag, commit, timestamp). Defaults to 0.1.0 for first release",
+				},
+			}...),
+			Action: publishReleaseAction,
 		},
 	},
 }
@@ -194,31 +326,44 @@ var ReleaseCommand = &cli.Command{
 func publishReleaseAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
-	// Validate argument count
-	if cCtx.NArg() != 3 {
-		return fmt.Errorf("expected 3 arguments: <avs> <operatorSetId> <upgradeByTime>")
+	// Get values from flags
+	avs := cCtx.String("avs")
+	operatorSetId := cCtx.Uint64("operator-set-id")
+	upgradeByTime := cCtx.Int64("upgrade-by-time")
+	version := cCtx.String("version")
+
+	// Validate AVS address
+	if avs == "" {
+		return fmt.Errorf("AVS address cannot be empty")
 	}
 
-	// Parse arguments
-	avs := cCtx.Args().Get(0)
-	operatorSetIdStr := cCtx.Args().Get(1)
-	upgradeByTimeStr := cCtx.Args().Get(2)
-
-	// Validate and parse operatorSetId
-	operatorSetId, err := strconv.ParseUint(operatorSetIdStr, 10, 64)
-	if err != nil {
-		return fmt.Errorf("invalid operatorSetId: %w", err)
+	// Handle version - if not provided, read from build.yaml
+	if version == "" {
+		// Read current version from build.yaml
+		currentVersion, err := getVersionFromBuildYaml()
+		if err != nil {
+			return fmt.Errorf("failed to read current version from build.yaml: %w", err)
+		}
+		version = currentVersion
+		logger.Info("No version specified, using current version from build.yaml: %s", version)
+	} else {
+		// Process version through version.sh script
+		processedVersion, err := processVersionWithScript(cCtx.Context, logger, version)
+		if err != nil {
+			return fmt.Errorf("failed to process version: %w", err)
+		}
+		version = processedVersion
+		logger.Info("Processed version: %s", version)
 	}
 
-	// Validate and parse upgradeByTime timestamp
-	upgradeByTime, err := strconv.ParseInt(upgradeByTimeStr, 10, 64)
-	if err != nil {
-		return fmt.Errorf("invalid upgradeByTime: %w", err)
+	// Validate operator set ID fits in uint32 range (since it gets cast to uint32 later)
+	if operatorSetId > math.MaxUint32 {
+		return fmt.Errorf("operator set ID %d exceeds maximum value for uint32 (%d)", operatorSetId, math.MaxUint32)
 	}
 
 	// Validate upgradeByTime is in the future
 	if upgradeByTime <= time.Now().Unix() {
-		return fmt.Errorf("upgradeByTime timestamp must be in the future")
+		return fmt.Errorf("upgrade-by-time timestamp %d must be in the future (current time: %d)", upgradeByTime, time.Now().Unix())
 	}
 
 	// Get build artifacts from context first to read registry URL
@@ -235,6 +380,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 
 	logger.Info("Publishing AVS release...")
 	logger.Info("  AVS address: %s", avs)
+	logger.Info("  Version: %s", version)
 	logger.Info("  Operator Set ID: %d", operatorSetId)
 	logger.Info("  Registry URL: %s", artifacts.RegistryUrl)
 	logger.Info("  UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
@@ -247,11 +393,21 @@ func publishReleaseAction(cCtx *cli.Context) error {
 
 	// Call release.sh script to check if image has changed
 	logger.Info("Checking if image has changed since last build...")
-	scriptsDir := filepath.Join(".devkit", "scripts")
+	scriptsDir := filepath.Join(".hourglass", "scripts")
 	releaseScriptPath := filepath.Join(scriptsDir, "release.sh")
 
-	// Execute release script (it returns exit code 0 if unchanged, 1 if changed)
-	_, err = common.CallTemplateScript(cCtx.Context, logger, "", releaseScriptPath, common.ExpectNonJSONResponse)
+	// Get config directory for version support
+	configDir, err := common.GetGlobalConfigDir()
+	if err != nil {
+		return fmt.Errorf("failed to get global config directory: %w", err)
+	}
+
+	// Execute release script with version support
+	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--config-dir", configDir, "--version", version)
+	// Stream stdout and stderr to terminal
+	releaseCmd.Stdout = os.Stdout
+	releaseCmd.Stderr = os.Stderr
+	err = releaseCmd.Run()
 	if err != nil {
 		// Script returned non-zero exit code, meaning image has changed
 		logger.Info("Image has changed since last build. Please ensure your build is stable before releasing.")
@@ -273,7 +429,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	}
 
 	// Perform multi-arch build and push to get Image Index digest
-	imageDigest, err := performMultiArchBuildAndPush(cCtx.Context, logger, finalRegistryUrl)
+	imageDigest, err := performMultiArchBuildAndPush(cCtx.Context, logger, finalRegistryUrl, version)
 	if err != nil {
 		return fmt.Errorf("failed to perform multi-arch build and push: %w", err)
 	}
