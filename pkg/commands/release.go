@@ -81,7 +81,7 @@ func updateContextWithDigest(digest string) error {
 		return fmt.Errorf("artifacts section not found in context")
 	}
 
-	// Update digest field only - registry_url should already be set from build
+	// Update digest field
 	common.SetMappingValue(artifactsSection,
 		&yaml.Node{Kind: yaml.ScalarNode, Value: "digest"},
 		&yaml.Node{Kind: yaml.ScalarNode, Value: digest})
