@@ -24,15 +24,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// BuildConfig represents the structure of .hourglass/build.yaml
-type BuildConfig struct {
-	Container struct {
-		Registry string `yaml:"registry"`
-		Image    string `yaml:"image"`
-		Version  string `yaml:"version"`
-	} `yaml:"container"`
-}
-
 // OperatorSetData represents the data for each operator set
 type OperatorSetData struct {
 	Digest      string `json:"digest"`
