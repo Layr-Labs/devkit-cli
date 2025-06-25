@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Layr-Labs/devkit-cli/config/configs"
+	configMigrations "github.com/Layr-Labs/devkit-cli/config/configs/migrations"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 	"gopkg.in/yaml.v3"
@@ -20,6 +22,54 @@ func testNode(t *testing.T, input string) *yaml.Node {
 		return node.Content[0]
 	}
 	return &node
+}
+
+func TestConfigMigration_0_0_1_to_0_0_2(t *testing.T) {
+	// Use the embedded v0.0.1 content as our starting point and upgrade to v0.0.2
+	user := testNode(t, string(configs.ConfigYamls["0.0.1"]))
+	old := testNode(t, string(configs.ConfigYamls["0.0.1"]))
+	new := testNode(t, string(configs.ConfigYamls["0.0.2"]))
+
+	migrated, err := configMigrations.Migration_0_0_1_to_0_0_2(user, old, new)
+	if err != nil {
+		t.Fatalf("Migration failed: %v", err)
+	}
+
+	t.Run("version bumped", func(t *testing.T) {
+		version := migration.ResolveNode(migrated, []string{"version"})
+		if version == nil || version.Value != "0.0.2" {
+			t.Errorf("Expected version to be '0.0.2', got: %v", version.Value)
+		}
+	})
+
+	t.Run("project_uuid added", func(t *testing.T) {
+		val := migration.ResolveNode(migrated, []string{"config", "project", "project_uuid"})
+		if val == nil || val.Value != "" {
+			t.Errorf("Expected empty project_uuid, got: %v", val)
+		}
+	})
+
+	t.Run("telemetry_enabled added", func(t *testing.T) {
+		val := migration.ResolveNode(migrated, []string{"config", "project", "telemetry_enabled"})
+		if val == nil || val.Value != "false" {
+			t.Errorf("Expected telemetry_enabled to be false, got: %v", val)
+		}
+	})
+
+	t.Run("templateBaseUrl added", func(t *testing.T) {
+		val := migration.ResolveNode(migrated, []string{"config", "project", "templateBaseUrl"})
+		expected := "https://github.com/Layr-Labs/hourglass-avs-template"
+		if val == nil || val.Value != expected {
+			t.Errorf("Expected templateBaseUrl to be '%s', got: %v", expected, val)
+		}
+	})
+
+	t.Run("templateVersion added", func(t *testing.T) {
+		val := migration.ResolveNode(migrated, []string{"config", "project", "templateVersion"})
+		if val == nil || val.Value != "v0.0.10" {
+			t.Errorf("Expected templateVersion to be 'v0.0.10', got: %v", val)
+		}
+	})
 }
 
 // TestAVSContextMigration_0_0_1_to_0_0_2 tests the specific migration from version 0.0.1 to 0.0.2

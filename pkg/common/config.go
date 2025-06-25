@@ -145,12 +145,6 @@ type Transporter struct {
 	BlsPrivateKey string `json:"bls_private_key" yaml:"bls_private_key"`
 }
 
-// ComponentArtifact defines the structure for a specific component's artifacts
-type ComponentArtifact struct {
-	Digest      string `json:"digest" yaml:"digest"`
-	RegistryUrl string `json:"registry_url" yaml:"registry_url"`
-}
-
 // ArtifactsConfig defines the structure for release artifacts
 type ArtifactsConfig struct {
 	// Legacy fields for backward compatibility
@@ -158,12 +152,6 @@ type ArtifactsConfig struct {
 	Component    string `json:"component" yaml:"component"`
 	Digest       string `json:"digest" yaml:"digest"`
 	RegistryUrl  string `json:"registry_url" yaml:"registry_url"`
-	Amd64ImageId string `json:"amd64_image_id" yaml:"amd64_image_id"`
-	Arm64ImageId string `json:"arm64_image_id" yaml:"arm64_image_id"`
-
-	// Component-specific artifacts
-	Aggregator *ComponentArtifact `json:"aggregator,omitempty" yaml:"aggregator,omitempty"`
-	Executor   *ComponentArtifact `json:"executor,omitempty" yaml:"executor,omitempty"`
 }
 
 type ChainContextConfig struct {

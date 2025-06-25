@@ -163,10 +163,6 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "registry_url", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
-				{Kind: yaml.ScalarNode, Value: "amd64_image_id", Tag: "!!str"},
-				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
-				{Kind: yaml.ScalarNode, Value: "arm64_image_id", Tag: "!!str"},
-				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 			},
 		}
 		// Only add artifacts if not present

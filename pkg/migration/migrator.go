@@ -73,11 +73,28 @@ func (e *PatchEngine) Apply() error {
 		userNode := ResolveNode(e.User, rule.Path)
 		oldNode := ResolveNode(e.Old, rule.Path)
 		newNode := ResolveNode(e.New, rule.Path)
-		if userNode == nil || oldNode == nil {
+
+		// insert new node if missing
+		if userNode == nil {
+			parent, _ := findParent(e.User, rule.Path)
+			if parent == nil {
+				continue
+			}
+			repl := ResolveNode(e.New, rule.Path)
+			if repl == nil {
+				continue
+			}
+			if rule.Transform != nil {
+				repl = rule.Transform(CloneNode(repl))
+			}
+			insertNode(parent, len(parent.Content), rule.Path[len(rule.Path)-1], CloneNode(repl))
 			continue
 		}
+
+		// check if we should apply (compare users to old)
 		if rule.Condition.ShouldApply(userNode, oldNode) {
 			parent, idx := findParent(e.User, rule.Path)
+			// if deleting
 			if rule.Remove {
 				if parent != nil {
 					deleteNode(parent, idx)
@@ -182,12 +199,14 @@ func ResolveNode(root *yaml.Node, path []string) *yaml.Node {
 		root = root.Content[0]
 	}
 	curr := root
-	for i, p := range path {
+	for _, p := range path {
+		found := false
 		switch curr.Kind {
 		case yaml.MappingNode:
 			for j := 0; j < len(curr.Content)-1; j += 2 {
 				if curr.Content[j].Value == p {
 					curr = curr.Content[j+1]
+					found = true
 					break
 				}
 			}
@@ -197,14 +216,12 @@ func ResolveNode(root *yaml.Node, path []string) *yaml.Node {
 				return nil
 			}
 			curr = curr.Content[idx]
+			found = true
 		default:
 			return nil
 		}
-		if curr == nil {
+		if !found {
 			return nil
-		}
-		if i == len(path)-1 {
-			return curr
 		}
 	}
 	return curr
@@ -260,6 +277,10 @@ func findParent(root *yaml.Node, path []string) (*yaml.Node, int) {
 	if len(path) == 0 {
 		return nil, -1
 	}
+	// if DocumentNode, unwrap
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		root = root.Content[0]
+	}
 	curr := root
 	for _, p := range path[:len(path)-1] {
 		switch curr.Kind {
@@ -284,7 +305,7 @@ func findParent(root *yaml.Node, path []string) (*yaml.Node, int) {
 	if curr.Kind == yaml.MappingNode {
 		for j := 0; j < len(curr.Content)-1; j += 2 {
 			if curr.Content[j].Value == target {
-				return curr, j // delete key at j and value at j+1
+				return curr, j
 			}
 		}
 	}
@@ -293,7 +314,18 @@ func findParent(root *yaml.Node, path []string) (*yaml.Node, int) {
 		idx, _ := strconv.Atoi(target)
 		return curr, idx
 	}
-	return nil, -1
+	return curr, -1
+}
+
+// insertNode inserts a key/value pair from a mapping or an element from a sequence
+func insertNode(parent *yaml.Node, idx int, key string, value *yaml.Node) {
+	if parent.Kind == yaml.MappingNode {
+		k := &yaml.Node{Kind: yaml.ScalarNode, Value: key, Tag: "!!str"}
+		parent.Content = append(parent.Content, nil, nil)
+		copy(parent.Content[idx+2:], parent.Content[idx:])
+		parent.Content[idx] = k
+		parent.Content[idx+1] = value
+	}
 }
 
 // deleteNode removes a key/value pair from a mapping or an element from a sequence
