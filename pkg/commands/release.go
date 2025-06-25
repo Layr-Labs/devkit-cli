@@ -363,7 +363,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("  Registry URL: %s", finalRegistryUrl)
 	logger.Info("Publishing to ReleaseManager contract...")
 
-	if err := PublishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(operatorSetId), upgradeByTime, artifactArray); err != nil {
+	if err := publishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(operatorSetId), upgradeByTime, artifactArray); err != nil {
 		logger.Error("Failed to publish release to ReleaseManager: %s", err)
 		return fmt.Errorf("failed to publish release to ReleaseManager: %w", err)
 	}
@@ -424,7 +424,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		}
 
 		logger.Info("Publishing release for operator set %s with %d artifacts...", opSetId, len(artifacts))
-		if err := PublishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(opSetIdInt), upgradeByTime, artifacts); err != nil {
+		if err := publishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(opSetIdInt), upgradeByTime, artifacts); err != nil {
 			logger.Warn("Failed to publish release for operator set %s: %v", opSetId, err)
 			continue
 		}
@@ -434,7 +434,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	return nil
 }
 
-func PublishReleaseToReleaseManagerAction(ctx context.Context, logger iface.Logger, avs string, operatorSetId uint32, upgradeByTime int64, artifacts []releasemanager.IReleaseManagerTypesArtifact) error {
+func publishReleaseToReleaseManagerAction(ctx context.Context, logger iface.Logger, avs string, operatorSetId uint32, upgradeByTime int64, artifacts []releasemanager.IReleaseManagerTypesArtifact) error {
 
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
 	if err != nil {
