@@ -603,9 +603,7 @@ func hexStringToBytes32(hexStr string) ([32]byte, error) {
 	var result [32]byte
 
 	// Remove "sha256:" prefix if present
-	if strings.HasPrefix(hexStr, "sha256:") {
-		hexStr = strings.TrimPrefix(hexStr, "sha256:")
-	}
+	hexStr = strings.TrimPrefix(hexStr, "sha256:")
 
 	// Decode hex string
 	bytes, err := hex.DecodeString(hexStr)
