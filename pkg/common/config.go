@@ -145,8 +145,8 @@ type Transporter struct {
 	BlsPrivateKey string `json:"bls_private_key" yaml:"bls_private_key"`
 }
 
-// ArtifactsConfig defines the structure for release artifacts
-type ArtifactsConfig struct {
+// ArtifactConfig defines the structure for release artifacts
+type ArtifactConfig struct {
 	Component   string `json:"component" yaml:"component"`
 	Digest      string `json:"digest" yaml:"digest"`
 	RegistryUrl string `json:"registry_url" yaml:"registry_url"`
@@ -165,7 +165,7 @@ type ChainContextConfig struct {
 	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 	Stakers               []StakerSpec           `json:"stakers" yaml:"stakers"`
-	Artifacts             *ArtifactsConfig       `json:"artifacts" yaml:"artifacts"`
+	Artifact              *ArtifactConfig        `json:"artifact" yaml:"artifact"`
 }
 
 func LoadBaseConfig() (map[string]interface{}, error) {
