@@ -3,12 +3,14 @@ package commands
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,19 +33,28 @@ type BuildConfig struct {
 	} `yaml:"container"`
 }
 
-// readBuildConfig reads and parses the .hourglass/build.yaml file
-func readBuildConfig() (*BuildConfig, error) {
-	data, err := os.ReadFile(".hourglass/build.yaml")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read .hourglass/build.yaml: %w", err)
+// OperatorSetData represents the data for each operator set
+type OperatorSetData struct {
+	Digest      string `json:"digest"`
+	RegistryUrl string `json:"registry_url"`
+}
+
+// parseOperatorSetMapping parses the JSON output from the release script
+func parseOperatorSetMapping(jsonOutput string) (map[string][]OperatorSetData, error) {
+	// Parse the JSON structure: {"0": [{"digest": "...", "registry_url": "..."}], "1": [...]}
+	var rawMapping map[string][]OperatorSetData
+	if err := json.Unmarshal([]byte(jsonOutput), &rawMapping); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal operator set mapping: %w", err)
 	}
 
-	var config BuildConfig
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse .hourglass/build.yaml: %w", err)
+	// Validate that each operator set has at least one artifact
+	for opSetId, dataArray := range rawMapping {
+		if len(dataArray) == 0 {
+			return nil, fmt.Errorf("operator set %s has empty data array", opSetId)
+		}
 	}
 
-	return &config, nil
+	return rawMapping, nil
 }
 
 // updateContextWithDigest updates the context YAML file with the digest after successful release
@@ -404,10 +415,10 @@ func publishReleaseAction(cCtx *cli.Context) error {
 
 	// Execute release script with version support
 	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--config-dir", configDir, "--version", version)
-	// Stream stdout and stderr to terminal
-	releaseCmd.Stdout = os.Stdout
-	releaseCmd.Stderr = os.Stderr
-	err = releaseCmd.Run()
+	releaseCmd.Stderr = os.Stderr // Show stderr in terminal
+
+	// Capture stdout to get the operator set mapping JSON
+	output, err := releaseCmd.Output()
 	if err != nil {
 		// Script returned non-zero exit code, meaning image has changed
 		logger.Info("Image has changed since last build. Please ensure your build is stable before releasing.")
@@ -469,6 +480,60 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		// Don't fail the release if context update fails
 	} else {
 		logger.Info("Successfully updated context with digest: %s", imageDigest)
+	}
+
+	// Parse the operator set mapping JSON from script output
+	logger.Info("Processing operator set mapping from script output...")
+	operatorSetMapping, err := parseOperatorSetMapping(string(output))
+	if err != nil {
+		logger.Warn("Failed to parse operator set mapping in hourglass release script: %v", err)
+		return nil
+	}
+
+	logger.Info("Retrieved operator set mapping with %d operator sets", len(operatorSetMapping))
+
+	// Publish releases for each operator set
+	for opSetId, opSetDataArray := range operatorSetMapping {
+		opSetIdInt, err := strconv.ParseUint(opSetId, 10, 32)
+		if err != nil {
+			logger.Warn("Failed to parse operator set ID %s: %v", opSetId, err)
+			continue
+		}
+
+		logger.Info("Processing operator set %s with %d artifacts:", opSetId, len(opSetDataArray))
+
+		// Create artifacts array for this operator set
+		var artifacts []releasemanager.IReleaseManagerTypesArtifact
+		for i, opSetData := range opSetDataArray {
+			logger.Info("  Artifact %d:", i+1)
+			logger.Info("    Digest: %s", opSetData.Digest)
+			logger.Info("    Registry URL: %s", opSetData.RegistryUrl)
+
+			// Convert digest to bytes32
+			digestBytes, err := hexStringToBytes32(opSetData.Digest)
+			if err != nil {
+				logger.Warn("Failed to convert digest to bytes32 for operator set %s artifact %d: %v", opSetId, i+1, err)
+				continue
+			}
+
+			artifact := releasemanager.IReleaseManagerTypesArtifact{
+				Digest:      digestBytes,
+				RegistryUrl: opSetData.RegistryUrl,
+			}
+			artifacts = append(artifacts, artifact)
+		}
+
+		if len(artifacts) == 0 {
+			logger.Warn("No valid artifacts for operator set %s, skipping", opSetId)
+			continue
+		}
+
+		logger.Info("Publishing release for operator set %s with %d artifacts...", opSetId, len(artifacts))
+		if err := PublishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(opSetIdInt), upgradeByTime, artifacts); err != nil {
+			logger.Warn("Failed to publish release for operator set %s: %v", opSetId, err)
+			continue
+		}
+		logger.Info("Successfully published release for operator set %s", opSetId)
 	}
 
 	return nil

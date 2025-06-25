@@ -61,6 +61,7 @@ var BuildCommand = &cli.Command{
 		// Execute build via .devkit scripts and capture JSON output
 		output, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectJSONResponse)
 		if err != nil {
+			logger.Error("Build script failed with error: %v", err)
 			return fmt.Errorf("build failed: %w", err)
 		}
 
