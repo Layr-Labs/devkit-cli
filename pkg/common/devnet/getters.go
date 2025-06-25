@@ -146,12 +146,12 @@ func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName stri
 // Falls back to constants if not found in context
 func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationManager, delegationManager string, strategyManager string, keyRegistrar string, crossChainRegistry string, bn254TableCalculator string, releaseManager string) {
 	if cfg == nil || cfg.Context == nil {
-		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS, HOLESKY_RELEASE_MANAGER_ADDRESS
+		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS, RELEASE_MANAGER_ADDRESS
 	}
 
 	devnetCtx, found := cfg.Context[DEVNET_CONTEXT]
 	if !found || devnetCtx.EigenLayer == nil {
-		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS, HOLESKY_RELEASE_MANAGER_ADDRESS
+		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS, RELEASE_MANAGER_ADDRESS
 	}
 
 	allocationManager = devnetCtx.EigenLayer.L1.AllocationManager
@@ -182,7 +182,7 @@ func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationMana
 	}
 	releaseManager = devnetCtx.EigenLayer.L1.ReleaseManager
 	if releaseManager == "" {
-		releaseManager = HOLESKY_RELEASE_MANAGER_ADDRESS
+		releaseManager = RELEASE_MANAGER_ADDRESS
 	}
 
 	return allocationManager, delegationManager, strategyManager, keyRegistrar, crossChainRegistry, bn254TableCalculator, releaseManager
