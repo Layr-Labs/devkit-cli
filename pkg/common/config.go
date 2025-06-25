@@ -150,6 +150,7 @@ type ArtifactConfig struct {
 	Component   string `json:"component" yaml:"component"`
 	Digest      string `json:"digest" yaml:"digest"`
 	RegistryUrl string `json:"registry_url" yaml:"registry_url"`
+	Version     string `json:"version" yaml:"version"`
 }
 
 type ChainContextConfig struct {

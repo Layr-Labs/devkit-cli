@@ -94,57 +94,6 @@ func updateContextWithDigest(digest string) error {
 	return nil
 }
 
-// processVersionWithScript processes version using the version.sh script
-func processVersionWithScript(ctx context.Context, logger iface.Logger, versionInput string) (string, error) {
-	scriptsDir := filepath.Join(".hourglass", "scripts")
-	versionScriptPath := filepath.Join(scriptsDir, "version.sh")
-
-	// Check if version.sh exists
-	if _, err := os.Stat(versionScriptPath); os.IsNotExist(err) {
-		// If no version script, treat as literal version and validate
-		return validateAndFormatVersion(versionInput)
-	}
-
-	// Get config directory for version caching
-	configDir, err := common.GetGlobalConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get global config directory: %w", err)
-	}
-
-	var cmd *exec.Cmd
-
-	// Handle different version types
-	switch versionInput {
-	case "major", "minor", "patch":
-		// Bump version
-		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "bump", versionInput, "--config-dir", configDir)
-	case "git-tag":
-		// Use git tag
-		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "git-tag", "--config-dir", configDir)
-	case "commit":
-		// Use git commit
-		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "commit", "--config-dir", configDir)
-	case "timestamp":
-		// Use timestamp
-		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "timestamp", "--config-dir", configDir)
-	default:
-		// Set specific version
-		cmd = exec.CommandContext(ctx, "bash", versionScriptPath, "set", versionInput, "--config-dir", configDir)
-	}
-
-	logger.Info("Processing version with script: %s", versionInput)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		logger.Error("Version script failed: %s", string(output))
-		return "", fmt.Errorf("version script failed: %w", err)
-	}
-
-	logger.Info("Version script output: %s", strings.TrimSpace(string(output)))
-
-	// Get the updated version from cache (preferred) or build.yaml (fallback)
-	return getVersionFromCache()
-}
-
 // validateAndFormatVersion validates and formats a literal version string
 func validateAndFormatVersion(version string) (string, error) {
 	// Remove 'v' prefix if present for processing
@@ -155,58 +104,8 @@ func validateAndFormatVersion(version string) (string, error) {
 		return "", fmt.Errorf("version should follow semantic versioning format (e.g., 1.0.0)")
 	}
 
-	// Return without 'v' prefix (build.yaml expects clean version)
+	// Return without 'v' prefix
 	return cleanVersion, nil
-}
-
-// getVersionFromCache reads the version from the cached version file in global config
-func getVersionFromCache() (string, error) {
-	configDir, err := common.GetGlobalConfigDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get global config directory: %w", err)
-	}
-
-	// Get project name for cache file
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("failed to get current directory: %w", err)
-	}
-	projectName := filepath.Base(cwd)
-
-	// Read cached version
-	versionCacheFile := filepath.Join(configDir, "versions", projectName+"_version")
-	data, err := os.ReadFile(versionCacheFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			// If no cached version, fall back to build.yaml
-			return getVersionFromBuildYaml()
-		}
-		return "", fmt.Errorf("failed to read cached version: %w", err)
-	}
-
-	version := strings.TrimSpace(string(data))
-	if version == "" {
-		// If cached version is empty, fall back to build.yaml
-		return getVersionFromBuildYaml()
-	}
-
-	return version, nil
-}
-
-// getVersionFromBuildYaml reads the version from build.yaml (fallback)
-func getVersionFromBuildYaml() (string, error) {
-	buildYamlPath := filepath.Join(".hourglass", "build.yaml")
-	data, err := os.ReadFile(buildYamlPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to read build.yaml: %w", err)
-	}
-
-	var buildConfig BuildConfig
-	if err := yaml.Unmarshal(data, &buildConfig); err != nil {
-		return "", fmt.Errorf("failed to parse build.yaml: %w", err)
-	}
-
-	return buildConfig.Container.Version, nil
 }
 
 // performMultiArchBuildAndPush performs multi-architecture build and push using buildx
@@ -326,7 +225,7 @@ var ReleaseCommand = &cli.Command{
 				},
 				&cli.StringFlag{
 					Name:  "version",
-					Usage: "Version to release (e.g., v1.0.0, major, minor, patch, git-tag, commit, timestamp). Defaults to 0.1.0 for first release",
+					Usage: "Version to release (e.g., 1.0.0). If not provided, will use version from context",
 				},
 			}...),
 			Action: publishReleaseAction,
@@ -348,23 +247,37 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		return fmt.Errorf("AVS address cannot be empty")
 	}
 
-	// Handle version - if not provided, read from build.yaml
+	// Get build artifact from context first to read registry URL and version
+	cfg, err := common.LoadConfigWithContextConfig("devnet") // TODO: make context configurable
+	if err != nil {
+		return fmt.Errorf("failed to load context config: %w", err)
+	}
+
+	if cfg.Context["devnet"].Artifact == nil {
+		return fmt.Errorf("no artifact found in context. Please run 'devkit avs build' first")
+	}
+
+	artifact := cfg.Context["devnet"].Artifact
+
+	// Handle version - if not provided, read from context
 	if version == "" {
-		// Read current version from build.yaml
-		currentVersion, err := getVersionFromBuildYaml()
-		if err != nil {
-			return fmt.Errorf("failed to read current version from build.yaml: %w", err)
+		version = artifact.Version
+		if version == "" {
+			return fmt.Errorf("no version specified and no version found in context")
 		}
-		version = currentVersion
-		logger.Info("No version specified, using current version from build.yaml: %s", version)
+		// Validate provided version
+		version, err = validateAndFormatVersion(version)
+		if err != nil {
+			return fmt.Errorf("invalid version format in context: %w", err)
+		}
+		logger.Info("No version specified, using version from context: %s", version)
 	} else {
-		// Process version through version.sh script
-		processedVersion, err := processVersionWithScript(cCtx.Context, logger, version)
+		// Validate provided version
+		version, err = validateAndFormatVersion(version)
 		if err != nil {
-			return fmt.Errorf("failed to process version: %w", err)
+			return fmt.Errorf("invalid version format: %w", err)
 		}
-		version = processedVersion
-		logger.Info("Processed version: %s", version)
+		logger.Info("Using provided version: %s", version)
 	}
 
 	// Validate operator set ID fits in uint32 range (since it gets cast to uint32 later)
@@ -376,18 +289,6 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	if upgradeByTime <= time.Now().Unix() {
 		return fmt.Errorf("upgrade-by-time timestamp %d must be in the future (current time: %d)", upgradeByTime, time.Now().Unix())
 	}
-
-	// Get build artifact from context first to read registry URL
-	cfg, err := common.LoadConfigWithContextConfig("devnet") // TODO: make context configurable
-	if err != nil {
-		return fmt.Errorf("failed to load context config: %w", err)
-	}
-
-	if cfg.Context["devnet"].Artifact == nil {
-		return fmt.Errorf("no artifact found in context. Please run 'devkit avs build' first")
-	}
-
-	artifact := cfg.Context["devnet"].Artifact
 
 	logger.Info("Publishing AVS release...")
 	logger.Info("  AVS address: %s", avs)
@@ -407,14 +308,8 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	scriptsDir := filepath.Join(".hourglass", "scripts")
 	releaseScriptPath := filepath.Join(scriptsDir, "release.sh")
 
-	// Get config directory for version support
-	configDir, err := common.GetGlobalConfigDir()
-	if err != nil {
-		return fmt.Errorf("failed to get global config directory: %w", err)
-	}
-
-	// Execute release script with version support
-	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--config-dir", configDir, "--version", version)
+	// Execute release script with version
+	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--version", version)
 	releaseCmd.Stderr = os.Stderr // Show stderr in terminal
 
 	// Capture stdout to get the operator set mapping JSON

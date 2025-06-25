@@ -117,3 +117,4 @@ context:
     component: ""
     digest: ""
     registry_url: ""
+    version: ""
