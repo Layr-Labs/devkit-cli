@@ -729,7 +729,7 @@ func (cc *ContractCaller) GetRegistry() *contracts.ContractRegistry {
 	return cc.registry
 }
 
-func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.Address, artifacts []releasemanager.IReleaseManagerTypesArtifact, operatorSetId uint32, deadlineTimestamp int64) error {
+func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.Address, artifacts []releasemanager.IReleaseManagerTypesArtifact, operatorSetId uint32, upgradeByTime int64) error {
 	opts, err := cc.buildTxOpts()
 	if err != nil {
 		return fmt.Errorf("failed to build transaction options: %w", err)
@@ -741,7 +741,7 @@ func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.
 	operatorSet := releasemanager.OperatorSet{Avs: avsAddress, Id: operatorSetId}
 	release := releasemanager.IReleaseManagerTypesRelease{
 		Artifacts:     artifacts,
-		UpgradeByTime: uint32(deadlineTimestamp),
+		UpgradeByTime: uint32(upgradeByTime),
 	}
 	err = cc.SendAndWaitForTransaction(ctx, "PublishRelease", func() (*types.Transaction, error) {
 		tx, err := releaseManager.PublishRelease(opts, operatorSet, release)
