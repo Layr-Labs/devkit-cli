@@ -73,10 +73,12 @@ func TestUpgrade_GetLatestVersionFromGitHub(t *testing.T) {
 
 	// Patch URL to use mock server
 	original := githubReleasesURL
-	githubReleasesURL = ts.URL + "/repos/Layr-Labs/devkit-cli/releases/latest"
+	githubReleasesURL = func(version string) string {
+		return ts.URL + "/repos/Layr-Labs/devkit-cli/releases/latest"
+	}
 	defer func() { githubReleasesURL = original }()
 
-	version, commit, err := GetLatestVersionFromGitHub()
+	version, commit, err := GetLatestVersionFromGitHub("latest")
 	assert.NoError(t, err)
 	assert.Equal(t, "v9.9.9", version)
 	assert.Equal(t, "aaaaaaa", commit)

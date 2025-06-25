@@ -47,7 +47,14 @@ var buildDownloadURL = func(version, arch, distro string) string {
 }
 
 // githubReleasesURL points to the latest GitHub release metadata
-var githubReleasesURL = "https://api.github.com/repos/Layr-Labs/devkit-cli/releases/latest"
+var githubReleasesURL = func(version string) string {
+	baseUrl := "https://api.github.com/repos/Layr-Labs/devkit-cli/releases/"
+	if version == "latest" {
+		return baseUrl + version
+	} else {
+		return baseUrl + "tags/" + version
+	}
+}
 
 // UpgradeDevkit resolves the latest version if needed and invokes PerformUpgrade to install the new version
 func UpgradeDevkit(cCtx *cli.Context) error {
@@ -58,16 +65,16 @@ func UpgradeDevkit(cCtx *cli.Context) error {
 	currentCommit := version.GetCommit()
 
 	// Get the version to be installed
-	targetVersion := cCtx.String("version")
-	var targetCommit = ""
+	requestedVersion := cCtx.String("version")
+	// Default requestedVersion to "latest"
+	if requestedVersion == "" {
+		requestedVersion = "latest"
+	}
 
-	// If version is 'latest', fetch it from GitHub
-	if targetVersion == "" || targetVersion == "latest" {
-		var err error
-		targetVersion, targetCommit, err = GetLatestVersionFromGitHub()
-		if err != nil {
-			return fmt.Errorf("could not get latest version: %w", err)
-		}
+	// Pull release details from github
+	targetVersion, targetCommit, err := GetLatestVersionFromGitHub(requestedVersion)
+	if err != nil {
+		return fmt.Errorf("requested version %s does not exist: %w", requestedVersion, err)
 	}
 
 	// Log upgrade
@@ -159,15 +166,15 @@ func PerformUpgrade(version, binDir string, logger iface.Logger) error {
 }
 
 // GetLatestVersionFromGitHub queries the GitHub releases API and returns the latest tag and commit
-func GetLatestVersionFromGitHub() (string, string, error) {
-	resp, err := http.Get(githubReleasesURL)
+func GetLatestVersionFromGitHub(version string) (string, string, error) {
+	resp, err := http.Get(githubReleasesURL(version))
 	if err != nil {
 		return "", "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("failed to fetch latest release: %s", resp.Status)
+		return "", "", fmt.Errorf("failed to fetch release for version %s: %s", version, resp.Status)
 	}
 
 	var data LatestRelease
