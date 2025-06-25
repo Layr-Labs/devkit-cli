@@ -1,5 +1,5 @@
 ## ⚠️ Disclaimer: Closed Alpha Not Production Ready
-EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used for use in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
+EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
 
 # EigenLayer Development Kit (DevKit) 🚀
 
@@ -13,7 +13,7 @@ EigenLayer DevKit streamlines AVS development, enabling you to:
 
 Use DevKit to get from AVS idea to Proof of Concept with a local testing environment that includes task simulation.
 
-> **Note:** The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass task-based framework. We're actively expanding capabilities, so if there's a gap for your scenario, check out our roadmap see what's coming, or let us know what would support you in building AVS.
+> **Note:** The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass task-based framework. We're actively expanding capabilities, so if there's a gap for your scenario, check out our roadmap to see what's coming, or let us know what would support you in building AVS.
 
 ![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
 
@@ -35,14 +35,6 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 
 ### ✅ Prerequisites
 
-On MacOS or Debian, running:
-
-```bash
-devkit avs create my-avs-project ./
-```
-
-Installs all required dependencies. If you've already installed any, verify they match the versions below. On other OSes, install them manually:
-
 * [Docker (latest)](https://docs.docker.com/engine/install/)
 * [Foundry (latest)](https://book.getfoundry.sh/getting-started/installation)
 * [Go (v1.23.6)](https://go.dev/doc/install)
@@ -51,6 +43,14 @@ Installs all required dependencies. If you've already installed any, verify they
 * [jq (v1.7.1)](https://jqlang.org/download/)
 * [yq (v4.35.1)](https://github.com/mikefarah/yq/#install)
 * [zeus (v1.5.2)](https://github.com/Layr-Labs/zeus)
+
+On MacOS and Debian, running the following command installs all required dependencies and version numbers automatically. For other OSs, manual installation of software prerequistes is required:
+
+```bash
+devkit avs create my-avs-project ./
+```
+
+
 
 ### 📦 Installation
 
@@ -152,7 +152,7 @@ Projects are created by default in the current directory from where the below co
 ```bash
 devkit avs create my-avs-project ./
 cd my-avs-project
-# If dependencies we're installed during the creation process, you will need to source your bash/zsh profile:
+# If dependencies were installed during the creation process, you will need to source your bash/zsh profile:
 #  - if you use bashrc
 source ~/.bashrc
 #  - if you use bash_profile
@@ -192,20 +192,84 @@ These functions will be invoked automatically when using `devkit avs call`, enab
 
 ### 3️⃣ Set RPC Endpoint URL
 
-An RPC endpoint URL is needed to enable forking of the Testnet or Mainnet state to your local environment. These values are loaded from your `.env` file and automatically applied to your environment. This step is essential for simulating your AVS environment in a fully self-contained way, enabling fast iteration on your AVS business logic without needing to deploy to testnet/mainnet or coordinate with live operators.
-
-To configure them:
+Set the `FORK_URL` values to a **Holesky** RPC **archive node** endpoint URL. This endpoint is needed to enable forking of the testnet state to your local environment. The endpoint will be used to fork the chain state to your local environment (devnet) for testing. Please note the following important details:
+- Only the **Holesky** testnet is supported at this time.
+- The RPC endpoint should be an **archive** node, not a _full_ node. More context is available [here](https://www.quicknode.com/guides/infrastructure/node-setup/ethereum-full-node-vs-archive-node).
+- For initial testing purposes we recommend setting both `FORK_URL` values to the same endpoint URL.
 
 ```bash
 cp .env.example .env
-# edit `.env` and set your L1_FORK_URL and L2_FORK_URL before proceeding
+# edit `.env` and set your L1_FORK_URL and L2_FORK_URL to point to your RPC endpoint
 ```
 
-You are welcome to use any popular RPC provider (e.g., QuickNode, Alchemy) or a free provider to, such as https://ethereum-rpc.publicnode.com or https://www.1rpc.io .
+You are welcome to use any reliable RPC provider (e.g. QuickNode, Alchemy).
 
 
 
-### 4️⃣ (Optional) Configure Your AVS (`devkit avs config` & `devkit avs context`)
+### 4️⃣ Build Your AVS (`devkit avs build`)
+
+Compiles your AVS contracts and offchain binaries. Required before running a devnet or simulating tasks to ensure all components are built and ready.
+
+* Compiles smart contracts using Foundry.
+* Builds operator, aggregator, and AVS logic binaries.
+
+Ensure you're in your project directory before running:
+
+```bash
+devkit avs build
+```
+
+### 5️⃣ Launch Local DevNet (`devkit avs devnet`)
+
+Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
+
+* Forks Ethereum holesky using a fork URL (provided by you) and a block number. These URLs CAN be set in the `config/context/devnet.yaml`, but we recommend placing them in a `.env` file which will take precedence over `config/context/devnet.yaml`. Please see `.env.example`.
+* Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
+* Setup required `AVS` contracts.
+* Register `AVS` and `Operators`.
+
+In your project directory, run:
+
+```bash
+devkit avs devnet start
+```
+
+> \[!IMPORTANT]
+> Please ensure your Docker daemon is running before running this command.
+
+DevNet management commands:
+
+| Command | Description                                                             |
+| ------- | -------------------------------------------                             |
+| `start` | Start local Docker containers and contracts                             |
+| `stop`  | Stop and remove containers from the AVS project   |
+| `list`  | List active containers and their ports                                  |
+| `stop --all`  | Stops all devkit devnet containers that are currently currening                                  |
+| `stop --project.name`  | Stops the specific project's devnet                                  |
+| `stop --port`  | Stops the specific port e.g.: `stop --port 8545`                                  |
+
+### 6️⃣ Simulate Task Execution (`devkit avs call`)
+
+Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
+
+* Simulate the full lifecycle of task submission and execution.
+* Validate both off-chain and on-chain logic.
+* Review detailed execution results.
+
+Run this from your project directory:
+
+```bash
+devkit avs call --signature="(uint256,string)" args='(5,"hello")'
+```
+
+Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
+
+---
+
+## Optional Commands
+
+
+### Configure Your AVS (`devkit avs config` & `devkit avs context`)
 
 Configure both project-level and context-specific settings via the following files:
 
@@ -214,7 +278,7 @@ Configure both project-level and context-specific settings via the following fil
 - **`contexts/<context>.yaml`**  
   Contains environment-specific settings for a given context (e.g., `devnet`), including the Ethereum fork URL, block height, operator keys, AVS keys, and other runtime parameters.
 
-You can view or modify these configurations using the DevKit CLI or by editing the files manually.
+You can view or modify these configurations using the DevKit CLI or by editing the `config.yaml` or the `contexts/*.yaml` files manually.
 
 ---
 
@@ -260,72 +324,9 @@ You can view or modify these configurations using the DevKit CLI or by editing t
   devkit avs context --context devnet --set operators.0.address="0xabc..." operators.0.ecdsa_key="0x123..."
   ```
 
-Alternatively, you can manually edit `config.yaml` or the `contexts/*.yaml` files in the text editor of your choice.
 
 
 
-
-### 5️⃣ Build Your AVS (`devkit avs build`)
-
-Compiles your AVS contracts and offchain binaries. Required before running a devnet or simulating tasks to ensure all components are built and ready.
-
-* Compiles smart contracts using Foundry.
-* Builds operator, aggregator, and AVS logic binaries.
-
-Ensure you're in your project directory before running:
-
-```bash
-devkit avs build
-```
-
-### 6️⃣ Launch Local DevNet (`devkit avs devnet`)
-
-Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
-
-* Forks Ethereum holesky using a fork URL (provided by you) and a block number. These URLs CAN be set in the `config/context/devnet.yaml`, but we recommend placing them in a `.env` file which will take precedence over `config/context/devnet.yaml`. Please see `.env.example`.
-* Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
-* Setup required `AVS` contracts.
-* Register `AVS` and `Operators`.
-
-In your project directory, run:
-
-```bash
-devkit avs devnet start
-```
-
-> \[!IMPORTANT]
-> Please ensure your Docker daemon is running before running this command.
-
-DevNet management commands:
-
-| Command | Description                                                             |
-| ------- | -------------------------------------------                             |
-| `start` | Start local Docker containers and contracts                             |
-| `stop`  | Stop and remove container from the avs project this command is called   |
-| `list`  | List active containers and their ports                                  |
-| `stop --all`  | Stops all devkit devnet containers that are currently currening                                  |
-| `stop --project.name`  | Stops the specific project's devnet                                  |
-| `stop --port`  | Stops the specific port .ex: `stop --port 8545`                                  |
-
-### 7️⃣ Simulate Task Execution (`devkit avs call`)
-
-Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
-
-* Simulate the full lifecycle of task submission and execution.
-* Validate both off-chain and on-chain logic.
-* Review detailed execution results.
-
-Run this from your project directory:
-
-```bash
-devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
-```
-
-Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
-
----
-
-## Optional Commands
 
 ### Start offchain AVS infrastructure (`devkit avs run`)
 
@@ -367,8 +368,8 @@ devkit keystore read --path --password
 ```
 
 **Flag Descriptions**
-- **`key`**: Private key in BigInt format . Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
-- **`path`**: Path to the json file. It needs to include the filename . Example: `./keystores/operator1.keystore.json`
+- **`key`**: Private key in BigInt format. Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
+- **`path`**: Path to the json file that must also include the filename. Example: `./keystores/operator1.keystore.json`
 - **`password`**: Password to encrypt/decrypt the keystore.
 
 ### Template Management (`devkit avs template`)
@@ -453,7 +454,7 @@ To upgrade to a newer version you can run:
 devkit avs template upgrade --version <version>
 ```
 
-More often than not, you'll want to use tag corresponding to your template's release. You may also provide a branch name or commit hash to upgrade to.
+More often than not, you'll want to use the tag corresponding to your template's release. You may also provide a branch name or commit hash to upgrade to.
 
 _Please consult your template's docs for further information on how the upgrade process works._
 
@@ -606,24 +607,6 @@ devkit telemetry --enable
 devkit telemetry --status
 ```
 
-**Set global default for your organization:**
-```bash
-# Disable telemetry for all future projects
-devkit telemetry --disable --global
-```
-
-**Override for a specific project:**
-```bash
-# In project directory - enable telemetry just for this project
-cd my-avs-project
-devkit telemetry --enable
-```
-
-**Check what's actually being used:**
-```bash
-# Shows both project and global settings for context
-devkit telemetry --status
-```
 
 ### 🏢 Enterprise Usage
 
@@ -650,7 +633,7 @@ Please post any questions or concerns to the [Issues](https://github.com/Layr-La
 
 ## For DevKit Maintainers: DevKit Release Process
 To release a new version of the CLI, follow the steps below:
-> Note: You need to have write permission to this repo to release new version
+> Note: You need to have write permission to this repo to release a new version.
 
 1. Checkout the main branch and pull the latest changes:
     ```bash
@@ -659,7 +642,7 @@ To release a new version of the CLI, follow the steps below:
     ```
 2. In your local clone, create a new release tag using the following command:
     ```bash
-     git tag v<version> -m "Release v<version>"
+    git tag v<version> -m "Release v<version>"
     ```
 3. Push the tag to the repository using the following command:
     ```bash
