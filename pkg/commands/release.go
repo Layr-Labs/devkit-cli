@@ -24,16 +24,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// OperatorSetData represents the data for each operator set
-type OperatorSetData struct {
+// OperatorSetRelease represents the data for each operator set
+type OperatorSetRelease struct {
 	Digest      string `json:"digest"`
 	RegistryUrl string `json:"registry_url"`
 }
 
 // parseOperatorSetMapping parses the JSON output from the release script
-func parseOperatorSetMapping(jsonOutput string) (map[string][]OperatorSetData, error) {
+func parseOperatorSetMapping(jsonOutput string) (map[string][]OperatorSetRelease, error) {
 	// Parse the JSON structure: {"0": [{"digest": "...", "registry_url": "..."}], "1": [...]}
-	var rawMapping map[string][]OperatorSetData
+	var rawMapping map[string][]OperatorSetRelease
 	if err := json.Unmarshal([]byte(jsonOutput), &rawMapping); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal operator set mapping: %w", err)
 	}
