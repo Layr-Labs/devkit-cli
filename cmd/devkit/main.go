@@ -49,6 +49,7 @@ func main() {
 			commands.AVSCommand,
 			keystore.KeystoreCommand,
 			version.VersionCommand,
+			commands.UpgradeCommand,
 			commands.TelemetryCommand,
 		},
 		UseShortOptionHandling: true,

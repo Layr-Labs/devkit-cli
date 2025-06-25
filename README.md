@@ -391,7 +391,7 @@ View template information:
 devkit avs template info
 ```
 
-Upgrade to a specific template version (tag, branch, or commit hash):
+Upgrade to a specific template version (`"latest"`, tag, branch, or commit hash):
 ```bash
 devkit avs template upgrade --version v1.0.0
 ```
@@ -419,21 +419,27 @@ devkit avs build --verbose
 
 ### Upgrading the Devkit CLI
 
-To upgrade the Devkit CLI to the latest version, find the [latest release](releases) you want to download and re-run the curl install command:
+To upgrade the Devkit CLI to the latest version, you can use the `devkit upgrade` command.
 
 ```bash
-VERSION=v0.0.8
-ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
-DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
+# installs the latest version of devkit 
+devkit upgrade
+```
 
-mkdir -p $HOME/bin
-curl -sL "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | tar xv -C "$HOME/bin"
+To move to a specific release, find the [target release](releases) you want to install and run:
 
+```bash
+devkit upgrade --version <target-version>
 ```
 
 ### Upgrading your template
 
 To upgrade the template you created your project with (by calling `devkit avs create`) you can use the `devkit avs template` subcommands.
+
+```bash
+# installs the latest template version known to devkit
+devkit avs template upgrade
+```
 
 **_View which version you're currently using_**
 

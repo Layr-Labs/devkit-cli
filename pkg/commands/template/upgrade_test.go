@@ -63,6 +63,13 @@ func (m *MockTemplateInfoGetter) GetInfoDefault() (string, string, string, error
 	return m.projectName, m.templateURL, m.templateVersion, nil
 }
 
+func (m *MockTemplateInfoGetter) GetTemplateVersionFromConfig(arch, lang string) (string, error) {
+	if m.shouldReturnError {
+		return "", fmt.Errorf("config/config.yaml not found")
+	}
+	return m.templateVersion, nil
+}
+
 func TestUpgradeCommand(t *testing.T) {
 	// Create a temporary directory for testing
 	testProjectsDir, err := filepath.Abs(filepath.Join(os.TempDir(), "devkit-template-upgrade-test"))
