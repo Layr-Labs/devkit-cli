@@ -76,9 +76,9 @@ func updateContextWithDigest(digest string) error {
 	}
 
 	// Get or create artifacts section
-	artifactsSection := common.GetChildByKey(contextSection, "artifacts")
+	artifactsSection := common.GetChildByKey(contextSection, "artifact")
 	if artifactsSection == nil {
-		return fmt.Errorf("artifacts section not found in context")
+		return fmt.Errorf("artifact section not found in context")
 	}
 
 	// Update digest field
