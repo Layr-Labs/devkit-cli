@@ -377,27 +377,27 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		return fmt.Errorf("upgrade-by-time timestamp %d must be in the future (current time: %d)", upgradeByTime, time.Now().Unix())
 	}
 
-	// Get build artifacts from context first to read registry URL
+	// Get build artifact from context first to read registry URL
 	cfg, err := common.LoadConfigWithContextConfig("devnet") // TODO: make context configurable
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
 	}
 
-	if cfg.Context["devnet"].Artifacts == nil {
-		return fmt.Errorf("no artifacts found in context. Please run 'devkit avs build' first")
+	if cfg.Context["devnet"].Artifact == nil {
+		return fmt.Errorf("no artifact found in context. Please run 'devkit avs build' first")
 	}
 
-	artifacts := cfg.Context["devnet"].Artifacts
+	artifact := cfg.Context["devnet"].Artifact
 
 	logger.Info("Publishing AVS release...")
 	logger.Info("  AVS address: %s", avs)
 	logger.Info("  Version: %s", version)
 	logger.Info("  Operator Set ID: %d", operatorSetId)
-	logger.Info("  Registry URL: %s", artifacts.RegistryUrl)
+	logger.Info("  Registry URL: %s", artifact.RegistryUrl)
 	logger.Info("  UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
 	// Check if component is present (from local build)
-	if artifacts.Component == "" {
+	if artifact.Component == "" {
 		logger.Info("No artifact found in context. Please run 'devkit avs build' first to create a local build.")
 		return nil
 	}
@@ -433,7 +433,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("Starting multi-architecture build and push process...")
 
 	// Implement multi-arch build, push to registry, and get digest
-	finalRegistryUrl := artifacts.RegistryUrl
+	finalRegistryUrl := artifact.RegistryUrl
 
 	if finalRegistryUrl == "" {
 		return fmt.Errorf("registry URL not found in context. Please ensure it's set in your context configuration")

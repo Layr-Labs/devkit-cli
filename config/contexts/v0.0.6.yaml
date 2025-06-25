@@ -112,8 +112,8 @@ context:
   operator_sets: []
   # Operators registered on `devnet start`
   operator_registrations: []
-  # Release artifacts
-  artifacts:
+  # Release artifact
+  artifact:
     component: ""
     digest: ""
     registry_url: ""

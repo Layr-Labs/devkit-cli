@@ -16,11 +16,6 @@ var BuildCommand = &cli.Command{
 	Name:  "build",
 	Usage: "Compiles AVS components (smart contracts via Foundry, Go binaries for operators/aggregators)",
 	Flags: append([]cli.Flag{
-		// TBD: Release flag will be implemented in future
-		/*&cli.BoolFlag{
-			Name:  "release",
-			Usage: "Produce production-optimized artifacts",
-		},*/
 		&cli.StringFlag{
 			Name:  "context",
 			Usage: "devnet ,testnet or mainnet",
@@ -85,9 +80,9 @@ var BuildCommand = &cli.Command{
 			)
 		}
 
-		// Update artifacts in context, preserving existing non-empty values
-		if err := updateArtifactsFromBuild(contextSection, output); err != nil {
-			return fmt.Errorf("failed to update artifacts: %w", err)
+		// Update artifact in context, preserving existing non-empty values
+		if err := updateArtifactFromBuild(contextSection, output); err != nil {
+			return fmt.Errorf("failed to update artifact: %w", err)
 		}
 
 		// Write the merged yaml back to file
@@ -100,29 +95,29 @@ var BuildCommand = &cli.Command{
 	},
 }
 
-// updateArtifactsFromBuild updates the artifacts section with build output, preserving existing non-empty values
-func updateArtifactsFromBuild(contextSection *yaml.Node, buildOutput interface{}) error {
+// updateArtifactFromBuild updates the artifact section with build output, preserving existing non-empty values
+func updateArtifactFromBuild(contextSection *yaml.Node, buildOutput interface{}) error {
 	// Convert build output to map for easier access
 	outputMap, ok := buildOutput.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("build output is not a map")
 	}
 
-	// Get or create artifacts section
-	artifactsSection := common.GetChildByKey(contextSection, "artifacts")
-	if artifactsSection == nil {
-		artifactsSection = &yaml.Node{Kind: yaml.MappingNode}
+	// Get or create artifact section
+	artifactSection := common.GetChildByKey(contextSection, "artifact")
+	if artifactSection == nil {
+		artifactSection = &yaml.Node{Kind: yaml.MappingNode}
 		common.SetMappingValue(contextSection,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: "artifacts"},
-			artifactsSection)
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "artifact"},
+			artifactSection)
 	}
 
-	// Update artifacts fields from build output, preserving existing non-empty values
-	if artifacts, ok := outputMap["artifacts"].(map[string]interface{}); ok {
-		for key, value := range artifacts {
+	// Update artifact fields from build output, preserving existing non-empty values
+	if artifact, ok := outputMap["artifact"].(map[string]interface{}); ok {
+		for key, value := range artifact {
 			// Skip updating registry_url if it's empty and we already have a non-empty value
 			if key == "registry_url" {
-				existingValue := common.GetChildByKey(artifactsSection, key)
+				existingValue := common.GetChildByKey(artifactSection, key)
 				if existingValue != nil && existingValue.Value != "" &&
 					(value == nil || value == "") {
 					continue // Preserve existing non-empty registry_url
@@ -136,7 +131,7 @@ func updateArtifactsFromBuild(contextSection *yaml.Node, buildOutput interface{}
 			}
 
 			// Update the field
-			common.SetMappingValue(artifactsSection,
+			common.SetMappingValue(artifactSection,
 				&yaml.Node{Kind: yaml.ScalarNode, Value: key},
 				&yaml.Node{Kind: yaml.ScalarNode, Value: valueStr})
 		}
