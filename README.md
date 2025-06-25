@@ -9,7 +9,7 @@ EigenLayer DevKit streamlines AVS development, enabling you to:
 * Quickly scaffold projects
 * Compile contracts
 * Run local networks
-* Simulate tasks.
+* Simulate tasks
 
 Use DevKit to get from AVS idea to Proof of Concept with a local testing environment that includes task simulation.
 
@@ -44,7 +44,7 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 * [yq (v4.35.1)](https://github.com/mikefarah/yq/#install)
 * [zeus (v1.5.2)](https://github.com/Layr-Labs/zeus)
 
-On MacOS and Debian, running the following command installs all required dependencies and version numbers automatically. For other OSs, manual installation of software prerequistes is required:
+On macOS and Debian, running the following command installs all required dependencies and version numbers automatically. For other OSs, manual installation of software prerequisites is required:
 
 ```bash
 devkit avs create my-avs-project ./
@@ -56,10 +56,10 @@ devkit avs create my-avs-project ./
 
 To download a binary for the latest release, run:
 ```bash
-# MacOS (Apple Silicon)
+# macOS (Apple Silicon)
 mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
 
-# MacOS (Intel)
+# macOS (Intel)
 mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
 
 # Linux (x86_64 / AMD64)
@@ -234,7 +234,7 @@ In your project directory, run:
 devkit avs devnet start
 ```
 
-> \[!IMPORTANT]
+> [!IMPORTANT]
 > Please ensure your Docker daemon is running before running this command.
 
 DevNet management commands:
@@ -244,7 +244,7 @@ DevNet management commands:
 | `start` | Start local Docker containers and contracts                             |
 | `stop`  | Stop and remove containers from the AVS project   |
 | `list`  | List active containers and their ports                                  |
-| `stop --all`  | Stops all devkit devnet containers that are currently currening                                  |
+| `stop --all`  | Stops all devkit devnet containers that are currently running                                  |
 | `stop --project.name`  | Stops the specific project's devnet                                  |
 | `stop --port`  | Stops the specific port e.g.: `stop --port 8545`                                  |
 
@@ -414,7 +414,7 @@ devkit avs build --verbose
 ```
 
 ---
-## Upgrade process
+## Upgrade Process
 
 
 ### Upgrading the Devkit CLI
