@@ -674,6 +674,34 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 			t.Errorf("Expected transporter to appear after chains, got chains at %d, transporter at %d", chainsIdx, transpIdx)
 		}
 	})
+
+	// artifacts section values with ""
+	t.Run("artifacts section values with \"\"", func(t *testing.T) {
+		artifacts := migration.ResolveNode(migratedNode, []string{"context", "artifacts"})
+		if artifacts == nil {
+			t.Error("Expected artifacts section to be added")
+		}
+		// artifactId
+		artifactId := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "artifactId"})
+		if artifactId == nil || artifactId.Value != "" {
+			t.Errorf("Expected artifactId to be empty, got %v", artifactId.Value)
+		}
+		// component
+		component := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "component"})
+		if component == nil || component.Value != "" {
+			t.Errorf("Expected component to be empty, got %v", component.Value)
+		}
+		// digest
+		digest := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "digest"})
+		if digest == nil || digest.Value != "" {
+			t.Errorf("Expected digest to be empty, got %v", digest.Value)
+		}
+		// registry_url
+		registryUrl := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "registry_url"})
+		if registryUrl == nil || registryUrl.Value != "" {
+			t.Errorf("Expected registry_url to be empty, got %v", registryUrl.Value)
+		}
+	})
 }
 
 // TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.6
