@@ -218,6 +218,10 @@ var ReleaseCommand = &cli.Command{
 					Name:  "version",
 					Usage: "Version to release (e.g., 1.0.0). If not provided, will use version from context",
 				},
+				&cli.StringFlag{
+					Name:  "registry-url",
+					Usage: "Registry URL to use for the release. If not provided, will use registry URL from context",
+				},
 			}...),
 			Action: publishReleaseAction,
 		},
@@ -232,6 +236,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	operatorSetId := cCtx.Uint64("operator-set-id")
 	upgradeByTime := cCtx.Int64("upgrade-by-time")
 	version := cCtx.String("version")
+	registryUrl := cCtx.String("registry-url")
 
 	// Validate AVS address
 	if avs == "" {
@@ -285,7 +290,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("AVS address: %s", avs)
 	logger.Info("Version: %s", version)
 	logger.Info("Operator Set ID: %d", operatorSetId)
-	logger.Info("Registry URL: %s", artifact.RegistryUrl)
+	logger.Info("Registry URL: %s", registryUrl)
 	logger.Info("UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
 	// Check if component is present (from local build)
@@ -319,10 +324,15 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("Starting multi-architecture build and push process...")
 
 	// Implement multi-arch build, push to registry, and get digest
-	finalRegistryUrl := artifact.RegistryUrl
-
+	finalRegistryUrl := registryUrl
 	if finalRegistryUrl == "" {
-		return fmt.Errorf("registry URL not found in context. Please ensure it's set in your context configuration")
+		if artifact.RegistryUrl == "" {
+			return fmt.Errorf("no registry URL provided and no registry URL found in context")
+		}
+		finalRegistryUrl = artifact.RegistryUrl
+		logger.Info("Using registry URL from context: %s", finalRegistryUrl)
+	} else {
+		logger.Info("Using provided registry URL: %s", finalRegistryUrl)
 	}
 
 	// Perform multi-arch build and push to get Image Index digest
