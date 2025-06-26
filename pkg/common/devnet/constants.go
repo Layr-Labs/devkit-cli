@@ -2,9 +2,9 @@ package devnet
 
 // Foundry Image Date : 21 April 2025
 const FOUNDRY_IMAGE = "ghcr.io/foundry-rs/foundry:stable"
-const CHAIN_ARGS = "--gas-limit 140000000 --base-fee 0 --gas-price 1000000"
+const CHAIN_ARGS = "--gas-limit=140000000 --base-fee=0 --gas-price=1"
 const FUND_VALUE = "1000000000000000000"
-const DEVNET_CONTEXT = "devnet"
+const CONTEXT = "devnet"
 const L1 = "l1"
 
 // These are fallback EigenLayer deployment addresses when not specified in context
