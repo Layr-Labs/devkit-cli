@@ -392,6 +392,11 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 	// Iterate and collect all roots for all chainIds
 	for i, chainId := range chainIds {
+		// Ignore 17000 from chainIds
+		if chainId.Uint64() == 17000 {
+			continue
+		}
+
 		// Use provided OperatorTableUpdaterTransactor address
 		addr := addresses[i]
 		chain, err := cm.GetChainForId(chainId.Uint64())
