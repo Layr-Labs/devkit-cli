@@ -33,19 +33,19 @@ type OperatorSetRelease struct {
 // parseOperatorSetMapping parses the JSON output from the release script
 func parseOperatorSetMapping(jsonOutput string) (map[string][]OperatorSetRelease, error) {
 	// Parse the JSON structure: {"0": [{"digest": "...", "registry_url": "..."}], "1": [...]}
-	var rawMapping map[string][]OperatorSetRelease
-	if err := json.Unmarshal([]byte(jsonOutput), &rawMapping); err != nil {
+	var releases map[string][]OperatorSetRelease
+	if err := json.Unmarshal([]byte(jsonOutput), &releases); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal operator set mapping: %w", err)
 	}
 
 	// Validate that each operator set has at least one artifact
-	for opSetId, dataArray := range rawMapping {
+	for opSetId, dataArray := range releases {
 		if len(dataArray) == 0 {
 			return nil, fmt.Errorf("operator set %s has empty data array", opSetId)
 		}
 	}
 
-	return rawMapping, nil
+	return releases, nil
 }
 
 // updateContextWithDigest updates the context YAML file with the digest after successful release
