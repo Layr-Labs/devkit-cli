@@ -6,14 +6,14 @@ context:
   # Chains available to this context
   chains:
     l1:
-      chain_id: 17000
+      chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
         block: 4017700
         url: ""
         block_time: 3
     l2:
-      chain_id: 17000
+      chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
         block: 4017700

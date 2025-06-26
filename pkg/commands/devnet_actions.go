@@ -301,9 +301,11 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
 				return fmt.Errorf("updating AVS metadata failed: %w", err)
 			}
+
 			if err := SetAVSRegistrarAction(cCtx, logger); err != nil {
 				return fmt.Errorf("setting AVS registrar failed: %w", err)
 			}
+
 			if err := CreateAVSOperatorSetsAction(cCtx, logger); err != nil {
 				return fmt.Errorf("creating AVS operator sets failed: %w", err)
 			}
@@ -1687,7 +1689,6 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 	}
 
 	for _, opSet := range envCtx.OperatorSets {
-		logger.Info("Creating generation reservation for operator set %s", opSet.OperatorSetID)
 		err = contractCaller.CreateGenerationReservation(cCtx.Context, uint32(opSet.OperatorSetID), ethcommon.HexToAddress(bn254TableCalculatorAddr), avsAddress)
 		if err != nil {
 			return fmt.Errorf("failed to request op set generation reservation: %w", err)
@@ -1739,8 +1740,8 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
-		crossChainRegistryAddr,
 		ethcommon.HexToAddress(""),
+		crossChainRegistryAddr,
 		logger,
 	)
 	if err != nil {

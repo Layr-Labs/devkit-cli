@@ -557,7 +557,7 @@ func (cc *ContractCaller) CreateGenerationReservation(ctx context.Context, opSet
 		MaxStalenessPeriod: 66666666,
 	}
 
-	// add 17000 to chainids
+	// add 31337 to chainids
 	chainIds := []*big.Int{big.NewInt(int64(cc.chainID.Int64()))}
 	err = cc.SendAndWaitForTransaction(ctx, "CreateGenerationReservation", func() (*types.Transaction, error) {
 		tx, err := crossChainRegistry.CreateGenerationReservation(opts, operatorSet, operatorTableCalculator, operatorSetConfig, chainIds)
@@ -666,7 +666,7 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	err = rpcClient.Call(&txHash, "eth_sendTransaction", map[string]interface{}{
 		"from":     ownerCrossChainRegistry.Hex(),
 		"to":       cc.crossChainRegistryAddr.Hex(),
-		"gas":      "0x186a0", // 100000 in hex
+		"gas":      "0x30d40", // 200000 in hex
 		"gasPrice": fmt.Sprintf("0x%x", gasPrice),
 		"value":    "0x0",
 		"data":     fmt.Sprintf("0x%x", addChainIDsToWhitelistData),
@@ -677,7 +677,10 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	}
 
 	// Force the tx to be mined
-	_ = rpcClient.Call(nil, "evm_mine")
+	err = rpcClient.Call(nil, "evm_mine")
+	if err != nil {
+		return fmt.Errorf("evm_mine call failed: %w", err)
+	}
 
 	// Wait for transaction receipt
 	receipt, err = cc.ethclient.TransactionReceipt(ctx, txHash)
@@ -686,8 +689,14 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 		return fmt.Errorf("addChainIDsToWhitelist transaction failed: %w", err)
 	}
 
+	// Check for reverted tx and print receipt
 	if receipt.Status == 0 {
-		cc.logger.Error("addChainIDsToWhitelist transaction reverted")
+		jsonBytes, err := json.MarshalIndent(receipt, "", "  ")
+		if err != nil {
+			cc.logger.Error("failed to marshal receipt: %v", err)
+		} else {
+			cc.logger.Error("addChainIDsToWhitelist transaction reverted: %s", string(jsonBytes))
+		}
 		return fmt.Errorf("addChainIDsToWhitelist transaction reverted")
 	}
 
