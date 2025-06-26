@@ -277,6 +277,9 @@ Before publishing a release, ensure you have:
 3. Properly configured registry URLs in your context
 
 Run this from your project directory:
+> [!IMPORTANT]
+> The upgrade-by-time must be in the future. Operators will have until this timestamp to upgrade to the new version.
+> Devnet must be running before publishing.
 
 ```bash
 devkit avs release publish --avs 0x1234... --upgrade-by-time 1750000000 --version 0.1.0
@@ -299,9 +302,6 @@ devkit avs release publish \
   --registry-url <ghcr.io/username>
 ```
 
-> [!IMPORTANT]
-> The upgrade-by-time must be in the future. Operators will have until this timestamp to upgrade to the new version.
-> Devnet must be running before publishing.
 
 ---
 
