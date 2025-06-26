@@ -65,7 +65,7 @@ var BuildCommand = &cli.Command{
 			[]byte(cfg.Config.Project.Name),
 			[]byte("--tag"),
 			[]byte(version),
-		) 
+		)
 		if err != nil {
 			logger.Error("Build script failed with error: %v", err)
 			return fmt.Errorf("build failed: %w", err)
