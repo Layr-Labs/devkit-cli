@@ -283,8 +283,11 @@ func publishReleaseAction(cCtx *cli.Context) error {
 
 		logger.Info("Publishing release for operator set %s with %d artifacts...", opSetId, len(artifacts))
 		if err := publishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(opSetIdInt), upgradeByTime, artifacts); err != nil {
-			logger.Warn("Failed to publish release for operator set %s: %v", opSetId, err)
-			continue
+			if strings.Contains(err.Error(), "connection refused") {
+				logger.Warn("Failed to publish release for operator set %s: %v", opSetId, err)
+				logger.Info("Check if devnet is running and try again")
+				continue
+			}
 		}
 		logger.Info("Successfully published release for operator set %s", opSetId)
 	}
