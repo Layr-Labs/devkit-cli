@@ -252,6 +252,11 @@ func publishReleaseAction(cCtx *cli.Context) error {
 			logger.Info("    Digest: %s", opSetData.Digest)
 			logger.Info("    Registry URL: %s", opSetData.RegistryUrl)
 
+			// this means this is performer
+			if opSetData.RegistryUrl == registryUrl {
+				updateContextWithDigest(opSetData.Digest)
+			}
+
 			// Convert digest to bytes32
 			digestBytes, err := hexStringToBytes32(opSetData.Digest)
 			if err != nil {
