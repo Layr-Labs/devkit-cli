@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -86,7 +87,11 @@ func UpgradeDevkit(cCtx *cli.Context) error {
 	}
 
 	// Determine install location
-	binDir := filepath.Join(os.Getenv("HOME"), "bin")
+	path, err := exec.LookPath("devkit")
+	if err != nil {
+		return fmt.Errorf("could not locate current devkit binary: %w", err)
+	}
+	binDir := filepath.Dir(path)
 
 	// Perform the upgrade and source
 	return PerformUpgrade(targetVersion, binDir, logger)
