@@ -107,19 +107,10 @@ var ReleaseCommand = &cli.Command{
 			Name:  "publish",
 			Usage: "Publish a new AVS release",
 			Flags: append(common.GlobalFlags, []cli.Flag{
-				&cli.StringFlag{
-					Name:     "avs",
-					Usage:    "AVS contract address",
-					Required: true,
-				},
 				&cli.Int64Flag{
 					Name:     "upgrade-by-time",
 					Usage:    "Unix timestamp by which the upgrade must be completed",
 					Required: true,
-				},
-				&cli.StringFlag{
-					Name:  "version",
-					Usage: "Version to release (e.g., 1.0.0). If not provided, will use version from context",
 				},
 				&cli.StringFlag{
 					Name:  "registry-url",
@@ -197,15 +188,10 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Get values from flags
-	avs := cCtx.String("avs")
+	// avs := cCtx.String("avs")
 	upgradeByTime := cCtx.Int64("upgrade-by-time")
-	version := cCtx.String("version")
+	// version := cCtx.String("version")
 	registryUrl := cCtx.String("registry-url")
-
-	// Validate AVS address
-	if avs == "" {
-		return fmt.Errorf("AVS address cannot be empty")
-	}
 
 	// Get build artifact from context first to read registry URL and version
 	cfg, err := common.LoadConfigWithContextConfig("devnet") // TODO: make context configurable
@@ -218,26 +204,22 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	}
 
 	artifact := cfg.Context["devnet"].Artifact
+	avs := cfg.Context["devnet"].Avs.Address
+	// Validate AVS address
+	if avs == "" {
+		return fmt.Errorf("AVS addressempty in context")
+	}
 
-	// Handle version - if not provided, read from context
+	version := artifact.Version
+	// first time publishing, version is empty
 	if version == "" {
-		version = artifact.Version
-		if version == "" {
-			return fmt.Errorf("no version specified and no version found in context")
-		}
-		// Validate provided version
-		version, err = validateAndFormatVersion(version)
-		if err != nil {
-			return fmt.Errorf("invalid version format in context: %w", err)
-		}
-		logger.Info("No version specified, using version from context: %s", version)
+		version = "1"
 	} else {
-		// Validate provided version
-		version, err = validateAndFormatVersion(version)
+		// increment version
+		version, err = incrementVersion(version)
 		if err != nil {
-			return fmt.Errorf("invalid version format: %w", err)
+			return fmt.Errorf("failed to increment version: %w", err)
 		}
-		logger.Info("Using provided version: %s", version)
 	}
 
 	// Validate upgradeByTime is in the future
@@ -281,12 +263,6 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		return nil
 	}
 
-	logger.Info("Image unchanged - proceeding with release...")
-
-	// In the new flow, digest is expected to be empty since build doesn't push
-	// We need to handle multi-arch build and push during release process
-	logger.Info("Starting multi-architecture build and push process...")
-
 	// Parse the operator set mapping JSON from script output
 	logger.Info("Processing operator set mapping from script output...")
 	operatorSetMapping, err := parseOperatorSetMapping(string(output))
@@ -303,6 +279,16 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func incrementVersion(version string) (string, error) {
+	// version is a simple digit
+	versionInt, err := strconv.Atoi(version)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert version to int: %w", err)
+	}
+	versionInt++
+	return strconv.Itoa(versionInt), nil
 }
 
 func publishReleaseToReleaseManagerAction(ctx context.Context, logger iface.Logger, avs string, operatorSetId uint32, upgradeByTime int64, artifacts []releasemanager.IReleaseManagerTypesArtifact) error {
