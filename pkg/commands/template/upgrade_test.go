@@ -105,7 +105,7 @@ func TestUpgradeCommand(t *testing.T) {
 	mockTemplateInfoGetter := &MockTemplateInfoGetter{
 		projectName:     "template-upgrade-test",
 		templateURL:     "https://github.com/Layr-Labs/hourglass-avs-template",
-		templateVersion: "v0.0.3",
+		templateVersion: "v0.0.4",
 	}
 
 	// Create the test command with mocked dependencies
