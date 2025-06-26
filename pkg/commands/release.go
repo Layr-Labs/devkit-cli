@@ -84,18 +84,44 @@ func updateContextWithDigest(digest string) error {
 	return nil
 }
 
-// validateAndFormatVersion validates and formats a literal version string
-func validateAndFormatVersion(version string) (string, error) {
-	// Remove 'v' prefix if present for processing
-	cleanVersion := strings.TrimPrefix(version, "v")
-
-	// Basic semantic version validation
-	if !strings.Contains(cleanVersion, ".") {
-		return "", fmt.Errorf("version should follow semantic versioning format (e.g., 1.0.0)")
+// updateContextWithVersion updates the context YAML file with the new version
+func updateContextWithVersion(version string) error {
+	// Load the context yaml file
+	contextPath := filepath.Join("config", "contexts", "devnet.yaml") // TODO: make context configurable
+	contextNode, err := common.LoadYAML(contextPath)
+	if err != nil {
+		return fmt.Errorf("failed to load context yaml: %w", err)
 	}
 
-	// Return without 'v' prefix
-	return cleanVersion, nil
+	// Get the root node (first content node)
+	rootNode := contextNode.Content[0]
+
+	// Get the context section
+	contextSection := common.GetChildByKey(rootNode, "context")
+	if contextSection == nil {
+		return fmt.Errorf("context section not found in yaml")
+	}
+
+	// Get or create artifact section
+	artifactSection := common.GetChildByKey(contextSection, "artifact")
+	if artifactSection == nil {
+		artifactSection = &yaml.Node{Kind: yaml.MappingNode}
+		common.SetMappingValue(contextSection,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "artifact"},
+			artifactSection)
+	}
+
+	// Update version field
+	common.SetMappingValue(artifactSection,
+		&yaml.Node{Kind: yaml.ScalarNode, Value: "version"},
+		&yaml.Node{Kind: yaml.ScalarNode, Value: version})
+
+	// Write the updated yaml back to file
+	if err := common.WriteYAML(contextPath, contextNode); err != nil {
+		return fmt.Errorf("failed to write updated yaml: %w", err)
+	}
+
+	return nil
 }
 
 // ReleaseCommand defines the "release" command
@@ -213,13 +239,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	version := artifact.Version
 	// first time publishing, version is empty
 	if version == "" {
-		version = "1"
-	} else {
-		// increment version
-		version, err = incrementVersion(version)
-		if err != nil {
-			return fmt.Errorf("failed to increment version: %w", err)
-		}
+		version = "0"
 	}
 
 	// Validate upgradeByTime is in the future
@@ -249,9 +269,13 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	} else {
 		logger.Info("Using provided registry URL: %s", finalRegistryUrl)
 	}
-
+	component := cfg.Context["devnet"].Artifact.Component
 	// Execute release script with version and registry URL
-	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--version", version, "--registry-url", finalRegistryUrl, "--image", fmt.Sprintf("%s-performer-op-set-1", cfg.Config.Project.Name))
+	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath,
+		"--version", version,
+		"--registry-url", finalRegistryUrl,
+		"--image", component,
+		"--original-image-id", artifact.ArtifactId)
 	releaseCmd.Stderr = os.Stderr // Show stderr in terminal
 
 	// Capture stdout to get the operator set mapping JSON
@@ -261,6 +285,17 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		logger.Info("Image has changed since last build. Please ensure your build is stable before releasing.")
 		logger.Info("Run 'devkit avs build' again and verify no code changes were made.")
 		return nil
+	}
+
+	// update version in context, by incrementing it
+	version, err = incrementVersion(version)
+	if err != nil {
+		return fmt.Errorf("failed to increment version: %w", err)
+	}
+
+	// Update version in context
+	if err := updateContextWithVersion(version); err != nil {
+		return fmt.Errorf("failed to update context with version: %w", err)
 	}
 
 	// Parse the operator set mapping JSON from script output

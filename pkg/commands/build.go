@@ -47,16 +47,25 @@ var BuildCommand = &cli.Command{
 			}
 		}
 
+		// Handle version increment
+		version := cfg.Context["devnet"].Artifact.Version
+		if version == "" {
+			version = "0"
+		}
+
 		logger.Debug("Project Name: %s", cfg.Config.Project.Name)
 		logger.Debug("Building AVS components...")
 
 		// All scripts contained here
 		scriptsDir := filepath.Join(".devkit", "scripts")
 
-		// Execute build via .devkit scripts with project name and performer-op-set-1 suffix
+		// Execute build via .devkit scripts with project name
 		output, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectJSONResponse,
 			[]byte("--image"), // first argument
-			[]byte(fmt.Sprintf("%s-performer-op-set-1", cfg.Config.Project.Name))) // second argument as separate slice
+			[]byte(fmt.Sprintf("%s", cfg.Config.Project.Name)),
+			[]byte("--tag"),
+			[]byte(version),
+		) // second argument as separate slice
 		if err != nil {
 			logger.Error("Build script failed with error: %v", err)
 			return fmt.Errorf("build failed: %w", err)
