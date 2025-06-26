@@ -207,7 +207,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	}
 
 	// Execute release script with version and registry URL
-	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--version", version, "--registry-url", finalRegistryUrl)
+	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--version", version, "--registry-url", finalRegistryUrl, "--image", fmt.Sprintf("%s-performer-op-set-1", cfg.Config.Project.Name))
 	releaseCmd.Stderr = os.Stderr // Show stderr in terminal
 
 	// Capture stdout to get the operator set mapping JSON
