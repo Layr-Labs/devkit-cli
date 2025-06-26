@@ -322,6 +322,44 @@ devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
 
 Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
 
+### 7️⃣ Publish AVS Release (`devkit avs release`)
+
+Publishes your AVS release to the EigenLayer ReleaseManager contract, making it available for operators to upgrade to.
+
+* Publishes multi-architecture container images to the registry(linux/amd64,linux/arm64)
+* Publishes release artifacts to the ReleaseManager contract.
+
+Before publishing a release, ensure you have:
+1. Built your AVS with `devkit avs build`
+2. A running devnet
+3. Properly configured registry URLs in your context
+
+Run this from your project directory:
+
+```bash
+devkit avs release publish --avs 0x1234... --upgrade-by-time 1750000000 --version 0.1.0
+```
+
+**Required Flags:**
+- `--avs`: Your AVS contract address
+- `--upgrade-by-time`: Unix timestamp by which operators must upgrade
+
+**Optional Flags:**
+- `--version`: Specific version to release (defaults to version from context)
+- `--registry-url`: Registry URL for the release (defaults to URL from context)
+
+Example
+```bash
+devkit avs release publish \
+  --avs <avs-address> \
+  --upgrade-by-time <future-timestamp> \
+  --version <version> \
+  --registry-url <ghcr.io/username>
+```
+
+> [!IMPORTANT]
+> The upgrade-by-time must be in the future. Operators will have until this timestamp to upgrade to the new version.
+
 ---
 
 ## Optional Commands
