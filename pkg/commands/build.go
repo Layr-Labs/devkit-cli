@@ -80,11 +80,6 @@ var BuildCommand = &cli.Command{
 			)
 		}
 
-		// Update artifact in context, preserving existing non-empty values
-		if err := updateArtifactFromBuild(contextSection, output); err != nil {
-			return fmt.Errorf("failed to update artifact: %w", err)
-		}
-
 		// Write the merged yaml back to file
 		if err := common.WriteYAML(contextPath, contextNode); err != nil {
 			return fmt.Errorf("failed to write merged yaml: %w", err)
@@ -93,49 +88,4 @@ var BuildCommand = &cli.Command{
 		logger.Info("Build completed successfully")
 		return nil
 	},
-}
-
-// updateArtifactFromBuild updates the artifact section with build output, preserving existing non-empty values
-func updateArtifactFromBuild(contextSection *yaml.Node, buildOutput interface{}) error {
-	// Convert build output to map for easier access
-	outputMap, ok := buildOutput.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("build output is not a map")
-	}
-
-	// Get or create artifact section
-	artifactSection := common.GetChildByKey(contextSection, "artifact")
-	if artifactSection == nil {
-		artifactSection = &yaml.Node{Kind: yaml.MappingNode}
-		common.SetMappingValue(contextSection,
-			&yaml.Node{Kind: yaml.ScalarNode, Value: "artifact"},
-			artifactSection)
-	}
-
-	// Update artifact fields from build output, preserving existing non-empty values
-	if artifact, ok := outputMap["artifact"].(map[string]interface{}); ok {
-		for key, value := range artifact {
-			// Skip updating registry_url if it's empty and we already have a non-empty value
-			if key == "registry_url" {
-				existingValue := common.GetChildByKey(artifactSection, key)
-				if existingValue != nil && existingValue.Value != "" &&
-					(value == nil || value == "") {
-					continue // Preserve existing non-empty registry_url
-				}
-			}
-
-			// Convert value to string
-			valueStr := ""
-			if value != nil {
-				valueStr = fmt.Sprintf("%v", value)
-			}
-
-			// Update the field
-			common.SetMappingValue(artifactSection,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: key},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: valueStr})
-		}
-	}
-
-	return nil
 }
