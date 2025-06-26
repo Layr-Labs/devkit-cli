@@ -760,8 +760,3 @@ func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.
 
 	return err
 }
-
-// bytes32ToDockerDigest converts a [32]byte digest back to Docker digest format (sha256:abc123...)
-func bytes32ToDockerDigest(digest [32]byte) string {
-	return fmt.Sprintf("sha256:%x", digest)
-}

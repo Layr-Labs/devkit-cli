@@ -254,7 +254,12 @@ func publishReleaseAction(cCtx *cli.Context) error {
 
 			// this means this is performer
 			if opSetData.RegistryUrl == registryUrl {
-				updateContextWithDigest(opSetData.Digest)
+				err := updateContextWithDigest(opSetData.Digest)
+				if err != nil {
+					logger.Warn("Failed to update context with digest for operator set %s artifact %d: %v", opSetId, i+1, err)
+					continue
+				}
+				logger.Info("Successfully updated context with digest for operator set %s artifact %d", opSetId, i+1)
 			}
 
 			// Convert digest to bytes32
