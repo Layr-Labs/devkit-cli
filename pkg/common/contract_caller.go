@@ -755,20 +755,8 @@ func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.
 				release,
 			)
 		}
-
 		return tx, err
 	})
-
-	// After transaction is mined, get the latest release for debugging
-	if err == nil {
-		latestReleaseId, latestRelease, debugErr := releaseManager.GetLatestRelease(nil, operatorSet)
-		if debugErr == nil {
-			digestStr := bytes32ToDockerDigest(latestRelease.Artifacts[0].Digest)
-			cc.logger.Debug("Latest releaseid: %s, release digest: %s", latestReleaseId, digestStr)
-		} else {
-			cc.logger.Debug("Could not fetch latest release for debugging: %v", debugErr)
-		}
-	}
 
 	return err
 }
