@@ -53,8 +53,9 @@ var BuildCommand = &cli.Command{
 		// All scripts contained here
 		scriptsDir := filepath.Join(".devkit", "scripts")
 
-		// Execute build via .devkit scripts
-		_, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectJSONResponse)
+		// Execute build via .devkit scripts with project name and performer-op-set-1 suffix
+		_, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectJSONResponse,
+			[]byte(fmt.Sprintf("--image %s-performer-op-set-1", cfg.Config.Project.Name)))
 		if err != nil {
 			logger.Error("Build script failed with error: %v", err)
 			return fmt.Errorf("build failed: %w", err)
