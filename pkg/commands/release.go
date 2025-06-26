@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math"
 	"math/big"
 	"os"
 	"os/exec"
@@ -113,11 +112,6 @@ var ReleaseCommand = &cli.Command{
 					Usage:    "AVS contract address",
 					Required: true,
 				},
-				&cli.Uint64Flag{
-					Name:     "operator-set-id",
-					Usage:    "Operator set ID",
-					Required: true,
-				},
 				&cli.Int64Flag{
 					Name:     "upgrade-by-time",
 					Usage:    "Unix timestamp by which the upgrade must be completed",
@@ -142,7 +136,6 @@ func publishReleaseAction(cCtx *cli.Context) error {
 
 	// Get values from flags
 	avs := cCtx.String("avs")
-	operatorSetId := cCtx.Uint64("operator-set-id")
 	upgradeByTime := cCtx.Int64("upgrade-by-time")
 	version := cCtx.String("version")
 	registryUrl := cCtx.String("registry-url")
@@ -185,11 +178,6 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		logger.Info("Using provided version: %s", version)
 	}
 
-	// Validate operator set ID fits in uint32 range (since it gets cast to uint32 later)
-	if operatorSetId > math.MaxUint32 {
-		return fmt.Errorf("operator set ID %d exceeds maximum value for uint32 (%d)", operatorSetId, math.MaxUint32)
-	}
-
 	// Validate upgradeByTime is in the future
 	if upgradeByTime <= time.Now().Unix() {
 		return fmt.Errorf("upgrade-by-time timestamp %d must be in the future (current time: %d)", upgradeByTime, time.Now().Unix())
@@ -198,7 +186,6 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("Publishing AVS release...")
 	logger.Info("AVS address: %s", avs)
 	logger.Info("Version: %s", version)
-	logger.Info("Operator Set ID: %d", operatorSetId)
 	logger.Info("Registry URL: %s", registryUrl)
 	logger.Info("UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
