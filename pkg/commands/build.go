@@ -61,11 +61,11 @@ var BuildCommand = &cli.Command{
 
 		// Execute build via .devkit scripts with project name
 		output, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectJSONResponse,
-			[]byte("--image"), // first argument
-			[]byte(fmt.Sprintf("%s", cfg.Config.Project.Name)),
+			[]byte("--image"),
+			[]byte(cfg.Config.Project.Name),
 			[]byte("--tag"),
 			[]byte(version),
-		) // second argument as separate slice
+		) 
 		if err != nil {
 			logger.Error("Build script failed with error: %v", err)
 			return fmt.Errorf("build failed: %w", err)
