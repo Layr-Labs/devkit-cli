@@ -189,12 +189,6 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("Registry URL: %s", registryUrl)
 	logger.Info("UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
-	// Check if component is present (from local build)
-	if artifact.Component == "" {
-		logger.Info("No artifact found in context. Please run 'devkit avs build' first to create a local build.")
-		return nil
-	}
-
 	// Call release.sh script to check if image has changed
 	logger.Info("Checking if image has changed since last build...")
 	scriptsDir := filepath.Join(".hourglass", "scripts")
