@@ -99,97 +99,6 @@ func validateAndFormatVersion(version string) (string, error) {
 	return cleanVersion, nil
 }
 
-// performMultiArchBuildAndPush performs multi-architecture build and push using buildx
-func performMultiArchBuildAndPush(ctx context.Context, logger iface.Logger, registryUrl, version string, operatorSetId uint64) (string, error) {
-	// Get project name from current directory
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("failed to get current directory: %w", err)
-	}
-	projectName := filepath.Base(cwd)
-
-	// Image name as {project-name}-performer-op-set-{operator-set-id}
-	imageName := fmt.Sprintf("%s-performer-op-set-%d", projectName, operatorSetId)
-
-	fullImageName := fmt.Sprintf("%s/%s:%s", registryUrl, imageName, version)
-
-	logger.Info("Building multi-architecture image: %s", fullImageName)
-	logger.Info("Platforms: linux/amd64,linux/arm64")
-
-	// Setup buildx for multi-platform
-	logger.Info("Setting up multi-platform builder...")
-	if err := setupBuildx(ctx); err != nil {
-		return "", fmt.Errorf("failed to setup buildx: %w", err)
-	}
-
-	// Build and push multi-arch
-	logger.Info("Building and pushing multi-architecture image...")
-	buildCmd := exec.CommandContext(ctx, "docker", "buildx", "build",
-		"--platform", "linux/amd64,linux/arm64",
-		"--tag", fullImageName,
-		"--push",
-		".")
-
-	buildOutput, err := buildCmd.CombinedOutput()
-	if err != nil {
-		logger.Error("Multi-arch build failed: %s", string(buildOutput))
-		return "", fmt.Errorf("failed to build and push multi-arch image: %w", err)
-	}
-
-	logger.Info("Built and pushed multi-architecture image: %s", fullImageName)
-
-	// Get the Image Index digest (first Digest line is the manifest list digest)
-	logger.Info("Getting Image Index digest...")
-	inspectCmd := exec.CommandContext(ctx, "docker", "buildx", "imagetools", "inspect", fullImageName)
-	inspectOutput, err := inspectCmd.Output()
-	if err != nil {
-		return "", fmt.Errorf("failed to inspect image: %w", err)
-	}
-
-	// Parse the digest from the output - get the FIRST "Digest:" line (Image Index)
-	inspectStr := string(inspectOutput)
-	lines := strings.Split(inspectStr, "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "Digest:") {
-			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				digest := parts[1]
-				logger.Info("📋 Image Index Digest: %s", digest)
-				return digest, nil
-			}
-		}
-	}
-
-	return "", fmt.Errorf("could not find digest in inspect output")
-}
-
-// setupBuildx sets up the buildx builder for multi-platform builds
-func setupBuildx(ctx context.Context) error {
-	// Check if multiarch builder exists
-	inspectCmd := exec.CommandContext(ctx, "docker", "buildx", "inspect", "multiarch")
-	if inspectCmd.Run() != nil {
-		// Create multi-platform builder
-		createCmd := exec.CommandContext(ctx, "docker", "buildx", "create", "--name", "multiarch", "--driver", "docker-container", "--use")
-		if err := createCmd.Run(); err != nil {
-			return fmt.Errorf("failed to create buildx builder: %w", err)
-		}
-
-		// Bootstrap the builder
-		bootstrapCmd := exec.CommandContext(ctx, "docker", "buildx", "inspect", "--bootstrap")
-		if err := bootstrapCmd.Run(); err != nil {
-			return fmt.Errorf("failed to bootstrap buildx builder: %w", err)
-		}
-	} else {
-		// Use existing builder
-		useCmd := exec.CommandContext(ctx, "docker", "buildx", "use", "multiarch")
-		if err := useCmd.Run(); err != nil {
-			return fmt.Errorf("failed to use buildx builder: %w", err)
-		}
-	}
-
-	return nil
-}
-
 // ReleaseCommand defines the "release" command
 var ReleaseCommand = &cli.Command{
 	Name:  "release",
@@ -304,8 +213,20 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	scriptsDir := filepath.Join(".hourglass", "scripts")
 	releaseScriptPath := filepath.Join(scriptsDir, "release.sh")
 
-	// Execute release script with version
-	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--version", version)
+	// Get registry URL from flag or context
+	finalRegistryUrl := registryUrl
+	if finalRegistryUrl == "" {
+		if artifact.RegistryUrl == "" {
+			return fmt.Errorf("no registry URL provided and no registry URL found in context")
+		}
+		finalRegistryUrl = artifact.RegistryUrl
+		logger.Info("Using registry URL from context: %s", finalRegistryUrl)
+	} else {
+		logger.Info("Using provided registry URL: %s", finalRegistryUrl)
+	}
+
+	// Execute release script with version and registry URL
+	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath, "--version", version, "--registry-url", finalRegistryUrl)
 	releaseCmd.Stderr = os.Stderr // Show stderr in terminal
 
 	// Capture stdout to get the operator set mapping JSON
@@ -322,61 +243,6 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	// In the new flow, digest is expected to be empty since build doesn't push
 	// We need to handle multi-arch build and push during release process
 	logger.Info("Starting multi-architecture build and push process...")
-
-	// Implement multi-arch build, push to registry, and get digest
-	finalRegistryUrl := registryUrl
-	if finalRegistryUrl == "" {
-		if artifact.RegistryUrl == "" {
-			return fmt.Errorf("no registry URL provided and no registry URL found in context")
-		}
-		finalRegistryUrl = artifact.RegistryUrl
-		logger.Info("Using registry URL from context: %s", finalRegistryUrl)
-	} else {
-		logger.Info("Using provided registry URL: %s", finalRegistryUrl)
-	}
-
-	// Perform multi-arch build and push to get Image Index digest
-	imageDigest, err := performMultiArchBuildAndPush(cCtx.Context, logger, finalRegistryUrl, version, operatorSetId)
-	if err != nil {
-		return fmt.Errorf("failed to perform multi-arch build and push: %w", err)
-	}
-
-	logger.Info("Multi-architecture build completed")
-	logger.Info("Registry URL: %s", finalRegistryUrl)
-	logger.Info("Image digest: %s", imageDigest)
-
-	// Create artifact array with the Image Index digest
-	logger.Info("Creating artifact for ReleaseManager...")
-	digestBytes, err := hexStringToBytes32(imageDigest)
-	if err != nil {
-		return fmt.Errorf("failed to convert digest to bytes32: %w", err)
-	}
-
-	artifactArray := []releasemanager.IReleaseManagerTypesArtifact{
-		{
-			Digest:      digestBytes,
-			RegistryUrl: finalRegistryUrl,
-		},
-	}
-
-	logger.Info("Artifact created:")
-	logger.Info("  Digest: %s", imageDigest)
-	logger.Info("  Registry URL: %s", finalRegistryUrl)
-	logger.Info("Publishing to ReleaseManager contract...")
-
-	if err := publishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(operatorSetId), upgradeByTime, artifactArray); err != nil {
-		logger.Error("Failed to publish release to ReleaseManager: %s", err)
-		return fmt.Errorf("failed to publish release to ReleaseManager: %w", err)
-	}
-
-	// Update context with the digest after successful release
-	logger.Info("Updating context with release digest...")
-	if err := updateContextWithDigest(imageDigest); err != nil {
-		logger.Warn("Failed to update context with digest: %v", err)
-		// Don't fail the release if context update fails
-	} else {
-		logger.Info("Successfully updated context with digest: %s", imageDigest)
-	}
 
 	// Parse the operator set mapping JSON from script output
 	logger.Info("Processing operator set mapping from script output...")
@@ -401,7 +267,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		// Create artifacts array for this operator set
 		var artifacts []releasemanager.IReleaseManagerTypesArtifact
 		for i, opSetData := range opSetDataArray {
-			logger.Info("  Artifact %d:", i+1)
+			logger.Info("    Artifact %d:", i+1)
 			logger.Info("    Digest: %s", opSetData.Digest)
 			logger.Info("    Registry URL: %s", opSetData.RegistryUrl)
 
