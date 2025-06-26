@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,9 @@ type loggerContextKey struct{}
 
 // progressTrackerContextKey is used to store the progress tracker in the context
 type progressTrackerContextKey struct{}
+
+// RexExp to match semver strings
+var semverRegex = regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)
 
 // IsVerboseEnabled checks if either the CLI --verbose flag is set,
 // or config.yaml has [log] level = "debug"
@@ -181,7 +185,6 @@ func (cc *ContractCaller) GetOperatorRegistrationMessageHash(
 }
 
 func (cc *ContractCaller) EncodeBN254KeyData(pubKey *bn254.PublicKey) ([]byte, error) {
-
 	// Convert G1 point
 	g1Point := &bn254.G1Point{
 		G1Affine: pubKey.GetG1Point(),
@@ -219,4 +222,63 @@ func (cc *ContractCaller) EncodeBN254KeyData(pubKey *bn254.PublicKey) ([]byte, e
 		return nil, fmt.Errorf("failed to create key registrar contract: %w", err)
 	}
 	return keyRegistrarContract.EncodeBN254KeyData(&bind.CallOpts{}, keyRegG1, keyRegG2)
+}
+
+// IsSemver checks if a version string is valid
+func IsSemver(s string) bool {
+	return semverRegex.MatchString(s)
+}
+
+// ParseVersion converts version string like "0.0.5" to comparable integers
+func ParseVersion(v string) (major, minor, patch int, err error) {
+	parts := strings.Split(strings.TrimPrefix(v, "v"), ".")
+	if len(parts) != 3 {
+		return 0, 0, 0, fmt.Errorf("invalid version format: %s", v)
+	}
+
+	major, err = strconv.Atoi(parts[0])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid major version: %s", parts[0])
+	}
+
+	minor, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid minor version: %s", parts[1])
+	}
+
+	patch, err = strconv.Atoi(parts[2])
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("invalid patch version: %s", parts[2])
+	}
+
+	return major, minor, patch, nil
+}
+
+// CompareVersions returns true if v1 > v2
+func CompareVersions(v1, v2 string) (bool, error) {
+	major1, minor1, patch1, err := ParseVersion(v1)
+	if err != nil {
+		return false, fmt.Errorf("parse version %s: %w", v1, err)
+	}
+
+	major2, minor2, patch2, err := ParseVersion(v2)
+	if err != nil {
+		return false, fmt.Errorf("parse version %s: %w", v2, err)
+	}
+
+	if major1 > major2 {
+		return true, nil
+	}
+	if major1 < major2 {
+		return false, nil
+	}
+
+	if minor1 > minor2 {
+		return true, nil
+	}
+	if minor1 < minor2 {
+		return false, nil
+	}
+
+	return patch1 > patch2, nil
 }

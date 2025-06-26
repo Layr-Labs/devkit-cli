@@ -71,27 +71,48 @@ func createUpgradeCommand(
 				Usage: "AVS architecture used to generate project files (task-based/hourglass, epoch-based, etc.)",
 				Value: "task",
 			},
+			&cli.BoolFlag{
+				Name:  "force",
+				Usage: "Force upgrade to a newer version than devkit is aware of",
+				Value: false,
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
 			// Get logger
 			logger := common.LoggerFromContext(cCtx.Context)
 			tracker := common.ProgressTrackerFromContext(cCtx.Context)
 
+			arch := cCtx.String("arch")
+			lang := cCtx.String("lang")
+			latestVersion, err := infoGetter.GetTemplateVersionFromConfig(arch, lang)
+			if err != nil {
+				return fmt.Errorf("failed to get latest version: %w", err)
+			}
+
 			// Get the requested version
 			requestedVersion := cCtx.String("version")
 			if requestedVersion == "" || requestedVersion == "latest" {
-				arch := cCtx.String("arch")
-				lang := cCtx.String("lang")
-				version, err := infoGetter.GetTemplateVersionFromConfig(arch, lang)
-				if err != nil {
-					return fmt.Errorf("failed to get latest version: %w", err)
-				}
 				// Set requestedVersion to configs version (this is the latest this version of devkit is aware of)
-				requestedVersion = version
+				requestedVersion = latestVersion
 			}
 			// Check again for nil requestedVersion after attempting to pull from template
 			if requestedVersion == "" {
 				return fmt.Errorf("template version is required. Use --version to specify")
+			}
+
+			// Check if the requested version is valid and known to DevKit
+			if common.IsSemver(requestedVersion) && common.IsSemver(latestVersion) {
+				// Compare semver strings
+				requestedIsBeyondKnown, err := common.CompareVersions(requestedVersion, latestVersion)
+
+				// On error log but don't exit
+				if err != nil {
+					logger.Error("comparing versions failed: %w", err)
+				}
+				// Warn unless upgrading with force
+				if requestedIsBeyondKnown && !cCtx.Bool("force") {
+					return fmt.Errorf("requested version is greater than the latest version known to DevKit (%s).\n\n  - Run `devkit avs template upgrade --version=%s --force` if you are sure you want to upgrade to %s", latestVersion, requestedVersion, requestedVersion)
+				}
 			}
 
 			// Get template information
