@@ -301,6 +301,7 @@ devkit avs release publish \
 
 > [!IMPORTANT]
 > The upgrade-by-time must be in the future. Operators will have until this timestamp to upgrade to the new version.
+> Devnet must be running before publishing.
 
 ---
 
