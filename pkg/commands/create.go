@@ -402,6 +402,14 @@ func initGitRepo(ctx *cli.Context, targetDir string, logger iface.Logger) error 
 		return fmt.Errorf("git submodule registration failed: %w", err)
 	}
 
+	// remove remote origin from config
+	cmd = exec.CommandContext(ctx.Context, "git", "remote", "remove", "origin")
+	cmd.Dir = targetDir
+	output, err = cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to remove remote origin: %w\nOutput: %s", err, string(output))
+	}
+
 	// cleanup submodule backups
 	err = deleteBackup(targetDir)
 	if err != nil {
