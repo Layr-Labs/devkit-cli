@@ -147,6 +147,7 @@ type Transporter struct {
 
 // ArtifactConfig defines the structure for release artifacts
 type ArtifactConfig struct {
+	ArtifactId  string `json:"artifactId" yaml:"artifactId"`
 	Component   string `json:"component" yaml:"component"`
 	Digest      string `json:"digest" yaml:"digest"`
 	RegistryUrl string `json:"registry_url" yaml:"registry_url"`
