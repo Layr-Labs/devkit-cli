@@ -743,7 +743,7 @@ func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.
 		Artifacts:     artifacts,
 		UpgradeByTime: uint32(upgradeByTime),
 	}
-	err = cc.SendAndWaitForTransaction(ctx, "PublishRelease", func() (*types.Transaction, error) {
+	return cc.SendAndWaitForTransaction(ctx, "PublishRelease", func() (*types.Transaction, error) {
 		tx, err := releaseManager.PublishRelease(opts, operatorSet, release)
 		if err == nil && tx != nil {
 			cc.logger.Debug(
@@ -758,5 +758,4 @@ func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.
 		return tx, err
 	})
 
-	return err
 }
