@@ -63,6 +63,13 @@ func (m *MockTemplateInfoGetter) GetInfoDefault() (string, string, string, error
 	return m.projectName, m.templateURL, m.templateVersion, nil
 }
 
+func (m *MockTemplateInfoGetter) GetTemplateVersionFromConfig(arch, lang string) (string, error) {
+	if m.shouldReturnError {
+		return "", fmt.Errorf("config/config.yaml not found")
+	}
+	return m.templateVersion, nil
+}
+
 func TestUpgradeCommand(t *testing.T) {
 	// Create a temporary directory for testing
 	testProjectsDir, err := filepath.Abs(filepath.Join(os.TempDir(), "devkit-template-upgrade-test"))
@@ -98,7 +105,7 @@ func TestUpgradeCommand(t *testing.T) {
 	mockTemplateInfoGetter := &MockTemplateInfoGetter{
 		projectName:     "template-upgrade-test",
 		templateURL:     "https://github.com/Layr-Labs/hourglass-avs-template",
-		templateVersion: "v0.0.3",
+		templateVersion: "v0.0.4",
 	}
 
 	// Create the test command with mocked dependencies
@@ -190,10 +197,59 @@ func TestUpgradeCommand(t *testing.T) {
 			}
 		}
 
+		// Run the upgrade command (which is our test command with mocks)
+		err := cmdWithLogger.Action(ctx)
+		if err != nil {
+			t.Errorf("UpgradeCommand action returned error: %v", err)
+		}
+
+		// Verify config was updated with new version
+		configData, err := os.ReadFile(configPath)
+		if err != nil {
+			t.Fatalf("Failed to read config file after upgrade: %v", err)
+		}
+
+		var configMap map[string]interface{}
+		if err := yaml.Unmarshal(configData, &configMap); err != nil {
+			t.Fatalf("Failed to parse config file after upgrade: %v", err)
+		}
+
+		var templateVersion string
+		if configSection, ok := configMap["config"].(map[string]interface{}); ok {
+			if projectMap, ok := configSection["project"].(map[string]interface{}); ok {
+				if version, ok := projectMap["templateVersion"].(string); ok {
+					templateVersion = version
+				}
+			}
+		}
+
+		if templateVersion != "v0.0.4" {
+			t.Errorf("Template version not updated. Expected 'v0.0.4', got '%s'", templateVersion)
+		}
+	})
+
+	// Test upgrade command with incompatible to devkit version
+	t.Run("Upgrade command with incompatible version", func(t *testing.T) {
+		// Create a flag set and context with no-op logger
+		set := flag.NewFlagSet("test", 0)
+		set.String("version", "v0.0.5", "")
+
+		// Create context with no-op logger and call Before hook
+		cmdWithLogger, _ := testutils.WithTestConfigAndNoopLoggerAndAccess(testCmd)
+		ctx := cli.NewContext(app, set, nil)
+
+		// Execute the Before hook to set up the logger context
+		if cmdWithLogger.Before != nil {
+			err := cmdWithLogger.Before(ctx)
+			if err != nil {
+				t.Fatalf("Before hook failed: %v", err)
+			}
+		}
+
 		// Run the upgrade command
 		err := cmdWithLogger.Action(ctx)
 		if err == nil {
-			t.Errorf("UpgradeCommand action should return error when version flag is missing")
+			t.Errorf("UpgradeCommand action should return error when using an incompatible version")
 		}
 	})
 

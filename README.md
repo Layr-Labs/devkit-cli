@@ -57,16 +57,16 @@ devkit avs create my-avs-project ./
 To download a binary for the latest release, run:
 ```bash
 # macOS (Apple Silicon)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-arm64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
 
 # macOS (Intel)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-amd64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
 
 # Linux (x86_64 / AMD64)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-linux-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-amd64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
 
 # Linux (ARM64 / aarch64)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-linux-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-arm64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
 ```
 
 The binary will be installed inside the ~/bin directory.
@@ -426,7 +426,7 @@ View template information:
 devkit avs template info
 ```
 
-Upgrade to a specific template version (tag, branch, or commit hash):
+Upgrade to a specific template version (`"latest"`, tag, branch, or commit hash):
 ```bash
 devkit avs template upgrade --version v1.0.0
 ```
@@ -454,21 +454,27 @@ devkit avs build --verbose
 
 ### Upgrading the Devkit CLI
 
-To upgrade the Devkit CLI to the latest version, find the [latest release](releases) you want to download and re-run the curl install command:
+To upgrade the Devkit CLI to the latest version, you can use the `devkit upgrade` command.
 
 ```bash
-VERSION=v0.0.8
-ARCH=$(uname -m | tr '[:upper:]' '[:lower:]')
-DISTRO=$(uname -s | tr '[:upper:]' '[:lower:]')
+# installs the latest version of devkit 
+devkit upgrade
+```
 
-mkdir -p $HOME/bin
-curl -sL "https://s3.amazonaws.com/eigenlayer-devkit-releases/${VERSION}/devkit-${DISTRO}-${ARCH}-${VERSION}.tar.gz" | tar xv -C "$HOME/bin"
+To move to a specific release, find the [target release](releases) you want to install and run:
 
+```bash
+devkit upgrade --version <target-version>
 ```
 
 ### Upgrading your template
 
 To upgrade the template you created your project with (by calling `devkit avs create`) you can use the `devkit avs template` subcommands.
+
+```bash
+# installs the latest template version known to devkit
+devkit avs template upgrade
+```
 
 **_View which version you're currently using_**
 
@@ -478,7 +484,7 @@ devkit avs template info
 2025/05/22 14:42:36 Project template information:
 2025/05/22 14:42:36   Project name: <your project>
 2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
-2025/05/22 14:42:36   Version: v0.0.12
+2025/05/22 14:42:36   Version: v0.0.13
 ```
 
 **_Upgrade to a newer version_**

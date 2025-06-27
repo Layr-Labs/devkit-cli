@@ -18,6 +18,7 @@ import (
 type templateInfoGetter interface {
 	GetInfo() (string, string, string, error)
 	GetInfoDefault() (string, string, string, error)
+	GetTemplateVersionFromConfig(arch, lang string) (string, error)
 }
 
 // defaultTemplateInfoGetter implements templateInfoGetter using the real functions
@@ -31,6 +32,22 @@ func (g *defaultTemplateInfoGetter) GetInfoDefault() (string, string, string, er
 	return GetTemplateInfoDefault()
 }
 
+func (g *defaultTemplateInfoGetter) GetTemplateVersionFromConfig(arch, lang string) (string, error) {
+	cfg, err := template.LoadConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to load templates cfg: %w", err)
+	}
+	a, ok := cfg.Architectures[arch]
+	if !ok {
+		return "", fmt.Errorf("architecture %s not found", arch)
+	}
+	l, ok := a.Languages[lang]
+	if !ok {
+		return "", fmt.Errorf("language %s not found under architecture %s", lang, arch)
+	}
+	return l.Version, nil
+}
+
 // createUpgradeCommand creates an upgrade command with the given dependencies
 func createUpgradeCommand(
 	infoGetter templateInfoGetter,
@@ -40,9 +57,19 @@ func createUpgradeCommand(
 		Usage: "Upgrade project to a newer template version",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
-				Name:     "version",
-				Usage:    "Template version (Git ref: tag, branch, or commit) to upgrade to",
-				Required: true,
+				Name:  "version",
+				Usage: "Template version (Git ref: tag, branch, or commit) to upgrade to",
+				Value: "latest",
+			},
+			&cli.StringFlag{
+				Name:  "lang",
+				Usage: "Programming language used to generate project files",
+				Value: "go",
+			},
+			&cli.StringFlag{
+				Name:  "arch",
+				Usage: "AVS architecture used to generate project files (task-based/hourglass, epoch-based, etc.)",
+				Value: "task",
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
@@ -50,10 +77,37 @@ func createUpgradeCommand(
 			logger := common.LoggerFromContext(cCtx.Context)
 			tracker := common.ProgressTrackerFromContext(cCtx.Context)
 
+			arch := cCtx.String("arch")
+			lang := cCtx.String("lang")
+			latestVersion, err := infoGetter.GetTemplateVersionFromConfig(arch, lang)
+			if err != nil {
+				return fmt.Errorf("failed to get latest version: %w", err)
+			}
+
 			// Get the requested version
 			requestedVersion := cCtx.String("version")
+			if requestedVersion == "" || requestedVersion == "latest" {
+				// Set requestedVersion to configs version (this is the latest this version of devkit is aware of)
+				requestedVersion = latestVersion
+			}
+			// Check again for nil requestedVersion after attempting to pull from template
 			if requestedVersion == "" {
 				return fmt.Errorf("template version is required. Use --version to specify")
+			}
+
+			// Check if the requested version is valid and known to DevKit
+			if common.IsSemver(requestedVersion) && common.IsSemver(latestVersion) {
+				// Compare semver strings
+				requestedIsBeyondKnown, err := common.CompareVersions(requestedVersion, latestVersion)
+
+				// On error log but don't exit
+				if err != nil {
+					logger.Error("comparing versions failed: %w", err)
+				}
+				// Return error and prevent upgrade
+				if requestedIsBeyondKnown {
+					return fmt.Errorf("requested version is greater than the latest version known to DevKit (%s)", latestVersion)
+				}
 			}
 
 			// Get template information
