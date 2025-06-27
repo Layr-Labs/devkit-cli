@@ -266,7 +266,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	} else {
 		logger.Info("Using provided registry: %s", finalRegistry)
 	}
-	component := cfg.Context["devnet"].Artifact.Component
+	component := cfg.Context[devnet.DEVNET_CONTEXT].Artifact.Component
 	// Execute release script with version and registry
 	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath,
 		"--version", version,
