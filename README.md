@@ -282,23 +282,19 @@ Run this from your project directory:
 > Devnet must be running before publishing.
 
 ```bash
-devkit avs release publish --avs 0x1234... --upgrade-by-time 1750000000 --version 0.1.0
+devkit avs release publish  --upgrade-by-time 1750000000
 ```
 
 **Required Flags:**
-- `--avs`: Your AVS contract address
 - `--upgrade-by-time`: Unix timestamp by which operators must upgrade
 
 **Optional Flags:**
-- `--version`: Specific version to release (defaults to version from context)
 - `--registry-url`: Registry URL for the release (defaults to URL from context)
 
 Example
 ```bash
 devkit avs release publish \
-  --avs <avs-address> \
   --upgrade-by-time <future-timestamp> \
-  --version <version> \
   --registry-url <ghcr.io/username>
 ```
 
