@@ -215,7 +215,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 
 	// Get values from flags
 	upgradeByTime := cCtx.Int64("upgrade-by-time")
-	registry := cCtx.String("registry-url")
+	registry := cCtx.String("registry")
 
 	// Get build artifact from context first to read registry URL and version
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT) // TODO: make context configurable
