@@ -125,21 +125,25 @@ func updateArtifactFromBuild(contextSection *yaml.Node, buildOutput interface{})
 
 	// Update artifact fields from build output
 	if artifact, ok := outputMap["artifact"].(map[string]interface{}); ok {
-		for key, value := range artifact {
-			// Only update artifactId and component - preserve everything else
-			if key != "artifactId" && key != "component" {
-				continue // Preserve all other fields
-			}
-
-			// Convert value to string
+		// Update artifactId if present
+		if artifactId, exists := artifact["artifactId"]; exists {
 			valueStr := ""
-			if value != nil {
-				valueStr = fmt.Sprintf("%v", value)
+			if artifactId != nil {
+				valueStr = fmt.Sprintf("%v", artifactId)
 			}
-
-			// Update the field
 			common.SetMappingValue(artifactSection,
-				&yaml.Node{Kind: yaml.ScalarNode, Value: key},
+				&yaml.Node{Kind: yaml.ScalarNode, Value: "artifactId"},
+				&yaml.Node{Kind: yaml.ScalarNode, Value: valueStr})
+		}
+
+		// Update component if present
+		if component, exists := artifact["component"]; exists {
+			valueStr := ""
+			if component != nil {
+				valueStr = fmt.Sprintf("%v", component)
+			}
+			common.SetMappingValue(artifactSection,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: "component"},
 				&yaml.Node{Kind: yaml.ScalarNode, Value: valueStr})
 		}
 	}
