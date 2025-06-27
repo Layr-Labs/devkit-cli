@@ -163,9 +163,9 @@ func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface
 		// Create artifacts array for this operator set
 		var artifacts []releasemanager.IReleaseManagerTypesArtifact
 		for i, opSetData := range opSetDataArray {
-			logger.Info("    Artifact %d:", i+1)
-			logger.Info("    Digest: %s", opSetData.Digest)
-			logger.Info("    Registry URL: %s", opSetData.RegistryUrl)
+			logger.Info("Artifact %d:", i+1)
+			logger.Info("Digest: %s", opSetData.Digest)
+			logger.Info("Registry URL: %s", opSetData.RegistryUrl)
 
 			// this means this is the component
 			if opSetData.RegistryUrl == registryUrl {
