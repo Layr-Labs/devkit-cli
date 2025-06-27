@@ -254,7 +254,6 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
 	// Call release.sh script to check if image has changed
-	logger.Info("Checking if image has changed since last build...")
 	scriptsDir := filepath.Join(".hourglass", "scripts")
 	releaseScriptPath := filepath.Join(scriptsDir, "release.sh")
 
