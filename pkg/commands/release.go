@@ -201,7 +201,7 @@ func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface
 			if strings.Contains(err.Error(), "connection refused") {
 				logger.Warn("Failed to publish release for operator set %s: %v", opSetId, err)
 				logger.Info("Check if devnet is running and try again")
-				continue
+				return err
 			}
 		}
 		logger.Info("Successfully published release for operator set %s", opSetId)
