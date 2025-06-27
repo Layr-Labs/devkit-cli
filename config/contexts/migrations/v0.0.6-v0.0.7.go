@@ -37,22 +37,26 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 	// Insert stakers section after app_private_key and before operators
 	contextNode := migration.ResolveNode(user, []string{"context"})
 
-	// Update or create artifacts section
+	// Update or create artifact section (renamed from artifacts to artifact)
 	if contextNode != nil && contextNode.Kind == yaml.MappingNode {
 		// Find existing artifacts section
 		artifactsIndex := -1
+		artifactsKeyIndex := -1
 
 		for i := 0; i < len(contextNode.Content)-1; i += 2 {
 			if contextNode.Content[i].Value == "artifacts" {
 				artifactsIndex = i + 1
+				artifactsKeyIndex = i
 				break
 			}
 		}
 
-		// Create the proper artifacts structure
-		newArtifactsValue := &yaml.Node{
+		// Create the proper artifact structure with artifactId field
+		newArtifactValue := &yaml.Node{
 			Kind: yaml.MappingNode,
 			Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Value: "artifactId", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "component", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "digest", Tag: "!!str"},
@@ -65,16 +69,18 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 		}
 
 		if artifactsIndex != -1 {
-			// Update existing artifacts section
-			contextNode.Content[artifactsIndex] = newArtifactsValue
+			// Update the key name from "artifacts" to "artifact" and update the value
+			contextNode.Content[artifactsKeyIndex].Value = "artifact"
+			contextNode.Content[artifactsKeyIndex].HeadComment = "# Release artifact"
+			contextNode.Content[artifactsIndex] = newArtifactValue
 		} else {
-			// Add new artifacts section if it doesn't exist
-			artifactsKey := &yaml.Node{
+			// Add new artifact section if it doesn't exist
+			artifactKey := &yaml.Node{
 				Kind:        yaml.ScalarNode,
-				Value:       "artifacts",
-				HeadComment: "# Release artifacts",
+				Value:       "artifact",
+				HeadComment: "# Release artifact",
 			}
-			contextNode.Content = append(contextNode.Content, artifactsKey, newArtifactsValue)
+			contextNode.Content = append(contextNode.Content, artifactKey, newArtifactValue)
 		}
 	}
 
