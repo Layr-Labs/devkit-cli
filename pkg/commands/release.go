@@ -87,26 +87,16 @@ func updateContextWithDigest(digest string) error {
 // updateContextWithVersion updates the context YAML file with the new version
 func updateContextWithVersion(version string) error {
 	// Load the context yaml file
-	contextPath := filepath.Join("config", "contexts", "devnet.yaml") // TODO: make context configurable
-	contextNode, err := common.LoadYAML(contextPath)
+	yamlPath, rootNode, contextNode, err := common.LoadContext(devnet.DEVNET_CONTEXT)
 	if err != nil {
-		return fmt.Errorf("failed to load context yaml: %w", err)
-	}
-
-	// Get the root node (first content node)
-	rootNode := contextNode.Content[0]
-
-	// Get the context section
-	contextSection := common.GetChildByKey(rootNode, "context")
-	if contextSection == nil {
-		return fmt.Errorf("context section not found in yaml")
+		return err
 	}
 
 	// Get or create artifact section
-	artifactSection := common.GetChildByKey(contextSection, "artifact")
+	artifactSection := common.GetChildByKey(contextNode, "artifact")
 	if artifactSection == nil {
 		artifactSection = &yaml.Node{Kind: yaml.MappingNode}
-		common.SetMappingValue(contextSection,
+		common.SetMappingValue(contextNode,
 			&yaml.Node{Kind: yaml.ScalarNode, Value: "artifact"},
 			artifactSection)
 	}
@@ -117,7 +107,7 @@ func updateContextWithVersion(version string) error {
 		&yaml.Node{Kind: yaml.ScalarNode, Value: version})
 
 	// Write the updated yaml back to file
-	if err := common.WriteYAML(contextPath, contextNode); err != nil {
+	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
 		return fmt.Errorf("failed to write updated yaml: %w", err)
 	}
 
@@ -243,6 +233,10 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	// Validate upgradeByTime is in the future
 	if upgradeByTime <= time.Now().Unix() {
 		return fmt.Errorf("upgrade-by-time timestamp %d must be in the future (current time: %d)", upgradeByTime, time.Now().Unix())
+	}
+
+	if artifact.Component == "" {
+		return fmt.Errorf("no component found in context. Please run 'devkit avs build' first")
 	}
 
 	logger.Info("Publishing AVS release...")
