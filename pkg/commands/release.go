@@ -314,7 +314,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 }
 
 func incrementVersion(version string) (string, error) {
-	// version is a simple digit
+	// version is a int
 	versionInt, err := strconv.Atoi(version)
 	if err != nil {
 		return "", fmt.Errorf("failed to convert version to int: %w", err)
