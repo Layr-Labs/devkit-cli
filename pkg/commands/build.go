@@ -106,7 +106,7 @@ var BuildCommand = &cli.Command{
 	},
 }
 
-// updateArtifactFromBuild updates the artifact section with build output, preserving existing non-empty valuesAdd commentMore actions
+// updateArtifactFromBuild updates the artifactId and component fields in the context yaml file
 func updateArtifactFromBuild(contextSection *yaml.Node, buildOutput interface{}) error {
 	// Convert build output to map for easier access
 	outputMap, ok := buildOutput.(map[string]interface{})
