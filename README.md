@@ -667,7 +667,7 @@ The telemetry system respects both user choice and organizational policies.
 
 Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request.
 
-## Troubeshooting
+## Troubleshooting
 
 If you want to debug any transaction failure, try using `--verbose` flag with the command, to get tx_hash in your logs.
  
