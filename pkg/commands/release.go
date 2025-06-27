@@ -167,7 +167,7 @@ func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface
 			logger.Info("    Digest: %s", opSetData.Digest)
 			logger.Info("    Registry URL: %s", opSetData.RegistryUrl)
 
-			// this means this is performer
+			// this means this is the component
 			if opSetData.RegistryUrl == registryUrl {
 				err := updateContextWithDigest(opSetData.Digest)
 				if err != nil {
