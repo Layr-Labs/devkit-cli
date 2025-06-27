@@ -190,7 +190,7 @@ func Transport(cCtx *cli.Context) error {
 		root,
 		referenceTimestamp,
 		block.NumberU64(),
-		[]*big.Int{new(big.Int).SetUint64(31337)},
+		[]*big.Int{new(big.Int).SetUint64(17000)},
 	)
 	if err != nil {
 		return fmt.Errorf("Failed to sign and transport global table root: %v", err)
@@ -222,7 +222,7 @@ func Transport(cCtx *cli.Context) error {
 			root,
 			tree,
 			dist,
-			[]*big.Int{new(big.Int).SetUint64(31337)},
+			[]*big.Int{new(big.Int).SetUint64(17000)},
 		)
 		if err != nil {
 			return fmt.Errorf("Failed to sign and transport AVS stake table for opset %v: %v", opset, err)
