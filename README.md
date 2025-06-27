@@ -667,6 +667,10 @@ The telemetry system respects both user choice and organizational policies.
 
 Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request.
 
+## Troubeshooting
+
+If you want to debug any transaction failure, try using `--verbose` flag with the command, to get tx_hash in your logs.
+ 
 ## 🙋 Help (Support)
 Please post any questions or concerns to the [Issues](https://github.com/Layr-Labs/devkit-cli/issues) tab in this repo. We will respond to your issue as soon as our team has capacity, however we are not yet able to offer an SLA for response times. Please do not use this project for Production, Mainnet, or time sensitive use cases at this time.
 
