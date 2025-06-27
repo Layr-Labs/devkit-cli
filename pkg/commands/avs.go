@@ -18,6 +18,7 @@ var AVSCommand = &cli.Command{
 		DevnetCommand,
 		TransportCommand,
 		RunCommand,
+		TestCommand,
 		CallCommand,
 		ReleaseCommand,
 		template.Command,

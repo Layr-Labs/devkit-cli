@@ -25,6 +25,7 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 | `devkit avs config`   | Configure your Project (`config/config.yaml`) |
 | `devkit avs context`   | Configure your environment and AVS (`config/devnet.yaml`...) |
 | `devkit avs build`    | Compile AVS smart contracts and binaries                          |
+| `devkit avs test`     | Run Go and Forge tests for your AVS                              |
 | `devkit avs devnet`   | Manage local development network                                  |
 | `devkit avs call`     | Simulate AVS task execution locally                               |
 
@@ -219,7 +220,22 @@ Ensure you're in your project directory before running:
 devkit avs build
 ```
 
-### 5️⃣ Launch Local DevNet (`devkit avs devnet`)
+### 5️⃣ Test Your AVS (`devkit avs test`)
+
+Runs both off-chain unit tests and on-chain contract tests for your AVS. This command ensures your business logic and smart contracts are functioning correctly before deployment.
+
+* Executes Go tests for your offchain AVS logic
+* Runs Forge tests for your smart contracts
+
+Run this from your project directory:
+
+```bash
+devkit avs test
+```
+
+Both test suites must pass for the command to succeed.
+
+### 6️⃣ Launch Local DevNet (`devkit avs devnet`)
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
@@ -248,7 +264,7 @@ DevNet management commands:
 | `stop --project.name`  | Stops the specific project's devnet                                  |
 | `stop --port`  | Stops the specific port e.g.: `stop --port 8545`                                  |
 
-### 6️⃣ Simulate Task Execution (`devkit avs call`)
+### 7️⃣ Simulate Task Execution (`devkit avs call`)
 
 Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
 
@@ -264,7 +280,7 @@ devkit avs call --signature="(uint256,string)" args='(5,"hello")'
 
 Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
 
-### 7️⃣ Publish AVS Release (`devkit avs release`)
+### 8️⃣ Publish AVS Release (`devkit avs release`)
 
 Publishes your AVS release to the EigenLayer ReleaseManager contract, making it available for operators to upgrade to.
 
