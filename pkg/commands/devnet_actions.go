@@ -166,16 +166,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 	l2DockerForkUrl := devnet.EnsureDockerHost(l2ForkUrl)
 
-	// Get the chain_id from env/config
-	chainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1, logger)
-	if err != nil {
-		chainId = common.DefaultAnvilChainId
-	}
-
-	// Append config defined details to chainArgs
-	chainArgs = fmt.Sprintf("%s --chain-id %d", chainArgs, chainId)
-	chainArgs = fmt.Sprintf("%s --block-time %d", chainArgs, blockTime)
-
 	// Get block times for L1 and L2
 	l1BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L1)
 	if err != nil {
@@ -194,7 +184,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if !found {
 		return fmt.Errorf("failed to find a chain with name: l1 in devnet.yaml")
 	}
-	l2ChainConfig, found := config.Context[devnet.CONTEXT].Chains[devnet.L2]
+	l2ChainConfig, found := config.Context[devnet.DEVNET_CONTEXT].Chains[devnet.L2]
 	if !found {
 		return fmt.Errorf("failed to find a chain with name: l2 in devnet.yaml")
 	}
@@ -286,14 +276,14 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 		var tokenAddresses []string
 		var tokenErr error
-		tokenAddresses, tokenErr = devnet.GetUnderlyingTokenAddressesFromStrategies(config, rpcUrl, logger)
+		tokenAddresses, tokenErr = devnet.GetUnderlyingTokenAddressesFromStrategies(config, l1RpcUrl, logger)
 		if tokenErr != nil {
 			logger.Warn("Failed to get underlying token addresses from strategies: %v", tokenErr)
 			logger.Info("Continuing with devnet startup...")
 		}
 
 		if len(tokenAddresses) > 0 {
-			err = devnet.FundStakersWithStrategyTokens(config, rpcUrl, tokenAddresses)
+			err = devnet.FundStakersWithStrategyTokens(config, l1RpcUrl, tokenAddresses)
 			if err != nil {
 				logger.Warn("Failed to fund stakers with strategy tokens: %v", err)
 				logger.Info("Continuing with devnet startup...")
