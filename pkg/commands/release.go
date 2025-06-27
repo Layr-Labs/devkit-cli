@@ -300,7 +300,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	operatorSetMapping, err := parseOperatorSetMapping(string(output))
 	if err != nil {
 		logger.Warn("Failed to parse operator set mapping in hourglass release script: %v", err)
-		return nil
+		return err
 	}
 
 	logger.Info("Retrieved operator set mapping with %d operator sets", len(operatorSetMapping))
