@@ -127,24 +127,16 @@ func updateArtifactFromBuild(contextSection *yaml.Node, buildOutput interface{})
 	if artifact, ok := outputMap["artifact"].(map[string]interface{}); ok {
 		// Update artifactId if present
 		if artifactId, exists := artifact["artifactId"]; exists {
-			valueStr := ""
-			if artifactId != nil {
-				valueStr = fmt.Sprintf("%v", artifactId)
-			}
 			common.SetMappingValue(artifactSection,
 				&yaml.Node{Kind: yaml.ScalarNode, Value: "artifactId"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: valueStr})
+				&yaml.Node{Kind: yaml.ScalarNode, Value: artifactId.(string), Tag: "!!str"})
 		}
 
 		// Update component if present
 		if component, exists := artifact["component"]; exists {
-			valueStr := ""
-			if component != nil {
-				valueStr = fmt.Sprintf("%v", component)
-			}
 			common.SetMappingValue(artifactSection,
 				&yaml.Node{Kind: yaml.ScalarNode, Value: "component"},
-				&yaml.Node{Kind: yaml.ScalarNode, Value: valueStr})
+				&yaml.Node{Kind: yaml.ScalarNode, Value: component.(string), Tag: "!!str"})
 		}
 	}
 
