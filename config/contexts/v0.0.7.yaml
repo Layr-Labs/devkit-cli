@@ -118,5 +118,5 @@ context:
     artifactId: ""
     component: ""
     digest: ""
-    registry_url: ""
+    registry: ""
     version: ""

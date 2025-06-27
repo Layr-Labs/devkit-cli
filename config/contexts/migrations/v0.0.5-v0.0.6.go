@@ -159,7 +159,7 @@ func Migration_0_0_5_to_0_0_6(user, old, new *yaml.Node) (*yaml.Node, error) {
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "digest", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
-				{Kind: yaml.ScalarNode, Value: "registry_url", Tag: "!!str"},
+				{Kind: yaml.ScalarNode, Value: "registry", Tag: "!!str"},
 				{Kind: yaml.ScalarNode, Value: "", Tag: "!!str"},
 			},
 		}

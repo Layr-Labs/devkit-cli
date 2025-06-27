@@ -25,13 +25,13 @@ import (
 
 // OperatorSetRelease represents the data for each operator set
 type OperatorSetRelease struct {
-	Digest      string `json:"digest"`
-	RegistryUrl string `json:"registry_url"`
+	Digest   string `json:"digest"`
+	Registry string `json:"registry"`
 }
 
 // parseOperatorSetMapping parses the JSON output from the release script
 func parseOperatorSetMapping(jsonOutput string) (map[string][]OperatorSetRelease, error) {
-	// Parse the JSON structure: {"0": [{"digest": "...", "registry_url": "..."}], "1": [...]}
+	// Parse the JSON structure: {"0": [{"digest": "...", "registry": "..."}], "1": [...]}
 	var releases map[string][]OperatorSetRelease
 	if err := json.Unmarshal([]byte(jsonOutput), &releases); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal operator set mapping: %w", err)
@@ -139,8 +139,8 @@ var ReleaseCommand = &cli.Command{
 					Required: true,
 				},
 				&cli.StringFlag{
-					Name:  "registry-url",
-					Usage: "Registry URL to use for the release. If not provided, will use registry URL from context",
+					Name:  "registry",
+					Usage: "Registry to use for the release. If not provided, will use registry from context",
 				},
 			}...),
 			Action: publishReleaseAction,
@@ -149,7 +149,7 @@ var ReleaseCommand = &cli.Command{
 }
 
 // processOperatorSets processes each operator set and publishes releases on chain
-func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface.Logger, operatorSetMapping map[string][]OperatorSetRelease, avs string, upgradeByTime int64, registryUrl string) error {
+func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface.Logger, operatorSetMapping map[string][]OperatorSetRelease, avs string, upgradeByTime int64, registry string) error {
 	// Publish releases for each operator set
 	for opSetId, opSetDataArray := range operatorSetMapping {
 		opSetIdInt, err := strconv.ParseUint(opSetId, 10, 32)
@@ -165,10 +165,10 @@ func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface
 		for i, opSetData := range opSetDataArray {
 			logger.Info("Artifact %d:", i+1)
 			logger.Info("Digest: %s", opSetData.Digest)
-			logger.Info("Registry URL: %s", opSetData.RegistryUrl)
+			logger.Info("Registry: %s", opSetData.Registry)
 
 			// this means this is the component
-			if opSetData.RegistryUrl == registryUrl {
+			if opSetData.Registry == registry {
 				err := updateContextWithDigest(opSetData.Digest)
 				if err != nil {
 					logger.Warn("Failed to update context with digest for operator set %s artifact %d: %v", opSetId, i+1, err)
@@ -186,7 +186,7 @@ func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface
 
 			artifact := releasemanager.IReleaseManagerTypesArtifact{
 				Digest:      digestBytes,
-				RegistryUrl: opSetData.RegistryUrl,
+				RegistryUrl: opSetData.Registry,
 			}
 			artifacts = append(artifacts, artifact)
 		}
@@ -214,23 +214,21 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Get values from flags
-	// avs := cCtx.String("avs")
 	upgradeByTime := cCtx.Int64("upgrade-by-time")
-	// version := cCtx.String("version")
-	registryUrl := cCtx.String("registry-url")
+	registry := cCtx.String("registry-url")
 
 	// Get build artifact from context first to read registry URL and version
-	cfg, err := common.LoadConfigWithContextConfig("devnet") // TODO: make context configurable
+	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT) // TODO: make context configurable
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
 	}
 
-	if cfg.Context["devnet"].Artifact == nil {
+	if cfg.Context[devnet.DEVNET_CONTEXT].Artifact == nil {
 		return fmt.Errorf("no artifact found in context. Please run 'devkit avs build' first")
 	}
 
-	artifact := cfg.Context["devnet"].Artifact
-	avs := cfg.Context["devnet"].Avs.Address
+	artifact := cfg.Context[devnet.DEVNET_CONTEXT].Artifact
+	avs := cfg.Context[devnet.DEVNET_CONTEXT].Avs.Address
 	// Validate AVS address
 	if avs == "" {
 		return fmt.Errorf("AVS addressempty in context")
@@ -250,29 +248,29 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("Publishing AVS release...")
 	logger.Info("AVS address: %s", avs)
 	logger.Info("Version: %s", version)
-	logger.Info("Registry URL: %s", registryUrl)
+	logger.Info("Registry: %s", registry)
 	logger.Info("UpgradeByTime: %s", time.Unix(upgradeByTime, 0).Format(time.RFC3339))
 
 	// Call release.sh script to check if image has changed
 	scriptsDir := filepath.Join(".hourglass", "scripts")
 	releaseScriptPath := filepath.Join(scriptsDir, "release.sh")
 
-	// Get registry URL from flag or context
-	finalRegistryUrl := registryUrl
-	if finalRegistryUrl == "" {
-		if artifact.RegistryUrl == "" {
-			return fmt.Errorf("no registry URL provided and no registry URL found in context")
+	// Get registry from flag or context
+	finalRegistry := registry
+	if finalRegistry == "" {
+		if artifact.Registry == "" {
+			return fmt.Errorf("no registry found in context")
 		}
-		finalRegistryUrl = artifact.RegistryUrl
-		logger.Info("Using registry URL from context: %s", finalRegistryUrl)
+		finalRegistry = artifact.Registry
+		logger.Info("Using registry from context: %s", finalRegistry)
 	} else {
-		logger.Info("Using provided registry URL: %s", finalRegistryUrl)
+		logger.Info("Using provided registry: %s", finalRegistry)
 	}
 	component := cfg.Context["devnet"].Artifact.Component
-	// Execute release script with version and registry URL
+	// Execute release script with version and registry
 	releaseCmd := exec.CommandContext(cCtx.Context, "bash", releaseScriptPath,
 		"--version", version,
-		"--registry-url", finalRegistryUrl,
+		"--registry", finalRegistry,
 		"--image", component,
 		"--original-image-id", artifact.ArtifactId)
 	releaseCmd.Stderr = os.Stderr // Show stderr in terminal
@@ -308,7 +306,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	logger.Info("Retrieved operator set mapping with %d operator sets", len(operatorSetMapping))
 
 	// Publish releases for each operator set
-	if err := processOperatorSetsAndPublishReleaseOnChain(cCtx, logger, operatorSetMapping, avs, upgradeByTime, finalRegistryUrl); err != nil {
+	if err := processOperatorSetsAndPublishReleaseOnChain(cCtx, logger, operatorSetMapping, avs, upgradeByTime, finalRegistry); err != nil {
 		return err
 	}
 

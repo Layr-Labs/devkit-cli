@@ -691,10 +691,10 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 		if digest == nil || digest.Value != "" {
 			t.Errorf("Expected digest to be empty, got %v", digest.Value)
 		}
-		// registry_url
-		registryUrl := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "registry_url"})
+		// registry
+		registryUrl := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "registry"})
 		if registryUrl == nil || registryUrl.Value != "" {
-			t.Errorf("Expected registry_url to be empty, got %v", registryUrl.Value)
+			t.Errorf("Expected registry to be empty, got %v", registryUrl.Value)
 		}
 	})
 }
