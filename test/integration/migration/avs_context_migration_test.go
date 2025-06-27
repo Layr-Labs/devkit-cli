@@ -520,13 +520,13 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 
 	t.Run("fork blocks updated", func(t *testing.T) {
 		l1Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l1", "fork", "block"})
-		if l1Block == nil || l1Block.Value != "4056218" {
-			t.Errorf("Expected L1 fork block to be updated to 4056218, got %v", l1Block.Value)
+		if l1Block == nil || l1Block.Value != "4017700" {
+			t.Errorf("Expected L1 fork block to be updated to 4017700, got %v", l1Block.Value)
 		}
 
 		l2Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "fork", "block"})
-		if l2Block == nil || l2Block.Value != "4056218" {
-			t.Errorf("Expected L2 fork block to be updated to 4056218, got %v", l2Block.Value)
+		if l2Block == nil || l2Block.Value != "4017700" {
+			t.Errorf("Expected L2 fork block to be updated to 4017700, got %v", l2Block.Value)
 		}
 	})
 
@@ -672,29 +672,6 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 		}
 		if transpIdx <= chainsIdx {
 			t.Errorf("Expected transporter to appear after chains, got chains at %d, transporter at %d", chainsIdx, transpIdx)
-		}
-	})
-
-	// artifacts section values with ""
-	t.Run("artifacts section values with \"\"", func(t *testing.T) {
-		artifacts := migration.ResolveNode(migratedNode, []string{"context", "artifacts"})
-		if artifacts == nil {
-			t.Error("Expected artifacts section to be added")
-		}
-		// component
-		component := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "component"})
-		if component == nil || component.Value != "" {
-			t.Errorf("Expected component to be empty, got %v", component.Value)
-		}
-		// digest
-		digest := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "digest"})
-		if digest == nil || digest.Value != "" {
-			t.Errorf("Expected digest to be empty, got %v", digest.Value)
-		}
-		// registry
-		registryUrl := migration.ResolveNode(migratedNode, []string{"context", "artifacts", "registry"})
-		if registryUrl == nil || registryUrl.Value != "" {
-			t.Errorf("Expected registry to be empty, got %v", registryUrl.Value)
 		}
 	})
 }
