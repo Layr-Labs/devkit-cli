@@ -57,16 +57,16 @@ devkit avs create my-avs-project ./
 To download a binary for the latest release, run:
 ```bash
 # macOS (Apple Silicon)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-arm64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
 
 # macOS (Intel)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-darwin-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-amd64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
 
 # Linux (x86_64 / AMD64)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-linux-amd64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-amd64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
 
 # Linux (ARM64 / aarch64)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.8/devkit-linux-arm64-v0.0.8.tar.gz | tar xv -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-arm64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
 ```
 
 The binary will be installed inside the ~/bin directory.
@@ -449,7 +449,7 @@ devkit avs template info
 2025/05/22 14:42:36 Project template information:
 2025/05/22 14:42:36   Project name: <your project>
 2025/05/22 14:42:36   Template URL: https://github.com/Layr-Labs/hourglass-avs-template
-2025/05/22 14:42:36   Version: v0.0.12
+2025/05/22 14:42:36   Version: v0.0.13
 ```
 
 **_Upgrade to a newer version_**
