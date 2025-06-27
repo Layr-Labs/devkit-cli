@@ -91,7 +91,7 @@ var BuildCommand = &cli.Command{
 			)
 		}
 
-		// Update artifact in context, preserving existing non-empty valuesAdd commentMore actions
+		// Update artifact in context
 		if err := updateArtifactFromBuild(contextSection, output); err != nil {
 			return fmt.Errorf("failed to update artifact: %w", err)
 		}
@@ -123,12 +123,12 @@ func updateArtifactFromBuild(contextSection *yaml.Node, buildOutput interface{})
 			artifactSection)
 	}
 
-	// Update artifact fields from build output, preserving existing non-empty values
+	// Update artifact fields from build output
 	if artifact, ok := outputMap["artifact"].(map[string]interface{}); ok {
 		for key, value := range artifact {
-			// Skip updating registry_url
-			if key == "registry_url" {
-				continue // Always preserve existing registry_url
+			// Only update artifactId and component - preserve everything else
+			if key != "artifactId" && key != "component" {
+				continue // Preserve all other fields
 			}
 
 			// Convert value to string
