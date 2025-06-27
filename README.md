@@ -295,7 +295,7 @@ Example
 ```bash
 devkit avs release publish \
   --upgrade-by-time <future-timestamp> \
-  --registry <ghcr.io/username>
+  --registry <ghcr.io/avs-release-example>
 ```
 
 
