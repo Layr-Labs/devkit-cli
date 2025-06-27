@@ -49,6 +49,7 @@ var ContextYamls = map[string][]byte{
 	"0.0.4": v0_0_4_default,
 	"0.0.5": v0_0_5_default,
 	"0.0.6": v0_0_6_default,
+	"0.0.7": v0_0_7_default,
 }
 
 // Map of sequential migrations
