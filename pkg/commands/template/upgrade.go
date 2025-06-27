@@ -71,11 +71,6 @@ func createUpgradeCommand(
 				Usage: "AVS architecture used to generate project files (task-based/hourglass, epoch-based, etc.)",
 				Value: "task",
 			},
-			&cli.BoolFlag{
-				Name:  "force",
-				Usage: "Force upgrade to a newer version than devkit is aware of",
-				Value: false,
-			},
 		},
 		Action: func(cCtx *cli.Context) error {
 			// Get logger
@@ -109,9 +104,9 @@ func createUpgradeCommand(
 				if err != nil {
 					logger.Error("comparing versions failed: %w", err)
 				}
-				// Warn unless upgrading with force
-				if requestedIsBeyondKnown && !cCtx.Bool("force") {
-					return fmt.Errorf("requested version is greater than the latest version known to DevKit (%s).\n\n  - Run `devkit avs template upgrade --version=%s --force` if you are sure you want to upgrade to %s", latestVersion, requestedVersion, requestedVersion)
+				// Return error and prevent upgrade
+				if requestedIsBeyondKnown {
+					return fmt.Errorf("requested version is greater than the latest version known to DevKit (%s)", latestVersion)
 				}
 			}
 
