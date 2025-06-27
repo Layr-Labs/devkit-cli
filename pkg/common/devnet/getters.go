@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 )
 
 // GetDevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
@@ -35,6 +36,37 @@ func FileExistsInRoot(filename string) bool {
 	return err == nil || !os.IsNotExist(err)
 }
 
+func GetDevnetChainIdOrDefault(cfg *common.ConfigWithContextConfig, chainName string, logger iface.Logger) (int, error) {
+	// Check in env first for L1 chain id
+	l1ChainId := os.Getenv("L1_CHAIN_ID")
+	l1ChainIdInt, err := strconv.Atoi(l1ChainId)
+	if chainName == "l1" && err != nil && l1ChainIdInt != 0 {
+		logger.Info("L1_CHAIN_ID is set to %d", l1ChainIdInt)
+		return l1ChainIdInt, nil
+	}
+
+	// Check in env first for L2 chain id
+	l2ChainId := os.Getenv("L2_CHAIN_ID")
+	l2ChainIdInt, err := strconv.Atoi(l2ChainId)
+	if chainName == "l2" && err != nil && l2ChainIdInt != 0 {
+		logger.Info("L2_CHAIN_ID is set to %d", l2ChainIdInt)
+		return l2ChainIdInt, nil
+	}
+
+	// Fallback to context defined value or DefaultAnvilChainId if undefined
+	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
+	if !found {
+		logger.Error("failed to get chainConfig for chainName : %s", chainName)
+		return common.DefaultAnvilChainId, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+	}
+	if chainConfig.ChainID == 0 {
+		logger.Error("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+		return common.DefaultAnvilChainId, fmt.Errorf("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+	}
+	logger.Info("chain_id is set to %d", chainConfig.ChainID)
+	return chainConfig.ChainID, nil
+}
+
 func GetDevnetBlockTimeOrDefault(cfg *common.ConfigWithContextConfig, chainName string) (int, error) {
 	// Check in env first for L1 block time
 	l1BlockTime := os.Getenv("L1_BLOCK_TIME")
@@ -51,7 +83,7 @@ func GetDevnetBlockTimeOrDefault(cfg *common.ConfigWithContextConfig, chainName 
 	}
 
 	// Fallback to context defined value or 12s if undefined
-	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
+	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
 	if !found {
 		return 12, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
 	}
@@ -60,6 +92,30 @@ func GetDevnetBlockTimeOrDefault(cfg *common.ConfigWithContextConfig, chainName 
 	}
 
 	return chainConfig.Fork.BlockTime, nil
+}
+
+func GetDevnetRPCUrlDefault(cfg *common.ConfigWithContextConfig, chainName string) (string, error) {
+	// Check in env first for L1 RPC url
+	l1RPCUrl := os.Getenv("L1_RPC_URL")
+	if chainName == "l1" && l1RPCUrl != "" {
+		return l1RPCUrl, nil
+	}
+
+	// Check in env first for L2 RPC url
+	l2RPCUrl := os.Getenv("L2_RPC_URL")
+	if chainName == "l2" && l2RPCUrl != "" {
+		return l2RPCUrl, nil
+	}
+
+	// Fallback to context defined value
+	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
+	if !found {
+		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+	}
+	if chainConfig.RPCURL == "" {
+		return "", fmt.Errorf("rpc_url not set for %s; set rpc_url in ./config/context/devnet.yaml or .env and consult README for guidance", chainName)
+	}
+	return chainConfig.RPCURL, nil
 }
 
 func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName string) (string, error) {
@@ -76,7 +132,7 @@ func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName stri
 	}
 
 	// Fallback to context defined value
-	chainConfig, found := cfg.Context[CONTEXT].Chains[chainName]
+	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
 	if !found {
 		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
 	}
@@ -86,29 +142,46 @@ func GetDevnetForkUrlDefault(cfg *common.ConfigWithContextConfig, chainName stri
 	return chainConfig.Fork.Url, nil
 }
 
-// GetEigenLayerAddresses returns EigenLayer addresses from the context config
+// GetEigenLayerAddresses returns EigenLayer L1 addresses from the context config
 // Falls back to constants if not found in context
-func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationManager, delegationManager string) {
+func GetEigenLayerAddresses(cfg *common.ConfigWithContextConfig) (allocationManager, delegationManager string, strategyManager string, keyRegistrar string, crossChainRegistry string, bn254TableCalculator string) {
 	if cfg == nil || cfg.Context == nil {
-		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS
+		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS
 	}
 
-	devnetCtx, found := cfg.Context[CONTEXT]
+	devnetCtx, found := cfg.Context[DEVNET_CONTEXT]
 	if !found || devnetCtx.EigenLayer == nil {
-		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS
+		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS
 	}
 
-	allocationManager = devnetCtx.EigenLayer.AllocationManager
+	allocationManager = devnetCtx.EigenLayer.L1.AllocationManager
 	if allocationManager == "" {
 		allocationManager = ALLOCATION_MANAGER_ADDRESS
 	}
 
-	delegationManager = devnetCtx.EigenLayer.DelegationManager
+	delegationManager = devnetCtx.EigenLayer.L1.DelegationManager
 	if delegationManager == "" {
 		delegationManager = DELEGATION_MANAGER_ADDRESS
 	}
+	strategyManager = devnetCtx.EigenLayer.L1.StrategyManager
+	if strategyManager == "" {
+		strategyManager = STRATEGY_MANAGER_ADDRESS
+	}
+	keyRegistrar = devnetCtx.EigenLayer.L1.KeyRegistrar
+	if keyRegistrar == "" {
+		keyRegistrar = KEY_REGISTRAR_ADDRESS
+	}
 
-	return allocationManager, delegationManager
+	crossChainRegistry = devnetCtx.EigenLayer.L1.CrossChainRegistry
+	if crossChainRegistry == "" {
+		crossChainRegistry = CROSS_CHAIN_REGISTRY_ADDRESS
+	}
+	bn254TableCalculator = devnetCtx.EigenLayer.L1.BN254TableCalculator
+	if bn254TableCalculator == "" {
+		bn254TableCalculator = BN254_TABLE_CALCULATOR_ADDRESS
+	}
+
+	return allocationManager, delegationManager, strategyManager, keyRegistrar, crossChainRegistry, bn254TableCalculator
 }
 
 // GetL1Port returns the L1 devnet port (default port + 0)

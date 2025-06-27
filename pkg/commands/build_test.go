@@ -3,18 +3,33 @@ package commands
 import (
 	"context"
 	"errors"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/Layr-Labs/devkit-cli/config/contexts"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/urfave/cli/v2"
 )
 
 func TestBuildCommand(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Create config directory and devnet.yaml
+	configDir := filepath.Join(tmpDir, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	contextsDir := filepath.Join(configDir, "contexts")
+	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create build script
 	scriptsDir := filepath.Join(tmpDir, ".devkit", "scripts")
@@ -57,7 +72,7 @@ build:
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
 	if err := app.Run([]string{"app", "build"}); err != nil {
@@ -68,6 +83,19 @@ build:
 // Test the case where contracts directory doesn't exist
 func TestBuildCommand_NoContracts(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Create config directory and devnet.yaml
+	configDir := filepath.Join(tmpDir, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	contextsDir := filepath.Join(configDir, "contexts")
+	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create build script
 	scriptsDir := filepath.Join(tmpDir, ".devkit", "scripts")
@@ -95,7 +123,7 @@ echo "Mock build executed"`
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
 	if err := app.Run([]string{"app", "build"}); err != nil {
@@ -105,6 +133,19 @@ echo "Mock build executed"`
 
 func TestBuildCommand_ContextCancellation(t *testing.T) {
 	tmpDir := t.TempDir()
+
+	// Create config directory and devnet.yaml
+	configDir := filepath.Join(tmpDir, "config")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	contextsDir := filepath.Join(configDir, "contexts")
+	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create build script
 	scriptsDir := filepath.Join(tmpDir, ".devkit", "scripts")
@@ -131,7 +172,7 @@ echo "Mock build executed"`
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
 	done := make(chan error, 1)

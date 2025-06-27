@@ -11,6 +11,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 
 	"github.com/urfave/cli/v2"
 )
@@ -34,6 +35,71 @@ func WithTestConfig(cmd *cli.Command) *cli.Command {
 		return nil
 	}
 	return cmd
+}
+
+// WithTestConfigAndNoopLogger sets up a test configuration and no-op logger for silent testing
+func WithTestConfigAndNoopLogger(cmd *cli.Command) *cli.Command {
+	cmd.Before = func(cCtx *cli.Context) error {
+		cfg := &common.ConfigWithContextConfig{
+			Config: common.ConfigBlock{
+				Project: common.ProjectConfig{
+					Name: "test-avs",
+				},
+			},
+		}
+
+		// Create no-op logger and progress tracker
+		noopLogger := logger.NewNoopLogger()
+		noopProgressTracker := logger.NewNoopProgressTracker()
+
+		ctx := context.WithValue(cCtx.Context, ConfigContextKey, cfg)
+		ctx = common.WithLogger(ctx, noopLogger)
+		ctx = common.WithProgressTracker(ctx, noopProgressTracker)
+		cCtx.Context = ctx
+		return nil
+	}
+	return cmd
+}
+
+// CreateTestAppWithNoopLoggerAndAccess creates a CLI app with no-op logger and returns both app and logger
+func CreateTestAppWithNoopLoggerAndAccess(name string, flags []cli.Flag, action cli.ActionFunc) (*cli.App, *logger.NoopLogger) {
+	noopLogger := logger.NewNoopLogger()
+	noopProgressTracker := logger.NewNoopProgressTracker()
+	app := &cli.App{
+		Name:  name,
+		Flags: flags,
+		Before: func(cCtx *cli.Context) error {
+			// Use the same logger instance
+			ctx := common.WithLogger(cCtx.Context, noopLogger)
+			ctx = common.WithProgressTracker(ctx, noopProgressTracker)
+			cCtx.Context = ctx
+			return nil
+		},
+		Action: action,
+	}
+	return app, noopLogger
+}
+
+// WithTestConfigAndNoopLoggerAndAccess sets up test config and no-op logger, returning both command and logger
+func WithTestConfigAndNoopLoggerAndAccess(cmd *cli.Command) (*cli.Command, *logger.NoopLogger) {
+	noopLogger := logger.NewNoopLogger()
+	noopProgressTracker := logger.NewNoopProgressTracker()
+	cmd.Before = func(cCtx *cli.Context) error {
+		cfg := &common.ConfigWithContextConfig{
+			Config: common.ConfigBlock{
+				Project: common.ProjectConfig{
+					Name: "test-avs",
+				},
+			},
+		}
+
+		ctx := context.WithValue(cCtx.Context, ConfigContextKey, cfg)
+		ctx = common.WithLogger(ctx, noopLogger)
+		ctx = common.WithProgressTracker(ctx, noopProgressTracker)
+		cCtx.Context = ctx
+		return nil
+	}
+	return cmd, noopLogger
 }
 
 // helper to create a temp AVS project dir with config.yaml copied

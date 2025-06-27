@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
@@ -29,8 +30,29 @@ func setupCLIContext(cmd *cli.Command, args []string, flags map[string]string) *
 	if err := fs.Parse(argv); err != nil {
 		panic(err)
 	}
-	app := &cli.App{}
-	return cli.NewContext(app, fs, nil)
+
+	// Create app with no-op logger and progress tracker
+	noopLogger := logger.NewNoopLogger()
+	noopProgressTracker := logger.NewNoopProgressTracker()
+	app := &cli.App{
+		Before: func(cCtx *cli.Context) error {
+			ctx := common.WithLogger(cCtx.Context, noopLogger)
+			ctx = common.WithProgressTracker(ctx, noopProgressTracker)
+			cCtx.Context = ctx
+			return nil
+		},
+	}
+
+	ctx := cli.NewContext(app, fs, nil)
+
+	// Execute the Before hook to set up the logger context
+	if app.Before != nil {
+		if err := app.Before(ctx); err != nil {
+			panic(err)
+		}
+	}
+
+	return ctx
 }
 
 func TestNewModelDefaults(t *testing.T) {

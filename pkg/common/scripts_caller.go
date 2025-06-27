@@ -21,8 +21,6 @@ const (
 )
 
 func CallTemplateScript(cmdCtx context.Context, logger iface.Logger, dir string, scriptPath string, expect ResponseExpectation, params ...[]byte) (map[string]interface{}, error) {
-	// Get logger
-
 	// Convert byte params to strings
 	stringParams := make([]string, len(params))
 	for i, b := range params {

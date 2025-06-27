@@ -3,12 +3,14 @@ package common
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/urfave/cli/v2"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"runtime"
 	"syscall"
+
+	"github.com/google/uuid"
+	"github.com/urfave/cli/v2"
 )
 
 // Embedded devkit version from release
@@ -37,22 +39,29 @@ type AppEnvironment struct {
 	OS          string
 	Arch        string
 	ProjectUUID string
+	UserUUID    string
 }
 
-func NewAppEnvironment(os string, arch string, projectUuid string) *AppEnvironment {
+func NewAppEnvironment(os, arch, projectUuid, userUuid string) *AppEnvironment {
 	return &AppEnvironment{
 		CLIVersion:  embeddedDevkitReleaseVersion,
 		OS:          os,
 		Arch:        arch,
 		ProjectUUID: projectUuid,
+		UserUUID:    userUuid,
 	}
 }
 
 func WithAppEnvironment(ctx *cli.Context) {
-	withAppEnvironmentFromLocation(ctx, DevkitConfigFile)
+	withAppEnvironmentFromLocation(ctx, filepath.Join("config", "config.yaml"))
 }
 
 func withAppEnvironmentFromLocation(ctx *cli.Context, location string) {
+	user := getUserUUIDFromGlobalConfig()
+	if user == "" {
+		user = uuid.New().String()
+	}
+
 	id := getProjectUUIDFromLocation(location)
 	if id == "" {
 		id = uuid.New().String()
@@ -61,6 +70,7 @@ func withAppEnvironmentFromLocation(ctx *cli.Context, location string) {
 		runtime.GOOS,
 		runtime.GOARCH,
 		id,
+		user,
 	))
 }
 

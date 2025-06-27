@@ -8,8 +8,8 @@ on:
 
 env:
   FOUNDRY_PROFILE: ci
-  L1_FORK_URL: ${{ secrets.L1_FORK_URL }}
-  L2_FORK_URL: ${{ secrets.L2_FORK_URL }}
+  L1_FORK_URL: ${{ secrets.HOLESKY_FORK_URL }}
+  L2_FORK_URL: ${{ secrets.HOLESKY_FORK_URL }}
 
 jobs:
   e2e:
@@ -76,6 +76,16 @@ jobs:
           done
           echo "❌ Devnet failed to start"
           exit 1
+
+      - name: Call AVS
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
+
+      - name: Verify stake table roots
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs transport verify
 
       - name: Stop devnet
         run: |

@@ -2,8 +2,9 @@ package telemetry
 
 import (
 	"context"
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"testing"
+
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 )
 
 func TestNoopClient(t *testing.T) {
@@ -48,7 +49,7 @@ func TestContext(t *testing.T) {
 }
 
 func TestProperties(t *testing.T) {
-	props := common.NewAppEnvironment("darwin", "amd64", "test-uuid")
+	props := common.NewAppEnvironment("darwin", "amd64", "test-uuid", "user-uuid")
 	if props.CLIVersion == "" {
 		t.Error("Version not using default")
 	}

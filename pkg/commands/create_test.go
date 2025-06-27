@@ -13,6 +13,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
@@ -20,9 +21,11 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const contractsBasePath = ".devkit/contracts"
+
 func TestCreateCommand(t *testing.T) {
 	tmpDir := t.TempDir()
-	logger, _ := common.GetLogger(false)
+	logger := logger.NewNoopLogger()
 	mockConfigYaml := configs.ConfigYamls[configs.LatestVersion]
 	configDir := filepath.Join("config")
 	err := os.MkdirAll(configDir, 0755)
@@ -106,12 +109,12 @@ func TestCreateCommand(t *testing.T) {
 		}
 
 		// Create config.yaml
-		return copyDefaultConfigToProject(logger, targetDir, projectName, mainBaseURL, mainVersion)
+		return copyDefaultConfigToProject(logger, targetDir, projectName, "test-uuid", mainBaseURL, mainVersion, false)
 	}
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(&tmpCmd)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(&tmpCmd)},
 	}
 
 	// Test cases
@@ -184,7 +187,7 @@ build:
 
 	buildApp := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(BuildCommand)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
 	if err := buildApp.Run([]string{"app", "build"}); err != nil {
@@ -245,7 +248,7 @@ func TestCreateCommand_ContextCancellation(t *testing.T) {
 
 	app := &cli.App{
 		Name:     "test",
-		Commands: []*cli.Command{testutils.WithTestConfig(origCmd)},
+		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(origCmd)},
 	}
 
 	done := make(chan error, 1)

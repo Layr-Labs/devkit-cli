@@ -37,6 +37,11 @@ var DevnetCommand = &cli.Command{
 					Value: false,
 				},
 				&cli.BoolFlag{
+					Name:  "skip-transporter",
+					Usage: "Skip starting/submitting Stake Root via transporter",
+					Value: false,
+				},
+				&cli.BoolFlag{
 					Name:  "skip-deploy-contracts",
 					Usage: "Skip deploying contracts and only start local devnet",
 					Value: false,
@@ -48,7 +53,7 @@ var DevnetCommand = &cli.Command{
 				},
 				&cli.BoolFlag{
 					Name:  "use-zeus",
-					Usage: "Use Zeus CLI to fetch mainnet core addresses",
+					Usage: "Use Zeus CLI to fetch holesky core addresses",
 					Value: false,
 				},
 			}, common.GlobalFlags...),
@@ -86,7 +91,7 @@ var DevnetCommand = &cli.Command{
 		},
 		{
 			Name:   "fetch-addresses",
-			Usage:  "Fetches current EigenLayer core addresses from mainnet using Zeus CLI",
+			Usage:  "Fetches current EigenLayer core addresses from holesky using Zeus CLI",
 			Action: FetchZeusAddressesAction,
 			Flags: []cli.Flag{
 				&cli.StringFlag{

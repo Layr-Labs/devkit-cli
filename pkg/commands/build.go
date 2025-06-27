@@ -6,6 +6,7 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
+	"gopkg.in/yaml.v3"
 
 	"github.com/urfave/cli/v2"
 )
@@ -57,9 +58,45 @@ var BuildCommand = &cli.Command{
 		// All scripts contained here
 		scriptsDir := filepath.Join(".devkit", "scripts")
 
-		// Execute build via .devkit scripts
-		if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectNonJSONResponse); err != nil {
+		// Execute build via .devkit scripts and capture JSON output
+		output, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectJSONResponse)
+		if err != nil {
 			return fmt.Errorf("build failed: %w", err)
+		}
+
+		// Load the context yaml file
+		contextPath := filepath.Join("config", "contexts", fmt.Sprintf("%s.yaml", cCtx.String("context")))
+		contextNode, err := common.LoadYAML(contextPath)
+		if err != nil {
+			return fmt.Errorf("failed to load context yaml: %w", err)
+		}
+
+		// Get the root node (first content node)
+		rootNode := contextNode.Content[0]
+
+		// Get or create the context section
+		contextSection := common.GetChildByKey(rootNode, "context")
+		if contextSection == nil {
+			contextSection = &yaml.Node{Kind: yaml.MappingNode}
+			rootNode.Content = append(rootNode.Content,
+				&yaml.Node{Kind: yaml.ScalarNode, Value: "context"},
+				contextSection,
+			)
+		}
+
+		// Convert output to yaml node
+		outputNode, err := common.InterfaceToNode(output)
+		if err != nil {
+			return fmt.Errorf("failed to convert build output to yaml node: %w", err)
+		}
+
+		// Deep merge the build output into the context section
+		mergedNode := common.DeepMerge(contextSection, outputNode)
+		contextSection.Content = mergedNode.Content
+
+		// Write the merged yaml back to file
+		if err := common.WriteYAML(contextPath, contextNode); err != nil {
+			return fmt.Errorf("failed to write merged yaml: %w", err)
 		}
 
 		logger.Info("Build completed successfully")

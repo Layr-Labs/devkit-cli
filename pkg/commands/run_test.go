@@ -3,17 +3,19 @@ package commands
 import (
 	"context"
 	"errors"
-	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/urfave/cli/v2"
 )
 
-func setupRunApp(t *testing.T) (tmpDir string, restoreWD func(), app *cli.App) {
+func setupRunApp(t *testing.T) (tmpDir string, restoreWD func(), app *cli.App, noopLogger *logger.NoopLogger) {
 	tmpDir, err := testutils.CreateTempAVSProject(t)
 	assert.NoError(t, err)
 
@@ -26,28 +28,29 @@ func setupRunApp(t *testing.T) (tmpDir string, restoreWD func(), app *cli.App) {
 		os.RemoveAll(tmpDir)
 	}
 
+	cmdWithLogger, logger := testutils.WithTestConfigAndNoopLoggerAndAccess(RunCommand)
 	app = &cli.App{
 		Name:     "run",
-		Commands: []*cli.Command{RunCommand},
+		Commands: []*cli.Command{cmdWithLogger},
 	}
 
-	return tmpDir, restore, app
+	return tmpDir, restore, app, logger
 }
 
 func TestRunCommand_ExecutesSuccessfully(t *testing.T) {
-	_, restore, app := setupRunApp(t)
+	_, restore, app, logger := setupRunApp(t)
 	defer restore()
 
-	stdout, stderr := testutils.CaptureOutput(func() {
-		err := app.Run([]string{"app", "run", "--verbose"})
-		assert.NoError(t, err)
-	})
+	err := app.Run([]string{"app", "run", "--verbose"})
+	assert.NoError(t, err)
 
-	assert.Contains(t, stdout+stderr, "Offchain AVS components started successfully")
+	// Check that the expected message was logged
+	assert.True(t, logger.Contains("Offchain AVS components started successfully"),
+		"Expected 'Offchain AVS components started successfully' to be logged")
 }
 
 func TestRunCommand_MissingDevnetYAML(t *testing.T) {
-	tmpDir, restore, app := setupRunApp(t)
+	tmpDir, restore, app, _ := setupRunApp(t)
 	defer restore()
 
 	os.Remove(filepath.Join(tmpDir, "config", "contexts", "devnet.yaml"))
@@ -58,7 +61,7 @@ func TestRunCommand_MissingDevnetYAML(t *testing.T) {
 }
 
 func TestRunCommand_MalformedYAML(t *testing.T) {
-	tmpDir, restore, app := setupRunApp(t)
+	tmpDir, restore, app, _ := setupRunApp(t)
 	defer restore()
 
 	yamlPath := filepath.Join(tmpDir, "config", "contexts", "devnet.yaml")
@@ -71,7 +74,7 @@ func TestRunCommand_MalformedYAML(t *testing.T) {
 }
 
 func TestRunCommand_MissingScript(t *testing.T) {
-	tmpDir, restore, app := setupRunApp(t)
+	tmpDir, restore, app, _ := setupRunApp(t)
 	defer restore()
 
 	os.Remove(filepath.Join(tmpDir, ".devkit", "scripts", "run"))
@@ -82,7 +85,7 @@ func TestRunCommand_MissingScript(t *testing.T) {
 }
 
 func TestRunCommand_ScriptReturnsNonZero(t *testing.T) {
-	tmpDir, restore, app := setupRunApp(t)
+	tmpDir, restore, app, _ := setupRunApp(t)
 	defer restore()
 
 	scriptPath := filepath.Join(tmpDir, ".devkit", "scripts", "run")
@@ -96,7 +99,7 @@ func TestRunCommand_ScriptReturnsNonZero(t *testing.T) {
 }
 
 func TestRunCommand_ScriptOutputsInvalidJSON(t *testing.T) {
-	tmpDir, restore, app := setupRunApp(t)
+	tmpDir, restore, app, logger := setupRunApp(t)
 	defer restore()
 
 	scriptPath := filepath.Join(tmpDir, ".devkit", "scripts", "run")
@@ -104,16 +107,15 @@ func TestRunCommand_ScriptOutputsInvalidJSON(t *testing.T) {
 	err := os.WriteFile(scriptPath, []byte(badOutput), 0755)
 	assert.NoError(t, err)
 
-	stdout, stderr := testutils.CaptureOutput(func() {
-		err := app.Run([]string{"app", "run"})
-		assert.NoError(t, err)
-	})
+	err = app.Run([]string{"app", "run"})
+	assert.NoError(t, err, "Run command should succeed with non-JSON output")
 
-	assert.Contains(t, stdout+stderr, "not-json")
+	// Check that the output was logged
+	assert.True(t, logger.Contains("not-json"), "Expected 'not-json' to be logged as output")
 }
 
 func TestRunCommand_Cancelled(t *testing.T) {
-	_, restore, app := setupRunApp(t)
+	_, restore, app, _ := setupRunApp(t)
 	defer restore()
 
 	ctx, cancel := context.WithCancel(context.Background())
