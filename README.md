@@ -274,7 +274,7 @@ Publishes your AVS release to the EigenLayer ReleaseManager contract, making it 
 Before publishing a release, ensure you have:
 1. Built your AVS with `devkit avs build`
 2. A running devnet
-3. Properly configured registry URLs in your context
+3. Properly configured registry in your context
 
 Run this from your project directory:
 > [!IMPORTANT]
@@ -289,13 +289,13 @@ devkit avs release publish  --upgrade-by-time 1750000000
 - `--upgrade-by-time`: Unix timestamp by which operators must upgrade
 
 **Optional Flags:**
-- `--registry-url`: Registry URL for the release (defaults to URL from context)
+- `--registry`: Registry for the release (defaults to context)
 
 Example
 ```bash
 devkit avs release publish \
   --upgrade-by-time <future-timestamp> \
-  --registry-url <ghcr.io/username>
+  --registry <ghcr.io/username>
 ```
 
 
