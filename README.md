@@ -15,6 +15,47 @@ Use DevKit to get from AVS idea to Proof of Concept with a local testing environ
 
 > **Note:** The current DevKit features support local experimentation, development, and testing of AVS using the Hourglass task-based framework. We're actively expanding capabilities, so if there's a gap for your scenario, check out our roadmap to see what's coming, or let us know what would support you in building AVS.
 
+## 📦 Installation
+
+**Quick Install (Recommended):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/install-devkit.sh | bash
+```
+
+**Manual Installation:**
+
+Download the binary for your platform:
+```bash
+# macOS (Apple Silicon)
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-arm64-v0.0.9.tar.gz | tar xz -C "$HOME/bin"
+
+# macOS (Intel)
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-amd64-v0.0.9.tar.gz | tar xz -C "$HOME/bin"
+
+# Linux (x86_64 / AMD64)
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-amd64-v0.0.9.tar.gz | tar xz -C "$HOME/bin"
+
+# Linux (ARM64 / aarch64)
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-arm64-v0.0.9.tar.gz | tar xz -C "$HOME/bin"
+```
+
+Add to your PATH:
+```bash
+export PATH=$PATH:~/bin
+```
+
+**Install from Source:**
+```bash
+git clone https://github.com/Layr-Labs/devkit-cli
+cd devkit-cli
+make install
+```
+
+**Verify Installation:**
+```bash
+devkit --help
+```
+
 ![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
 
 ## 🌟 Key Commands Overview
@@ -53,43 +94,6 @@ devkit avs create my-avs-project ./
 
 
 
-### 📦 Installation
-
-To download a binary for the latest release, run:
-```bash
-# macOS (Apple Silicon)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-arm64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
-
-# macOS (Intel)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-amd64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
-
-# Linux (x86_64 / AMD64)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-amd64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
-
-# Linux (ARM64 / aarch64)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-arm64-v0.0.9.tar.gz | tar xv -C "$HOME/bin"
-```
-
-The binary will be installed inside the ~/bin directory.
-
-To add the binary to your path, run:
-```bash
-export PATH=$PATH:~/bin
-```
-
-To build and install the devkit cli from source:
-```bash
-mkdir -p $HOME/bin
-git clone https://github.com/Layr-Labs/devkit-cli
-cd devkit-cli
-make install
-export PATH=$PATH:~/bin
-```
-
-Verify your installation:
-```bash
-devkit --help
-```
 
 ### 🔧 Shell Completion (Optional)
 
