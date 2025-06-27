@@ -426,7 +426,7 @@ To upgrade the Devkit CLI to the latest version, you can use the `devkit upgrade
 devkit upgrade
 ```
 
-To move to a specific release, find the [target release](releases) you want to install and run:
+To move to a specific release, find the [target release](https://github.com/Layr-Labs/devkit-cli/releases) you want to install and run:
 
 ```bash
 devkit upgrade --version <target-version>
