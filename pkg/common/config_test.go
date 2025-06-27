@@ -83,7 +83,6 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l1"].RPCURL)
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l2"].RPCURL)
 
-	// Fork blocks updated to v0.0.6 values
 	assert.Equal(t, 4056218, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 	assert.Equal(t, 4056218, cfg.Context["devnet"].Chains["l2"].Fork.Block)
 
