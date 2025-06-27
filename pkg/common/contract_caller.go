@@ -755,7 +755,7 @@ func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.
 	return cc.SendAndWaitForTransaction(ctx, "PublishRelease", func() (*types.Transaction, error) {
 		tx, err := releaseManager.PublishRelease(opts, operatorSet, release)
 		if err == nil && tx != nil {
-			cc.logger.Info(
+			cc.logger.Debug(
 				"Transaction hash for PublishRelease: %s\n"+
 					"operatorSet: %s\n"+
 					"release: %s",
