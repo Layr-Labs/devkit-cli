@@ -281,7 +281,7 @@ func publishReleaseAction(cCtx *cli.Context) error {
 		// Script returned non-zero exit code, meaning image has changed
 		logger.Info("Image has changed since last build. Please ensure your build is stable before releasing.")
 		logger.Info("Run 'devkit avs build' again and verify no code changes were made.")
-		return nil
+		return err
 	}
 
 	// update version in context, by incrementing it
