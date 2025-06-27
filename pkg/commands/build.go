@@ -126,13 +126,9 @@ func updateArtifactFromBuild(contextSection *yaml.Node, buildOutput interface{})
 	// Update artifact fields from build output, preserving existing non-empty values
 	if artifact, ok := outputMap["artifact"].(map[string]interface{}); ok {
 		for key, value := range artifact {
-			// Skip updating registry_url if it's empty and we already have a non-empty value
+			// Skip updating registry_url
 			if key == "registry_url" {
-				existingValue := common.GetChildByKey(artifactSection, key)
-				if existingValue != nil && existingValue.Value != "" &&
-					(value == nil || value == "") {
-					continue // Preserve existing non-empty registry_url
-				}
+				continue // Always preserve existing registry_url
 			}
 
 			// Convert value to string
