@@ -25,11 +25,18 @@ esac
 PLATFORM="${OS}-${ARCH}"
 
 # Prompt for installation directory
-echo "Where would you like to install DevKit?"
-echo "1) $HOME/bin (recommended)"
-echo "2) /usr/local/bin (system-wide, requires sudo)"
-echo "3) Custom path"
-read -p "Enter choice (1-3) [1]: " choice
+if [[ -t 0 ]]; then
+    # Interactive terminal available
+    echo "Where would you like to install DevKit?"
+    echo "1) $HOME/bin (recommended)"
+    echo "2) /usr/local/bin (system-wide, requires sudo)"
+    echo "3) Custom path"
+    read -p "Enter choice (1-3) [1]: " choice
+else
+    # Non-interactive (piped), use default
+    echo "Installing to $HOME/bin (default for non-interactive install)"
+    choice=1
+fi
 
 case ${choice:-1} in
     1) INSTALL_DIR="$HOME/bin" ;;
