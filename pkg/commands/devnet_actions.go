@@ -576,9 +576,11 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 	projectName := cCtx.String("project.name")
 	projectPort := cCtx.Int("port")
+	l1Port := cCtx.Int("l1-port")
+	l2Port := cCtx.Int("l2-port")
 
 	// Check if any of the args are provided
-	if !(projectName == "") || !(projectPort == 0) {
+	if !(projectName == "") || !(projectPort == 0) || !(l1Port == 0) || !(l2Port == 0) {
 		if projectName != "" {
 			// Stop both L1 and L2 containers
 			l1Container := fmt.Sprintf("devkit-devnet-l1-%s", projectName)
@@ -586,60 +588,15 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 			devnet.StopAndRemoveContainer(cCtx, l1Container)
 			devnet.StopAndRemoveContainer(cCtx, l2Container)
-		} else {
-			// project.name is empty, but port is provided
-			// List all running Docker containers whose names include "devkit-devnet",
-			// and format the output to show each container's name and its exposed ports.
-			cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
-
-			output, err := cmd.Output()
-			if err != nil {
-				log.Warn("Failed to list running devnet containers: %v", err)
-			}
-
-			lines := strings.Split(strings.TrimSpace(string(output)), "\n")
-			containerFoundUsingthePort := false
-			projectsToStop := make(map[string]bool) // Track projects we've already stopped
-
-			for _, line := range lines {
-				parts := strings.Split(line, ": ")
-				if len(parts) != 2 {
-					continue
-				}
-				containerName := parts[0]
-				port := parts[1]
-				hostPort := extractHostPort(port)
-
-				if hostPort == fmt.Sprintf("%d", projectPort) {
-					// Extract project name from container name
-					var projectName string
-					if strings.HasPrefix(containerName, "devkit-devnet-l1-") {
-						projectName = strings.TrimPrefix(containerName, "devkit-devnet-l1-")
-					} else if strings.HasPrefix(containerName, "devkit-devnet-l2-") {
-						projectName = strings.TrimPrefix(containerName, "devkit-devnet-l2-")
-					} else {
-						// Fallback for old naming convention
-						projectName = strings.TrimPrefix(containerName, "devkit-devnet-")
-					}
-
-					// If we haven't stopped this project yet, stop both L1 and L2 containers
-					if !projectsToStop[projectName] {
-						l1Container := fmt.Sprintf("devkit-devnet-l1-%s", projectName)
-						l2Container := fmt.Sprintf("devkit-devnet-l2-%s", projectName)
-
-						devnet.StopAndRemoveContainer(cCtx, l1Container)
-						devnet.StopAndRemoveContainer(cCtx, l2Container)
-
-						log.Info("Stopped both L1 and L2 devnet containers for project %s (found port %d)", projectName, projectPort)
-						projectsToStop[projectName] = true
-						containerFoundUsingthePort = true
-					}
-				}
-			}
-			if !containerFoundUsingthePort {
-				log.Info("No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers", projectPort, devnet.Cyan, devnet.Reset)
-			}
-
+		} else if l1Port != 0 {
+			// Stop only L1 container matching the port
+			stopContainerByPort(cCtx, log, l1Port, "l1")
+		} else if l2Port != 0 {
+			// Stop only L2 container matching the port
+			stopContainerByPort(cCtx, log, l2Port, "l2")
+		} else if projectPort != 0 {
+			// Stop both L1 and L2 containers for the project found on this port
+			stopBothContainersByPort(cCtx, log, projectPort)
 		}
 		return nil
 	}
@@ -1909,4 +1866,100 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 	}
 	logger.Info("Successfully registered keys in key registrar")
 	return nil
+}
+
+// stopContainerByPort stops a specific container (L1 or L2) running on the given port
+func stopContainerByPort(cCtx *cli.Context, log iface.Logger, targetPort int, containerType string) {
+	cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
+	output, err := cmd.Output()
+	if err != nil {
+		log.Warn("Failed to list running devnet containers: %v", err)
+		return
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	containerFound := false
+
+	for _, line := range lines {
+		parts := strings.Split(line, ": ")
+		if len(parts) != 2 {
+			continue
+		}
+		containerName := parts[0]
+		port := parts[1]
+		hostPort := extractHostPort(port)
+
+		if hostPort == fmt.Sprintf("%d", targetPort) {
+			// Check if this is the right container type (l1 or l2)
+			if (containerType == "l1" && strings.Contains(containerName, "devkit-devnet-l1-")) ||
+				(containerType == "l2" && strings.Contains(containerName, "devkit-devnet-l2-")) ||
+				(containerType == "l1" && !strings.Contains(containerName, "l1") && !strings.Contains(containerName, "l2")) { // fallback for old naming
+
+				devnet.StopAndRemoveContainer(cCtx, containerName)
+				log.Info("Stopped %s devnet container %s running on port %d", strings.ToUpper(containerType), containerName, targetPort)
+				containerFound = true
+				break
+			}
+		}
+	}
+
+	if !containerFound {
+		log.Info("No %s container found running on port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers",
+			strings.ToUpper(containerType), targetPort, devnet.Cyan, devnet.Reset)
+	}
+}
+
+// stopBothContainersByPort stops both L1 and L2 containers for the project found on the given port
+func stopBothContainersByPort(cCtx *cli.Context, log iface.Logger, targetPort int) {
+	cmd := exec.CommandContext(cCtx.Context, "docker", devnet.GetDockerPsDevnetArgs()...)
+	output, err := cmd.Output()
+	if err != nil {
+		log.Warn("Failed to list running devnet containers: %v", err)
+		return
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
+	containerFound := false
+	projectsToStop := make(map[string]bool) // Track projects we've already stopped
+
+	for _, line := range lines {
+		parts := strings.Split(line, ": ")
+		if len(parts) != 2 {
+			continue
+		}
+		containerName := parts[0]
+		port := parts[1]
+		hostPort := extractHostPort(port)
+
+		if hostPort == fmt.Sprintf("%d", targetPort) {
+			// Extract project name from container name
+			var projectName string
+			if strings.HasPrefix(containerName, "devkit-devnet-l1-") {
+				projectName = strings.TrimPrefix(containerName, "devkit-devnet-l1-")
+			} else if strings.HasPrefix(containerName, "devkit-devnet-l2-") {
+				projectName = strings.TrimPrefix(containerName, "devkit-devnet-l2-")
+			} else {
+				// Fallback for old naming convention
+				projectName = strings.TrimPrefix(containerName, "devkit-devnet-")
+			}
+
+			// If we haven't stopped this project yet, stop both L1 and L2 containers
+			if !projectsToStop[projectName] {
+				l1Container := fmt.Sprintf("devkit-devnet-l1-%s", projectName)
+				l2Container := fmt.Sprintf("devkit-devnet-l2-%s", projectName)
+
+				devnet.StopAndRemoveContainer(cCtx, l1Container)
+				devnet.StopAndRemoveContainer(cCtx, l2Container)
+
+				log.Info("Stopped both L1 and L2 devnet containers for project %s (found port %d)", projectName, targetPort)
+				projectsToStop[projectName] = true
+				containerFound = true
+			}
+		}
+	}
+
+	if !containerFound {
+		log.Info("No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers",
+			targetPort, devnet.Cyan, devnet.Reset)
+	}
 }

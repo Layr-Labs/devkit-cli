@@ -83,8 +83,12 @@ var DevnetCommand = &cli.Command{
 					Usage: "Stop containers associated with the given project name",
 				},
 				&cli.IntFlag{
-					Name:  "port",
-					Usage: "Stop container running on the specified port",
+					Name:  "l1-port",
+					Usage: "Stop only the L1 container running on the specified port",
+				},
+				&cli.IntFlag{
+					Name:  "l2-port",
+					Usage: "Stop only the L2 container running on the specified port",
 				},
 			},
 			Action: StopDevnetAction,
