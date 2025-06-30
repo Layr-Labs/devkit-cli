@@ -3,7 +3,7 @@ architectures:
     languages:
       go:
         baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
-        version: "release/l1-l2-support"
+        version: "rajath/generic-cert-verifier"
       ts:
         baseUrl: ""
         version: ""
