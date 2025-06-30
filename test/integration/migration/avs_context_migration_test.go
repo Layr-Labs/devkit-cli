@@ -676,6 +676,49 @@ func TestAVSContextMigration_0_0_5_to_0_0_6(t *testing.T) {
 	})
 }
 
+// TestAVSContextMigration_0_0_6_to_0_0_7 tests the migration from version 0.0.6 to 0.0.7
+// which adds the artifact section
+func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
+	// Use the embedded v0.0.6 content as our starting point
+	userYAML := string(contexts.ContextYamls["0.0.6"])
+
+	userNode := testNode(t, userYAML)
+
+	// Get the actual migration step
+	var migrationStep migration.MigrationStep
+	for _, step := range contexts.MigrationChain {
+		if step.From == "0.0.6" && step.To == "0.0.7" {
+			migrationStep = step
+			break
+		}
+	}
+	if migrationStep.Apply == nil {
+		t.Fatal("Could not find 0.0.6 -> 0.0.7 migration step")
+	}
+
+	// Execute migration
+	migrationChain := []migration.MigrationStep{migrationStep}
+	migratedNode, err := migration.MigrateNode(userNode, "0.0.6", "0.0.7", migrationChain)
+	if err != nil {
+		t.Fatalf("Migration failed: %v", err)
+	}
+
+	// Verify results
+	t.Run("version updated", func(t *testing.T) {
+		version := migration.ResolveNode(migratedNode, []string{"version"})
+		if version == nil || version.Value != "0.0.7" {
+			t.Errorf("Expected version to be updated to 0.0.7, got %v", version.Value)
+		}
+	})
+
+	t.Run("artifact section added", func(t *testing.T) {
+		artifacts := migration.ResolveNode(migratedNode, []string{"context", "artifact"})
+		if artifacts == nil {
+			t.Error("Expected artifacts section to be added")
+		}
+	})
+}
+
 // TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.6
 func TestAVSContextMigration_FullChain(t *testing.T) {
 	// Use the embedded v0.0.1 content as our starting point

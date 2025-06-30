@@ -92,7 +92,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		var unwrapTxHash common.Hash
 		err = rpcClient.Call(&unwrapTxHash, "eth_sendTransaction", map[string]interface{}{
 			"from":     tokenFunding.HolderAddress.Hex(),
-			"to":       HOLESKY_EIGEN_CONTRACT_ADDRESS,
+			"to":       EIGEN_CONTRACT_ADDRESS,
 			"gas":      "0x30d40", // 200000 in hex
 			"gasPrice": fmt.Sprintf("0x%x", gasPrice),
 			"value":    "0x0",
@@ -392,6 +392,7 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 		common.HexToAddress(eigenLayer.L1.DelegationManager),
 		common.HexToAddress(eigenLayer.L1.StrategyManager),
 		common.HexToAddress(eigenLayer.L1.KeyRegistrar),
+		common.HexToAddress(""),
 		common.HexToAddress(""),
 		logger,
 	)

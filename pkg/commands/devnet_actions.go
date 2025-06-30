@@ -655,7 +655,7 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
@@ -664,6 +664,7 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -695,7 +696,7 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
@@ -704,6 +705,7 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -750,7 +752,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
@@ -759,6 +761,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -978,7 +981,7 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 	if operatorPrivateKey == "" {
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
@@ -987,6 +990,7 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -1041,7 +1045,7 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
 
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		operatorPrivateKey,
@@ -1050,6 +1054,7 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -1098,7 +1103,7 @@ func depositIntoStrategy(cCtx *cli.Context, stakerSpec common.StakerSpec, logger
 	}
 	defer client.Close()
 
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 	stakerPrivateKey := strings.TrimPrefix(stakerSpec.StakerECDSAKey, "0x")
 
 	contractCaller, err := common.NewContractCaller(
@@ -1108,6 +1113,7 @@ func depositIntoStrategy(cCtx *cli.Context, stakerSpec common.StakerSpec, logger
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -1154,7 +1160,7 @@ func delegateToOperator(cCtx *cli.Context, stakerSpec common.StakerSpec, operato
 	}
 	defer client.Close()
 
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 	stakerPrivateKey := strings.TrimPrefix(stakerSpec.StakerECDSAKey, "0x")
 
 	contractCaller, err := common.NewContractCaller(
@@ -1164,6 +1170,7 @@ func delegateToOperator(cCtx *cli.Context, stakerSpec common.StakerSpec, operato
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
@@ -1440,7 +1447,7 @@ func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivat
 			logger.Info("Modifying allocation for operator %s: operator_set=%s, strategy=%s, allocation=%s",
 				operatorAddress, operatorSetID, strategyAddress, allocationInWads)
 
-			allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+			allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
 			contractCaller, err := common.NewContractCaller(
 				operatorPrivateKey,
@@ -1449,6 +1456,7 @@ func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivat
 				ethcommon.HexToAddress(allocationManagerAddr),
 				ethcommon.HexToAddress(delegationManagerAddr),
 				ethcommon.HexToAddress(strategyManagerAddr),
+				ethcommon.HexToAddress(""),
 				ethcommon.HexToAddress(""),
 				ethcommon.HexToAddress(""),
 				logger,
@@ -1521,7 +1529,7 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 	// the effectBlock field in the AllocationDelayInfo struct.
 	logger.Info("Bypassing allocation configuration delay using anvil_setStorageAt...")
 
-	allocationManagerAddr, _, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	allocationManagerAddr, _, _, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 	currentBlock, err := client.BlockNumber(cCtx.Context)
 	if err != nil {
 		return fmt.Errorf("failed to get current block number: %w", err)
@@ -1612,7 +1620,7 @@ func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error
 
 	avsAddress := ethcommon.HexToAddress(envCtx.Avs.Address)
 	avsPrivateKeyOrGivenPermissionByAvs := envCtx.Avs.AVSPrivateKey
-	_, _, _, keyRegistrarAddr, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	_, _, _, keyRegistrarAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		avsPrivateKeyOrGivenPermissionByAvs,
@@ -1622,6 +1630,7 @@ func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(keyRegistrarAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
 	)
@@ -1666,7 +1675,7 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 
 	avsAddress := ethcommon.HexToAddress(envCtx.Avs.Address)
 	avsPrivateKeyOrGivenPermissionByAvs := envCtx.Avs.AVSPrivateKey
-	_, _, _, keyRegistrarAddr, crossChainRegistryAddr, bn254TableCalculatorAddr := devnet.GetEigenLayerAddresses(cfg)
+	_, _, _, keyRegistrarAddr, crossChainRegistryAddr, bn254TableCalculatorAddr, _ := devnet.GetEigenLayerAddresses(cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		avsPrivateKeyOrGivenPermissionByAvs,
@@ -1677,6 +1686,7 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(keyRegistrarAddr),
 		ethcommon.HexToAddress(crossChainRegistryAddr),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -1737,6 +1747,7 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		crossChainRegistryAddr,
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -1773,7 +1784,7 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 	}
 
 	avsAddress := ethcommon.HexToAddress(envCtx.Avs.Address)
-	_, _, _, keyRegistrarAddr, _, _ := devnet.GetEigenLayerAddresses(cfg)
+	_, _, _, keyRegistrarAddr, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
 
 	for _, op := range envCtx.OperatorRegistrations {
 
@@ -1790,6 +1801,7 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 					ethcommon.HexToAddress(""),
 					ethcommon.HexToAddress(""),
 					ethcommon.HexToAddress(keyRegistrarAddr),
+					ethcommon.HexToAddress(""),
 					ethcommon.HexToAddress(""),
 					logger,
 				)

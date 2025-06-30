@@ -264,6 +264,41 @@ devkit avs call --signature="(uint256,string)" args='(5,"hello")'
 
 Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
 
+### 7️⃣ Publish AVS Release (`devkit avs release`)
+
+Publishes your AVS release to the EigenLayer ReleaseManager contract, making it available for operators to upgrade to.
+
+* Publishes multi-architecture container images to the registry(linux/amd64,linux/arm64)
+* Publishes release artifacts to the ReleaseManager contract.
+
+Before publishing a release, ensure you have:
+1. Built your AVS with `devkit avs build`
+2. A running devnet
+3. Properly configured registry in your context
+
+Run this from your project directory:
+> [!IMPORTANT]
+> The upgrade-by-time must be in the future. Operators will have until this timestamp to upgrade to the new version.
+> Devnet must be running before publishing.
+
+```bash
+devkit avs release publish  --upgrade-by-time 1750000000
+```
+
+**Required Flags:**
+- `--upgrade-by-time`: Unix timestamp by which operators must upgrade
+
+**Optional Flags:**
+- `--registry`: Registry for the release (defaults to context)
+
+Example
+```bash
+devkit avs release publish \
+  --upgrade-by-time <future-timestamp> \
+  --registry <ghcr.io/avs-release-example>
+```
+
+
 ---
 
 ## Optional Commands
@@ -632,6 +667,10 @@ The telemetry system respects both user choice and organizational policies.
 
 Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request.
 
+## Troubleshooting
+
+If you want to debug any transaction failure, try using `--verbose` flag with the command, to get tx_hash in your logs.
+ 
 ## 🙋 Help (Support)
 Please post any questions or concerns to the [Issues](https://github.com/Layr-Labs/devkit-cli/issues) tab in this repo. We will respond to your issue as soon as our team has capacity, however we are not yet able to offer an SLA for response times. Please do not use this project for Production, Mainnet, or time sensitive use cases at this time.
 

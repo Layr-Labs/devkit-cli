@@ -46,6 +46,13 @@ func WithTestConfigAndNoopLogger(cmd *cli.Command) *cli.Command {
 					Name: "test-avs",
 				},
 			},
+			Context: map[string]common.ChainContextConfig{
+				"devnet": {
+					Artifact: &common.ArtifactConfig{
+						Version: "0",
+					},
+				},
+			},
 		}
 
 		// Create no-op logger and progress tracker
@@ -89,6 +96,13 @@ func WithTestConfigAndNoopLoggerAndAccess(cmd *cli.Command) (*cli.Command, *logg
 			Config: common.ConfigBlock{
 				Project: common.ProjectConfig{
 					Name: "test-avs",
+				},
+			},
+			Context: map[string]common.ChainContextConfig{
+				"devnet": {
+					Artifact: &common.ArtifactConfig{
+						Version: "0",
+					},
 				},
 			},
 		}

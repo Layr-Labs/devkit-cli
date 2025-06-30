@@ -152,12 +152,13 @@ type Transporter struct {
 	ActiveStakeRoots []StakeRootEntry `json:"active_stake_roots,omitempty" yaml:"active_stake_roots,omitempty"`
 }
 
-// ArtifactsConfig defines the structure for release artifacts
-type ArtifactsConfig struct {
-	Component   string `json:"component" yaml:"component"`
-	ArtifactId  string `json:"artifactId" yaml:"artifactId"`
-	Digest      string `json:"digest" yaml:"digest"`
-	RegistryUrl string `json:"registry_url" yaml:"registry_url"`
+// ArtifactConfig defines the structure for release artifacts
+type ArtifactConfig struct {
+	ArtifactId string `json:"artifactId" yaml:"artifactId"`
+	Component  string `json:"component" yaml:"component"`
+	Digest     string `json:"digest" yaml:"digest"`
+	Registry   string `json:"registry" yaml:"registry"`
+	Version    string `json:"version" yaml:"version"`
 }
 
 type ChainContextConfig struct {
@@ -173,7 +174,7 @@ type ChainContextConfig struct {
 	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 	Stakers               []StakerSpec           `json:"stakers" yaml:"stakers"`
-	Artifacts             *ArtifactsConfig       `json:"artifacts" yaml:"artifacts"`
+	Artifact              *ArtifactConfig        `json:"artifact" yaml:"artifact"`
 }
 
 func LoadBaseConfig() (map[string]interface{}, error) {
