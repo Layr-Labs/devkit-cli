@@ -717,6 +717,42 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 			t.Error("Expected artifacts section to be added")
 		}
 	})
+	t.Run("l2 fork block updated to 27764494", func(t *testing.T) {
+		l2Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "fork", "block"})
+		if l2Block == nil || l2Block.Value != "27764494" {
+			t.Errorf("Expected L2 fork block to be updated to 27764494, got %v", l2Block.Value)
+		}
+	})
+	t.Run("L2 chain id updated to 31338", func(t *testing.T) {
+		l2ChainId := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "chain_id"})
+		if l2ChainId == nil || l2ChainId.Value != "31338" {
+			t.Errorf("Expected L2 chain id to be updated to 31338, got %v", l2ChainId.Value)
+		}
+	})
+	t.Run("L2 rpc url updated to http://localhost:9545", func(t *testing.T) {
+		l2RpcUrl := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "rpc_url"})
+		if l2RpcUrl == nil || l2RpcUrl.Value != "http://localhost:9545" {
+			t.Errorf("Expected L2 rpc url to be updated to http://localhost:9545, got %v", l2RpcUrl.Value)
+		}
+	})
+	t.Run("bn254_certificate_verifier updated to 0x824604a31b580Aec16D8Dd7ae9A27661Dc65cBA3", func(t *testing.T) {
+		bn254CertVerifier := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l2", "bn254_certificate_verifier"})
+		if bn254CertVerifier == nil || bn254CertVerifier.Value != "0x824604a31b580Aec16D8Dd7ae9A27661Dc65cBA3" {
+			t.Errorf("Expected bn254_certificate_verifier to be updated to 0x824604a31b580Aec16D8Dd7ae9A27661Dc65cBA3, got %v", bn254CertVerifier.Value)
+		}
+	})
+	t.Run("operator_table_updater updated to 0x798EB817B7C109c6780264D5161183809C817216", func(t *testing.T) {
+		operatorTableUpdater := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l2", "operator_table_updater"})
+		if operatorTableUpdater == nil || operatorTableUpdater.Value != "0x798EB817B7C109c6780264D5161183809C817216" {
+			t.Errorf("Expected operator_table_updater to be updated to 0x798EB817B7C109c6780264D5161183809C817216, got %v", operatorTableUpdater.Value)
+		}
+	})
+	t.Run("Added ecdsa_certificate_verifier with address 0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7", func(t *testing.T) {
+		ecdsaCertVerifier := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"})
+		if ecdsaCertVerifier == nil || ecdsaCertVerifier.Value != "0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7" {
+			t.Errorf("Expected ecdsa_certificate_verifier to be added  with address 0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7, got %v", ecdsaCertVerifier.Value)
+		}
+	})
 }
 
 // TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.6
@@ -726,17 +762,17 @@ func TestAVSContextMigration_FullChain(t *testing.T) {
 
 	userNode := testNode(t, userYAML)
 
-	// Execute migration through the entire chain to 0.0.6 (where stake conversion happens)
-	migratedNode, err := migration.MigrateNode(userNode, "0.0.1", "0.0.6", contexts.MigrationChain)
+	// Execute migration through the entire chain to 0.0.7 (where stake conversion happens)
+	migratedNode, err := migration.MigrateNode(userNode, "0.0.1", "0.0.7", contexts.MigrationChain)
 	if err != nil {
 		t.Fatalf("Full chain migration failed: %v", err)
 	}
 
 	// Verify final state
-	t.Run("final version is 0.0.6", func(t *testing.T) {
+	t.Run("final version is 0.0.7", func(t *testing.T) {
 		version := migration.ResolveNode(migratedNode, []string{"version"})
-		if version == nil || version.Value != "0.0.6" {
-			t.Errorf("Expected final version to be 0.0.6, got %v", version.Value)
+		if version == nil || version.Value != "0.0.7" {
+			t.Errorf("Expected final version to be 0.0.7, got %v", version.Value)
 		}
 	})
 
