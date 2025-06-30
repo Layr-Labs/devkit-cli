@@ -60,7 +60,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x798EB817B7C109c6780264D5161183809C817216"}
 				},
 			},
-			// Add ecdsa_certificate_verifier for l2 chain 
+			// Add ecdsa_certificate_verifier for l2 chain
 			{
 				Path:      []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"},
 				Condition: migration.Always{},

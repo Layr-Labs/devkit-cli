@@ -150,6 +150,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Docker-compose for anvil devnet
 	composePath := devnet.WriteEmbeddedArtifacts()
 	l1ForkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
 	l2ForkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L2)
 	if err != nil {
 		return fmt.Errorf("L1 fork URL error: %w", err)
