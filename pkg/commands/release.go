@@ -1,11 +1,11 @@
 package commands
 
 import (
-	"context"
+	// "context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/big"
+	// "math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,9 +16,9 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
-	releasemanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ReleaseManager"
-	ethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
+	// releasemanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ReleaseManager"
+	// ethcommon "github.com/ethereum/go-ethereum/common"
+	// "github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )
@@ -140,63 +140,64 @@ var ReleaseCommand = &cli.Command{
 
 // processOperatorSets processes each operator set and publishes releases on chain
 func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface.Logger, operatorSetMapping map[string][]OperatorSetRelease, avs string, upgradeByTime int64, registry string) error {
-	// Publish releases for each operator set
-	for opSetId, opSetDataArray := range operatorSetMapping {
-		opSetIdInt, err := strconv.ParseUint(opSetId, 10, 32)
-		if err != nil {
-			logger.Warn("Failed to parse operator set ID %s: %v", opSetId, err)
-			continue
-		}
-
-		logger.Info("Processing operator set %s with %d artifacts:", opSetId, len(opSetDataArray))
-
-		// Create artifacts array for this operator set
-		var artifacts []releasemanager.IReleaseManagerTypesArtifact
-		for i, opSetData := range opSetDataArray {
-			logger.Info("Artifact %d:", i+1)
-			logger.Info("Digest: %s", opSetData.Digest)
-			logger.Info("Registry: %s", opSetData.Registry)
-
-			// this means this is the component
-			if opSetData.Registry == registry {
-				err := updateContextWithDigest(opSetData.Digest)
-				if err != nil {
-					logger.Warn("Failed to update context with digest for operator set %s artifact %d: %v", opSetId, i+1, err)
-					continue
-				}
-				logger.Info("Successfully updated context with digest for operator set %s artifact %d", opSetId, i+1)
-			}
-
-			// Convert digest to bytes32
-			digestBytes, err := hexStringToBytes32(opSetData.Digest)
+	/*
+		// Publish releases for each operator set
+		for opSetId, opSetDataArray := range operatorSetMapping {
+			opSetIdInt, err := strconv.ParseUint(opSetId, 10, 32)
 			if err != nil {
-				logger.Warn("Failed to convert digest to bytes32 for operator set %s artifact %d: %v", opSetId, i+1, err)
+				logger.Warn("Failed to parse operator set ID %s: %v", opSetId, err)
 				continue
 			}
 
-			artifact := releasemanager.IReleaseManagerTypesArtifact{
-				Digest:      digestBytes,
-				RegistryUrl: opSetData.Registry,
+			logger.Info("Processing operator set %s with %d artifacts:", opSetId, len(opSetDataArray))
+
+			// Create artifacts array for this operator set
+			var artifacts []releasemanager.IReleaseManagerTypesArtifact
+			for i, opSetData := range opSetDataArray {
+				logger.Info("Artifact %d:", i+1)
+				logger.Info("Digest: %s", opSetData.Digest)
+				logger.Info("Registry: %s", opSetData.Registry)
+
+				// this means this is the component
+				if opSetData.Registry == registry {
+					err := updateContextWithDigest(opSetData.Digest)
+					if err != nil {
+						logger.Warn("Failed to update context with digest for operator set %s artifact %d: %v", opSetId, i+1, err)
+						continue
+					}
+					logger.Info("Successfully updated context with digest for operator set %s artifact %d", opSetId, i+1)
+				}
+
+				// Convert digest to bytes32
+				digestBytes, err := hexStringToBytes32(opSetData.Digest)
+				if err != nil {
+					logger.Warn("Failed to convert digest to bytes32 for operator set %s artifact %d: %v", opSetId, i+1, err)
+					continue
+				}
+
+				artifact := releasemanager.IReleaseManagerTypesArtifact{
+					Digest:      digestBytes,
+					RegistryUrl: opSetData.Registry,
+				}
+				artifacts = append(artifacts, artifact)
 			}
-			artifacts = append(artifacts, artifact)
-		}
 
-		if len(artifacts) == 0 {
-			logger.Warn("No valid artifacts for operator set %s, skipping", opSetId)
-			continue
-		}
-
-		logger.Info("Publishing release for operator set %s with %d artifacts...", opSetId, len(artifacts))
-		if err := publishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(opSetIdInt), upgradeByTime, artifacts); err != nil {
-			if strings.Contains(err.Error(), "connection refused") {
-				logger.Warn("Failed to publish release for operator set %s: %v", opSetId, err)
-				logger.Info("Check if devnet is running and try again")
-				return err
+			if len(artifacts) == 0 {
+				logger.Warn("No valid artifacts for operator set %s, skipping", opSetId)
+				continue
 			}
-		}
-		logger.Info("Successfully published release for operator set %s", opSetId)
-	}
 
+			logger.Info("Publishing release for operator set %s with %d artifacts...", opSetId, len(artifacts))
+			if err := publishReleaseToReleaseManagerAction(cCtx.Context, logger, avs, uint32(opSetIdInt), upgradeByTime, artifacts); err != nil {
+				if strings.Contains(err.Error(), "connection refused") {
+					logger.Warn("Failed to publish release for operator set %s: %v", opSetId, err)
+					logger.Info("Check if devnet is running and try again")
+					return err
+				}
+			}
+			logger.Info("Successfully published release for operator set %s", opSetId)
+		}
+	*/
 	return nil
 }
 
@@ -317,6 +318,7 @@ func incrementVersion(version string) (string, error) {
 	return strconv.Itoa(versionInt), nil
 }
 
+/*
 func publishReleaseToReleaseManagerAction(ctx context.Context, logger iface.Logger, avs string, operatorSetId uint32, upgradeByTime int64, artifacts []releasemanager.IReleaseManagerTypesArtifact) error {
 
 	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
@@ -374,7 +376,7 @@ func publishReleaseToReleaseManagerAction(ctx context.Context, logger iface.Logg
 
 	logger.Info("Successfully published release to ReleaseManager contract")
 	return nil
-}
+}*/
 
 // hexStringToBytes32 converts a hex string (like "sha256:abc123...") to [32]byte
 func hexStringToBytes32(hexStr string) ([32]byte, error) {

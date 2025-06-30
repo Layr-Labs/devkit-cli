@@ -145,7 +145,7 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("Failed to create StakeTableRootCalculator: %v", err)
 	}
 
-	block, err := holeskyClient.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+	block, err := holeskyClient.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.LatestBlockNumber)))
 	if err != nil {
 		return fmt.Errorf("Failed to get block by number: %v", err)
 	}

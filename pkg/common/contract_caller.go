@@ -17,7 +17,7 @@ import (
 	crosschainregistry "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/CrossChainRegistry"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	keyregistrar "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/KeyRegistrar"
-	releasemanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ReleaseManager"
+	// releasemanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ReleaseManager"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -738,33 +738,36 @@ func (cc *ContractCaller) GetRegistry() *contracts.ContractRegistry {
 	return cc.registry
 }
 
+/*
 func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.Address, artifacts []releasemanager.IReleaseManagerTypesArtifact, operatorSetId uint32, upgradeByTime int64) error {
-	opts, err := cc.buildTxOpts()
-	if err != nil {
-		return fmt.Errorf("failed to build transaction options: %w", err)
-	}
-	releaseManager, err := cc.registry.GetReleaseManager(cc.releaseManagerAddr)
-	if err != nil {
-		return fmt.Errorf("failed to get ReleaseManager: %w", err)
-	}
-	operatorSet := releasemanager.OperatorSet{Avs: avsAddress, Id: operatorSetId}
-	release := releasemanager.IReleaseManagerTypesRelease{
-		Artifacts:     artifacts,
-		UpgradeByTime: uint32(upgradeByTime),
-	}
-	return cc.SendAndWaitForTransaction(ctx, "PublishRelease", func() (*types.Transaction, error) {
-		tx, err := releaseManager.PublishRelease(opts, operatorSet, release)
-		if err == nil && tx != nil {
-			cc.logger.Debug(
-				"Transaction hash for PublishRelease: %s\n"+
-					"operatorSet: %s\n"+
-					"release: %s",
-				tx.Hash().Hex(),
-				operatorSet,
-				release,
-			)
+	return nil
+		opts, err := cc.buildTxOpts()
+		if err != nil {
+			return fmt.Errorf("failed to build transaction options: %w", err)
 		}
-		return tx, err
-	})
+		releaseManager, err := cc.registry.GetReleaseManager(cc.releaseManagerAddr)
+		if err != nil {
+			return fmt.Errorf("failed to get ReleaseManager: %w", err)
+		}
+		operatorSet := releasemanager.OperatorSet{Avs: avsAddress, Id: operatorSetId}
+		release := releasemanager.IReleaseManagerTypesRelease{
+			Artifacts:     artifacts,
+			UpgradeByTime: uint32(upgradeByTime),
+		}
+		return cc.SendAndWaitForTransaction(ctx, "PublishRelease", func() (*types.Transaction, error) {
+			tx, err := releaseManager.PublishRelease(opts, operatorSet, release)
+			if err == nil && tx != nil {
+				cc.logger.Debug(
+					"Transaction hash for PublishRelease: %s\n"+
+						"operatorSet: %s\n"+
+						"release: %s",
+					tx.Hash().Hex(),
+					operatorSet,
+					release,
+				)
+			}
+			return tx, err
+		})
 
 }
+*/

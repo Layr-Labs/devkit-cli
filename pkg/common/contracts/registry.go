@@ -13,7 +13,7 @@ import (
 	delegationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	istrategy "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IStrategy"
 	keyregistrar "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/KeyRegistrar"
-	releasemanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ReleaseManager"
+	// releasemanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ReleaseManager"
 	strategymanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/StrategyManager"
 )
 
@@ -201,6 +201,7 @@ func (cr *ContractRegistry) GetERC20(address common.Address) (*bind.BoundContrac
 	return erc20, nil
 }
 
+/*
 // GetReleaseManager returns a ReleaseManager instance
 func (cr *ContractRegistry) GetReleaseManager(address common.Address) (*releasemanager.ReleaseManager, error) {
 	instance, err := cr.GetContract(ReleaseManagerContract, address)
@@ -212,7 +213,7 @@ func (cr *ContractRegistry) GetReleaseManager(address common.Address) (*releasem
 		return nil, fmt.Errorf("contract at %s is not a ReleaseManager", address.Hex())
 	}
 	return releaseManager, nil
-}
+}*/
 
 // ListContracts returns all registered contracts of a specific type
 func (cr *ContractRegistry) ListContracts(contractType ContractType) []ContractInfo {
@@ -244,8 +245,8 @@ func (cr *ContractRegistry) createContractInstance(info ContractInfo) (interface
 		return keyregistrar.NewKeyRegistrar(info.Address, cr.client)
 	case CrossChainRegistryContract:
 		return crosschainregistry.NewCrossChainRegistry(info.Address, cr.client)
-	case ReleaseManagerContract:
-		return releasemanager.NewReleaseManager(info.Address, cr.client)
+	// case ReleaseManagerContract:
+	// 	return releasemanager.NewReleaseManager(info.Address, cr.client)
 	default:
 		return nil, fmt.Errorf("unsupported contract type: %s", info.Type)
 	}
@@ -319,15 +320,16 @@ func (rb *RegistryBuilder) AddEigenLayerCore(
 	if err != nil {
 		return nil, err
 	}
-	err = rb.registry.RegisterContract(ContractInfo{
-		Name:        "ReleaseManager",
-		Type:        ReleaseManagerContract,
-		Address:     releaseManagerAddr,
-		Description: "EigenLayer ReleaseManager contract",
-	})
-	if err != nil {
-		return nil, err
-	}
+	/*
+		err = rb.registry.RegisterContract(ContractInfo{
+			Name:        "ReleaseManager",
+			Type:        ReleaseManagerContract,
+			Address:     releaseManagerAddr,
+			Description: "EigenLayer ReleaseManager contract",
+		})
+		if err != nil {
+			return nil, err
+		}*/
 	return rb, nil
 }
 
@@ -360,6 +362,7 @@ func (rb *RegistryBuilder) AddERC20(address common.Address, symbol string) (*Reg
 }
 
 func (rb *RegistryBuilder) AddReleaseManager(address common.Address) (*RegistryBuilder, error) {
+	return nil, nil
 	err := rb.registry.RegisterContract(ContractInfo{
 		Name:    "ReleaseManager",
 		Type:    ReleaseManagerContract,
