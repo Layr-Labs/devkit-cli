@@ -26,6 +26,9 @@ const (
 	// Docker open retry interval in milliseconds
 	DockerOpenRetryIntervalMilliseconds = 500
 
-	// Default chainId for Anvil
-	DefaultAnvilChainId = 31337
+	// L1 Default chainId for Anvil
+	L1DefaultAnvilChainId = 31337
+
+	// L2 Default chainId for Anvil
+	L2DefaultAnvilChainId = 31338
 )

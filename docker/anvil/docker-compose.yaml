@@ -18,3 +18,12 @@ services:
       - "${L2_DEVNET_PORT}:8545"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+  devkit-devnet-l2:
+    image: ${FOUNDRY_IMAGE}
+    container_name: ${L2_AVS_CONTAINER_NAME} 
+    entrypoint: anvil
+    command: "--host 0.0.0.0 --fork-url ${L2_FORK_RPC_URL} --fork-block-number ${L2_FORK_BLOCK_NUMBER} ${L2_ANVIL_ARGS}"
+    ports:
+      - "${L2_DEVNET_PORT}:8545"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

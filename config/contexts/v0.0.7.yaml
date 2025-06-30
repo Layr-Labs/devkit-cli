@@ -13,10 +13,10 @@ context:
         url: ""
         block_time: 3
     l2:
-      chain_id: 31337
-      rpc_url: "http://localhost:8545"
+      chain_id: 31338
+      rpc_url: "http://localhost:9545"
       fork:
-        block: 4056218
+        block: 27764494
         url: ""
         block_time: 3
   # Stake Root Transporter configuration
@@ -104,8 +104,9 @@ context:
       key_registrar: "0x1C84Bb62fE7791e173014A879C706445fa893BbE"
       release_manager: "0x323A9FcB2De80d04B5C4B0F72ee7799100D32F0F"
     l2: 
-      bn254_certificate_verifier: "0xf462d03A82C1F3496B0DFe27E978318eD1720E1f"
-      operator_table_updater: "0xd7230B89E5E2ed1FD068F0FF9198D7960243f12a"
+      bn254_certificate_verifier: "0x824604a31b580Aec16D8Dd7ae9A27661Dc65cBA3"
+      operator_table_updater: "0x798EB817B7C109c6780264D5161183809C817216"
+      ecdsa_certificate_verifier: "0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7"
     
   # Contracts deployed on `devnet start`
   deployed_contracts: []

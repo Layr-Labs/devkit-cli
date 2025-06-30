@@ -9,12 +9,22 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 )
 
-// GetDevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
-// Falls back to CHAIN_ARGS constant if value is empty.
-func GetDevnetChainArgsOrDefault(cfg *common.ConfigWithContextConfig) (string, string) {
+// GetL1DevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
+// Falls back to L1_CHAIN_ARGS constant if value is empty.
+func GetL1DevnetChainArgsOrDefault(cfg *common.ConfigWithContextConfig) string {
 	args := []string{} // TODO(nova) : Get chain args from config.yaml ?  For now using default
 	if len(args) == 0 {
-		return L1_CHAIN_ARGS, L2_CHAIN_ARGS
+		return L1_CHAIN_ARGS
+	}
+	return " "
+}
+
+// GetL2DevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
+// Falls back to L2_CHAIN_ARGS constant if value is empty.
+func GetL2DevnetChainArgsOrDefault(cfg *common.ConfigWithContextConfig) string {
+	args := []string{} // TODO(nova) : Get chain args from config.yaml ?  For now using default
+	if len(args) == 0 {
+		return L2_CHAIN_ARGS
 	}
 	return "", ""
 }
@@ -56,12 +66,22 @@ func GetDevnetChainIdOrDefault(cfg *common.ConfigWithContextConfig, chainName st
 	// Fallback to context defined value or DefaultAnvilChainId if undefined
 	chainConfig, found := cfg.Context[DEVNET_CONTEXT].Chains[chainName]
 	if !found {
-		logger.Error("failed to get chainConfig for chainName : %s", chainName)
-		return common.DefaultAnvilChainId, fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+		if chainName == "l1" {
+			logger.Error("failed to get chainConfig for l1 : %s", chainName)
+			return common.L1DefaultAnvilChainId, fmt.Errorf("failed to get chainConfig for l1 : %s", chainName)
+		} else if chainName == "l2" {
+			logger.Error("failed to get chainConfig for l2 : %s", chainName)
+			return common.L2DefaultAnvilChainId, fmt.Errorf("failed to get chainConfig for l2 : %s", chainName)
+		}
 	}
 	if chainConfig.ChainID == 0 {
-		logger.Error("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
-		return common.DefaultAnvilChainId, fmt.Errorf("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+		if chainName == "l1" {
+			logger.Error("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+			return common.L1DefaultAnvilChainId, fmt.Errorf("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+		} else if chainName == "l2" {
+			logger.Error("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+			return common.L2DefaultAnvilChainId, fmt.Errorf("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
+		}
 	}
 	logger.Info("chain_id is set to %d", chainConfig.ChainID)
 	return chainConfig.ChainID, nil

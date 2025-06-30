@@ -27,9 +27,14 @@ var DevnetCommand = &cli.Command{
 					Usage: "Run without showing logs or interactive TUI",
 				},
 				&cli.IntFlag{
-					Name:  "port",
-					Usage: "Specify a custom port for local devnet",
+					Name:  "l1-port",
+					Usage: "Specify a custom port for local devnet L1",
 					Value: 8545,
+				},
+				&cli.IntFlag{
+					Name:  "l2-port",
+					Usage: "Specify a custom port for local devnet L2",
+					Value: 9545,
 				},
 				&cli.BoolFlag{
 					Name:  "skip-avs-run",

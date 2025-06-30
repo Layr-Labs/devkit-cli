@@ -116,7 +116,7 @@ func Transport(cCtx *cli.Context) error {
 	}
 	chainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
 	if err != nil {
-		chainId = common.DefaultAnvilChainId
+		chainId = common.L1DefaultAnvilChainId
 	}
 
 	cm := chainManager.NewChainManager()
@@ -356,7 +356,7 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 	}
 	chainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
 	if err != nil {
-		chainId = common.DefaultAnvilChainId
+		chainId = common.L1DefaultAnvilChainId
 	}
 
 	// Get a new chainManager

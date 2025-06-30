@@ -114,19 +114,23 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			}
 		}
 	}
-	port := cCtx.Int("port")
-	l1Port := devnet.GetL1Port(port)
-	l2Port := devnet.GetL2Port(port)
+	l1Port := cCtx.Int("l1-port")
+	l2Port := cCtx.Int("l2-port")
+
+	if !devnet.IsPortAvailable(l2Port) {
+		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --l2-port", l2Port)
+	}
 
 	if !devnet.IsPortAvailable(l1Port) {
-		return fmt.Errorf("❌ L1 port %d is already in use. Please choose a different port using --port", l1Port)
+		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --l1-port", l1Port)
 	}
 	if !devnet.IsPortAvailable(l2Port) {
 		return fmt.Errorf("❌ L2 port %d is already in use. Please choose a different port using --port", l2Port)
 	}
 
 	chainImage := devnet.GetDevnetChainImageOrDefault(config)
-	l1chainArgs, l2chainArgs := devnet.GetDevnetChainArgsOrDefault(config)
+	l1ChainArgs := devnet.GetL1DevnetChainArgsOrDefault(config)
+	l2ChainArgs := devnet.GetL2DevnetChainArgsOrDefault(config)
 
 	// Start timer
 	startTime := time.Now()
@@ -145,41 +149,66 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Docker-compose for anvil devnet
 	composePath := devnet.WriteEmbeddedArtifacts()
-
-	// Get L1 configuration
 	l1ForkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
+	l2ForkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L2)
 	if err != nil {
 		return fmt.Errorf("L1 fork URL error: %w", err)
 	}
+
+	// Error if the l1ForkUrl has not been modified
 	if l1ForkUrl == "" {
-		return fmt.Errorf("L1 fork-url not set; set L1_FORK_URL in .env or l1.fork-url in ./config/context/devnet.yaml")
+		return fmt.Errorf("l1 fork-url not set; set l1 fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
+	}
+	// Error if the l2ForkUrl has not been modified
+	if l2ForkUrl == "" {
+		return fmt.Errorf("l2 fork-url not set; set l2 fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
 	}
 	l1DockerForkUrl := devnet.EnsureDockerHost(l1ForkUrl)
 
-	// Get L2 configuration
-	l2ForkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L2)
+	// Ensure fork URL uses appropriate Docker host for container environments
+	l1DockerForkUrl := devnet.EnsureDockerHost(l1ForkUrl)
+	l2DockerForkUrl := devnet.EnsureDockerHost(l2ForkUrl)
+	// Get the l1 block_time from env/config
+	l1BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L1)
 	if err != nil {
-		return fmt.Errorf("L2 fork URL error: %w", err)
+		l1BlockTime = 12
 	}
 	if l2ForkUrl == "" {
 		return fmt.Errorf("L2 fork-url not set; set L2_FORK_URL in .env or l2.fork-url in ./config/context/devnet.yaml")
 	}
 	l2DockerForkUrl := devnet.EnsureDockerHost(l2ForkUrl)
 
-	// Get block times for L1 and L2
-	l1BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L1)
-	if err != nil {
-		l1BlockTime = 12
-	}
+	// Get the l2 block_time from env/config
 	l2BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L2)
 	if err != nil {
-		l2BlockTime = 2 // L2s are faster
+		l2BlockTime = 12
 	}
 
-	// Create chain-specific args
-	l1ChainArgs := fmt.Sprintf("%s --block-time %d", l1chainArgs, l1BlockTime)
-	l2ChainArgs := fmt.Sprintf("%s --block-time %d", l2chainArgs, l2BlockTime)
+	// Get the l1 chain_id from env/config
+	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1, logger)
+	if err != nil {
+		l1ChainId = common.L1DefaultAnvilChainId
+	}
 
+	// Get the l2 chain_id from env/config
+	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L2, logger)
+	if err != nil {
+		l2ChainId = common.L2DefaultAnvilChainId
+	}
+
+	// Append config defined details to chainArgs for l1
+	l1ChainArgs = fmt.Sprintf("%s --chain-id %d", l1ChainArgs, l1ChainId)
+	l1ChainArgs = fmt.Sprintf("%s --block-time %d", l1ChainArgs, l1BlockTime)
+
+	// Append config defined details to chainArgs for l2
+	l2ChainArgs = fmt.Sprintf("%s --chain-id %d", l2ChainArgs, l2ChainId)
+	l2ChainArgs = fmt.Sprintf("%s --block-time %d", l2ChainArgs, l2BlockTime)
+
+	// Run docker compose up for anvil devnet
+	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
+
+	l1ContainerName := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
+	l2ContainerName := fmt.Sprintf("devkit-devnet-l2-%s", config.Config.Project.Name)
 	l1ChainConfig, found := config.Context[devnet.DEVNET_CONTEXT].Chains[devnet.L1]
 	if !found {
 		return fmt.Errorf("failed to find a chain with name: l1 in devnet.yaml")
@@ -189,24 +218,18 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to find a chain with name: l2 in devnet.yaml")
 	}
 
-	// Run docker compose up for both L1 and L2 anvil devnets
-	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
-
-	containerName := fmt.Sprintf("devkit-devnet-%s", config.Config.Project.Name)
 	cmd.Env = append(os.Environ(),
 		"FOUNDRY_IMAGE="+chainImage,
-		// L1 configuration
 		"L1_ANVIL_ARGS="+l1ChainArgs,
-		fmt.Sprintf("L1_DEVNET_PORT=%d", l1Port),
-		"L1_FORK_RPC_URL="+l1DockerForkUrl,
-		fmt.Sprintf("L1_FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
-		// L2 configuration
 		"L2_ANVIL_ARGS="+l2ChainArgs,
+		fmt.Sprintf("L1_DEVNET_PORT=%d", l1Port),
 		fmt.Sprintf("L2_DEVNET_PORT=%d", l2Port),
+		"L1_FORK_RPC_URL="+l1DockerForkUrl,
 		"L2_FORK_RPC_URL="+l2DockerForkUrl,
+		fmt.Sprintf("L1_FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
 		fmt.Sprintf("L2_FORK_BLOCK_NUMBER=%d", l2ChainConfig.Fork.Block),
-		// Container base name
-		"AVS_CONTAINER_NAME="+containerName,
+		"L1_AVS_CONTAINER_NAME="+l1ContainerName,
+		"L2_AVS_CONTAINER_NAME="+l2ContainerName,
 	)
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
@@ -225,9 +248,10 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}()
 	}
 
-	l1RpcUrl := devnet.GetL1RPCURL(port)
-	l2RpcUrl := devnet.GetL2RPCURL(port)
-	logger.Info("Waiting for L1 and L2 devnets to be ready...")
+	// Construct RPC url to pass to scripts for l1 and l2
+	l1RpcUrl := devnet.GetRPCURL(l1Port)
+	l2RpcUrl := devnet.GetRPCURL(l2Port)
+	logger.Info("Waiting for devnet to be ready...")
 
 	// Get chains node
 	chainsNode := common.GetChildByKey(contextNode, "chains")
@@ -235,18 +259,21 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("missing 'chains' key in context")
 	}
 
-	// Update RPC URLs for L1 and L2 chains separately
-	for i := 0; i < len(chainsNode.Content); i += 2 {
-		chainName := chainsNode.Content[i].Value
-		chainNode := chainsNode.Content[i+1]
+	// Update RPC URLs for L1 chain
+	l1ChainNode := common.GetChildByKey(chainsNode, devnet.L1)
+	if l1ChainNode != nil {
+		l1RpcUrlNode := common.GetChildByKey(l1ChainNode, "rpc_url")
+		if l1RpcUrlNode != nil {
+			l1RpcUrlNode.Value = l1RpcUrl
+		}
+	}
 
-		rpcUrlNode := common.GetChildByKey(chainNode, "rpc_url")
-		if rpcUrlNode != nil {
-			if chainName == devnet.L1 {
-				rpcUrlNode.Value = l1RpcUrl
-			} else if chainName == devnet.L2 {
-				rpcUrlNode.Value = l2RpcUrl
-			}
+	// Update RPC URLs for L2 chain
+	l2ChainNode := common.GetChildByKey(chainsNode, devnet.L2)
+	if l2ChainNode != nil {
+		l2RpcUrlNode := common.GetChildByKey(l2ChainNode, "rpc_url")
+		if l2RpcUrlNode != nil {
+			l2RpcUrlNode.Value = l2RpcUrl
 		}
 	}
 
@@ -255,12 +282,16 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return err
 	}
 
-	// Sleep for 6 seconds to ensure both devnets are fully started
-	time.Sleep(6 * time.Second)
-
-	// Fund the wallets defined in config for both L1 and L2
-	logger.Info("Funding wallets on L1...")
+	// Sleep for 4 second to ensure the devnet is fully started
+	time.Sleep(4 * time.Second)
+	// Fund the wallets defined in config on L1
 	err = devnet.FundWalletsDevnet(config, l1RpcUrl)
+	if err != nil {
+		return err
+	}
+
+	// Fund the wallets defined in config on L2
+	err = devnet.FundWalletsDevnet(config, l2RpcUrl)
 	if err != nil {
 		return fmt.Errorf("failed to fund L1 wallets: %w", err)
 	}
