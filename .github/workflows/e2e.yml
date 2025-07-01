@@ -87,6 +87,28 @@ jobs:
           cd ./my-awesome-avs/
           devkit avs transport verify
 
+      - name: Test release publish
+        run: |
+          cd ./my-awesome-avs/
+          
+          CURRENT_VERSION=$(grep -A 1 "artifact:" config/contexts/devnet.yaml | grep "version:" | awk '{print $2}' | tr -d '"')
+          echo "Current version: ${CURRENT_VERSION:-empty}"
+          
+          UPGRADE_TIME=$(date -d "+10 minutes" +%s)
+          
+          echo "Publishing release with upgrade time: $UPGRADE_TIME"
+          devkit avs release publish --upgrade-by-time $UPGRADE_TIME --registry localhost:5001
+          
+          NEW_VERSION=$(grep -A 1 "artifact:" config/contexts/devnet.yaml | grep "version:" | awk '{print $2}' | tr -d '"')
+          echo "New version: $NEW_VERSION"
+          
+          if [ "$NEW_VERSION" = "1" ] || [ "$NEW_VERSION" -gt 0 ]; then
+            echo "✅ Release published successfully, version updated to: $NEW_VERSION"
+          else
+            echo "❌ Release publish failed - version not updated"
+            exit 1
+          fi
+
       - name: Stop devnet
         run: |
           cd ./my-awesome-avs/

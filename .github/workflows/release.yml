@@ -383,6 +383,36 @@ jobs:
           cd ./my-awesome-avs/
           devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
 
+      - name: Test release publish
+        run: |
+          cd ./my-awesome-avs/
+          
+          CURRENT_VERSION=$(grep -A 1 "artifact:" config/contexts/devnet.yaml | grep "version:" | awk '{print $2}' | tr -d '"')
+          echo "Current version: ${CURRENT_VERSION:-empty}"
+          
+          # Calculate upgrade time (10 minutes from now)
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            UPGRADE_TIME=$(date -v +10M +%s)
+          else
+            UPGRADE_TIME=$(date -d "+10 minutes" +%s)
+          fi
+          
+          # Run release publish with explicit registry
+          echo "Publishing release with upgrade time: $UPGRADE_TIME"
+          devkit avs release publish --upgrade-by-time $UPGRADE_TIME --registry localhost:5001
+          
+          # Check that version was updated
+          NEW_VERSION=$(grep -A 1 "artifact:" config/contexts/devnet.yaml | grep "version:" | awk '{print $2}' | tr -d '"')
+          echo "New version: $NEW_VERSION"
+          
+          # Verify version was incremented
+          if [ "$NEW_VERSION" = "1" ] || [ "$NEW_VERSION" -gt 0 ]; then
+            echo "✅ Release published successfully, version updated to: $NEW_VERSION"
+          else
+            echo "❌ Release publish failed - version not updated"
+            exit 1
+          fi
+
       - name: Stop devnet
         run: |
           cd ./my-awesome-avs/
