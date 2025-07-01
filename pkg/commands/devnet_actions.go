@@ -166,7 +166,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if l2ForkUrl == "" {
 		return fmt.Errorf("l2 fork-url not set; set l2 fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
 	}
-	l1DockerForkUrl := devnet.EnsureDockerHost(l1ForkUrl)
 
 	// Ensure fork URL uses appropriate Docker host for container environments
 	l1DockerForkUrl := devnet.EnsureDockerHost(l1ForkUrl)
@@ -179,7 +178,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if l2ForkUrl == "" {
 		return fmt.Errorf("L2 fork-url not set; set L2_FORK_URL in .env or l2.fork-url in ./config/context/devnet.yaml")
 	}
-	l2DockerForkUrl := devnet.EnsureDockerHost(l2ForkUrl)
 
 	// Get the l2 block_time from env/config
 	l2BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L2)
