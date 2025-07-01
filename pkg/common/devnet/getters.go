@@ -26,7 +26,7 @@ func GetL2DevnetChainArgsOrDefault(cfg *common.ConfigWithContextConfig) string {
 	if len(args) == 0 {
 		return L2_CHAIN_ARGS
 	}
-	return "", ""
+	return ""
 }
 
 // GetDevnetChainImageOrDefault returns the devnet chain image,
