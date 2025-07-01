@@ -1,6 +1,7 @@
 package devnet
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/url"
@@ -8,10 +9,13 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 )
 
@@ -181,4 +185,36 @@ func ensureDockerHostRegex(inputUrl string, dockerHost string) string {
 // This should always use localhost since it's for host→container communication
 func GetRPCURL(port int) string {
 	return fmt.Sprintf("http://localhost:%d", port)
+}
+
+// GetL2BlockByNumber retrieves the timestamp of a specific L2 block by its number.
+func GetL2BlockByNumber(ctx *cli.Context, l2RpcUrl string, blockNumber uint64, logger iface.Logger) (string, error) {
+	rpcClient, err := rpc.DialContext(context.Background(), l2RpcUrl)
+	if err != nil {
+		return "", fmt.Errorf("failed to dial RPC: %v", err)
+	}
+	defer rpcClient.Close()
+
+	var blockResult map[string]interface{}
+	err = rpcClient.CallContext(context.Background(), &blockResult, "eth_getBlockByNumber", "latest", false)
+	if err != nil {
+		return "", fmt.Errorf("failed to call eth_getBlockByNumber: %v", err)
+	}
+
+	timestampHex, ok := blockResult["timestamp"].(string)
+	if !ok {
+		return "", fmt.Errorf("failed to get timestamp from block")
+	}
+
+	// Convert hex timestamp to decimal string
+	if len(timestampHex) < 2 || timestampHex[:2] != "0x" {
+		return "", fmt.Errorf("invalid timestamp hex format: %s", timestampHex)
+	}
+
+	timestampInt, err := strconv.ParseUint(timestampHex[2:], 16, 64)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse timestamp hex: %v", err)
+	}
+
+	return strconv.FormatUint(timestampInt, 10), nil
 }

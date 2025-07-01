@@ -91,6 +91,7 @@ type EigenLayerL1Config struct {
 	CrossChainRegistry   string `json:"cross_chain_registry" yaml:"cross_chain_registry"`
 	KeyRegistrar         string `json:"key_registrar" yaml:"key_registrar"`
 	ReleaseManager       string `json:"release_manager" yaml:"release_manager"`
+	OperatorTableUpdater string `json:"operator_table_updater" yaml:"operator_table_updater"`
 }
 
 type EigenLayerL2Config struct {
@@ -104,7 +105,13 @@ type ChainConfig struct {
 	Fork    *ForkConfig `json:"fork" yaml:"fork"`
 }
 
-type DeployedContract struct {
+type DeployedL1Contract struct {
+	Name    string `json:"name" yaml:"name"`
+	Address string `json:"address" yaml:"address"`
+	Abi     string `json:"abi" yaml:"abi"`
+}
+
+type DeployedL2Contract struct {
 	Name    string `json:"name" yaml:"name"`
 	Address string `json:"address" yaml:"address"`
 	Abi     string `json:"abi" yaml:"abi"`
@@ -170,7 +177,8 @@ type ChainContextConfig struct {
 	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
 	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
 	EigenLayer            *EigenLayerConfig      `json:"eigenlayer" yaml:"eigenlayer"`
-	DeployedContracts     []DeployedContract     `json:"deployed_contracts,omitempty" yaml:"deployed_contracts,omitempty"`
+	DeployedContracts     []DeployedL1Contract   `json:"deployed_l1_contracts,omitempty" yaml:"deployed_l1_contracts,omitempty"`
+	DeployedL2Contracts   []DeployedL2Contract   `json:"deployed_l2_contracts,omitempty" yaml:"deployed_l2_contracts,omitempty"`
 	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 	Stakers               []StakerSpec           `json:"stakers" yaml:"stakers"`

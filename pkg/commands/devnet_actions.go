@@ -423,6 +423,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 	}
 
+	// Deploy L2 contracts
+	if err := DeployL2ContractsAction(cCtx); err != nil {
+		logger.Error("deploy-l2-contracts failed: %v", err)
+		return fmt.Errorf("deploy-l2-contracts failed: %w", err)
+	}
+
 	// Start offchain AVS components after starting devnet and deploying contracts unless skipped
 	if !skipDeployContracts && !skipAvsRun {
 		if err := AVSRun(cCtx); err != nil && !errors.Is(err, context.Canceled) {
@@ -431,6 +437,106 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func DeployL2ContractsAction(cCtx *cli.Context) error {
+
+	// Get logger
+	logger := common.LoggerFromContext(cCtx.Context)
+	// Check if docker is running, else try to start it
+	err := common.EnsureDockerIsRunning(cCtx)
+	if err != nil {
+		return cli.Exit(err.Error(), 1)
+	}
+
+	// Start timing execution runtime
+	startTime := time.Now()
+
+	// Run scriptPath from cwd
+	const dir = ""
+	const context = "devnet" // @TODO: use selected context name
+
+	// Set path for .devkit scripts
+	scriptsDir := filepath.Join(".devkit", "scripts")
+
+	// List of scripts we want to call and curry context through
+	scriptNames := []string{
+		"deployL2Contracts",
+	}
+
+	// Check for context
+	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	if err != nil {
+		return fmt.Errorf("context loading failed: %w", err)
+	}
+
+	// Loop scripts with cloned context
+	for _, name := range scriptNames {
+		// Log the script name that's about to be executed
+		logger.Info("Executing script: %s", name)
+		// Clone context node and convert to map
+		clonedCtxNode := common.CloneNode(contextNode)
+		ctxInterface, err := common.NodeToInterface(clonedCtxNode)
+		if err != nil {
+			return fmt.Errorf("context decode failed: %w", err)
+		}
+
+		// Check context is a map
+		ctxMap, ok := ctxInterface.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("cloned context is not a map")
+		}
+
+		// Parse the provided params
+		inputJSON, err := json.Marshal(map[string]interface{}{"context": ctxMap})
+		if err != nil {
+			return fmt.Errorf("marshal context: %w", err)
+		}
+
+		// Set path in scriptsDir
+		scriptPath := filepath.Join(scriptsDir, name)
+		// Expect a JSON response which we will curry to the next call and later save to context
+		outMap, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectJSONResponse, inputJSON)
+		if err != nil {
+			return fmt.Errorf("%s failed: %w", name, err)
+		}
+
+		// Convert to node for merge
+		outNode, err := common.InterfaceToNode(outMap)
+		if err != nil {
+			return fmt.Errorf("%s output invalid: %w", name, err)
+		}
+
+		// Merge output into original context node
+		common.DeepMerge(contextNode, outNode)
+	}
+
+	// Create output .json files for each of the deployed contracts
+	contracts := common.GetChildByKey(contextNode, "deployed_l2_contracts")
+	if contracts == nil {
+		return fmt.Errorf("deployed_l2_contracts node not found")
+	}
+	var contractsList []DeployContractTransport
+	if err := contracts.Decode(&contractsList); err != nil {
+		return fmt.Errorf("decode deployed_l2_contracts: %w", err)
+	}
+	// Empty log line to split these logs from the main body for easy identification
+	logger.Title("Save l2 contract artefacts")
+	err = extractContractOutputs(cCtx, context, contractsList)
+	if err != nil {
+		return fmt.Errorf("failed to write l2 contract artefacts: %w", err)
+	}
+
+	// Write yaml back to project directory
+	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
+		return err
+	}
+
+	// Measure how long we ran for
+	elapsed := time.Since(startTime).Round(time.Second)
+	logger.Info("\nDevnet L2 contracts deployed successfully in %s", elapsed)
+	return nil
+
 }
 
 func DeployContractsAction(cCtx *cli.Context) error {
@@ -454,7 +560,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// List of scripts we want to call and curry context through
 	scriptNames := []string{
-		"deployContracts",
+		"deployL1Contracts",
 		"getOperatorSets",
 		"getOperatorRegistrationMetadata",
 	}
@@ -507,19 +613,19 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	}
 
 	// Create output .json files for each of the deployed contracts
-	contracts := common.GetChildByKey(contextNode, "deployed_contracts")
+	contracts := common.GetChildByKey(contextNode, "deployed_l1_contracts")
 	if contracts == nil {
-		return fmt.Errorf("deployed_contracts node not found")
+		return fmt.Errorf("deployed_l1_contracts node not found")
 	}
 	var contractsList []DeployContractTransport
 	if err := contracts.Decode(&contractsList); err != nil {
-		return fmt.Errorf("decode deployed_contracts: %w", err)
+		return fmt.Errorf("decode deployed_l1_contracts: %w", err)
 	}
 	// Empty log line to split these logs from the main body for easy identification
-	logger.Title("Save contract artefacts")
+	logger.Title("Save L1 contract artefacts")
 	err = extractContractOutputs(cCtx, context, contractsList)
 	if err != nil {
-		return fmt.Errorf("failed to write contract artefacts: %w", err)
+		return fmt.Errorf("failed to write l1 contract artefacts: %w", err)
 	}
 
 	// Write yaml back to project directory
@@ -529,7 +635,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Measure how long we ran for
 	elapsed := time.Since(startTime).Round(time.Second)
-	logger.Info("\nDevnet contracts deployed successfully in %s", elapsed)
+	logger.Info("\nDevnet L1 contracts deployed successfully in %s", elapsed)
 	return nil
 }
 
@@ -1743,6 +1849,11 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
 	}
 
+	l2Cfg, ok := envCtx.Chains[devnet.L2]
+	if !ok {
+		return fmt.Errorf("failed to get l2 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+	}
+
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
 	if err != nil {
 		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
@@ -1750,7 +1861,8 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 	defer client.Close()
 
 	crossChainRegistryAddr := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
-	operatorTableUpdater := ethcommon.HexToAddress(envCtx.EigenLayer.L2.OperatorTableUpdater)
+	l1OperatorTableUpdater := ethcommon.HexToAddress(envCtx.EigenLayer.L1.OperatorTableUpdater)
+	l2OperatorTableUpdater := ethcommon.HexToAddress(envCtx.EigenLayer.L2.OperatorTableUpdater)
 
 	avsPrivateKeyOrGivenPermissionByAvs := envCtx.Avs.AVSPrivateKey
 
@@ -1770,12 +1882,19 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 		return fmt.Errorf("failed to create contract caller: %w", err)
 	}
 
-	err = contractCaller.WhitelistChainIdInCrossRegistry(cCtx.Context, operatorTableUpdater, uint64(l1Cfg.ChainID))
+	// whitelist l1 chain id in cross registry
+	err = contractCaller.WhitelistChainIdInCrossRegistry(cCtx.Context, l1OperatorTableUpdater, uint64(l1Cfg.ChainID))
 	if err != nil {
-		return fmt.Errorf("failed to whitelist ChainId in CrossChainRegistry: %w", err)
+		return fmt.Errorf("failed to whitelist l1 ChainId in CrossChainRegistry: %w", err)
 	}
 
-	logger.Info("Successfully whitelisted chain id in cross registry")
+	// whitelist l2 chain id in cross registry
+	err = contractCaller.WhitelistChainIdInCrossRegistry(cCtx.Context, l2OperatorTableUpdater, uint64(l2Cfg.ChainID))
+	if err != nil {
+		return fmt.Errorf("failed to whitelist l2 ChainId in CrossChainRegistry: %w", err)
+	}
+
+	logger.Info("Successfully whitelisted l1 chain id in cross registry")
 	return nil
 }
 

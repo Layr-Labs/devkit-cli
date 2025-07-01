@@ -86,6 +86,19 @@ var TransportCommand = &cli.Command{
 	},
 }
 
+// CustomTxSigner wraps the original txSigner and sets appropriate gas limits
+type CustomTxSigner struct {
+	originalSigner txSigner.ITransactionSigner
+}
+
+func NewCustomTxSigner(privateKey string) (*CustomTxSigner, error) {
+	originalSigner, err := txSigner.NewPrivateKeySigner(privateKey)
+	if err != nil {
+		return nil, err
+	}
+	return &CustomTxSigner{originalSigner: originalSigner}, nil
+}
+
 func Transport(cCtx *cli.Context) error {
 	// Get a raw zap logger to pass to operatorTableCalculator and transport
 	rawLogger, err := logger.NewLogger(&logger.LoggerConfig{Debug: true})
@@ -110,94 +123,166 @@ func Transport(cCtx *cli.Context) error {
 	}
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
-	rpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
+	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
 	if err != nil {
-		rpcUrl = "http://localhost:8545"
+		l1RpcUrl = "http://localhost:8545"
 	}
-	chainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
+	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L2)
 	if err != nil {
-		chainId = common.L1DefaultAnvilChainId
+		l2RpcUrl = "http://localhost:9545"
+	}
+	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
+	if err != nil {
+		l1ChainId = common.L1DefaultAnvilChainId
+	}
+	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L2, logger)
+	if err != nil {
+		l2ChainId = common.L2DefaultAnvilChainId
+	}
+
+	// Advance L1 blocks
+	l1RpcClient, err := rpc.Dial(l1RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer l1RpcClient.Close()
+
+	err = l1RpcClient.Call(nil, "anvil_mine", "0xa") // 0xa = 10 in hex
+	if err != nil {
+		return fmt.Errorf("failed to advance L1 blocks: %w", err)
+	}
+
+	// Advance L2 blocks
+	l2RpcClient, err := rpc.Dial(l2RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L2 RPC: %w", err)
+	}
+	defer l2RpcClient.Close()
+
+	err = l2RpcClient.Call(nil, "anvil_mine", "0xa") // 0xa = 10 in hex
+	if err != nil {
+		return fmt.Errorf("failed to advance L2 blocks: %w", err)
 	}
 
 	cm := chainManager.NewChainManager()
 
-	holeskyConfig := &chainManager.ChainConfig{
-		ChainID: uint64(chainId),
-		RPCUrl:  rpcUrl,
+	l1Config := &chainManager.ChainConfig{
+		ChainID: uint64(l1ChainId),
+		RPCUrl:  l1RpcUrl,
 	}
-	if err := cm.AddChain(holeskyConfig); err != nil {
-		return fmt.Errorf("Failed to add chain: %v", err)
+	l2Config := &chainManager.ChainConfig{
+		ChainID: uint64(l2ChainId),
+		RPCUrl:  l2RpcUrl,
 	}
-	holeskyClient, err := cm.GetChainForId(holeskyConfig.ChainID)
+	logger.Info("l1ChainId: %v", l1ChainId)
+	logger.Info("l2ChainId: %v", l2ChainId)
+	if err := cm.AddChain(l1Config); err != nil {
+		return fmt.Errorf("failed to add l1 chain: %v", err)
+	}
+	if err := cm.AddChain(l2Config); err != nil {
+		return fmt.Errorf("failed to add l2 chain: %v", err)
+	}
+	l1Client, err := cm.GetChainForId(l1Config.ChainID)
 	if err != nil {
-		return fmt.Errorf("Failed to get chain for ID %d: %v", holeskyConfig.ChainID, err)
+		return fmt.Errorf("failed to get l1 chain for ID %d: %v", l1Config.ChainID, err)
+	}
+	l2Client, err := cm.GetChainForId(l2Config.ChainID)
+	if err != nil {
+		return fmt.Errorf("failed to get l2 chain for ID %d: %v", l2Config.ChainID, err)
 	}
 
 	txSign, err := txSigner.NewPrivateKeySigner(envCtx.Transporter.PrivateKey)
 	if err != nil {
-		return fmt.Errorf("Failed to create private key signer: %v", err)
+		return fmt.Errorf("failed to create private key signer: %v", err)
 	}
+
+	// get balance of 0xd638d3779456898dff17ebfe5d62f5b7a92d61d7 using l1 rpc url
+	balance, err := l1Client.RPCClient.BalanceAt(cCtx.Context, ethcommon.HexToAddress("0xd638d3779456898dff17ebfe5d62f5b7a92d61d7"), nil)
+	if err != nil {
+		return fmt.Errorf("failed to get balance: %v", err)
+	}
+	logger.Info("l1 balance of 0xd638d3779456898dff17ebfe5d62f5b7a92d61d7: %v", balance)
+	balance, err = l2Client.RPCClient.BalanceAt(cCtx.Context, ethcommon.HexToAddress("0xd638d3779456898dff17ebfe5d62f5b7a92d61d7"), nil)
+	if err != nil {
+		return fmt.Errorf("failed to get balance: %v", err)
+	}
+	logger.Info("l2 balance of 0xd638d3779456898dff17ebfe5d62f5b7a92d61d7: %v", balance)
 
 	tableCalc, err := operatorTableCalculator.NewStakeTableRootCalculator(&operatorTableCalculator.Config{
 		CrossChainRegistryAddress: crossChainRegistryAddress,
-	}, holeskyClient.RPCClient, rawLogger)
+	}, l1Client.RPCClient, rawLogger)
 	if err != nil {
-		return fmt.Errorf("Failed to create StakeTableRootCalculator: %v", err)
+		return fmt.Errorf("failed to create StakeTableRootCalculator: %v", err)
 	}
 
-	block, err := holeskyClient.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
 	if err != nil {
-		return fmt.Errorf("Failed to get block by number: %v", err)
+		return fmt.Errorf("failed to get block by number for l1: %v", err)
 	}
 
-	root, tree, dist, err := tableCalc.CalculateStakeTableRoot(cCtx.Context, block.NumberU64())
+	// get l2 block by number using utility function
+	l2Timestamp, err := devnet.GetL2BlockByNumber(cCtx, l2RpcUrl, uint64(envCtx.Chains[devnet.L2].Fork.Block-10), logger)
 	if err != nil {
-		return fmt.Errorf("Failed to calculate stake table root: %v", err)
+		logger.Info("Failed to get L2 timestamp, falling back to L1 timestamp: %v", err)
+		l2Timestamp = strconv.FormatUint(l1Block.Time(), 10)
+	}
+	logger.Info("l2 block timestamp: %v", l2Timestamp)
+
+	root, tree, dist, err := tableCalc.CalculateStakeTableRoot(cCtx.Context, l1Block.NumberU64())
+	if err != nil {
+		return fmt.Errorf("failed to calculate stake table root: %v", err)
 	}
 
 	scheme := bn254.NewScheme()
 	genericPk, err := scheme.NewPrivateKeyFromHexString(envCtx.Transporter.BlsPrivateKey)
 	if err != nil {
-		return fmt.Errorf("Failed to create BLS private key: %v", err)
+		return fmt.Errorf("failed to create BLS private key: %v", err)
 	}
 	pk, err := bn254.NewPrivateKeyFromBytes(genericPk.Bytes())
 	if err != nil {
-		return fmt.Errorf("Failed to convert BLS private key: %v", err)
+		return fmt.Errorf("failed to convert BLS private key: %v", err)
 	}
 
 	inMemSigner, err := blsSigner.NewInMemoryBLSSigner(pk)
 	if err != nil {
-		return fmt.Errorf("Failed to create in-memory BLS signer: %v", err)
+		return fmt.Errorf("failed to create in-memory BLS signer: %v", err)
 	}
 
 	stakeTransport, err := transport.NewTransport(
 		&transport.TransportConfig{
 			L1CrossChainRegistryAddress: crossChainRegistryAddress,
 		},
-		holeskyClient.RPCClient,
+		l1Client.RPCClient,
 		inMemSigner,
 		txSign,
 		cm,
 		rawLogger,
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to create transport: %v", err)
+		return fmt.Errorf("failed to create transport: %v", err)
 	}
 
-	referenceTimestamp := uint32(block.Time())
-
+	// reference l2 timestamp since holesky operator table updater is old , which doesn't have the new timestamps checks.
+	// @TODO:Once operator table updater is updated , we can again use l1 timestamp .
+	l2TimestampInt, err := strconv.ParseUint(l2Timestamp, 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to parse l2 timestamp: %v", err)
+	}
+	referenceTimestamp := uint32(l2TimestampInt)
+	logger.Info("referenceTimestamp: %v", referenceTimestamp)
 	err = stakeTransport.SignAndTransportGlobalTableRoot(
+		cCtx.Context,
 		root,
 		referenceTimestamp,
-		block.NumberU64(),
-		[]*big.Int{new(big.Int).SetUint64(17000)},
+		l1Block.NumberU64(),
+		[]*big.Int{new(big.Int).SetUint64(17000), new(big.Int).SetUint64(84532)},
 	)
 	if err != nil {
-		return fmt.Errorf("Failed to sign and transport global table root: %v", err)
+		return fmt.Errorf("failed to sign and transport global table root: %v", err)
 	}
 
 	// Collect the provided roots
-	roots[holeskyConfig.ChainID] = root
+	roots[l1Config.ChainID] = root
 
 	// Write the roots to context (each time we process one)
 	err = WriteStakeTableRootsToContext(roots)
@@ -212,20 +297,24 @@ func Transport(cCtx *cli.Context) error {
 	// Fetch OperatorSets for AVSStakeTable transport
 	opsets := dist.GetOperatorSets()
 	if len(opsets) == 0 {
-		return fmt.Errorf("No operator sets found, skipping AVS stake table transport")
+		return fmt.Errorf("no operator sets found, skipping AVS stake table transport")
 	}
+
 	for _, opset := range opsets {
+		logger.Info("opset_len: %v", len(opsets))
+		logger.Info("opset: %v", opset)
 		err = stakeTransport.SignAndTransportAvsStakeTable(
+			cCtx.Context,
 			referenceTimestamp,
-			block.NumberU64(),
+			l1Block.NumberU64(),
 			opset,
 			root,
 			tree,
 			dist,
-			[]*big.Int{new(big.Int).SetUint64(17000)},
+			[]*big.Int{new(big.Int).SetUint64(17000), new(big.Int).SetUint64(84532)},
 		)
 		if err != nil {
-			return fmt.Errorf("Failed to sign and transport AVS stake table for opset %v: %v", opset, err)
+			return fmt.Errorf("failed to sign and transport AVS stake table for opset %v: %v", opset, err)
 		}
 
 		// log success
@@ -368,17 +457,17 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 		RPCUrl:  rpcUrl,
 	}
 	if err := cm.AddChain(holeskyConfig); err != nil {
-		return nil, fmt.Errorf("Failed to add chain: %v", err)
+		return nil, fmt.Errorf("failed to add chain: %v", err)
 	}
 	holeskyClient, err := cm.GetChainForId(holeskyConfig.ChainID)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get chain for ID %d: %v", holeskyConfig.ChainID, err)
+		return nil, fmt.Errorf("failed to get chain for ID %d: %v", holeskyConfig.ChainID, err)
 	}
 
 	// Construct registry caller
 	ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, holeskyClient.RPCClient)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get CrossChainRegistryCaller for %s: %v", crossChainRegistryAddress, err)
+		return nil, fmt.Errorf("failed to get CrossChainRegistryCaller for %s: %v", crossChainRegistryAddress, err)
 	}
 
 	// Get chains from contract
