@@ -54,6 +54,11 @@ jobs:
           cd ./my-awesome-avs/
           devkit avs build
 
+      - name: Run devkit avs test
+        run: |
+          cd ./my-awesome-avs/
+          devkit avs test
+
       - name: Start devnet
         run: |
           cd ./my-awesome-avs/
