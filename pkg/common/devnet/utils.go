@@ -35,12 +35,15 @@ func IsPortAvailable(port int) bool {
 func StopAndRemoveContainer(ctx *cli.Context, containerName string) {
 	logger := common.LoggerFromContext(ctx.Context)
 
-	if err := exec.CommandContext(ctx.Context, "docker", "stop", containerName).Run(); err != nil {
+	// Use background context to avoid cancellation issues during cleanup
+	bgCtx := context.Background()
+
+	if err := exec.CommandContext(bgCtx, "docker", "stop", containerName).Run(); err != nil {
 		logger.Error("⚠️  Failed to stop container %s: %v", containerName, err)
 	} else {
 		logger.Info("✅ Stopped container %s", containerName)
 	}
-	if err := exec.CommandContext(ctx.Context, "docker", "rm", containerName).Run(); err != nil {
+	if err := exec.CommandContext(bgCtx, "docker", "rm", containerName).Run(); err != nil {
 		logger.Error("⚠️  Failed to remove container %s: %v", containerName, err)
 	} else {
 		logger.Info("✅ Removed container %s", containerName)

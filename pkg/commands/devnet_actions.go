@@ -421,6 +421,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 	}
 
+	// sleep for 1 seconds
+	time.Sleep(1 * time.Second)
 	// Deploy L2 contracts
 	if err := DeployL2ContractsAction(cCtx); err != nil {
 		logger.Error("deploy-l2-contracts failed: %v", err)
