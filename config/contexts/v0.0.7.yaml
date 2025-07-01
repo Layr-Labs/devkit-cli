@@ -109,8 +109,10 @@ context:
       operator_table_updater: "0x798EB817B7C109c6780264D5161183809C817216"
       ecdsa_certificate_verifier: "0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7"
     
-  # Contracts deployed on `devnet start`
-  deployed_contracts: []
+  # L1 Contracts deployed on `devnet start`
+  deployed_l1_contracts: []
+  # L2 Contracts deployed on `devnet start`
+  deployed_l2_contracts: []
   # Operator Sets registered on `devnet start`
   operator_sets: []
   # Operators registered on `devnet start`

@@ -86,19 +86,6 @@ var TransportCommand = &cli.Command{
 	},
 }
 
-// CustomTxSigner wraps the original txSigner and sets appropriate gas limits
-type CustomTxSigner struct {
-	originalSigner txSigner.ITransactionSigner
-}
-
-func NewCustomTxSigner(privateKey string) (*CustomTxSigner, error) {
-	originalSigner, err := txSigner.NewPrivateKeySigner(privateKey)
-	if err != nil {
-		return nil, err
-	}
-	return &CustomTxSigner{originalSigner: originalSigner}, nil
-}
-
 func Transport(cCtx *cli.Context) error {
 	// Get a raw zap logger to pass to operatorTableCalculator and transport
 	rawLogger, err := logger.NewLogger(&logger.LoggerConfig{Debug: true})
@@ -215,7 +202,7 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create StakeTableRootCalculator: %v", err)
 	}
 
-	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.LatestBlockNumber)))
 	if err != nil {
 		return fmt.Errorf("failed to get block by number for l1: %v", err)
 	}

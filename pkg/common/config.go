@@ -105,13 +105,13 @@ type ChainConfig struct {
 	Fork    *ForkConfig `json:"fork" yaml:"fork"`
 }
 
-type DeployedL1Contract struct {
+type DeployedL1Contracts struct {
 	Name    string `json:"name" yaml:"name"`
 	Address string `json:"address" yaml:"address"`
 	Abi     string `json:"abi" yaml:"abi"`
 }
 
-type DeployedL2Contract struct {
+type DeployedL2Contracts struct {
 	Name    string `json:"name" yaml:"name"`
 	Address string `json:"address" yaml:"address"`
 	Abi     string `json:"abi" yaml:"abi"`
@@ -177,8 +177,8 @@ type ChainContextConfig struct {
 	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
 	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
 	EigenLayer            *EigenLayerConfig      `json:"eigenlayer" yaml:"eigenlayer"`
-	DeployedContracts     []DeployedL1Contract   `json:"deployed_l1_contracts,omitempty" yaml:"deployed_l1_contracts,omitempty"`
-	DeployedL2Contracts   []DeployedL2Contract   `json:"deployed_l2_contracts,omitempty" yaml:"deployed_l2_contracts,omitempty"`
+	DeployedL1Contracts   []DeployedL1Contracts   `json:"deployed_l1_contracts,omitempty" yaml:"deployed_l1_contracts,omitempty"`
+	DeployedL2Contracts   []DeployedL2Contracts   `json:"deployed_l2_contracts,omitempty" yaml:"deployed_l2_contracts,omitempty"`
 	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
 	Stakers               []StakerSpec           `json:"stakers" yaml:"stakers"`

@@ -840,7 +840,7 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 	var registrarAddr ethcommon.Address
 	logger.Info("Attempting to find AvsRegistrar in deployed contracts...")
 	foundInDeployed := false
-	for _, contract := range envCtx.DeployedContracts {
+	for _, contract := range envCtx.DeployedL1Contracts {
 		if strings.Contains(strings.ToLower(contract.Name), "avsregistrar") {
 			registrarAddr = ethcommon.HexToAddress(contract.Address)
 			logger.Info("Found AvsRegistrar: '%s' at address %s", contract.Name, registrarAddr.Hex())
@@ -849,7 +849,7 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 		}
 	}
 	if !foundInDeployed {
-		return fmt.Errorf("AvsRegistrar contract not found in deployed contracts for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("AvsRegistrar contract not found in deployed l1 contracts for context '%s'", devnet.DEVNET_CONTEXT)
 	}
 
 	return contractCaller.SetAVSRegistrar(cCtx.Context, avsAddr, registrarAddr)
