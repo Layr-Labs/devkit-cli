@@ -158,11 +158,6 @@ func CreateTempAVSProject(t *testing.T) (string, error) {
 	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	deployScript := `#!/bin/bash
-echo '{"mock": "deployContracts"}'`
-	if err := os.WriteFile(filepath.Join(scriptsDir, "deployContracts"), []byte(deployScript), 0755); err != nil {
-		t.Fatal(err)
-	}
 	getOperatorSets := `#!/bin/bash
 echo '{"mock": "getOperatorSets"}'`
 	if err := os.WriteFile(filepath.Join(scriptsDir, "getOperatorSets"), []byte(getOperatorSets), 0755); err != nil {
@@ -171,6 +166,16 @@ echo '{"mock": "getOperatorSets"}'`
 	getOperatorRegistrationMetadata := `#!/bin/bash
 echo '{"mock": "getOperatorRegistrationMetadata"}'`
 	if err := os.WriteFile(filepath.Join(scriptsDir, "getOperatorRegistrationMetadata"), []byte(getOperatorRegistrationMetadata), 0755); err != nil {
+		t.Fatal(err)
+	}
+	deployL1Contracts := `#!/bin/bash
+echo '{"mock": "deployL1Contracts"}'`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "deployL1Contracts"), []byte(deployL1Contracts), 0755); err != nil {
+		t.Fatal(err)
+	}
+	deployL2Contracts := `#!/bin/bash
+echo '{"mock": "deployL2Contracts"}'`
+	if err := os.WriteFile(filepath.Join(scriptsDir, "deployL2Contracts"), []byte(deployL2Contracts), 0755); err != nil {
 		t.Fatal(err)
 	}
 	run := `#!/bin/bash
