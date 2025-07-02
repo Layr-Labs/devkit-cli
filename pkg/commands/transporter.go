@@ -404,13 +404,21 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
-	rpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
+	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
 	if err != nil {
-		rpcUrl = "http://localhost:8545"
+		l1RpcUrl = "http://localhost:8545"
 	}
-	chainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
+	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L2)
 	if err != nil {
-		chainId = common.L1DefaultAnvilChainId
+		l2RpcUrl = "http://localhost:9545"
+	}
+	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
+	if err != nil {
+		l1ChainId = common.L1DefaultAnvilChainId
+	}
+	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L2, logger)
+	if err != nil {
+		l2ChainId = common.L2DefaultAnvilChainId
 	}
 
 	// Get a new chainManager
@@ -418,19 +426,30 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 	// Configure L1 chain
 	l1Config := &chainManager.ChainConfig{
-		ChainID: uint64(chainId),
-		RPCUrl:  rpcUrl,
+		ChainID: uint64(l1ChainId),
+		RPCUrl:  l1RpcUrl,
 	}
+
+	// Configure L2 chain
+	l2Config := &chainManager.ChainConfig{
+		ChainID: uint64(l2ChainId),
+		RPCUrl:  l2RpcUrl,
+	}
+
 	if err := cm.AddChain(l1Config); err != nil {
-		return nil, fmt.Errorf("failed to add chain: %v", err)
+		return nil, fmt.Errorf("failed to add l1 chain: %v", err)
 	}
-	holeskyClient, err := cm.GetChainForId(l1Config.ChainID)
+	if err := cm.AddChain(l2Config); err != nil {
+		return nil, fmt.Errorf("failed to add l2 chain: %v", err)
+	}
+
+	l1Client, err := cm.GetChainForId(l1Config.ChainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain for ID %d: %v", l1Config.ChainID, err)
 	}
 
 	// Construct registry caller
-	ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, holeskyClient.RPCClient)
+	ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, l1Client.RPCClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CrossChainRegistryCaller for %s: %v", crossChainRegistryAddress, err)
 	}
