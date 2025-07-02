@@ -423,10 +423,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// sleep for 1 seconds
 	time.Sleep(1 * time.Second)
-	// Deploy L2 contracts
-	if err := DeployL2ContractsAction(cCtx); err != nil {
-		logger.Error("deploy-l2-contracts failed: %v", err)
-		return fmt.Errorf("deploy-l2-contracts failed: %w", err)
+	// Deploy L2 contracts only if L1 contracts were also deployed
+	if !skipDeployContracts {
+		if err := DeployL2ContractsAction(cCtx); err != nil {
+			logger.Error("deploy-l2-contracts failed: %v", err)
+			return fmt.Errorf("deploy-l2-contracts failed: %w", err)
+		}
 	}
 
 	// Start offchain AVS components after starting devnet and deploying contracts unless skipped
