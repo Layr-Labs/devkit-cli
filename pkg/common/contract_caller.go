@@ -586,7 +586,7 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	rpcClient := cc.ethclient.Client()
 
 	// Fund the cross chain registry owner with 1 ETH if needed
-	anvilKey := "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	anvilKey := "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(anvilKey, "0x"))
 	if err != nil {
 		return fmt.Errorf("failed to parse anvil private key: %w", err)

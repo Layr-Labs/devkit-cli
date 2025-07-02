@@ -250,7 +250,7 @@ func Transport(cCtx *cli.Context) error {
 
 	// Collect the provided roots
 	roots[l1Config.ChainID] = root
-
+	roots[l2Config.ChainID] = root
 	// Write the roots to context (each time we process one)
 	err = WriteStakeTableRootsToContext(roots)
 	if err != nil {
@@ -470,6 +470,7 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 			continue
 		}
 
+		logger.Info("Getting stake root for chain %d", chainId.Uint64())
 		// Use provided OperatorTableUpdaterTransactor address
 		addr := addresses[i]
 		chain, err := cm.GetChainForId(chainId.Uint64())

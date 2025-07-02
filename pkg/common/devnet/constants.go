@@ -10,6 +10,7 @@ const DEVNET_CONTEXT = "devnet"
 const L1 = "l1"
 const L2 = "l2"
 const ANVIL_1_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+const ANVIL_2_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
 
 // Ref https://github.com/Layr-Labs/eigenlayer-contracts/blob/c08c9e849c27910f36f3ab746f3663a18838067f/src/contracts/core/AllocationManagerStorage.sol#L63
 const ALLOCATION_DELAY_INFO_SLOT = 155

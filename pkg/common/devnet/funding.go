@@ -266,7 +266,7 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 		if err != nil {
 			log.Fatalf("invalid private key %q: %v", key.ECDSAKey, err)
 		}
-		err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_1_KEY)
+		err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY)
 
 		if err != nil {
 			return err
