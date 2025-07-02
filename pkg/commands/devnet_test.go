@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -13,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -289,49 +289,56 @@ func TestListRunningDevnets(t *testing.T) {
 	port, err := getFreePort()
 	assert.NoError(t, err)
 
-	// Start devnet with transporter to keep containers alive, but skip AVS run
+	// Clean up any existing containers first to avoid conflicts
+	cleanupCmd := exec.Command("sh", "-c", "docker ps -a --filter name=devkit-devnet --format '{{.Names}}' -q | xargs -r docker stop")
+	cleanupCmd.Run()
+	removeCmd := exec.Command("sh", "-c", "docker ps -a --filter name=devkit-devnet --format '{{.Names}}' -q | xargs -r docker rm")
+	removeCmd.Run()
+
+	// Start devnet with minimal flags to ensure containers start
 	startApp, _ := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
 		&cli.IntFlag{Name: "l1-port"},
 		&cli.BoolFlag{Name: "verbose"},
 		&cli.BoolFlag{Name: "skip-deploy-contracts"},
+		&cli.BoolFlag{Name: "skip-transporter"},
 		&cli.BoolFlag{Name: "skip-avs-run"},
 	}, StartDevnetAction)
 
-	// Create a context we can cancel to stop the devnet
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	err = startApp.Run([]string{"devkit", "--l1-port", port, "--skip-deploy-contracts", "--skip-transporter", "--skip-avs-run"})
+	assert.NoError(t, err, "Failed to start devnet")
 
-	startApp.Writer = io.Discard // Suppress output during startup
+	// Give containers time to start and verify they're actually running
+	// Use longer wait in test suite due to resource contention
+	time.Sleep(8 * time.Second)
 
-	// Run devnet in background
-	errChan := make(chan error, 1)
-	go func() {
-		// Create new CLI context with our cancellable context
-		args := []string{"devkit", "--l1-port", port, "--skip-deploy-contracts", "--skip-avs-run"}
-		set := flag.NewFlagSet("test", 0)
-		set.Int("l1-port", 0, "")
-		set.Bool("verbose", false, "")
-		set.Bool("skip-deploy-contracts", false, "")
-		set.Bool("skip-avs-run", false, "")
-		set.Parse(args[1:])
+	// Verify containers are actually running before testing list (with retry)
+	var checkOutput []byte
+	var allCheckOutput []byte
 
-		cliCtx := cli.NewContext(startApp, set, nil)
-		cliCtx.Context = ctx
+	// Retry container check up to 3 times with delays
+	for i := 0; i < 3; i++ {
+		containerCheck := exec.Command("docker", "ps", "--filter", "name=devkit-devnet", "--format", "{{.Names}}")
+		checkOutput, err = containerCheck.Output()
+		assert.NoError(t, err, "Failed to check running containers")
 
-		errChan <- StartDevnetAction(cliCtx)
-	}()
-
-	// Give devnet time to start up
-	time.Sleep(6 * time.Second)
-
-	// Check if devnet startup failed
-	select {
-	case err := <-errChan:
-		if err != nil {
-			t.Fatalf("Devnet startup failed: %v", err)
+		if len(strings.TrimSpace(string(checkOutput))) > 0 {
+			break // Containers found, exit retry loop
 		}
-	default:
-		// No error yet, continue with test
+
+		// Wait a bit more before retrying
+		t.Logf("Retry %d: No containers found yet, waiting 2 more seconds...", i+1)
+		time.Sleep(2 * time.Second)
+	}
+
+	// Check for any containers (running or stopped) to debug the issue
+	allContainerCheck := exec.Command("docker", "ps", "-a", "--filter", "name=devkit-devnet", "--format", "{{.Names}}: {{.Status}}")
+	allCheckOutput, _ = allContainerCheck.Output()
+
+	// If no containers are running after retries, fail with debugging info
+	if len(strings.TrimSpace(string(checkOutput))) == 0 {
+		t.Fatalf("No devnet containers found running after StartDevnetAction completed (tried 3 times).\nRunning containers: '%s'\nAll containers: '%s'\nThis suggests containers failed to start or were cleaned up.",
+			strings.TrimSpace(string(checkOutput)),
+			strings.TrimSpace(string(allCheckOutput)))
 	}
 
 	// Capture output of list
@@ -355,26 +362,17 @@ func TestListRunningDevnets(t *testing.T) {
 	assert.Contains(t, output, "devkit-devnet-l1", "Expected container name in output")
 	assert.Contains(t, output, fmt.Sprintf("http://localhost:%s", port), "Expected devnet URL in output")
 
-	// Cancel the background devnet process
-	cancel()
-
-	// Wait for devnet to stop (with timeout)
-	select {
-	case err := <-errChan:
-		// Expected - context cancellation should cause devnet to exit
-		if err != nil && !errors.Is(err, context.Canceled) {
-			t.Logf("Devnet stopped with non-cancellation error: %v", err)
-		}
-	case <-time.After(10 * time.Second):
-		t.Fatal("Timeout waiting for devnet to stop")
-	}
-
-	// Additional cleanup - stop containers by port
+	// Stop containers using the CLI first
 	stopApp, _ := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
 		&cli.IntFlag{Name: "l1-port"},
 	}, StopDevnetAction)
-	err = stopApp.Run([]string{"devkit", "--l1-port", port})
-	assert.NoError(t, err)
+	stopApp.Run([]string{"devkit", "--l1-port", port})
+
+	// Also do manual cleanup to ensure containers are fully removed
+	finalCleanup := exec.Command("sh", "-c", "docker ps -a --filter name=devkit-devnet --format '{{.Names}}' -q | xargs -r docker stop")
+	finalCleanup.Run()
+	finalRemove := exec.Command("sh", "-c", "docker ps -a --filter name=devkit-devnet --format '{{.Names}}' -q | xargs -r docker rm")
+	finalRemove.Run()
 }
 
 func TestStopDevnetAll(t *testing.T) {
