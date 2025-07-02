@@ -9,7 +9,7 @@ on:
 env:
   FOUNDRY_PROFILE: ci
   L1_FORK_URL: ${{ secrets.HOLESKY_FORK_URL }}
-  L2_FORK_URL: ${{ secrets.HOLESKY_FORK_URL }}
+  L2_FORK_URL: ${{ secrets.L2_RPC_URL }}
 
 jobs:
   devnet-test:
