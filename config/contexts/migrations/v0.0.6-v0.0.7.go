@@ -17,7 +17,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l1", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "4056218"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "4093362"}
 				},
 			},
 			// Update fork block for L2 chain
@@ -25,7 +25,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l2", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "27764494"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "27802092"}
 				},
 			},
 			// Update rpc url for l2 chain
