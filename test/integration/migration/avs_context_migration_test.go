@@ -815,10 +815,22 @@ func TestAVSContextMigration_FullChain(t *testing.T) {
 			t.Error("Expected eigenlayer section to be added")
 		}
 
-		// Check that tracking sections were added (from 0.0.4→0.0.5)
+		// Check that tracking sections were added and evolved (from 0.0.4→0.0.5→0.0.7)
+		// deployed_contracts was added in 0.0.4→0.0.5 but removed in 0.0.6→0.0.7
 		deployedContracts := migration.ResolveNode(migratedNode, []string{"context", "deployed_contracts"})
-		if deployedContracts == nil {
-			t.Error("Expected deployed_contracts section to be added")
+		if deployedContracts != nil {
+			t.Error("Expected deployed_contracts section to be removed in favor of L1/L2 specific sections")
+		}
+
+		// Check that L1/L2 specific tracking sections were added (from 0.0.6→0.0.7)
+		deployedL1Contracts := migration.ResolveNode(migratedNode, []string{"context", "deployed_l1_contracts"})
+		if deployedL1Contracts == nil {
+			t.Error("Expected deployed_l1_contracts section to be added")
+		}
+
+		deployedL2Contracts := migration.ResolveNode(migratedNode, []string{"context", "deployed_l2_contracts"})
+		if deployedL2Contracts == nil {
+			t.Error("Expected deployed_l2_contracts section to be added")
 		}
 
 		// Check that strategy_manager was added (from 0.0.5→0.0.6)
