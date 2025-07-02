@@ -158,7 +158,7 @@ func TestStartDevnet_WithDeployContracts(t *testing.T) {
 
 	ctx, ok := parsed["context"].(map[string]interface{})
 	assert.True(t, ok)
-	assert.Equal(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should run by default")
+	assert.Equal(t, "deployL2Contracts", ctx["mock"], "deployContracts should run by default")
 	assert.True(t, logger.Contains("Offchain AVS components started successfully"), "AVSRun should run by default")
 
 	stopApp, _ := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
@@ -250,7 +250,7 @@ func TestStartDevnet_SkipAVSRun(t *testing.T) {
 
 	ctx, ok := parsed["context"].(map[string]interface{})
 	assert.True(t, ok)
-	assert.Equal(t, "getOperatorRegistrationMetadata", ctx["mock"], "deployContracts should not be skipped")
+	assert.Equal(t, "deployL2Contracts", ctx["mock"], "deployContracts should not be skipped")
 	assert.False(t, logger.Contains("Offchain AVS components started successfully"), "AVSRun should be skipped")
 
 	stopApp, _ := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
