@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -288,15 +289,50 @@ func TestListRunningDevnets(t *testing.T) {
 	port, err := getFreePort()
 	assert.NoError(t, err)
 
-	// Start devnet
+	// Start devnet with transporter to keep containers alive, but skip AVS run
 	startApp, _ := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
 		&cli.IntFlag{Name: "l1-port"},
 		&cli.BoolFlag{Name: "verbose"},
 		&cli.BoolFlag{Name: "skip-deploy-contracts"},
-		&cli.BoolFlag{Name: "skip-transporter"},
+		&cli.BoolFlag{Name: "skip-avs-run"},
 	}, StartDevnetAction)
-	err = startApp.Run([]string{"devkit", "--l1-port", port, "--skip-deploy-contracts", "--skip-transporter"})
-	assert.NoError(t, err)
+
+	// Create a context we can cancel to stop the devnet
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	startApp.Writer = io.Discard // Suppress output during startup
+
+	// Run devnet in background
+	errChan := make(chan error, 1)
+	go func() {
+		// Create new CLI context with our cancellable context
+		args := []string{"devkit", "--l1-port", port, "--skip-deploy-contracts", "--skip-avs-run"}
+		set := flag.NewFlagSet("test", 0)
+		set.Int("l1-port", 0, "")
+		set.Bool("verbose", false, "")
+		set.Bool("skip-deploy-contracts", false, "")
+		set.Bool("skip-avs-run", false, "")
+		set.Parse(args[1:])
+
+		cliCtx := cli.NewContext(startApp, set, nil)
+		cliCtx.Context = ctx
+
+		errChan <- StartDevnetAction(cliCtx)
+	}()
+
+	// Give devnet time to start up
+	time.Sleep(6 * time.Second)
+
+	// Check if devnet startup failed
+	select {
+	case err := <-errChan:
+		if err != nil {
+			t.Fatalf("Devnet startup failed: %v", err)
+		}
+	default:
+		// No error yet, continue with test
+	}
 
 	// Capture output of list
 	originalStdout := os.Stdout
@@ -319,7 +355,21 @@ func TestListRunningDevnets(t *testing.T) {
 	assert.Contains(t, output, "devkit-devnet-l1", "Expected container name in output")
 	assert.Contains(t, output, fmt.Sprintf("http://localhost:%s", port), "Expected devnet URL in output")
 
-	// Stop devnet
+	// Cancel the background devnet process
+	cancel()
+
+	// Wait for devnet to stop (with timeout)
+	select {
+	case err := <-errChan:
+		// Expected - context cancellation should cause devnet to exit
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Logf("Devnet stopped with non-cancellation error: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Timeout waiting for devnet to stop")
+	}
+
+	// Additional cleanup - stop containers by port
 	stopApp, _ := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
 		&cli.IntFlag{Name: "l1-port"},
 	}, StopDevnetAction)
