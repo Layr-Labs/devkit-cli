@@ -161,8 +161,6 @@ func Transport(cCtx *cli.Context) error {
 		ChainID: uint64(l2ChainId),
 		RPCUrl:  l2RpcUrl,
 	}
-	logger.Info("l1ChainId: %v", l1ChainId)
-	logger.Info("l2ChainId: %v", l2ChainId)
 	if err := cm.AddChain(l1Config); err != nil {
 		return fmt.Errorf("failed to add l1 chain: %v", err)
 	}
@@ -173,27 +171,11 @@ func Transport(cCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get l1 chain for ID %d: %v", l1Config.ChainID, err)
 	}
-	l2Client, err := cm.GetChainForId(l2Config.ChainID)
-	if err != nil {
-		return fmt.Errorf("failed to get l2 chain for ID %d: %v", l2Config.ChainID, err)
-	}
 
 	txSign, err := txSigner.NewPrivateKeySigner(envCtx.Transporter.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("failed to create private key signer: %v", err)
 	}
-
-	// get balance of 0xd638d3779456898dff17ebfe5d62f5b7a92d61d7 using l1 rpc url
-	balance, err := l1Client.RPCClient.BalanceAt(cCtx.Context, ethcommon.HexToAddress("0xd638d3779456898dff17ebfe5d62f5b7a92d61d7"), nil)
-	if err != nil {
-		return fmt.Errorf("failed to get balance: %v", err)
-	}
-	logger.Info("l1 balance of 0xd638d3779456898dff17ebfe5d62f5b7a92d61d7: %v", balance)
-	balance, err = l2Client.RPCClient.BalanceAt(cCtx.Context, ethcommon.HexToAddress("0xd638d3779456898dff17ebfe5d62f5b7a92d61d7"), nil)
-	if err != nil {
-		return fmt.Errorf("failed to get balance: %v", err)
-	}
-	logger.Info("l2 balance of 0xd638d3779456898dff17ebfe5d62f5b7a92d61d7: %v", balance)
 
 	tableCalc, err := operatorTableCalculator.NewStakeTableRootCalculator(&operatorTableCalculator.Config{
 		CrossChainRegistryAddress: crossChainRegistryAddress,
@@ -207,13 +189,12 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get block by number for l1: %v", err)
 	}
 
-	// get l2 block by number using utility function
-	l2Timestamp, err := devnet.GetL2BlockByNumber(cCtx, l2RpcUrl, uint64(envCtx.Chains[devnet.L2].Fork.Block-10), logger)
+	// get l2 block by number using utility function , because base gives different result type than ethereum
+	l2Timestamp, err := devnet.GetL2BlockByNumber(cCtx, l2RpcUrl, uint64(envCtx.Chains[devnet.L2].Fork.Block), logger)
 	if err != nil {
 		logger.Info("Failed to get L2 timestamp, falling back to L1 timestamp: %v", err)
 		l2Timestamp = strconv.FormatUint(l1Block.Time(), 10)
 	}
-	logger.Info("l2 block timestamp: %v", l2Timestamp)
 
 	root, tree, dist, err := tableCalc.CalculateStakeTableRoot(cCtx.Context, l1Block.NumberU64())
 	if err != nil {
@@ -256,7 +237,6 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to parse l2 timestamp: %v", err)
 	}
 	referenceTimestamp := uint32(l2TimestampInt)
-	logger.Info("referenceTimestamp: %v", referenceTimestamp)
 	err = stakeTransport.SignAndTransportGlobalTableRoot(
 		cCtx.Context,
 		root,
@@ -288,8 +268,6 @@ func Transport(cCtx *cli.Context) error {
 	}
 
 	for _, opset := range opsets {
-		logger.Info("opset_len: %v", len(opsets))
-		logger.Info("opset: %v", opset)
 		err = stakeTransport.SignAndTransportAvsStakeTable(
 			cCtx.Context,
 			referenceTimestamp,
