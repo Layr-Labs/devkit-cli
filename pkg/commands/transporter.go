@@ -417,16 +417,16 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 	cm := chainManager.NewChainManager()
 
 	// Configure L1 chain
-	holeskyConfig := &chainManager.ChainConfig{
+	l1Config := &chainManager.ChainConfig{
 		ChainID: uint64(chainId),
 		RPCUrl:  rpcUrl,
 	}
-	if err := cm.AddChain(holeskyConfig); err != nil {
+	if err := cm.AddChain(l1Config); err != nil {
 		return nil, fmt.Errorf("failed to add chain: %v", err)
 	}
-	holeskyClient, err := cm.GetChainForId(holeskyConfig.ChainID)
+	holeskyClient, err := cm.GetChainForId(l1Config.ChainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain for ID %d: %v", holeskyConfig.ChainID, err)
+		return nil, fmt.Errorf("failed to get chain for ID %d: %v", l1Config.ChainID, err)
 	}
 
 	// Construct registry caller
@@ -446,8 +446,8 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 	// Iterate and collect all roots for all chainIds
 	for i, chainId := range chainIds {
-		// Ignore 17000 from chainIds
-		if chainId.Uint64() == 17000 {
+		// Ignore 17000 and 84532 from chainIds
+		if chainId.Uint64() == 17000 || chainId.Uint64() == 84532 {
 			continue
 		}
 
