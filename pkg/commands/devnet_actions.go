@@ -175,9 +175,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if err != nil {
 		l1BlockTime = 12
 	}
-	if l2ForkUrl == "" {
-		return fmt.Errorf("L2 fork-url not set; set L2_FORK_URL in .env or l2.fork-url in ./config/context/devnet.yaml")
-	}
 
 	// Get the l2 block_time from env/config
 	l2BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, devnet.L2)
@@ -240,12 +237,15 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if !skipDeployContracts && !skipAvsRun {
 		defer func() {
 			logger.Info("Stopping containers")
-			// clone cCtx but overwrite the context to Background
-			cloned := *cCtx
-			cloned.Context = context.Background()
-			if err := StopDevnetAction(&cloned); err != nil {
-				logger.Warn("automatic StopDevnetAction failed: %v", err)
-			}
+			// Use background context to avoid cancellation issues during cleanup
+			bgCtx := context.Background()
+
+			l1Container := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
+			l2Container := fmt.Sprintf("devkit-devnet-l2-%s", config.Config.Project.Name)
+
+			logger.Info("Stopping individual containers: %s, %s", l1Container, l2Container)
+			devnet.StopAndRemoveContainer(&cli.Context{Context: bgCtx}, l1Container)
+			devnet.StopAndRemoveContainer(&cli.Context{Context: bgCtx}, l2Container)
 		}()
 	}
 
@@ -421,8 +421,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 	}
 
-	// sleep for 1 seconds
-	time.Sleep(1 * time.Second)
+	// sleep for 2 seconds
+	time.Sleep(2 * time.Second)
 	// Deploy L2 contracts only if L1 contracts were also deployed
 	if !skipDeployContracts {
 		if err := DeployL2ContractsAction(cCtx); err != nil {
