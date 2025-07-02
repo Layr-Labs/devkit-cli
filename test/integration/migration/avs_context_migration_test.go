@@ -717,10 +717,18 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 			t.Error("Expected artifacts section to be added")
 		}
 	})
-	t.Run("l2 fork block updated to 27764494", func(t *testing.T) {
+
+	t.Run("l1 fork block updated to 4093362", func(t *testing.T) {
+		l1Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l1", "fork", "block"})
+		if l1Block == nil || l1Block.Value != "4093362" {
+			t.Errorf("Expected L1 fork block to be updated to 4093362, got %v", l1Block.Value)
+		}
+	})
+
+	t.Run("l2 fork block updated to 27802092", func(t *testing.T) {
 		l2Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "fork", "block"})
-		if l2Block == nil || l2Block.Value != "27764494" {
-			t.Errorf("Expected L2 fork block to be updated to 27764494, got %v", l2Block.Value)
+		if l2Block == nil || l2Block.Value != "27802092" {
+			t.Errorf("Expected L2 fork block to be updated to 27802092, got %v", l2Block.Value)
 		}
 	})
 	t.Run("L2 chain id updated to 31338", func(t *testing.T) {
@@ -751,6 +759,24 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 		ecdsaCertVerifier := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"})
 		if ecdsaCertVerifier == nil || ecdsaCertVerifier.Value != "0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7" {
 			t.Errorf("Expected ecdsa_certificate_verifier to be added  with address 0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7, got %v", ecdsaCertVerifier.Value)
+		}
+	})
+	t.Run("deployed_l1_contracts section added", func(t *testing.T) {
+		deployedL1Contracts := migration.ResolveNode(migratedNode, []string{"context", "deployed_l1_contracts"})
+		if deployedL1Contracts == nil {
+			t.Error("Expected deployed_l1_contracts section to be added")
+		}
+	})
+	t.Run("deployed_l2_contracts section added", func(t *testing.T) {
+		deployedL2Contracts := migration.ResolveNode(migratedNode, []string{"context", "deployed_l2_contracts"})
+		if deployedL2Contracts == nil {
+			t.Error("Expected deployed_l2_contracts section to be added")
+		}
+	})
+	t.Run("deployed_contracts section removed", func(t *testing.T) {
+		deployedContracts := migration.ResolveNode(migratedNode, []string{"context", "deployed_contracts"})
+		if deployedContracts != nil {
+			t.Errorf("Expected deployed_contracts section to be removed, got %v", deployedContracts.Value)
 		}
 	})
 }

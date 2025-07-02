@@ -68,6 +68,28 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7"}
 				},
 			},
+			// Add deployed_l1_contracts section
+			{
+				Path:      []string{"context", "deployed_l1_contracts"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{}}
+				},
+			},
+			// Add deployed_l2_contracts section
+			{
+				Path:      []string{"context", "deployed_l2_contracts"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{}}
+				},
+			},
+			// Remove deployed_contracts section
+			{
+				Path:      []string{"context", "deployed_contracts"},
+				Condition: migration.Always{},
+				Remove:    true,
+			},
 		},
 	}
 	if err := engine.Apply(); err != nil {
