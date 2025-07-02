@@ -316,7 +316,7 @@ func TestListRunningDevnets(t *testing.T) {
 	assert.NoError(t, err)
 	output := buf.String()
 
-	assert.Contains(t, output, "devkit-devnet-", "Expected container name in output")
+	assert.Contains(t, output, "devkit-devnet-l1", "Expected container name in output")
 	assert.Contains(t, output, fmt.Sprintf("http://localhost:%s", port), "Expected devnet URL in output")
 
 	// Stop devnet
