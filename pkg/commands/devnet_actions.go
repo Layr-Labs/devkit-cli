@@ -155,7 +155,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 	l2ForkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L2)
 	if err != nil {
-		return fmt.Errorf("L1 fork URL error: %w", err)
+		return fmt.Errorf("L2 fork URL error: %w", err)
 	}
 
 	// Error if the l1ForkUrl has not been modified
