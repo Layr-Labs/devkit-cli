@@ -63,7 +63,7 @@ var DevnetCommand = &cli.Command{
 				},
 				&cli.BoolFlag{
 					Name:  "persist",
-					Usage: "Persist devnet containers after stopping",
+					Usage: "Persist devnet containers unless stop is used explicitly",
 					Value: false,
 				},
 			}, common.GlobalFlags...),
