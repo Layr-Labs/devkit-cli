@@ -339,7 +339,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		time.Sleep(1 * time.Second)
 
 		logger.Title("Registering AVS with EigenLayer...")
-		logger.Info("Allocaiton Manager Address: %s", config.Context[devnet.DEVNET_CONTEXT].EigenLayer.L1.AllocationManager)
 		if !cCtx.Bool("skip-setup") {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
 				return fmt.Errorf("updating AVS metadata failed: %w", err)
