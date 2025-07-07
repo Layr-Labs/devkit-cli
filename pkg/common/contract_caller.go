@@ -594,7 +594,7 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	if balance.Cmp(minBalance) < 0 {
 		cc.logger.Info("Funding cross chain registry owner with 1 ETH")
 
-		// Use anvil_setBalance RPC method instead of direct transfer
+		// Use anvil_setBalance RPC method
 		err = rpcClient.Call(nil, "anvil_setBalance", ownerCrossChainRegistry.Hex(), "0x8AC7230489E80000") // 10 ETH in hex
 		if err != nil {
 			return fmt.Errorf("failed to set owner balance: %w", err)

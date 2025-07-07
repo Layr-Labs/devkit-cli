@@ -199,8 +199,6 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 			return fmt.Errorf("transfer transaction failed: %w", err)
 		}
 
-		log.Printf("stETH transfer transaction receipt: %v", transferReceipt.TxHash)
-
 		if transferReceipt.Status == 0 {
 			return fmt.Errorf("stETH transfer transaction reverted")
 		}

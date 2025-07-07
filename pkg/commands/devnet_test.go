@@ -144,18 +144,18 @@ func (s *TestDevnetSuite) setupEnvironmentVariables() {
 
 	// For L1_FORK_URL: use environment variable if set, otherwise use config default
 	if existingL1URL := os.Getenv("L1_FORK_URL"); existingL1URL != "" {
-		s.t.Logf("Using existing L1_FORK_URL from environment: %s", existingL1URL)
+		s.t.Logf("Using existing L1_FORK_URL from environment")
 	} else if s.config.L1NetworkForkURL != "" {
 		os.Setenv("L1_FORK_URL", s.config.L1NetworkForkURL)
-		s.t.Logf("Setting L1_FORK_URL to config default: %s", s.config.L1NetworkForkURL)
+		s.t.Logf("Setting L1_FORK_URL to config default")
 	}
 
 	// For L2_FORK_URL: use environment variable if set, otherwise use config default
 	if existingL2URL := os.Getenv("L2_FORK_URL"); existingL2URL != "" {
-		s.t.Logf("Using existing L2_FORK_URL from environment: %s", existingL2URL)
+		s.t.Logf("Using existing L2_FORK_URL from environment")
 	} else if s.config.L2NetworkForkURL != "" {
 		os.Setenv("L2_FORK_URL", s.config.L2NetworkForkURL)
-		s.t.Logf("Setting L2_FORK_URL to config default: %s", s.config.L2NetworkForkURL)
+		s.t.Logf("Setting L2_FORK_URL to config default")
 	}
 
 	// Set funding-related environment variables
@@ -169,7 +169,6 @@ func (s *TestDevnetSuite) setupEnvironmentVariables() {
 		s.t.Logf("Unset SKIP_DEVNET_FUNDING and SKIP_TOKEN_FUNDING")
 	}
 
-	s.t.Logf("Current environment - L1_FORK_URL: %s, L2_FORK_URL: %s", os.Getenv("L1_FORK_URL"), os.Getenv("L2_FORK_URL"))
 }
 
 // addCleanup adds a cleanup function to be called when the test finishes

@@ -31,7 +31,7 @@ type L2ZeusAddressData struct {
 func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressData, *L2ZeusAddressData, error) {
 
 	// Run the zeus command with JSON output
-	cmd := exec.CommandContext(context.Background(), "zeus", "env", "show", "testnet-sepolia", "--json")
+	cmd := exec.CommandContext(ctx, "zeus", "env", "show", "testnet-sepolia", "--json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to execute zeus env show testnet-sepolia --json: %w - output: %s", err, string(output))
