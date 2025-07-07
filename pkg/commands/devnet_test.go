@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -605,11 +604,7 @@ func TestDevnetContextCancellation(t *testing.T) {
 
 		select {
 		case err := <-done:
-			if err != nil && (errors.Is(err, context.Canceled) ||
-				strings.Contains(err.Error(), "context canceled") ||
-				strings.Contains(err.Error(), "signal: killed")) {
-			} else {
-			}
+			assert.Error(t, err)
 		case <-time.After(15 * time.Second):
 			t.Error("StartDevnetAction did not exit after context cancellation")
 		}
