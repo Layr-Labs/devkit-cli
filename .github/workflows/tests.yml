@@ -7,6 +7,10 @@ on:
   pull_request:
     branches: ["**"]
 
+env:
+  L1_FORK_URL: ${{ secrets.L1_FORK_URL }}
+  L2_FORK_URL: ${{ secrets.L2_FORK_URL }}
+  
 jobs:
   Test:
     name: Unit Test
