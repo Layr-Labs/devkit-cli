@@ -343,7 +343,7 @@ func (s *TestDevnetSuite) startDevnet() error {
 
 	// cleanup to stop devnet
 	s.addCleanup(func() {
-		s.stopDevnet()
+		_ = s.stopDevnet()
 	})
 
 	return nil
@@ -471,7 +471,7 @@ func TestDevnetPortConflicts(t *testing.T) {
 		// Set up first project
 		err = os.Chdir(tempDir1)
 		require.NoError(t, err)
-		defer os.Chdir(originalCwd)
+		defer func() { _ = os.Chdir(originalCwd) }()
 
 		// Start first devnet
 		app1, _ := testutils.CreateTestAppWithNoopLoggerAndAccess("devkit", []cli.Flag{
@@ -537,7 +537,7 @@ func TestDevnetPortConflicts(t *testing.T) {
 			&cli.IntFlag{Name: "l2-port"},
 		}, StopDevnetAction)
 
-		stopApp.Run([]string{"devkit", "--l1-port", strconv.Itoa(l1Port), "--l2-port", strconv.Itoa(l2Port)})
+		_ = stopApp.Run([]string{"devkit", "--l1-port", strconv.Itoa(l1Port), "--l2-port", strconv.Itoa(l2Port)})
 	})
 }
 
@@ -713,7 +713,7 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 	// Save original directory
 	originalCwd, err := os.Getwd()
 	require.NoError(t, err)
-	defer os.Chdir(originalCwd)
+	defer func() { _ = os.Chdir(originalCwd) }()
 
 	// Set environment variables for the test
 	os.Setenv("SKIP_DEVNET_FUNDING", "true")
@@ -796,10 +796,10 @@ func TestStartDevnetOnUsedPort_ShouldFail(t *testing.T) {
 	cancel1()
 
 	// Stop containers manually
-	exec.Command("docker", "stop", "devkit-devnet-l1-my-avs").Run()
-	exec.Command("docker", "stop", "devkit-devnet-l2-my-avs").Run()
-	exec.Command("docker", "rm", "devkit-devnet-l1-my-avs").Run()
-	exec.Command("docker", "rm", "devkit-devnet-l2-my-avs").Run()
+	_ = exec.Command("docker", "stop", "devkit-devnet-l1-my-avs").Run()
+	_ = exec.Command("docker", "stop", "devkit-devnet-l2-my-avs").Run()
+	_ = exec.Command("docker", "rm", "devkit-devnet-l1-my-avs").Run()
+	_ = exec.Command("docker", "rm", "devkit-devnet-l2-my-avs").Run()
 }
 
 func TestStartDevnet_WithDeployContracts(t *testing.T) {
