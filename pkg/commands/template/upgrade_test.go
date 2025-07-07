@@ -183,9 +183,6 @@ func TestUpgradeCommand(t *testing.T) {
 
 	// Test upgrade command without version flag
 	t.Run("Upgrade command without version", func(t *testing.T) {
-		// Skip this test to avoid hanging on git clone
-		t.Skip("Skipping test that tries to clone real git repository")
-
 		// Create a flag set and context without version flag, with no-op logger
 		set := flag.NewFlagSet("test", 0)
 
