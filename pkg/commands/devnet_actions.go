@@ -63,7 +63,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
 	skipTransporter := cCtx.Bool("skip-transporter")
 	useZeus := cCtx.Bool("use-zeus")
-
+	persist := cCtx.Bool("persist")
 	// Migrate config
 	configMigrated, err := migrateConfig(logger)
 	if err != nil {
@@ -136,16 +136,6 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	startTime := time.Now()
 
 	logger.Info("Starting L1 and L2 devnets...\n")
-
-	if cCtx.Bool("reset") {
-		logger.Debug("Resetting devnet...")
-	}
-	if fork := cCtx.String("fork"); fork != "" {
-		logger.Debug("Forking from chain: %s", fork)
-	}
-	if cCtx.Bool("headless") {
-		logger.Debug("Running in headless mode")
-	}
 
 	// Docker-compose for anvil devnet
 	composePath := devnet.WriteEmbeddedArtifacts()
@@ -234,7 +224,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// On cancel, always call down if skipAvsRun=false
-	if !skipDeployContracts && !skipAvsRun {
+	if !skipDeployContracts && !skipAvsRun && !persist {
 		defer func() {
 			logger.Info("Stopping containers")
 			// Use background context to avoid cancellation issues during cleanup
@@ -349,7 +339,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		time.Sleep(1 * time.Second)
 
 		logger.Title("Registering AVS with EigenLayer...")
-
+		logger.Info("Allocaiton Manager Address: %s", config.Context[devnet.DEVNET_CONTEXT].EigenLayer.L1.AllocationManager)
 		if !cCtx.Bool("skip-setup") {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
 				return fmt.Errorf("updating AVS metadata failed: %w", err)
@@ -1883,7 +1873,6 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 	if err != nil {
 		return fmt.Errorf("failed to create contract caller: %w", err)
 	}
-
 	// whitelist l1 chain id in cross registry
 	err = contractCaller.WhitelistChainIdInCrossRegistry(cCtx.Context, l1OperatorTableUpdater, uint64(l1Cfg.ChainID))
 	if err != nil {

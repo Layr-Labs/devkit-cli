@@ -3,7 +3,7 @@ architectures:
     languages:
       go:
         baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
-        version: "66f52f5eb803ad586e5167836a494748c6f68f55"
+        version: "nova/update_to_sepolia"
       ts:
         baseUrl: ""
         version: ""

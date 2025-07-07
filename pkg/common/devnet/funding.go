@@ -117,60 +117,104 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		if err := devkitcommon.StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
 			log.Printf("⚠️  Failed to stop impersonating after unwrap %s: %v", tokenFunding.HolderAddress.Hex(), err)
 		}
-	}
-
-	// Start impersonating the token holder
-	if err := devkitcommon.ImpersonateAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
-		return fmt.Errorf("failed to impersonate token holder: %w", err)
-	}
-
-	defer func() {
-		if err := devkitcommon.StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
-			log.Printf("⚠️  Failed to stop impersonating %s: %v", tokenFunding.HolderAddress.Hex(), err)
+	} else if tokenFunding.TokenName == "stETH" {
+		// Get config
+		anvil1Key := ANVIL_1_KEY
+		anvil1Key = strings.TrimPrefix(anvil1Key, "0x")
+		privateKey, err := crypto.HexToECDSA(anvil1Key)
+		if err != nil {
+			return fmt.Errorf("failed to parse private key: %w", err)
 		}
-	}()
 
-	// Get gas price
-	gasPrice, err := ethClient.SuggestGasPrice(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get gas price: %w", err)
+		anvil1Address := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+		// Start impersonating the token holder
+		if err := devkitcommon.ImpersonateAccount(rpcClient, anvil1Address); err != nil {
+			return fmt.Errorf("failed to impersonate token holder: %w", err)
+		}
+
+		// stake eth to get stETH , call submit(address _referal) with referral as 0 address with ETH value to get stETh back
+		// create call from abi
+		stethABI, err := abi.JSON(strings.NewReader(contracts.ST_ETH_CONTRACT_ABI))
+		if err != nil {
+			return fmt.Errorf("failed to parse stETH contract ABI: %w", err)
+		}
+
+		submitData, err := stethABI.Pack("submit", common.Address{})
+		if err != nil {
+			return fmt.Errorf("failed to pack submit call: %w", err)
+		}
+
+		// Get gas price
+		gasPrice, err := ethClient.SuggestGasPrice(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get gas price for unwrap: %w", err)
+		}
+
+		// Send submit transaction from impersonated account using RPC
+		var submitTxHash common.Hash
+		err = rpcClient.Call(&submitTxHash, "eth_sendTransaction", map[string]interface{}{
+			"from":     anvil1Address.Hex(),
+			"to":       ST_ETH_TOKEN_ADDRESS,
+			"gas":      "0x30d40", // 200000 in hex
+			"gasPrice": fmt.Sprintf("0x%x", gasPrice),
+			"value":    fmt.Sprintf("0x%x", tokenFunding.Amount),
+			"data":     fmt.Sprintf("0x%x", submitData),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to send submit transaction: %w", err)
+		}
+
+		// Wait for submit transaction receipt
+		submitReceipt, err := waitForTransaction(ctx, ethClient, submitTxHash)
+		if err != nil {
+			return fmt.Errorf("submit transaction failed: %w", err)
+		}
+
+		log.Printf("stETH transaction receipt: %v", submitReceipt.TxHash)
+
+		if submitReceipt.Status == 0 {
+			return fmt.Errorf("stETH transaction reverted")
+		}
+
+		// transfer stETH to staker
+		transferData, err := contracts.PackTransferCall(stakerAddress, tokenFunding.Amount)
+		if err != nil {
+			return fmt.Errorf("failed to pack transfer call: %w", err)
+		}
+
+		// Send transfer transaction from impersonated account using RPC
+		var transferTxHash common.Hash
+		err = rpcClient.Call(&transferTxHash, "eth_sendTransaction", map[string]interface{}{
+			"from":     anvil1Address.Hex(),
+			"to":       ST_ETH_TOKEN_ADDRESS,
+			"gas":      "0x30d40", // 200000 in hex
+			"gasPrice": fmt.Sprintf("0x%x", gasPrice),
+			"value":    "0x0",
+			"data":     fmt.Sprintf("0x%x", transferData),
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to send transfer transaction: %w", err)
+		}
+
+		// Wait for transfer transaction receipt
+		transferReceipt, err := waitForTransaction(ctx, ethClient, transferTxHash)
+		if err != nil {
+			return fmt.Errorf("transfer transaction failed: %w", err)
+		}
+
+		log.Printf("stETH transfer transaction receipt: %v", transferReceipt.TxHash)
+
+		if transferReceipt.Status == 0 {
+			return fmt.Errorf("stETH transfer transaction reverted")
+		}
+
+		// Stop impersonating for transfer
+		if err := devkitcommon.StopImpersonatingAccount(rpcClient, anvil1Address); err != nil {
+			log.Printf("⚠️  Failed to stop impersonating after transfer %s: %v", anvil1Address.Hex(), err)
+		}
 	}
-
-	// Encode transfer function call using the registry's ERC20 contract
-	transferData, err := contracts.PackTransferCall(stakerAddress, tokenFunding.Amount)
-	if err != nil {
-		return fmt.Errorf("failed to pack transfer call: %w", err)
-	}
-
-	// Send token transfer transaction from impersonated account using RPC
-	var txHash common.Hash
-	err = rpcClient.Call(&txHash, "eth_sendTransaction", map[string]interface{}{
-		"from":     tokenFunding.HolderAddress.Hex(),
-		"to":       tokenAddress.Hex(),
-		"gas":      "0x186a0", // 100000 in hex
-		"gasPrice": fmt.Sprintf("0x%x", gasPrice),
-		"value":    "0x0",
-		"data":     fmt.Sprintf("0x%x", transferData),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to send token transfer transaction: %w", err)
-	}
-
-	// Wait for transaction receipt
-	receipt, err := waitForTransaction(ctx, ethClient, txHash)
-	if err != nil {
-		return fmt.Errorf("token transfer transaction failed: %w", err)
-	}
-
-	if receipt.Status == 0 {
-		return fmt.Errorf("token transfer transaction reverted")
-	}
-
-	log.Printf("✅ Successfully funded %s with %s %s (tx: %s)",
-		stakerAddress.Hex(),
-		tokenFunding.Amount.String(),
-		tokenAddress,
-		txHash.Hex())
 
 	return nil
 }

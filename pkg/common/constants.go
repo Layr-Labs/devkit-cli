@@ -31,4 +31,7 @@ const (
 
 	// L2 Default chainId for Anvil
 	L2DefaultAnvilChainId = 31338
+
+	// CrossChainRegistryOwnerAddress is the address of the owner of the cross chain registry
+	CrossChainRegistryOwnerAddress = "0xb094Ba769b4976Dc37fC689A76675f31bc4923b0"
 )

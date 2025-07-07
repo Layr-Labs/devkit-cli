@@ -61,6 +61,11 @@ var DevnetCommand = &cli.Command{
 					Usage: "Use Zeus CLI to fetch holesky core addresses",
 					Value: false,
 				},
+				&cli.BoolFlag{
+					Name:  "persist",
+					Usage: "Persist devnet containers after stopping",
+					Value: false,
+				},
 			}, common.GlobalFlags...),
 			Action: StartDevnetAction,
 		},

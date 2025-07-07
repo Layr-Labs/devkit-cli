@@ -17,7 +17,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l1", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "4093362"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "8710498"}
 				},
 			},
 			// Update fork block for L2 chain
@@ -49,7 +49,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l2", "bn254_certificate_verifier"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x824604a31b580Aec16D8Dd7ae9A27661Dc65cBA3"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x998535833f3feE44ce720440E735554699f728a5"}
 				},
 			},
 			// Update operator_table_updater for l2 chain
@@ -57,7 +57,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l2", "operator_table_updater"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x798EB817B7C109c6780264D5161183809C817216"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xE12C4cebd680a917271145eDbFB091B1BdEFD74D"}
 				},
 			},
 			// Add ecdsa_certificate_verifier for l2 chain
@@ -65,7 +65,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xAD2F58A551bD0e77fa20b5531dA96eF440C392BF"}
 				},
 			},
 			// Add deployed_l1_contracts section

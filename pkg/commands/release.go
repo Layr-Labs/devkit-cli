@@ -175,8 +175,8 @@ func processOperatorSetsAndPublishReleaseOnChain(cCtx *cli.Context, logger iface
 			}
 
 			artifact := releasemanager.IReleaseManagerTypesArtifact{
-				Digest:      digestBytes,
-				RegistryUrl: opSetData.Registry,
+				Digest:   digestBytes,
+				Registry: opSetData.Registry,
 			}
 			artifacts = append(artifacts, artifact)
 		}

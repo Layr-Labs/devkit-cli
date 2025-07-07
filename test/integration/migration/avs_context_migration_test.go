@@ -718,10 +718,10 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 		}
 	})
 
-	t.Run("l1 fork block updated to 4093362", func(t *testing.T) {
+	t.Run("l1 fork block updated to 8710498", func(t *testing.T) {
 		l1Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l1", "fork", "block"})
-		if l1Block == nil || l1Block.Value != "4093362" {
-			t.Errorf("Expected L1 fork block to be updated to 4093362, got %v", l1Block.Value)
+		if l1Block == nil || l1Block.Value != "8710498" {
+			t.Errorf("Expected L1 fork block to be updated to 8710498, got %v", l1Block.Value)
 		}
 	})
 
@@ -743,22 +743,22 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 			t.Errorf("Expected L2 rpc url to be updated to http://localhost:9545, got %v", l2RpcUrl.Value)
 		}
 	})
-	t.Run("bn254_certificate_verifier updated to 0x824604a31b580Aec16D8Dd7ae9A27661Dc65cBA3", func(t *testing.T) {
+	t.Run("bn254_certificate_verifier updated to 0x998535833f3feE44ce720440E735554699f728a5", func(t *testing.T) {
 		bn254CertVerifier := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l2", "bn254_certificate_verifier"})
-		if bn254CertVerifier == nil || bn254CertVerifier.Value != "0x824604a31b580Aec16D8Dd7ae9A27661Dc65cBA3" {
-			t.Errorf("Expected bn254_certificate_verifier to be updated to 0x824604a31b580Aec16D8Dd7ae9A27661Dc65cBA3, got %v", bn254CertVerifier.Value)
+		if bn254CertVerifier == nil || bn254CertVerifier.Value != "0x998535833f3feE44ce720440E735554699f728a5" {
+			t.Errorf("Expected bn254_certificate_verifier to be updated to 0x998535833f3feE44ce720440E735554699f728a5, got %v", bn254CertVerifier.Value)
 		}
 	})
-	t.Run("operator_table_updater updated to 0x798EB817B7C109c6780264D5161183809C817216", func(t *testing.T) {
+	t.Run("operator_table_updater updated to 0xE12C4cebd680a917271145eDbFB091B1BdEFD74D", func(t *testing.T) {
 		operatorTableUpdater := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l2", "operator_table_updater"})
-		if operatorTableUpdater == nil || operatorTableUpdater.Value != "0x798EB817B7C109c6780264D5161183809C817216" {
-			t.Errorf("Expected operator_table_updater to be updated to 0x798EB817B7C109c6780264D5161183809C817216, got %v", operatorTableUpdater.Value)
+		if operatorTableUpdater == nil || operatorTableUpdater.Value != "0xE12C4cebd680a917271145eDbFB091B1BdEFD74D" {
+			t.Errorf("Expected operator_table_updater to be updated to 0xE12C4cebd680a917271145eDbFB091B1BdEFD74D, got %v", operatorTableUpdater.Value)
 		}
 	})
-	t.Run("Added ecdsa_certificate_verifier with address 0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7", func(t *testing.T) {
+	t.Run("Added ecdsa_certificate_verifier with address 0xAD2F58A551bD0e77fa20b5531dA96eF440C392BF", func(t *testing.T) {
 		ecdsaCertVerifier := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"})
-		if ecdsaCertVerifier == nil || ecdsaCertVerifier.Value != "0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7" {
-			t.Errorf("Expected ecdsa_certificate_verifier to be added  with address 0x95A49cB0aED0e8f299223Da3A8A335440f5F00E7, got %v", ecdsaCertVerifier.Value)
+		if ecdsaCertVerifier == nil || ecdsaCertVerifier.Value != "0xAD2F58A551bD0e77fa20b5531dA96eF440C392BF" {
+			t.Errorf("Expected ecdsa_certificate_verifier to be added  with address 0xAD2F58A551bD0e77fa20b5531dA96eF440C392BF, got %v", ecdsaCertVerifier.Value)
 		}
 	})
 	t.Run("deployed_l1_contracts section added", func(t *testing.T) {

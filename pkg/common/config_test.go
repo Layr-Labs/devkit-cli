@@ -49,7 +49,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 
 	// In v0.0.6, operators use allocations instead of stake
 	assert.NotEmpty(t, cfg.Context["devnet"].Operators[0].Allocations)
-	assert.Equal(t, "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3", cfg.Context["devnet"].Operators[0].Allocations[0].StrategyAddress)
+	assert.Equal(t, "0x8b29d91e67b013e855EaFe0ad704aC4Ab086a574", cfg.Context["devnet"].Operators[0].Allocations[0].StrategyAddress)
 	assert.Equal(t, "stETH_Strategy", cfg.Context["devnet"].Operators[0].Allocations[0].Name)
 
 	// Test stakers parsing - verify that stakers configuration is loaded correctly
@@ -65,7 +65,7 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 
 	// Test first deposit
 	deposit1 := staker.Deposits[0]
-	assert.Equal(t, "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3", deposit1.StrategyAddress)
+	assert.Equal(t, "0x8b29d91e67b013e855EaFe0ad704aC4Ab086a574", deposit1.StrategyAddress)
 	assert.Equal(t, "stETH_Strategy", deposit1.Name)
 	assert.Equal(t, "5ETH", deposit1.DepositAmount)
 
@@ -83,14 +83,14 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "http://localhost:8545", cfg.Context["devnet"].Chains["l1"].RPCURL)
 	assert.Equal(t, "http://localhost:9545", cfg.Context["devnet"].Chains["l2"].RPCURL)
 
-	assert.Equal(t, 4093362, cfg.Context["devnet"].Chains["l1"].Fork.Block)
+	assert.Equal(t, 8710498, cfg.Context["devnet"].Chains["l1"].Fork.Block)
 	assert.Equal(t, 27802092, cfg.Context["devnet"].Chains["l2"].Fork.Block)
 
 	assert.Equal(t, "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", cfg.Context["devnet"].Avs.Address)
 	assert.Equal(t, "0x0123456789abcdef0123456789ABCDEF01234567", cfg.Context["devnet"].Avs.RegistrarAddress)
 	assert.Equal(t, "https://my-org.com/avs/metadata.json", cfg.Context["devnet"].Avs.MetadataUri)
 
-	assert.Equal(t, "0x323A9FcB2De80d04B5C4B0F72ee7799100D32F0F", cfg.Context["devnet"].EigenLayer.L1.ReleaseManager)
+	assert.Equal(t, "0xd9Cb89F1993292dEC2F973934bC63B0f2A702776", cfg.Context["devnet"].EigenLayer.L1.ReleaseManager)
 }
 
 func LoadConfigWithContextConfigFromPath(contextName string, config_directory_path string) (*common.ConfigWithContextConfig, error) {

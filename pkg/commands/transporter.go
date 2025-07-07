@@ -242,7 +242,7 @@ func Transport(cCtx *cli.Context) error {
 		root,
 		referenceTimestamp,
 		l1Block.NumberU64(),
-		[]*big.Int{new(big.Int).SetUint64(17000), new(big.Int).SetUint64(84532)},
+		[]*big.Int{new(big.Int).SetUint64(11155111), new(big.Int).SetUint64(84532)},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to sign and transport global table root: %v", err)
@@ -276,7 +276,7 @@ func Transport(cCtx *cli.Context) error {
 			root,
 			tree,
 			dist,
-			[]*big.Int{new(big.Int).SetUint64(17000), new(big.Int).SetUint64(84532)},
+			[]*big.Int{new(big.Int).SetUint64(11155111), new(big.Int).SetUint64(84532)},
 		)
 		if err != nil {
 			return fmt.Errorf("failed to sign and transport AVS stake table for opset %v: %v", opset, err)
@@ -465,8 +465,8 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 	// Iterate and collect all roots for all chainIds
 	for i, chainId := range chainIds {
-		// Ignore 17000 and 84532 from chainIds
-		if chainId.Uint64() == 17000 || chainId.Uint64() == 84532 {
+		// Ignore 11155111 and 84532 from chainIds
+		if chainId.Uint64() == 11155111 || chainId.Uint64() == 84532 {
 			continue
 		}
 

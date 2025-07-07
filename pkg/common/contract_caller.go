@@ -572,68 +572,37 @@ func (cc *ContractCaller) CreateGenerationReservation(ctx context.Context, opSet
 func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, operatorTableUpdater common.Address, chainId uint64) error {
 	var (
 		err      error
-		nonce    uint64
 		gasPrice *big.Int
-		signedTx *types.Transaction
 		receipt  *types.Receipt
 	)
 
 	chainIds := []*big.Int{big.NewInt(int64(chainId))}
 	cc.logger.Info("Impersonating cross chain registry owner")
-	ownerCrossChainRegistry := common.HexToAddress("0xDA29BB71669f46F2a779b4b62f03644A84eE3479")
+	ownerCrossChainRegistry := common.HexToAddress(CrossChainRegistryOwnerAddress)
 
 	// Get RPC client from ethclient
 	rpcClient := cc.ethclient.Client()
 
-	// Fund the cross chain registry owner with 1 ETH if needed
-	anvilKey := "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a"
-	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(anvilKey, "0x"))
+	// Check if owner already has sufficient balance
+	balance, err := cc.ethclient.BalanceAt(ctx, ownerCrossChainRegistry, nil)
 	if err != nil {
-		return fmt.Errorf("failed to parse anvil private key: %w", err)
+		return fmt.Errorf("failed to get owner balance: %w", err)
 	}
 
-	// Get the nonce for the sender
-	fromAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
-	nonce, err = cc.ethclient.PendingNonceAt(ctx, fromAddress)
-	if err != nil {
-		return fmt.Errorf("failed to get nonce: %w", err)
-	}
+	// Only fund if balance is less than 0.1 ETH
+	minBalance := big.NewInt(100000000000000000) // 0.1 ETH in wei
+	if balance.Cmp(minBalance) < 0 {
+		cc.logger.Info("Funding cross chain registry owner with 1 ETH")
 
-	// Get gas price
-	gasPrice, err = cc.ethclient.SuggestGasPrice(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get gas price: %w", err)
-	}
+		// Use anvil_setBalance RPC method instead of direct transfer
+		err = rpcClient.Call(nil, "anvil_setBalance", ownerCrossChainRegistry.Hex(), "0x8AC7230489E80000") // 10 ETH in hex
+		if err != nil {
+			return fmt.Errorf("failed to set owner balance: %w", err)
+		}
 
-	// Create the transaction
-	tx := types.NewTransaction(
-		nonce,
-		ownerCrossChainRegistry,
-		big.NewInt(1000000000000000000), // 1 ETH in wei
-		21000,                           // Standard ETH transfer gas limit
-		gasPrice,
-		nil,
-	)
-
-	// Sign the transaction
-	signedTx, err = types.SignTx(tx, types.NewEIP155Signer(cc.chainID), privateKey)
-	if err != nil {
-		return fmt.Errorf("failed to sign transaction: %w", err)
-	}
-
-	// Send the transaction
-	if err = cc.ethclient.SendTransaction(ctx, signedTx); err != nil {
-		return fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	// Wait for transaction to be mined
-	receipt, err = bind.WaitMined(ctx, cc.ethclient, signedTx)
-	if err != nil {
-		return fmt.Errorf("failed to wait for transaction: %w", err)
-	}
-
-	if receipt.Status == 0 {
-		return fmt.Errorf("transaction failed")
+		cc.logger.Info("Successfully set owner balance to 10 ETH")
+	} else {
+		cc.logger.Info("Owner already has sufficient balance: %s wei", balance.String())
 	}
 
 	if err := ImpersonateAccount(rpcClient, ownerCrossChainRegistry); err != nil {
