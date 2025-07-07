@@ -718,17 +718,17 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 		}
 	})
 
-	t.Run("l1 fork block updated to 8710498", func(t *testing.T) {
+	t.Run("l1 fork block updated to 8713384", func(t *testing.T) {
 		l1Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l1", "fork", "block"})
-		if l1Block == nil || l1Block.Value != "8710498" {
-			t.Errorf("Expected L1 fork block to be updated to 8710498, got %v", l1Block.Value)
+		if l1Block == nil || l1Block.Value != "8713384" {
+			t.Errorf("Expected L1 fork block to be updated to 8713384, got %v", l1Block.Value)
 		}
 	})
 
-	t.Run("l2 fork block updated to 28069533", func(t *testing.T) {
+	t.Run("l2 fork block updated to 28069756", func(t *testing.T) {
 		l2Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "fork", "block"})
-		if l2Block == nil || l2Block.Value != "28069533" {
-			t.Errorf("Expected L2 fork block to be updated to 28069533, got %v", l2Block.Value)
+		if l2Block == nil || l2Block.Value != "28069756" {
+			t.Errorf("Expected L2 fork block to be updated to 28069756, got %v", l2Block.Value)
 		}
 	})
 	t.Run("L2 chain id updated to 31338", func(t *testing.T) {
@@ -777,6 +777,54 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 		deployedContracts := migration.ResolveNode(migratedNode, []string{"context", "deployed_contracts"})
 		if deployedContracts != nil {
 			t.Errorf("Expected deployed_contracts section to be removed, got %v", deployedContracts.Value)
+		}
+	})
+	t.Run("allocation_manager updated to 0x42583067658071247ec8CE0A516A58f682002d07", func(t *testing.T) {
+		allocationManager := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "allocation_manager"})
+		if allocationManager == nil || allocationManager.Value != "0x42583067658071247ec8CE0A516A58f682002d07" {
+			t.Errorf("Expected allocation_manager to be updated to 0x42583067658071247ec8CE0A516A58f682002d07, got %v", allocationManager.Value)
+		}
+	})	
+	t.Run("delegation_manager updated to 0xD4A7E1Bd8015057293f0D0A557088c286942e84b", func(t *testing.T) {
+		delegationManager := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "delegation_manager"})
+		if delegationManager == nil || delegationManager.Value != "0xD4A7E1Bd8015057293f0D0A557088c286942e84b" {
+			t.Errorf("Expected delegation_manager to be updated to 0xD4A7E1Bd8015057293f0D0A557088c286942e84b, got %v", delegationManager.Value)
+		}
+	})
+	t.Run("strategy_manager updated to 0x2E3D6c0744b10eb0A4e6F679F71554a39Ec47a5D", func(t *testing.T) {
+		strategyManager := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "strategy_manager"})
+		if strategyManager == nil || strategyManager.Value != "0x2E3D6c0744b10eb0A4e6F679F71554a39Ec47a5D" {
+			t.Errorf("Expected strategy_manager to be updated to 0x2E3D6c0744b10eb0A4e6F679F71554a39Ec47a5D, got %v", strategyManager.Value)
+		}
+	})
+	t.Run("bn254_table_calculator updated to 0xc2c0bc13571aC5115709C332dc7AE666606b08E8", func(t *testing.T) {	
+		bn254TableCalculator := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "bn254_table_calculator"})
+		if bn254TableCalculator == nil || bn254TableCalculator.Value != "0xc2c0bc13571aC5115709C332dc7AE666606b08E8" {
+			t.Errorf("Expected bn254_table_calculator to be updated to 0xc2c0bc13571aC5115709C332dc7AE666606b08E8, got %v", bn254TableCalculator.Value)
+		}
+	})
+	t.Run("cross_chain_registry updated to 0xe850D8A178777b483D37fD492a476e3E6004C816", func(t *testing.T) {
+		crossChainRegistry := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "cross_chain_registry"})
+		if crossChainRegistry == nil || crossChainRegistry.Value != "0xe850D8A178777b483D37fD492a476e3E6004C816" {
+			t.Errorf("Expected cross_chain_registry to be updated to 0xe850D8A178777b483D37fD492a476e3E6004C816, got %v", crossChainRegistry.Value)
+		}
+	})
+	t.Run("key_registrar updated to 0x78De554Ac8DfF368e3CAa73B3Df8AccCfD92928A", func(t *testing.T) {
+		keyRegistrar := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "key_registrar"})
+		if keyRegistrar == nil || keyRegistrar.Value != "0x78De554Ac8DfF368e3CAa73B3Df8AccCfD92928A" {
+			t.Errorf("Expected key_registrar to be updated to 0x78De554Ac8DfF368e3CAa73B3Df8AccCfD92928A, got %v", keyRegistrar.Value)
+		}
+	})
+	t.Run("release_manager updated to 0xd9Cb89F1993292dEC2F973934bC63B0f2A702776", func(t *testing.T) {	
+		releaseManager := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "release_manager"})
+		if releaseManager == nil || releaseManager.Value != "0xd9Cb89F1993292dEC2F973934bC63B0f2A702776" {
+			t.Errorf("Expected release_manager to be updated to 0xd9Cb89F1993292dEC2F973934bC63B0f2A702776, got %v", releaseManager.Value)
+		}
+	})
+	t.Run("operator_table_updater updated to 0xE12C4cebd680a917271145eDbFB091B1BdEFD74D", func(t *testing.T) {
+		operatorTableUpdater := migration.ResolveNode(migratedNode, []string{"context", "eigenlayer", "l1", "operator_table_updater"})
+		if operatorTableUpdater == nil || operatorTableUpdater.Value != "0xE12C4cebd680a917271145eDbFB091B1BdEFD74D" {
+			t.Errorf("Expected operator_table_updater to be updated to 0xE12C4cebd680a917271145eDbFB091B1BdEFD74D, got %v", operatorTableUpdater.Value)
 		}
 	})
 }

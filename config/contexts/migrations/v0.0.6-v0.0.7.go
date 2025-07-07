@@ -17,7 +17,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l1", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "8710498"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "8713384"}
 				},
 			},
 			// Update fork block for L2 chain
@@ -25,7 +25,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l2", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "28069533"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "28069756"}
 				},
 			},
 			// Update rpc url for l2 chain
@@ -42,6 +42,70 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "31338"}
+				},
+			},
+			// Update allocation_manager for l1 chain
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "allocation_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x42583067658071247ec8CE0A516A58f682002d07"}
+				},
+			},
+			// Update delegation_manager for l1 chain
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "delegation_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xD4A7E1Bd8015057293f0D0A557088c286942e84b"}
+				},
+			},
+			// Update strategy_manager for l1 chain
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "strategy_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x2E3D6c0744b10eb0A4e6F679F71554a39Ec47a5D"}
+				},
+			},
+			// Update bn254_table_calculator for l1 chain
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "bn254_table_calculator"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xc2c0bc13571aC5115709C332dc7AE666606b08E8"}
+				},
+			},
+			// Update cross_chain_manager for l1 chain
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "cross_chain_registry"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xe850D8A178777b483D37fD492a476e3E6004C816"}
+				},
+			},
+			// Update key_registrar for l1 chain
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "key_registrar"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x78De554Ac8DfF368e3CAa73B3Df8AccCfD92928A"}
+				},
+			},
+			// Update release_manager for l1 chain
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "release_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xd9Cb89F1993292dEC2F973934bC63B0f2A702776"}
+				},
+			},
+			// Update operator_table_updater for l1 chain
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "operator_table_updater"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xE12C4cebd680a917271145eDbFB091B1BdEFD74D"}
 				},
 			},
 			// Update bn254_certificate_verifier for l2 chain
