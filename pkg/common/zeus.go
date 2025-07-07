@@ -1,31 +1,34 @@
 package common
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"os/exec"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
 )
 
-// ZeusAddressData represents the addresses returned by zeus list command
-type ZeusAddressData struct {
-	AllocationManager string `json:"allocationManager"`
-	DelegationManager string `json:"delegationManager"`
-	StrategyManager   string `json:"strategyManager"`
+// L1ZeusAddressData represents the addresses returned by zeus list command
+type L1ZeusAddressData struct {
+	AllocationManager    string `json:"allocationManager"`
+	DelegationManager    string `json:"delegationManager"`
+	StrategyManager      string `json:"strategyManager"`
+	CrossChainRegistry   string `json:"crossChainRegistry"`
+	KeyRegistrar         string `json:"keyRegistrar"`
+	ReleaseManager       string `json:"releaseManager"`
+	OperatorTableUpdater string `json:"operatorTableUpdater"`
 }
 
 // GetZeusAddresses runs the zeus env show mainnet command and extracts core EigenLayer addresses
-// TODO: Currently commented out as Zeus doesn't support the new L1/L2 contract structure
-func GetZeusAddresses(logger iface.Logger) (*ZeusAddressData, error) {
-	// Zeus integration temporarily disabled for new L1/L2 structure
-	return nil, fmt.Errorf("Zeus integration is currently disabled for the new L1/L2 contract structure")
+func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressData, error) {
 
-	/* Temporarily commented out until Zeus supports new structure
 	// Run the zeus command with JSON output
-	cmd := exec.Command("zeus", "env", "show", "mainnet", "--json")
+	cmd := exec.CommandContext(context.Background(), "zeus", "env", "show", "testnet-sepolia", "--json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute zeus env show mainnet --json: %w - output: %s", err, string(output))
+		return nil, fmt.Errorf("failed to execute zeus env show testnet-sepolia --json: %w - output: %s", err, string(output))
 	}
 
 	logger.Info("Parsing Zeus JSON output")
@@ -37,7 +40,7 @@ func GetZeusAddresses(logger iface.Logger) (*ZeusAddressData, error) {
 	}
 
 	// Extract the addresses
-	addresses := &ZeusAddressData{}
+	addresses := &L1ZeusAddressData{}
 
 	// Get AllocationManager address
 	if val, ok := zeusData["ZEUS_DEPLOYED_AllocationManager_Proxy"]; ok {
@@ -60,24 +63,49 @@ func GetZeusAddresses(logger iface.Logger) (*ZeusAddressData, error) {
 		}
 	}
 
+	// Get CrossChainRegistry address
+	if val, ok := zeusData["ZEUS_DEPLOYED_CrossChainRegistry_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			addresses.CrossChainRegistry = strVal
+		}
+	}
+
+	// Get KeyRegistrar address
+	if val, ok := zeusData["ZEUS_DEPLOYED_KeyRegistrar_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			addresses.KeyRegistrar = strVal
+		}
+	}
+
+	// Get ReleaseManager address
+	if val, ok := zeusData["ZEUS_DEPLOYED_ReleaseManager_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			addresses.ReleaseManager = strVal
+		}
+	}
+
+	// Get OperatorTableUpdater address
+	if val, ok := zeusData["ZEUS_DEPLOYED_OperatorTableUpdater_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			addresses.OperatorTableUpdater = strVal
+		}
+	}
+
 	// Verify we have both addresses
-	if addresses.AllocationManager == "" || addresses.DelegationManager == "" {
+	if addresses.AllocationManager == "" || addresses.DelegationManager == "" || addresses.StrategyManager == "" || addresses.CrossChainRegistry == "" || addresses.KeyRegistrar == "" || addresses.ReleaseManager == "" || addresses.OperatorTableUpdater == "" {
+		logger.Warn("failed to extract required addresses from zeus output")
 		return nil, fmt.Errorf("failed to extract required addresses from zeus output")
 	}
 
 	return addresses, nil
-	*/
 }
 
 // UpdateContextWithZeusAddresses updates the context configuration with addresses from Zeus
 // TODO: Currently commented out as Zeus doesn't support the new L1/L2 contract structure
-func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *yaml.Node, contextName string) error {
+func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger, ctx *yaml.Node, contextName string) error {
 	// Zeus integration temporarily disabled for new L1/L2 structure
-	logger.Info("Zeus integration is currently disabled for the new L1/L2 contract structure")
-	return fmt.Errorf("Zeus integration is currently disabled for the new L1/L2 contract structure")
 
-	/* Temporarily commented out until Zeus supports new structure
-	addresses, err := GetZeusAddresses(logger)
+	addresses, err := GetZeusAddresses(context, logger)
 	if err != nil {
 		return err
 	}
@@ -101,10 +129,14 @@ func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *yaml.Node, context
 	}
 
 	// Print the fetched addresses
-	payload := ZeusAddressData{
-		AllocationManager: addresses.AllocationManager,
-		DelegationManager: addresses.DelegationManager,
-		StrategyManager:   addresses.StrategyManager,
+	payload := L1ZeusAddressData{
+		AllocationManager:    addresses.AllocationManager,
+		DelegationManager:    addresses.DelegationManager,
+		StrategyManager:      addresses.StrategyManager,
+		CrossChainRegistry:   addresses.CrossChainRegistry,
+		KeyRegistrar:         addresses.KeyRegistrar,
+		ReleaseManager:       addresses.ReleaseManager,
+		OperatorTableUpdater: addresses.OperatorTableUpdater,
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {
@@ -137,12 +169,23 @@ func UpdateContextWithZeusAddresses(logger iface.Logger, ctx *yaml.Node, context
 	dmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.DelegationManager}
 	smKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "strategy_manager"}
 	smVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.StrategyManager}
+	ccrKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "cross_chain_registry"}
+	ccrVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.CrossChainRegistry}
+	krKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "key_registrar"}
+	krVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.KeyRegistrar}
+	rmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "release_manager"}
+	rmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.ReleaseManager}
+	otuKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
+	otuVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.OperatorTableUpdater}
 
 	// Replace existing or append new entries in l1 section
 	SetMappingValue(l1Map, amKey, amVal)
 	SetMappingValue(l1Map, dmKey, dmVal)
 	SetMappingValue(l1Map, smKey, smVal)
+	SetMappingValue(l1Map, ccrKey, ccrVal)
+	SetMappingValue(l1Map, krKey, krVal)
+	SetMappingValue(l1Map, rmKey, rmVal)
+	SetMappingValue(l1Map, otuKey, otuVal)
 
 	return nil
-	*/
 }

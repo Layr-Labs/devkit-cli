@@ -101,7 +101,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Fetch EigenLayer addresses using Zeus if requested
 	if useZeus {
 		logger.Info("Fetching EigenLayer core addresses from Zeus...")
-		err = common.UpdateContextWithZeusAddresses(logger, contextNode, devnet.DEVNET_CONTEXT)
+		err = common.UpdateContextWithZeusAddresses(cCtx.Context, logger, contextNode, devnet.DEVNET_CONTEXT)
 		if err != nil {
 			logger.Warn("Failed to fetch addresses from Zeus: %v", err)
 			logger.Info("Continuing with addresses from config...")
@@ -1015,15 +1015,20 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 
 	// Fetch addresses from Zeus
 	logger.Info("Fetching EigenLayer core addresses from Zeus...")
-	addresses, err := common.GetZeusAddresses(logger)
+	addresses, err := common.GetZeusAddresses(cCtx.Context, logger)
 	if err != nil {
 		return fmt.Errorf("failed to get addresses from Zeus for %s: %w", contextName, err)
 	}
 
 	// Print the fetched addresses
-	payload := common.ZeusAddressData{
-		AllocationManager: addresses.AllocationManager,
-		DelegationManager: addresses.DelegationManager,
+	payload := common.L1ZeusAddressData{
+		AllocationManager:    addresses.AllocationManager,
+		DelegationManager:    addresses.DelegationManager,
+		StrategyManager:      addresses.StrategyManager,
+		CrossChainRegistry:   addresses.CrossChainRegistry,
+		KeyRegistrar:         addresses.KeyRegistrar,
+		ReleaseManager:       addresses.ReleaseManager,
+		OperatorTableUpdater: addresses.OperatorTableUpdater,
 	}
 	b, err := json.Marshal(payload)
 	if err != nil {
@@ -1032,7 +1037,7 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 	logger.Info("Found addresses: %s", b)
 
 	// Update the context with the fetched addresses
-	err = common.UpdateContextWithZeusAddresses(logger, contextNode, contextName)
+	err = common.UpdateContextWithZeusAddresses(cCtx.Context, logger, contextNode, contextName)
 	if err != nil {
 		return fmt.Errorf("failed to update context (%s) with Zeus addresses: %w", contextName, err)
 	}

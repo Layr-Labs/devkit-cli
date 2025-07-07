@@ -82,6 +82,7 @@ var DevnetCommand = &cli.Command{
 				&cli.BoolFlag{
 					Name:  "all",
 					Usage: "Stop all running devnet containers",
+					Value: true,
 				},
 				&cli.StringFlag{
 					Name:  "project.name",
