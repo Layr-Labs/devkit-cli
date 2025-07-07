@@ -511,7 +511,7 @@ func DeployL2ContractsAction(cCtx *cli.Context) error {
 		return fmt.Errorf("decode deployed_l2_contracts: %w", err)
 	}
 	// Empty log line to split these logs from the main body for easy identification
-	logger.Title("Save l2 contract artefacts")
+	logger.Title("Save l2 contract artifacts")
 	err = extractContractOutputs(cCtx, context, contractsList)
 	if err != nil {
 		return fmt.Errorf("failed to write l2 contract artefacts: %w", err)

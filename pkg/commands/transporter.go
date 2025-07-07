@@ -189,12 +189,7 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get block by number for l1: %v", err)
 	}
 
-	// get l2 block by number using utility function , because base gives different result type than ethereum
-	l2Timestamp, err := devnet.GetL2BlockByNumber(cCtx, l2RpcUrl, uint64(envCtx.Chains[devnet.L2].Fork.Block), logger)
-	if err != nil {
-		logger.Info("Failed to get L2 timestamp, falling back to L1 timestamp: %v", err)
-		l2Timestamp = strconv.FormatUint(l1Block.Time(), 10)
-	}
+	l1Timestamp := uint32(l1Block.Time())
 
 	root, tree, dist, err := tableCalc.CalculateStakeTableRoot(cCtx.Context, l1Block.NumberU64())
 	if err != nil {
@@ -230,13 +225,7 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create transport: %v", err)
 	}
 
-	// reference l2 timestamp since holesky operator table updater is old , which doesn't have the new timestamps checks.
-	// @TODO:Once operator table updater is updated , we can again use l1 timestamp .
-	l2TimestampInt, err := strconv.ParseUint(l2Timestamp, 10, 64)
-	if err != nil {
-		return fmt.Errorf("failed to parse l2 timestamp: %v", err)
-	}
-	referenceTimestamp := uint32(l2TimestampInt)
+	referenceTimestamp := l1Timestamp
 	err = stakeTransport.SignAndTransportGlobalTableRoot(
 		cCtx.Context,
 		root,

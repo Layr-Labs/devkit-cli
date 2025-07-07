@@ -725,10 +725,10 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 		}
 	})
 
-	t.Run("l2 fork block updated to 27802092", func(t *testing.T) {
+	t.Run("l2 fork block updated to 28069533", func(t *testing.T) {
 		l2Block := migration.ResolveNode(migratedNode, []string{"context", "chains", "l2", "fork", "block"})
-		if l2Block == nil || l2Block.Value != "27802092" {
-			t.Errorf("Expected L2 fork block to be updated to 27802092, got %v", l2Block.Value)
+		if l2Block == nil || l2Block.Value != "28069533" {
+			t.Errorf("Expected L2 fork block to be updated to 28069533, got %v", l2Block.Value)
 		}
 	})
 	t.Run("L2 chain id updated to 31338", func(t *testing.T) {

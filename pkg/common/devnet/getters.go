@@ -83,7 +83,6 @@ func GetDevnetChainIdOrDefault(cfg *common.ConfigWithContextConfig, chainName st
 			return common.L2DefaultAnvilChainId, fmt.Errorf("chain_id not set for %s; set chain_id in ./config/context/devnet.yaml or .env", chainName)
 		}
 	}
-	logger.Info("chain_id is set to %d", chainConfig.ChainID)
 	return chainConfig.ChainID, nil
 }
 

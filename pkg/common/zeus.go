@@ -198,29 +198,29 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	}
 
 	// Prepare nodes for L1 contracts
-	amKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "allocation_manager"}
-	amVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.AllocationManager}
-	dmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "delegation_manager"}
-	dmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.DelegationManager}
-	smKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "strategy_manager"}
-	smVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.StrategyManager}
-	ccrKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "cross_chain_registry"}
-	ccrVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.CrossChainRegistry}
-	krKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "key_registrar"}
-	krVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.KeyRegistrar}
-	rmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "release_manager"}
-	rmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.ReleaseManager}
-	otuKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
-	otuVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.OperatorTableUpdater}
+	allocationManagerKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "allocation_manager"}
+	allocationManagerVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.AllocationManager}
+	delegationManagerKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "delegation_manager"}
+	delegationManagerVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.DelegationManager}
+	strategyManagerKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "strategy_manager"}
+	strategyManagerVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.StrategyManager}
+	crossChainRegistryKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "cross_chain_registry"}
+	crossChainRegistryVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.CrossChainRegistry}
+	keyRegistrarKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "key_registrar"}
+	keyRegistrarVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.KeyRegistrar}
+	releaseManagerKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "release_manager"}
+	releaseManagerVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.ReleaseManager}
+	operatorTableUpdaterKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
+	operatorTableUpdaterVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.OperatorTableUpdater}
 
 	// Replace existing or append new entries in l1 section
-	SetMappingValue(l1Map, amKey, amVal)
-	SetMappingValue(l1Map, dmKey, dmVal)
-	SetMappingValue(l1Map, smKey, smVal)
-	SetMappingValue(l1Map, ccrKey, ccrVal)
-	SetMappingValue(l1Map, krKey, krVal)
-	SetMappingValue(l1Map, rmKey, rmVal)
-	SetMappingValue(l1Map, otuKey, otuVal)
+	SetMappingValue(l1Map, allocationManagerKey, allocationManagerVal)
+	SetMappingValue(l1Map, delegationManagerKey, delegationManagerVal)
+	SetMappingValue(l1Map, strategyManagerKey, strategyManagerVal)
+	SetMappingValue(l1Map, crossChainRegistryKey, crossChainRegistryVal)
+	SetMappingValue(l1Map, keyRegistrarKey, keyRegistrarVal)
+	SetMappingValue(l1Map, releaseManagerKey, releaseManagerVal)
+	SetMappingValue(l1Map, operatorTableUpdaterKey, operatorTableUpdaterVal)
 
 	// Find or create "l2" mapping entry under eigenlayer
 	l2Map := GetChildByKey(parentMap, "l2")
