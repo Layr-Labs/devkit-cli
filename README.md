@@ -193,8 +193,8 @@ These functions will be invoked automatically when using `devkit avs call`, enab
 
 ### 3️⃣ Set RPC Endpoint URL
 
-Set the `FORK_URL` values to a **Holesky** RPC **archive node** endpoint URL. This endpoint is needed to enable forking of the testnet state to your local environment. The endpoint will be used to fork the chain state to your local environment (devnet) for testing. Please note the following important details:
-- Only the **Holesky** testnet is supported at this time.
+Set the `FORK_URL` values to a **Sepolia** RPC **archive node** endpoint URL. This endpoint is needed to enable forking of the testnet state to your local environment. The endpoint will be used to fork the chain state to your local environment (devnet) for testing. Please note the following important details:
+- Only the **Sepolia** testnet is supported at this time.
 - The RPC endpoint should be an **archive** node, not a _full_ node. More context is available [here](https://www.quicknode.com/guides/infrastructure/node-setup/ethereum-full-node-vs-archive-node).
 - For initial testing purposes we recommend setting both `FORK_URL` values to the same endpoint URL.
 
@@ -239,7 +239,7 @@ Both test suites must pass for the command to succeed.
 
 Starts a local devnet to simulate the full AVS environment. This step deploys contracts, registers operators, and runs offchain infrastructure, allowing you to test and iterate without needing to interact with testnet or mainnet.
 
-* Forks Ethereum holesky using a fork URL (provided by you) and a block number. These URLs CAN be set in the `config/context/devnet.yaml`, but we recommend placing them in a `.env` file which will take precedence over `config/context/devnet.yaml`. Please see `.env.example`.
+* Forks Ethereum sepolia using a fork URL (provided by you) and a block number. These URLs CAN be set in the `config/context/devnet.yaml`, but we recommend placing them in a `.env` file which will take precedence over `config/context/devnet.yaml`. Please see `.env.example`.
 * Automatically funds wallets (`operator_keys` and `submit_wallet`) if balances are below `10 ether`.
 * Setup required `AVS` contracts.
 * Register `AVS` and `Operators`.
