@@ -133,7 +133,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 			return fmt.Errorf("failed to impersonate token holder: %w", err)
 		}
 
-		// stake eth to get stETH , call submit(address _refferal) with referral as 0 address with ETH value to get stETh back
+		// stake eth to get stETH , call submit(address _referral) with referral as 0 address with ETH value to get stETh back
 		// create call from abi
 		stethABI, err := abi.JSON(strings.NewReader(contracts.ST_ETH_CONTRACT_ABI))
 		if err != nil {

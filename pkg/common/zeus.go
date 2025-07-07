@@ -233,16 +233,16 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	}
 
 	// Prepare nodes for L2 contracts
-	l2otuKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
-	l2otuVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.OperatorTableUpdater}
-	ecdsaKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ecdsa_certificate_verifier"}
-	ecdsaVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.ECDSACertificateVerifier}
+	l2OperatorTableUpdaterKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
+	l2OperatorTableUpdaterVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.OperatorTableUpdater}
+	l2ECDSACertificateVerifierKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ecdsa_certificate_verifier"}
+	l2ECDSACertificateVerifierVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.ECDSACertificateVerifier}
 	bn254Key := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "bn254_certificate_verifier"}
 	bn254Val := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.BN254CertificateVerifier}
 
 	// Replace existing or append new entries in l2 section
-	SetMappingValue(l2Map, l2otuKey, l2otuVal)
-	SetMappingValue(l2Map, ecdsaKey, ecdsaVal)
+	SetMappingValue(l2Map, l2OperatorTableUpdaterKey, l2OperatorTableUpdaterVal)
+	SetMappingValue(l2Map, l2ECDSACertificateVerifierKey, l2ECDSACertificateVerifierVal)
 	SetMappingValue(l2Map, bn254Key, bn254Val)
 
 	return nil
