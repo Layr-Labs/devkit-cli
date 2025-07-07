@@ -142,9 +142,13 @@ func CreateTempAVSProject(t *testing.T) (string, error) {
 		return "", fmt.Errorf("failed to create config/contexts dir: %w", err)
 	}
 
-	// Set fork_urls as envs
-	os.Setenv("L1_FORK_URL", "https://eth.llamarpc.com")
-	os.Setenv("L2_FORK_URL", "https://eth.llamarpc.com")
+	// Set fork_urls as envs only if not already set (fallback behavior)
+	if os.Getenv("L1_FORK_URL") == "" {
+		os.Setenv("L1_FORK_URL", "https://ethereum-holesky.publicnode.com") // Ethereum Holesky for L1
+	}
+	if os.Getenv("L2_FORK_URL") == "" {
+		os.Setenv("L2_FORK_URL", "https://base-sepolia.gateway.tenderly.co") // Base Sepolia for L2
+	}
 
 	// Copy devnet.yaml context file
 	destDevnetFile := filepath.Join(destContextsDir, "devnet.yaml")
