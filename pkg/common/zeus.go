@@ -21,94 +21,145 @@ type L1ZeusAddressData struct {
 	OperatorTableUpdater string `json:"operatorTableUpdater"`
 }
 
+type L2ZeusAddressData struct {
+	OperatorTableUpdater     string `json:"operatorTableUpdater"`
+	ECDSACertificateVerifier string `json:"ecdsaCertificateVerifier"`
+	BN254CertificateVerifier string `json:"bn254CertificateVerifier"`
+}
+
 // GetZeusAddresses runs the zeus env show mainnet command and extracts core EigenLayer addresses
-func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressData, error) {
+func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressData, *L2ZeusAddressData, error) {
 
 	// Run the zeus command with JSON output
 	cmd := exec.CommandContext(context.Background(), "zeus", "env", "show", "testnet-sepolia", "--json")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute zeus env show testnet-sepolia --json: %w - output: %s", err, string(output))
+		return nil, nil, fmt.Errorf("failed to execute zeus env show testnet-sepolia --json: %w - output: %s", err, string(output))
+	}
+
+	// Parse the JSON output
+	var l1ZeusData map[string]interface{}
+	if err := json.Unmarshal(output, &l1ZeusData); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse Zeus JSON output: %w", err)
+	}
+
+	l2cmd := exec.CommandContext(context.Background(), "zeus", "env", "show", "testnet-base-sepolia", "--json")
+	l2output, err := l2cmd.CombinedOutput()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to execute zeus env show testnet-base-sepolia --json: %w - output: %s", err, string(l2output))
+	}
+
+	// Parse the L2 JSON output
+	var l2ZeusData map[string]interface{}
+	if err := json.Unmarshal(l2output, &l2ZeusData); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse Zeus JSON output: %w", err)
 	}
 
 	logger.Info("Parsing Zeus JSON output")
 
-	// Parse the JSON output
-	var zeusData map[string]interface{}
-	if err := json.Unmarshal(output, &zeusData); err != nil {
-		return nil, fmt.Errorf("failed to parse Zeus JSON output: %w", err)
-	}
-
 	// Extract the addresses
-	addresses := &L1ZeusAddressData{}
+	l1Addresses := &L1ZeusAddressData{}
+	l2Addresses := &L2ZeusAddressData{}
 
 	// Get AllocationManager address
-	if val, ok := zeusData["ZEUS_DEPLOYED_AllocationManager_Proxy"]; ok {
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_AllocationManager_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
-			addresses.AllocationManager = strVal
+			l1Addresses.AllocationManager = strVal
 		}
 	}
 
 	// Get DelegationManager address
-	if val, ok := zeusData["ZEUS_DEPLOYED_DelegationManager_Proxy"]; ok {
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_DelegationManager_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
-			addresses.DelegationManager = strVal
+			l1Addresses.DelegationManager = strVal
 		}
 	}
 
 	// Get StrategyManager address
-	if val, ok := zeusData["ZEUS_DEPLOYED_StrategyManager_Proxy"]; ok {
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_StrategyManager_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
-			addresses.StrategyManager = strVal
+			l1Addresses.StrategyManager = strVal
 		}
 	}
 
 	// Get CrossChainRegistry address
-	if val, ok := zeusData["ZEUS_DEPLOYED_CrossChainRegistry_Proxy"]; ok {
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_CrossChainRegistry_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
-			addresses.CrossChainRegistry = strVal
+			l1Addresses.CrossChainRegistry = strVal
 		}
 	}
 
 	// Get KeyRegistrar address
-	if val, ok := zeusData["ZEUS_DEPLOYED_KeyRegistrar_Proxy"]; ok {
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_KeyRegistrar_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
-			addresses.KeyRegistrar = strVal
+			l1Addresses.KeyRegistrar = strVal
 		}
 	}
 
 	// Get ReleaseManager address
-	if val, ok := zeusData["ZEUS_DEPLOYED_ReleaseManager_Proxy"]; ok {
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_ReleaseManager_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
-			addresses.ReleaseManager = strVal
+			l1Addresses.ReleaseManager = strVal
 		}
 	}
 
 	// Get OperatorTableUpdater address
-	if val, ok := zeusData["ZEUS_DEPLOYED_OperatorTableUpdater_Proxy"]; ok {
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_OperatorTableUpdater_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
-			addresses.OperatorTableUpdater = strVal
+			l1Addresses.OperatorTableUpdater = strVal
 		}
 	}
 
 	// Verify we have both addresses
-	if addresses.AllocationManager == "" || addresses.DelegationManager == "" || addresses.StrategyManager == "" || addresses.CrossChainRegistry == "" || addresses.KeyRegistrar == "" || addresses.ReleaseManager == "" || addresses.OperatorTableUpdater == "" {
+	if l1Addresses.AllocationManager == "" || l1Addresses.DelegationManager == "" || l1Addresses.StrategyManager == "" || l1Addresses.CrossChainRegistry == "" || l1Addresses.KeyRegistrar == "" || l1Addresses.ReleaseManager == "" || l1Addresses.OperatorTableUpdater == "" {
 		logger.Warn("failed to extract required addresses from zeus output")
-		return nil, fmt.Errorf("failed to extract required addresses from zeus output")
+		return nil, nil, fmt.Errorf("failed to extract required addresses from zeus output")
 	}
 
-	return addresses, nil
+	// Get OperatorTableUpdater address
+	if val, ok := l2ZeusData["ZEUS_DEPLOYED_OperatorTableUpdater_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			l2Addresses.OperatorTableUpdater = strVal
+		}
+	}
+
+	// Get ECDSACertificateVerifier address
+	if val, ok := l2ZeusData["ZEUS_DEPLOYED_ECDSACertificateVerifier_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			l2Addresses.ECDSACertificateVerifier = strVal
+		}
+	}
+
+	// Get BN254CertificateVerifier address
+	if val, ok := l2ZeusData["ZEUS_DEPLOYED_BN254CertificateVerifier_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			l2Addresses.BN254CertificateVerifier = strVal
+		}
+	}
+
+	return l1Addresses, l2Addresses, nil
 }
 
 // UpdateContextWithZeusAddresses updates the context configuration with addresses from Zeus
-// TODO: Currently commented out as Zeus doesn't support the new L1/L2 contract structure
 func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger, ctx *yaml.Node, contextName string) error {
-	// Zeus integration temporarily disabled for new L1/L2 structure
 
-	addresses, err := GetZeusAddresses(context, logger)
+	logger.Info("Fetching EigenLayer core addresses for L1 and L2 from Zeus...")
+	l1Addresses, l2Addresses, err := GetZeusAddresses(context, logger)
 	if err != nil {
 		return err
 	}
+
+	payload := map[string]interface{}{
+		"l1": l1Addresses,
+		"l2": l2Addresses,
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("found addresses (marshal failed): %w", err)
+	}
+	logger.Info("Found addresses: %s", b)
+
+	logger.Info("Updating context with Zeus addresses...")
 
 	// Find or create "eigenlayer" mapping entry
 	parentMap := GetChildByKey(ctx, "eigenlayer")
@@ -127,22 +178,6 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 		}
 		ctx.Content = append(ctx.Content, keyNode, parentMap)
 	}
-
-	// Print the fetched addresses
-	payload := L1ZeusAddressData{
-		AllocationManager:    addresses.AllocationManager,
-		DelegationManager:    addresses.DelegationManager,
-		StrategyManager:      addresses.StrategyManager,
-		CrossChainRegistry:   addresses.CrossChainRegistry,
-		KeyRegistrar:         addresses.KeyRegistrar,
-		ReleaseManager:       addresses.ReleaseManager,
-		OperatorTableUpdater: addresses.OperatorTableUpdater,
-	}
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("Found addresses (marshal failed): %w", err)
-	}
-	logger.Info("Found addresses: %s", b)
 
 	// Find or create "l1" mapping entry under eigenlayer
 	l1Map := GetChildByKey(parentMap, "l1")
@@ -164,19 +199,19 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 
 	// Prepare nodes for L1 contracts
 	amKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "allocation_manager"}
-	amVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.AllocationManager}
+	amVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.AllocationManager}
 	dmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "delegation_manager"}
-	dmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.DelegationManager}
+	dmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.DelegationManager}
 	smKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "strategy_manager"}
-	smVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.StrategyManager}
+	smVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.StrategyManager}
 	ccrKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "cross_chain_registry"}
-	ccrVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.CrossChainRegistry}
+	ccrVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.CrossChainRegistry}
 	krKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "key_registrar"}
-	krVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.KeyRegistrar}
+	krVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.KeyRegistrar}
 	rmKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "release_manager"}
-	rmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.ReleaseManager}
+	rmVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.ReleaseManager}
 	otuKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
-	otuVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: addresses.OperatorTableUpdater}
+	otuVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.OperatorTableUpdater}
 
 	// Replace existing or append new entries in l1 section
 	SetMappingValue(l1Map, amKey, amVal)
@@ -186,6 +221,29 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	SetMappingValue(l1Map, krKey, krVal)
 	SetMappingValue(l1Map, rmKey, rmVal)
 	SetMappingValue(l1Map, otuKey, otuVal)
+
+	// Find or create "l2" mapping entry under eigenlayer
+	l2Map := GetChildByKey(parentMap, "l2")
+	if l2Map == nil {
+		// Create l2 key node
+		l2KeyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "l2"}
+		// Create empty l2 map node
+		l2Map = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{}}
+		parentMap.Content = append(parentMap.Content, l2KeyNode, l2Map)
+	}
+
+	// Prepare nodes for L2 contracts
+	l2otuKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
+	l2otuVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.OperatorTableUpdater}
+	ecdsaKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "ecdsa_certificate_verifier"}
+	ecdsaVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.ECDSACertificateVerifier}
+	bn254Key := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "bn254_certificate_verifier"}
+	bn254Val := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.BN254CertificateVerifier}
+
+	// Replace existing or append new entries in l2 section
+	SetMappingValue(l2Map, l2otuKey, l2otuVal)
+	SetMappingValue(l2Map, ecdsaKey, ecdsaVal)
+	SetMappingValue(l2Map, bn254Key, bn254Val)
 
 	return nil
 }
