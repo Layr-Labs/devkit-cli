@@ -683,9 +683,14 @@ The telemetry system respects both user choice and organizational policies.
 
 Contributions are welcome! Please open an issue to discuss significant changes before submitting a pull request.
 
-## Troubleshooting
+## Troubleshooting / Debugging
 
-If you want to debug any transaction failure, try using `--verbose` flag with the command, to get tx_hash in your logs.
+- If you want to debug any transaction failure, try using `--verbose` flag with the command, to get tx_hash in your logs.
+
+- Devnet automatically stops when `Ctrl + C` is pressed or any `fatal error` is encountered. This can lead to problems while debugging using the transaction hash as  state is lost. To persist devnet , so it doesn't stop unlesss you explicitly call `devkit avs devnet stop ` , use the `--persist` flag . Example : 
+```bash
+devkit avs devnet start --verbose --persist
+```
  
 ## 🙋 Help (Support)
 Please post any questions or concerns to the [Issues](https://github.com/Layr-Labs/devkit-cli/issues) tab in this repo. We will respond to your issue as soon as our team has capacity, however we are not yet able to offer an SLA for response times. Please do not use this project for Production, Mainnet, or time sensitive use cases at this time.
