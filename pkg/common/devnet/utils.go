@@ -218,3 +218,32 @@ func GetL2BlockByNumber(ctx *cli.Context, l2RpcUrl string, blockNumber uint64, l
 
 	return strconv.FormatUint(timestampInt, 10), nil
 }
+
+func AdvanceBlocks(ctx *cli.Context, l1RpcUrl string, l2RpcUrl string, numBlocks uint64, logger iface.Logger) error {
+
+	// Advance L1 blocks
+	l1RpcClient, err := rpc.Dial(l1RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	defer l1RpcClient.Close()
+
+	err = l1RpcClient.Call(nil, "anvil_mine", numBlocks)
+	if err != nil {
+		return fmt.Errorf("failed to advance L1 blocks: %w", err)
+	}
+
+	// Advance L2 blocks
+	l2RpcClient, err := rpc.Dial(l2RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L2 RPC: %w", err)
+	}
+	defer l2RpcClient.Close()
+
+	err = l2RpcClient.Call(nil, "anvil_mine", numBlocks)
+	if err != nil {
+		return fmt.Errorf("failed to advance L2 blocks: %w", err)
+	}
+
+	return nil
+}

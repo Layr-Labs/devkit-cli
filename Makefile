@@ -30,9 +30,6 @@ tests: ## Run tests
 tests-fast: ## Run fast tests (skip slow integration tests)
 	$(GO) test -v ./... -p 1 -timeout 5m -short
 
-tests-devnet: ## Run devnet tests sequentially
-	$(GO) test -v ./pkg/commands -run ".*Devnet.*" -p 1 -parallel 1
-
 fmt: ## Format code
 	@go fmt $(GO_PACKAGES)
 

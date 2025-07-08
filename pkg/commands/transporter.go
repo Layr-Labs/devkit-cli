@@ -127,6 +127,8 @@ func Transport(cCtx *cli.Context) error {
 		l2ChainId = common.L2DefaultAnvilChainId
 	}
 
+	devnet.AdvanceBlocks(cCtx, l1RpcUrl, l2RpcUrl, 100, logger)
+
 	cm := chainManager.NewChainManager()
 
 	l1Config := &chainManager.ChainConfig{
@@ -202,14 +204,7 @@ func Transport(cCtx *cli.Context) error {
 	}
 
 	referenceTimestamp := l1Timestamp
-	// get current tiestamp using l1
-	timestamp, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.LatestBlockNumber)))
-	if err != nil {
-		return fmt.Errorf("failed to get current timestamp: %v", err)
-	}
-	latestTimestamp := uint32(timestamp.Time())
-	logger.Info("Latest timestamp: %d", latestTimestamp)
-	logger.Info("Reference timestamp: %d", referenceTimestamp)
+
 	err = stakeTransport.SignAndTransportGlobalTableRoot(
 		cCtx.Context,
 		root,
