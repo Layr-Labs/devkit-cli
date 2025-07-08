@@ -14,6 +14,8 @@ github.com/Layr-Labs/multichain-go v0.0.8-0.20250630195727-23f8ebc8b6b8 h1:U3wF5
 github.com/Layr-Labs/multichain-go v0.0.8-0.20250630195727-23f8ebc8b6b8/go.mod h1:zEuGJvTEl1jorkvy0JEczktUGPZvWM2SAkXzTW5hXQc=
 github.com/Layr-Labs/multichain-go v0.0.8-0.20250707132349-002c85d663d4 h1:DlOWzlfFGjNC45Du35ck/pnhf5yHaSam+kRwaKdnLfo=
 github.com/Layr-Labs/multichain-go v0.0.8-0.20250707132349-002c85d663d4/go.mod h1:ETi93MXboQXbLxKurdLB5etVyBGn34s1cWCr8eig964=
+github.com/Layr-Labs/multichain-go v0.0.8 h1:GwEgU2iEqsGUM7i1pdGQ2bLoaDhD8xiTTn6r5OLREZU=
+github.com/Layr-Labs/multichain-go v0.0.8/go.mod h1:ETi93MXboQXbLxKurdLB5etVyBGn34s1cWCr8eig964=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/VictoriaMetrics/fastcache v1.12.2 h1:N0y9ASrJ0F6h0QaC3o6uJb3NIZ9VKLjCM7NQbSmF7WI=

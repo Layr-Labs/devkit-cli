@@ -33,6 +33,11 @@ type TokenFunding struct {
 
 // Common Sepolia token holders with large balances - mapped by token address
 var DefaultTokenHolders = map[common.Address]TokenFunding{
+	common.HexToAddress(ST_ETH_TOKEN_ADDRESS): { // stETH token address
+		TokenName:     "stETH",
+		HolderAddress: common.HexToAddress("0xC8088abD2FdaF4819230EB0FdA2D9766FDF9F409"),                                    // Large stETH holder
+		Amount:        new(big.Int).Mul(big.NewInt(STRATEGY_TOKEN_FUNDING_AMOUNT_BY_LARGE_HOLDER_IN_ETH), big.NewInt(1e18)), // 1000 tokens
+	},
 	common.HexToAddress(B_EIGEN_TOKEN_ADDRESS): { // bEIGEN token address
 		TokenName:     "bEIGEN",
 		HolderAddress: common.HexToAddress("0x5f8C207382426D3f7F248E6321Cf93B34e66d6b9"),                                    // Large EIGEN holder that calls unwrap() to get bEIGEN
@@ -77,7 +82,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		// if holder balance < 0.1 ether, fund it
 		fundValue, _ := strconv.ParseInt(FUND_VALUE, 10, 64)
 		if balance.Cmp(big.NewInt(fundValue)) < 0 {
-			err = fundIfNeeded(ethClient, tokenFunding.HolderAddress, ANVIL_1_KEY)
+			err = fundIfNeeded(ethClient, tokenFunding.HolderAddress, ANVIL_2_KEY)
 			if err != nil {
 				return fmt.Errorf("failed to fund holder address: %w", err)
 			}
@@ -114,7 +119,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		}
 	} else if tokenFunding.TokenName == "stETH" {
 		// Get config
-		anvil1Key := ANVIL_1_KEY
+		anvil1Key := ANVIL_2_KEY
 		anvil1Key = strings.TrimPrefix(anvil1Key, "0x")
 		privateKey, err := crypto.HexToECDSA(anvil1Key)
 		if err != nil {
@@ -316,7 +321,7 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_1_KEY)
+	err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY)
 	if err != nil {
 		return err
 	}

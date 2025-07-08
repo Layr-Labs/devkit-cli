@@ -127,30 +127,6 @@ func Transport(cCtx *cli.Context) error {
 		l2ChainId = common.L2DefaultAnvilChainId
 	}
 
-	// Advance L1 blocks
-	l1RpcClient, err := rpc.Dial(l1RpcUrl)
-	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
-	}
-	defer l1RpcClient.Close()
-
-	err = l1RpcClient.Call(nil, "anvil_mine", "0xa") // 0xa = 10 in hex
-	if err != nil {
-		return fmt.Errorf("failed to advance L1 blocks: %w", err)
-	}
-
-	// Advance L2 blocks
-	l2RpcClient, err := rpc.Dial(l2RpcUrl)
-	if err != nil {
-		return fmt.Errorf("failed to connect to L2 RPC: %w", err)
-	}
-	defer l2RpcClient.Close()
-
-	err = l2RpcClient.Call(nil, "anvil_mine", "0xa") // 0xa = 10 in hex
-	if err != nil {
-		return fmt.Errorf("failed to advance L2 blocks: %w", err)
-	}
-
 	cm := chainManager.NewChainManager()
 
 	l1Config := &chainManager.ChainConfig{
@@ -184,7 +160,7 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create StakeTableRootCalculator: %v", err)
 	}
 
-	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.LatestBlockNumber)))
+	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
 	if err != nil {
 		return fmt.Errorf("failed to get block by number for l1: %v", err)
 	}
@@ -226,6 +202,14 @@ func Transport(cCtx *cli.Context) error {
 	}
 
 	referenceTimestamp := l1Timestamp
+	// get current tiestamp using l1
+	timestamp, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.LatestBlockNumber)))
+	if err != nil {
+		return fmt.Errorf("failed to get current timestamp: %v", err)
+	}
+	latestTimestamp := uint32(timestamp.Time())
+	logger.Info("Latest timestamp: %d", latestTimestamp)
+	logger.Info("Reference timestamp: %d", referenceTimestamp)
 	err = stakeTransport.SignAndTransportGlobalTableRoot(
 		cCtx.Context,
 		root,
