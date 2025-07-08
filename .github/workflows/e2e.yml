@@ -109,14 +109,6 @@ jobs:
           docker push localhost:5001/my-awesome-avs:latest
           echo "✅ AVS image pushed to local registry"
 
-      - name: Update config for local registry
-        run: |
-          cd ./my-awesome-avs/
-          # Update the artifact registry in context to use local registry
-          yq eval '.context.artifact.registry = "localhost:5001"' -i config/contexts/devnet.yaml
-          echo "Updated registry configuration:"
-          yq eval '.context.artifact' config/contexts/devnet.yaml
-
       - name: Publish AVS release
         run: |
           cd ./my-awesome-avs/
@@ -146,84 +138,48 @@ jobs:
           RELEASE_MANAGER_ADDRESS="0x323A9FcB2De80d04B5C4B0F72ee7799100D32F0F"
           echo "ReleaseManager Address: $RELEASE_MANAGER_ADDRESS"
           
-          # Query the ReleaseManager contract to verify the release
-          echo "Querying ReleaseManager for operator set 0..."
+          # Query the ReleaseManager contract to verify releases for both operator sets
+          echo "Verifying releases for operator sets 0 and 1..."
           
-          # Get the latest version
-          LATEST_VERSION=$(cast call $RELEASE_MANAGER_ADDRESS \
-            "latestVersion(address,uint32)" \
-            $AVS_ADDRESS 0 \
-            --rpc-url http://localhost:8545)
-          
-          echo "Latest version for operator set 0: $LATEST_VERSION"
-          
-          VERSION_DEC=$((LATEST_VERSION))
-          echo "Latest version (decimal): $VERSION_DEC"
-          
-          if [ $VERSION_DEC -eq 0 ]; then
-            echo "❌ No release found on ReleaseManager"
-            exit 1
-          fi
-          
-          # Get release details
-          RELEASE_DATA=$(cast call $RELEASE_MANAGER_ADDRESS \
-            "getRelease(address,uint32,uint256)" \
-            $AVS_ADDRESS 0 $((VERSION_DEC - 1)) \
-            --rpc-url http://localhost:8545)
-          
-          echo "Release data retrieved: $RELEASE_DATA"
-          
-          if [ -z "$RELEASE_DATA" ] || [ "$RELEASE_DATA" = "0x" ]; then
-            echo "❌ Release data is empty"
-            exit 1
-          fi
-          
-          echo "✅ Release verified on ReleaseManager contract"
-
-      - name: Test multiple operator sets release
-        run: |
-          cd ./my-awesome-avs/
-          
-          # Create another operator set
-          echo "Creating operator set 1..."
-          DEPLOYER_KEY=$(yq eval '.context.deployer_private_key' config/contexts/devnet.yaml)
-          AVS_ADDRESS=$(yq eval '.context.avs.address' config/contexts/devnet.yaml)
-          ALLOCATION_MANAGER_ADDRESS="0x76f67c84eF6F6cF76ec52b4cEFa28ca7492Bd43a"
-          
-          # Use cast to create operator set
-          cast send $ALLOCATION_MANAGER_ADDRESS \
-            "createOperatorSets(address,(uint32,address[])[])" \
-            $AVS_ADDRESS "[(1,[])]" \
-            --private-key $DEPLOYER_KEY \
-            --rpc-url http://localhost:8545
-          
-          echo "✅ Operator set 1 created"
-          
-          # Publish release for multiple operator sets
-          UPGRADE_BY_TIME=$(($(date +%s) + 7200))  # 2 hours from now
-          
-          devkit avs release publish --upgrade-by-time $UPGRADE_BY_TIME --registry localhost:5001
-          
-          # Verify both operator sets have releases
+          # The release publish command updates both operator sets 0 and 1
           for OPSET in 0 1; do
+            echo "Checking operator set $OPSET..."
+            
+            # Get the latest version
             LATEST_VERSION=$(cast call $RELEASE_MANAGER_ADDRESS \
               "latestVersion(address,uint32)" \
               $AVS_ADDRESS $OPSET \
               --rpc-url http://localhost:8545)
             
+            echo "Latest version for operator set $OPSET: $LATEST_VERSION"
+            
             VERSION_DEC=$((LATEST_VERSION))
-            echo "Operator set $OPSET latest version: $VERSION_DEC"
+            echo "Latest version (decimal): $VERSION_DEC"
             
             if [ $VERSION_DEC -eq 0 ]; then
               echo "❌ No release found for operator set $OPSET"
               exit 1
             fi
+            
+            # Get release details
+            RELEASE_DATA=$(cast call $RELEASE_MANAGER_ADDRESS \
+              "getRelease(address,uint32,uint256)" \
+              $AVS_ADDRESS $OPSET $((VERSION_DEC - 1)) \
+              --rpc-url http://localhost:8545)
+            
+            echo "Release data retrieved for operator set $OPSET: $RELEASE_DATA"
+            
+            if [ -z "$RELEASE_DATA" ] || [ "$RELEASE_DATA" = "0x" ]; then
+              echo "❌ Release data is empty for operator set $OPSET"
+              exit 1
+            fi
+            
+            echo "✅ Release verified for operator set $OPSET"
           done
           
-          echo "✅ Releases published for multiple operator sets"
+          echo "✅ All releases verified on ReleaseManager contract"
 
       - name: Stop local Docker registry
-        if: always()
         run: |
           docker stop registry || true
           docker rm registry || true
