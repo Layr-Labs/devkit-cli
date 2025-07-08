@@ -92,6 +92,103 @@ jobs:
           cd ./my-awesome-avs/
           devkit avs transport verify
 
+      - name: Start local Docker registry
+        run: |
+          docker run -d --name registry -p 5001:5000 registry:2
+          echo "Waiting for registry to be ready..."
+          for i in {1..10}; do
+            if nc -z localhost 5001; then
+              echo "✅ Registry is ready"
+              break
+            fi
+            echo "Waiting for registry... ($i/10)"
+            sleep 2
+          done
+
+      - name: Build and push AVS image to local registry
+        run: |
+          cd ./my-awesome-avs/
+          # Build the AVS image
+          docker build -t localhost:5001/my-awesome-avs:latest .
+          # Push to local registry
+          docker push localhost:5001/my-awesome-avs:latest
+          echo "✅ AVS image pushed to local registry"
+
+      - name: Publish AVS release
+        run: |
+          cd ./my-awesome-avs/
+          # Get current timestamp + 1 hour for upgrade-by-time
+          UPGRADE_BY_TIME=$(($(date +%s) + 3600))
+          echo "Publishing release with upgrade-by-time: $UPGRADE_BY_TIME ($(date -d @$UPGRADE_BY_TIME))"
+          
+          # Run the release publish command
+          devkit avs release publish --upgrade-by-time $UPGRADE_BY_TIME --registry localhost:5001
+          
+          # Check if the command succeeded
+          if [ $? -eq 0 ]; then
+            echo "✅ Release published successfully"
+          else
+            echo "❌ Release publish failed"
+            exit 1
+          fi
+
+      - name: Verify release on ReleaseManager contract
+        run: |
+          cd ./my-awesome-avs/
+          
+          # Get AVS address from context
+          AVS_ADDRESS=$(yq eval '.context.avs.address' config/contexts/devnet.yaml)
+          echo "AVS Address: $AVS_ADDRESS"
+          
+          RELEASE_MANAGER_ADDRESS="0x323A9FcB2De80d04B5C4B0F72ee7799100D32F0F"
+          echo "ReleaseManager Address: $RELEASE_MANAGER_ADDRESS"
+          
+          # Query the ReleaseManager contract to verify releases for both operator sets
+          echo "Verifying releases for operator sets 0 and 1..."
+          
+          # The release publish command updates both operator sets 0 and 1
+          for OPSET in 0 1; do
+            echo "Checking operator set $OPSET..."
+            
+            # Get the latest version
+            LATEST_VERSION=$(cast call $RELEASE_MANAGER_ADDRESS \
+              "latestVersion(address,uint32)" \
+              $AVS_ADDRESS $OPSET \
+              --rpc-url http://localhost:8545)
+            
+            echo "Latest version for operator set $OPSET: $LATEST_VERSION"
+            
+            VERSION_DEC=$((LATEST_VERSION))
+            echo "Latest version (decimal): $VERSION_DEC"
+            
+            if [ $VERSION_DEC -eq 0 ]; then
+              echo "❌ No release found for operator set $OPSET"
+              exit 1
+            fi
+            
+            # Get release details
+            RELEASE_DATA=$(cast call $RELEASE_MANAGER_ADDRESS \
+              "getRelease(address,uint32,uint256)" \
+              $AVS_ADDRESS $OPSET $((VERSION_DEC - 1)) \
+              --rpc-url http://localhost:8545)
+            
+            echo "Release data retrieved for operator set $OPSET: $RELEASE_DATA"
+            
+            if [ -z "$RELEASE_DATA" ] || [ "$RELEASE_DATA" = "0x" ]; then
+              echo "❌ Release data is empty for operator set $OPSET"
+              exit 1
+            fi
+            
+            echo "✅ Release verified for operator set $OPSET"
+          done
+          
+          echo "✅ All releases verified on ReleaseManager contract"
+
+      - name: Stop local Docker registry
+        run: |
+          docker stop registry || true
+          docker rm registry || true
+
       - name: Stop devnet
         run: |
           cd ./my-awesome-avs/
