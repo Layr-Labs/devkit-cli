@@ -127,7 +127,10 @@ func Transport(cCtx *cli.Context) error {
 		l2ChainId = common.L2DefaultAnvilChainId
 	}
 
-	devnet.AdvanceBlocks(cCtx, l1RpcUrl, l2RpcUrl, 100, logger)
+	err = devnet.AdvanceBlocks(cCtx, l1RpcUrl, l2RpcUrl, 100, logger)
+	if err != nil {
+		return fmt.Errorf("failed to advance blocks: %v", err)
+	}
 
 	cm := chainManager.NewChainManager()
 
