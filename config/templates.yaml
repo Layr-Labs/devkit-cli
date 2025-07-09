@@ -3,7 +3,7 @@ architectures:
     languages:
       go:
         baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
-        version: "feat/contracts-ecdsa"
+        version: "v0.0.14"
       ts:
         baseUrl: ""
         version: ""
