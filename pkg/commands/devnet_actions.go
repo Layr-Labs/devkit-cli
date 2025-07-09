@@ -222,7 +222,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
 
-	// On cancel, always call down if skipAvsRun=false
+	// On cancel, stop the containers if we're not skipping deployContracts/avsRun and we're not persisting
 	if !skipDeployContracts && !skipAvsRun && !persist {
 		defer func() {
 			logger.Info("Stopping containers")
