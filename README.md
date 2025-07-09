@@ -193,14 +193,14 @@ These functions will be invoked automatically when using `devkit avs call`, enab
 
 ### 3️⃣ Set RPC Endpoint URL
 
-Set the `FORK_URL` values to a **Sepolia** RPC **archive node** endpoint URL. This endpoint is needed to enable forking of the testnet state to your local environment. The endpoint will be used to fork the chain state to your local environment (devnet) for testing. Please note the following important details:
+Set the `*_FORK_URL` values to **Ethereum Sepolia** and **Base Sepolia** RPC **archive node** endpoint URLs. These endpoints are needed to fork the appropriate chain state (testnet) to your local environment (devnet) for testing. Please note the following important details:
 - Only the **Sepolia** testnet is supported at this time.
 - The RPC endpoint should be an **archive** node, not a _full_ node. More context is available [here](https://www.quicknode.com/guides/infrastructure/node-setup/ethereum-full-node-vs-archive-node).
-- For initial testing purposes we recommend setting both `FORK_URL` values to the same endpoint URL.
+- For initial testing purposes we recommend setting `L1_FORK_URL` to **Ethereum Sepolia** and `L2_FORK_URL` to **Base Sepolia**.
 
 ```bash
 cp .env.example .env
-# edit `.env` and set your L1_FORK_URL and L2_FORK_URL to point to your RPC endpoint
+# edit `.env` and set your L1_FORK_URL and L2_FORK_URL to point to your RPC endpoints
 ```
 
 You are welcome to use any reliable RPC provider (e.g. QuickNode, Alchemy).
