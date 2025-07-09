@@ -219,31 +219,86 @@ func GetL2BlockByNumber(ctx *cli.Context, l2RpcUrl string, blockNumber uint64, l
 	return strconv.FormatUint(timestampInt, 10), nil
 }
 
-func AdvanceBlocks(ctx *cli.Context, l1RpcUrl string, l2RpcUrl string, numBlocks uint64, logger iface.Logger) error {
-
-	// Advance L1 blocks
-	l1RpcClient, err := rpc.Dial(l1RpcUrl)
+func AdvanceBlocks(ctx *cli.Context, l1RpcUrl string, numBlocks uint64) error {
+	// Connect to provided client
+	rpcClient, err := rpc.Dial(l1RpcUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return fmt.Errorf("failed to connect to RPC: %w", err)
 	}
-	defer l1RpcClient.Close()
+	defer rpcClient.Close()
 
-	err = l1RpcClient.Call(nil, "anvil_mine", numBlocks)
+	// Advance numBlocks blocks on client
+	err = rpcClient.Call(nil, "anvil_mine", numBlocks)
 	if err != nil {
-		return fmt.Errorf("failed to advance L1 blocks: %w", err)
-	}
-
-	// Advance L2 blocks
-	l2RpcClient, err := rpc.Dial(l2RpcUrl)
-	if err != nil {
-		return fmt.Errorf("failed to connect to L2 RPC: %w", err)
-	}
-	defer l2RpcClient.Close()
-
-	err = l2RpcClient.Call(nil, "anvil_mine", numBlocks)
-	if err != nil {
-		return fmt.Errorf("failed to advance L2 blocks: %w", err)
+		return fmt.Errorf("failed to advance blocks: %w", err)
 	}
 
+	return nil
+}
+
+func AdvanceBlocksToTS(client *rpc.Client, name string, fromTS, toTS uint64) error {
+	// Set number of blocks to move each iteration
+	const blocksPerBatch = 1
+
+	// While timestamps are out of sync mine blocksPerBatch at a time
+	for fromTS < toTS {
+		if err := client.Call(nil, "anvil_mine", blocksPerBatch); err != nil {
+			return fmt.Errorf("failed to mine on %s: %w", name, err)
+		}
+		newTS, err := GetTimestamp(client, name)
+		if err != nil {
+			return err
+		}
+		fromTS = newTS
+	}
+	return nil
+}
+
+func GetTimestamp(client *rpc.Client, name string) (uint64, error) {
+	// Collect the block height for provided client
+	var block map[string]interface{}
+	if err := client.Call(&block, "eth_getBlockByNumber", "latest", false); err != nil {
+		return 0, fmt.Errorf("failed to get latest %s block: %w", name, err)
+	}
+	tsHex, ok := block["timestamp"].(string)
+	if !ok {
+		return 0, fmt.Errorf("invalid timestamp format for %s", name)
+	}
+	return strconv.ParseUint(tsHex[2:], 16, 64)
+}
+
+func SyncL1L2Timestamps(ctx *cli.Context, l1RpcUrl string, l2RpcUrl string) error {
+	// Connect to l1
+	l1Client, err := rpc.Dial(l1RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1: %w", err)
+	}
+	defer l1Client.Close()
+
+	// Connect to l2
+	l2Client, err := rpc.Dial(l2RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L2: %w", err)
+	}
+	defer l2Client.Close()
+
+	// Get l1 and l2 current timestamps
+	l1TS, err := GetTimestamp(l1Client, "L1")
+	if err != nil {
+		return err
+	}
+	l2TS, err := GetTimestamp(l2Client, "L2")
+	if err != nil {
+		return err
+	}
+
+	// Advance one or the other until we reach sync
+	if l1TS > l2TS {
+		return AdvanceBlocksToTS(l2Client, "L2", l2TS, l1TS)
+	} else if l2TS > l1TS {
+		return AdvanceBlocksToTS(l1Client, "L1", l1TS, l2TS)
+	}
+
+	// Already in sync
 	return nil
 }

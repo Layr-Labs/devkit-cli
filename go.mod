@@ -7,7 +7,7 @@ toolchain go1.24.2
 replace github.com/Layr-Labs/devkit-cli => ./
 
 require (
-	github.com/Layr-Labs/eigenlayer-contracts v1.6.1-0.20250702160654-81cc03d7046f
+	github.com/Layr-Labs/eigenlayer-contracts v1.6.0-rc.0.0.20250701194501-5f84759e1085
 	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737
 	github.com/Layr-Labs/multichain-go v0.0.8
 	github.com/google/uuid v1.6.0
@@ -90,7 +90,7 @@ require (
 )
 
 require (
-	github.com/Layr-Labs/crypto-libs v0.0.3
+	github.com/Layr-Labs/crypto-libs v0.0.4
 	github.com/charmbracelet/bubbletea v1.3.5
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/docker/docker v28.1.1+incompatible

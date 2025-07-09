@@ -332,7 +332,7 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string) error {
 	balance, err := ethClient.BalanceAt(context.Background(), to, nil)
 	if err != nil {
-		log.Printf(" Please check if your sepolia or base sepolia fork rpc url is up")
+		log.Printf(" Please check if your L1 and L2 fork rpc url is up")
 		return fmt.Errorf("failed to get balance for account %s %v", to.String(), err)
 	}
 	threshold := new(big.Int)

@@ -127,7 +127,7 @@ func Transport(cCtx *cli.Context) error {
 		l2ChainId = common.L2DefaultAnvilChainId
 	}
 
-	err = devnet.AdvanceBlocks(cCtx, l1RpcUrl, l2RpcUrl, 100, logger)
+	err = devnet.AdvanceBlocks(cCtx, l1RpcUrl, 100)
 	if err != nil {
 		return fmt.Errorf("failed to advance blocks: %v", err)
 	}
@@ -148,6 +148,7 @@ func Transport(cCtx *cli.Context) error {
 	if err := cm.AddChain(l2Config); err != nil {
 		return fmt.Errorf("failed to add l2 chain: %v", err)
 	}
+
 	l1Client, err := cm.GetChainForId(l1Config.ChainID)
 	if err != nil {
 		return fmt.Errorf("failed to get l1 chain for ID %d: %v", l1Config.ChainID, err)
@@ -165,12 +166,18 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create StakeTableRootCalculator: %v", err)
 	}
 
+	logger.Info("Syncing chains...")
+	err = devnet.SyncL1L2Timestamps(cCtx, l1RpcUrl, l2RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to sync chains: %v", err)
+	}
+
 	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
 	if err != nil {
 		return fmt.Errorf("failed to get block by number for l1: %v", err)
 	}
-
-	l1Timestamp := uint32(l1Block.Time())
+	referenceTimestamp := uint32(l1Block.Time())
+	logger.Info(" - Chains in sync (at ts: %d)", uint32(referenceTimestamp))
 
 	root, tree, dist, err := tableCalc.CalculateStakeTableRoot(cCtx.Context, l1Block.NumberU64())
 	if err != nil {
@@ -205,8 +212,6 @@ func Transport(cCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create transport: %v", err)
 	}
-
-	referenceTimestamp := l1Timestamp
 
 	err = stakeTransport.SignAndTransportGlobalTableRoot(
 		cCtx.Context,

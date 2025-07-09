@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,8 +38,6 @@ func TestSaveUserIdAndLoadGlobalConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read config: %v", err)
 	}
-
-	fmt.Printf("what %s", string(data))
 	var s struct {
 		UserUUID string `yaml:"user_uuid"`
 	}
