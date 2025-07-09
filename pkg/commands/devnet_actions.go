@@ -140,7 +140,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	composePath := devnet.WriteEmbeddedArtifacts()
 	l1ForkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L1)
 	if err != nil {
-		return fmt.Errorf("%w", err)
+		return fmt.Errorf("L1 fork URL error %w", err)
 	}
 	l2ForkUrl, err := devnet.GetDevnetForkUrlDefault(config, devnet.L2)
 	if err != nil {
@@ -174,13 +174,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Get the l1 chain_id from env/config
 	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L1, logger)
 	if err != nil {
-		l1ChainId = common.L1DefaultAnvilChainId
+		l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
 	}
 
 	// Get the l2 chain_id from env/config
 	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(config, devnet.L2, logger)
 	if err != nil {
-		l2ChainId = common.L2DefaultAnvilChainId
+		l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
 	}
 
 	// Append config defined details to chainArgs for l1
@@ -274,23 +274,21 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 4 second to ensure the devnet is fully started
 	time.Sleep(4 * time.Second)
+
 	// Fund the wallets defined in config on L1
+	logger.Info("Funding wallets on L!...")
 	err = devnet.FundWalletsDevnet(config, l1RpcUrl)
 	if err != nil {
-		return err
+		return fmt.Errorf("funding L1 devnet wallets failed: %w", err)
 	}
 
 	// Fund the wallets defined in config on L2
-	err = devnet.FundWalletsDevnet(config, l2RpcUrl)
-	if err != nil {
-		return fmt.Errorf("failed to fund L1 wallets: %w", err)
-	}
-
 	logger.Info("Funding wallets on L2...")
 	err = devnet.FundWalletsDevnet(config, l2RpcUrl)
 	if err != nil {
-		return fmt.Errorf("failed to fund L2 wallets: %w", err)
+		return fmt.Errorf("failed L2 devnet wallets failed: %w", err)
 	}
+
 	// Fund stakers with strategy tokens
 	if devnet.DEVNET_CONTEXT == "devnet" {
 		logger.Info("Funding stakers with strategy tokens...")
@@ -1979,9 +1977,9 @@ func stopContainerByPort(cCtx *cli.Context, log iface.Logger, targetPort int, co
 
 		if hostPort == fmt.Sprintf("%d", targetPort) {
 			// Check if this is the right container type (l1 or l2)
-			if (containerType == "l1" && strings.Contains(containerName, "devkit-devnet-l1-")) ||
-				(containerType == "l2" && strings.Contains(containerName, "devkit-devnet-l2-")) ||
-				(containerType == "l1" && !strings.Contains(containerName, "l1") && !strings.Contains(containerName, "l2")) { // fallback for old naming
+			if (containerType == devnet.L1_CONTAINER_TYPE && strings.Contains(containerName, devnet.L1_CONTAINER_NAME_PREFIX)) ||
+				(containerType == devnet.L2_CONTAINER_TYPE && strings.Contains(containerName, devnet.L2_CONTAINER_NAME_PREFIX)) ||
+				(containerType == devnet.L1_CONTAINER_TYPE && !strings.Contains(containerName, devnet.L1_CONTAINER_TYPE) && !strings.Contains(containerName, devnet.L2_CONTAINER_TYPE)) { // fallback for old naming
 
 				devnet.StopAndRemoveContainer(cCtx, containerName)
 				log.Info("Stopped %s devnet container %s running on port %d", strings.ToUpper(containerType), containerName, targetPort)

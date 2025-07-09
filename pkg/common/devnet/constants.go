@@ -30,5 +30,18 @@ const RELEASE_MANAGER_ADDRESS = "0xd9Cb89F1993292dEC2F973934bC63B0f2A702776"
 const ST_ETH_TOKEN_ADDRESS = "0x00c71b0fCadE911B2feeE9912DE4Fe19eB04ca56"
 const B_EIGEN_TOKEN_ADDRESS = "0x275cCf9Be51f4a6C94aBa6114cdf2a4c45B9cb27"
 const STRATEGY_TOKEN_FUNDING_AMOUNT_BY_LARGE_HOLDER_IN_ETH = 1000
+
 const DEFAULT_L1_FORK_URL = "https://rpc.sepolia.ethpandaops.io"
 const DEFAULT_L2_FORK_URL = "https://base-sepolia.gateway.tenderly.co"
+
+const L1_CONTAINER_NAME_PREFIX = "devkit-devnet-l1-"
+const L2_CONTAINER_NAME_PREFIX = "devkit-devnet-l2-"
+
+const L1_CONTAINER_TYPE = "l1"
+const L2_CONTAINER_TYPE = "l2"
+
+const DEFAULT_L1_ANVIL_CHAINID = 31337
+const DEFAULT_L2_ANVIL_CHAINID = 31338
+
+const DEFAULT_L1_ANVIL_RPCURL = "http://localhost:8545"
+const DEFAULT_L2_ANVIL_RPCURL = "http://localhost:9545"

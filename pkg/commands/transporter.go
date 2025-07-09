@@ -112,19 +112,19 @@ func Transport(cCtx *cli.Context) error {
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
 	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
 	if err != nil {
-		l1RpcUrl = "http://localhost:8545"
+		l1RpcUrl = devnet.DEFAULT_L1_ANVIL_RPCURL
 	}
 	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L2)
 	if err != nil {
-		l2RpcUrl = "http://localhost:9545"
+		l2RpcUrl = devnet.DEFAULT_L2_ANVIL_RPCURL
 	}
 	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
 	if err != nil {
-		l1ChainId = common.L1DefaultAnvilChainId
+		l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
 	}
 	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L2, logger)
 	if err != nil {
-		l2ChainId = common.L2DefaultAnvilChainId
+		l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
 	}
 
 	err = devnet.AdvanceBlocks(cCtx, l1RpcUrl, 100)
@@ -382,19 +382,19 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
 	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
 	if err != nil {
-		l1RpcUrl = "http://localhost:8545"
+		l1RpcUrl = devnet.DEFAULT_L1_ANVIL_RPCURL
 	}
 	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L2)
 	if err != nil {
-		l2RpcUrl = "http://localhost:9545"
+		l2RpcUrl = devnet.DEFAULT_L2_ANVIL_RPCURL
 	}
 	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
 	if err != nil {
-		l1ChainId = common.L1DefaultAnvilChainId
+		l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
 	}
 	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L2, logger)
 	if err != nil {
-		l2ChainId = common.L2DefaultAnvilChainId
+		l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
 	}
 
 	// Get a new chainManager
