@@ -35,12 +35,14 @@ type ForkConfig struct {
 }
 
 type OperatorSpec struct {
-	Address             string               `json:"address" yaml:"address"`
-	ECDSAKey            string               `json:"ecdsa_key" yaml:"ecdsa_key"`
-	BlsKeystorePath     string               `json:"bls_keystore_path" yaml:"bls_keystore_path"`
-	BlsKeystorePassword string               `json:"bls_keystore_password" yaml:"bls_keystore_password"`
-	Stake               string               `json:"stake,omitempty" yaml:"stake,omitempty"`
-	Allocations         []OperatorAllocation `json:"allocations,omitempty" yaml:"allocations,omitempty"`
+	Address               string               `json:"address" yaml:"address"`
+	ECDSAKey              string               `json:"ecdsa_key,omitempty" yaml:"ecdsa_key,omitempty"`
+	ECDSAKeystorePath     string               `json:"ecdsa_keystore_path,omitempty" yaml:"ecdsa_keystore_path,omitempty"`
+	ECDSAKeystorePassword string               `json:"ecdsa_keystore_password,omitempty" yaml:"ecdsa_keystore_password,omitempty"`
+	BlsKeystorePath       string               `json:"bls_keystore_path" yaml:"bls_keystore_path"`
+	BlsKeystorePassword   string               `json:"bls_keystore_password" yaml:"bls_keystore_password"`
+	Stake                 string               `json:"stake,omitempty" yaml:"stake,omitempty"`
+	Allocations           []OperatorAllocation `json:"allocations,omitempty" yaml:"allocations,omitempty"`
 }
 
 // OperatorAllocation defines strategy allocation for an operator
@@ -132,9 +134,19 @@ type ContextConfig struct {
 	Context ChainContextConfig `json:"context" yaml:"context"`
 }
 
+// CurveType represents the cryptographic curve type for operator sets
+type CurveType string
+
+const (
+	UnknownCurve CurveType = "UNKNOWN"
+	BN254Curve   CurveType = "BN254"
+	ECDSACurve   CurveType = "ECDSA"
+)
+
 type OperatorSet struct {
 	OperatorSetID uint64     `json:"operator_set_id" yaml:"operator_set_id"`
 	Strategies    []Strategy `json:"strategies" yaml:"strategies"`
+	CurveType     CurveType  `json:"curve_type" yaml:"curve_type"`
 }
 
 type Strategy struct {

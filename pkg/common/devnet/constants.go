@@ -14,6 +14,10 @@ const ANVIL_2_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6
 
 // Ref https://github.com/Layr-Labs/eigenlayer-contracts/blob/c08c9e849c27910f36f3ab746f3663a18838067f/src/contracts/core/AllocationManagerStorage.sol#L63
 const ALLOCATION_DELAY_INFO_SLOT = 155
+
+// Curve type constants for KeyRegistrar
+const CURVE_TYPE_KEY_REGISTRAR_UNKNOWN = 0
+const CURVE_TYPE_KEY_REGISTRAR_ECDSA = 1
 const CURVE_TYPE_KEY_REGISTRAR_BN254 = 2
 
 // These are fallback EigenLayer deployment addresses when not specified in context

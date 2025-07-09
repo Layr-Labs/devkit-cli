@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/config"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
@@ -266,10 +267,15 @@ func updateKeystoreFiles() error {
 
 	// Update each keystore file with the new version from the embedded files
 	for _, filename := range keystoreFiles {
-		// Get the new keystore content from embedded files
+		// Try to get content from embedded files - check both old and new naming conventions
 		content, exists := config.KeystoreEmbeds[filename]
 		if !exists {
-			return fmt.Errorf("keystore file %s not found in embedded files", filename)
+			// Try the new naming convention
+			newFilename := strings.Replace(filename, ".keystore.json", ".bls.keystore.json", 1)
+			content, exists = config.KeystoreEmbeds[newFilename]
+			if !exists {
+				return fmt.Errorf("keystore file %s not found in embedded files", filename)
+			}
 		}
 
 		// Write the updated content to the file

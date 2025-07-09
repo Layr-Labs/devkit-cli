@@ -1,6 +1,8 @@
 package devnet
 
 import (
+	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"log"
 	"math/big"
@@ -12,10 +14,9 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/contracts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 
-	"context"
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -302,14 +303,35 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 
 	// All operator keys from [operator]
 	// We only intend to fund for devnet, so hardcoding to `CONTEXT` is fine
-	for _, key := range cfg.Context[DEVNET_CONTEXT].Operators {
-		cleanedKey := strings.TrimPrefix(key.ECDSAKey, "0x")
-		privateKey, err := crypto.HexToECDSA(cleanedKey)
-		if err != nil {
-			log.Fatalf("invalid private key %q: %v", key.ECDSAKey, err)
+	for _, operator := range cfg.Context[DEVNET_CONTEXT].Operators {
+		var privateKey *ecdsa.PrivateKey
+
+		// Check if ECDSA keystore is configured
+		if operator.ECDSAKeystorePath != "" && operator.ECDSAKeystorePassword != "" {
+			// Load from keystore
+			keystoreData, err := os.ReadFile(operator.ECDSAKeystorePath)
+			if err != nil {
+				log.Fatalf("failed to read ECDSA keystore file %s: %v", operator.ECDSAKeystorePath, err)
+			}
+
+			key, err := keystore.DecryptKey(keystoreData, operator.ECDSAKeystorePassword)
+			if err != nil {
+				log.Fatalf("failed to decrypt ECDSA keystore: %v", err)
+			}
+
+			privateKey = key.PrivateKey
+		} else if operator.ECDSAKey != "" {
+			// Fall back to plaintext key
+			cleanedKey := strings.TrimPrefix(operator.ECDSAKey, "0x")
+			var err error
+			privateKey, err = crypto.HexToECDSA(cleanedKey)
+			if err != nil {
+				log.Fatalf("invalid private key %q: %v", operator.ECDSAKey, err)
+			}
+		} else {
+			log.Fatalf("no ECDSA key configuration found for operator %s", operator.Address)
 		}
 		err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY)
-
 		if err != nil {
 			return err
 		}

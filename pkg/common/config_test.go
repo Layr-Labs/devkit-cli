@@ -42,8 +42,8 @@ func TestLoadConfigWithContextConfig_FromCopiedTempFile(t *testing.T) {
 	assert.Equal(t, "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80", cfg.Context["devnet"].DeployerPrivateKey)
 	assert.Equal(t, "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a", cfg.Context["devnet"].AppDeployerPrivateKey)
 
-	assert.Equal(t, "keystores/operator1.keystore.json", cfg.Context["devnet"].Operators[0].BlsKeystorePath)
-	assert.Equal(t, "keystores/operator2.keystore.json", cfg.Context["devnet"].Operators[1].BlsKeystorePath)
+	assert.Equal(t, "keystores/operator1.bls.keystore.json", cfg.Context["devnet"].Operators[0].BlsKeystorePath)
+	assert.Equal(t, "keystores/operator2.bls.keystore.json", cfg.Context["devnet"].Operators[1].BlsKeystorePath)
 	assert.Equal(t, "testpass", cfg.Context["devnet"].Operators[0].BlsKeystorePassword)
 	assert.Equal(t, "testpass", cfg.Context["devnet"].Operators[0].BlsKeystorePassword)
 

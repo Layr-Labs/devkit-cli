@@ -1,17 +1,22 @@
 package keystore
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"os"
+
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
-	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
+	blskeystore "github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
+	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/urfave/cli/v2"
 	"log"
 )
 
 var ReadCommand = &cli.Command{
 	Name:  "read",
-	Usage: "Print the Bls key from a given keystore file, password",
+	Usage: "Print the private key from a given keystore file, password",
 	Flags: append([]cli.Flag{
 		&cli.StringFlag{
 			Name:     "path",
@@ -28,22 +33,52 @@ var ReadCommand = &cli.Command{
 		path := cCtx.String("path")
 		password := cCtx.String("password")
 
-		scheme := bn254.NewScheme()
-		keystoreData, err := keystore.LoadKeystoreFile(path)
-
+		// Determine keystore type by checking the file content
+		fileContent, err := os.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("failed to load the keystore file from given path %s", path)
+			return fmt.Errorf("failed to read keystore file: %w", err)
 		}
 
-		privateKeyData, err := keystoreData.GetPrivateKey(password, scheme)
-		if err != nil {
-			return fmt.Errorf("failed to extract the private key from the keystore file")
+		// Check if it's an ECDSA keystore (has "address" field)
+		var jsonData map[string]interface{}
+		if err := json.Unmarshal(fileContent, &jsonData); err != nil {
+			return fmt.Errorf("failed to parse keystore JSON: %w", err)
 		}
-		log.Println("✅ Keystore generated successfully")
-		log.Println("")
-		log.Println("🔑 Save this BLS private key in a secure location:")
-		log.Printf("    %s\n", privateKeyData.Bytes())
-		log.Println("")
+
+		if _, hasAddress := jsonData["address"]; hasAddress {
+			// ECDSA keystore
+			key, err := ethkeystore.DecryptKey(fileContent, password)
+			if err != nil {
+				return fmt.Errorf("failed to decrypt ECDSA keystore: %w", err)
+			}
+
+			privateKeyHex := hex.EncodeToString(key.PrivateKey.D.Bytes())
+			log.Println("✅ ECDSA Keystore decrypted successfully")
+			log.Println("")
+			log.Println("🔑 Save this ECDSA private key in a secure location:")
+			log.Printf("    0x%s\n", privateKeyHex)
+			log.Println("")
+		} else if _, hasPubkey := jsonData["pubkey"]; hasPubkey {
+			// BLS keystore
+			scheme := bn254.NewScheme()
+			keystoreData, err := blskeystore.LoadKeystoreFile(path)
+			if err != nil {
+				return fmt.Errorf("failed to load BLS keystore file: %w", err)
+			}
+
+			privateKeyData, err := keystoreData.GetPrivateKey(password, scheme)
+			if err != nil {
+				return fmt.Errorf("failed to extract BLS private key: %w", err)
+			}
+			log.Println("✅ BLS Keystore decrypted successfully")
+			log.Println("")
+			log.Println("🔑 Save this BLS private key in a secure location:")
+			log.Printf("    %s\n", privateKeyData.Bytes())
+			log.Println("")
+		} else {
+			return fmt.Errorf("unknown keystore format")
+		}
+
 		return nil
 	},
 }

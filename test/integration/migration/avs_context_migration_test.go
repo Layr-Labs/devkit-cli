@@ -829,24 +829,258 @@ func TestAVSContextMigration_0_0_6_to_0_0_7(t *testing.T) {
 	})
 }
 
-// TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.6
+// TestAVSContextMigration_0_0_7_to_0_0_8 tests the migration that adds ECDSA keystore support
+func TestAVSContextMigration_0_0_7_to_0_0_8(t *testing.T) {
+	// Use v0.0.7 content as starting point
+	userYAML := string(contexts.ContextYamls["0.0.7"])
+	userNode := testNode(t, userYAML)
+
+	// Get the actual migration step
+	var migrationStep migration.MigrationStep
+	for _, step := range contexts.MigrationChain {
+		if step.From == "0.0.7" && step.To == "0.0.8" {
+			migrationStep = step
+			break
+		}
+	}
+	if migrationStep.Apply == nil {
+		t.Fatal("Could not find 0.0.7 -> 0.0.8 migration step")
+	}
+
+	// Execute migration
+	migrationChain := []migration.MigrationStep{migrationStep}
+	migratedNode, err := migration.MigrateNode(userNode, "0.0.7", "0.0.8", migrationChain)
+	if err != nil {
+		t.Fatalf("Migration failed: %v", err)
+	}
+
+	// Verify results
+	t.Run("version updated", func(t *testing.T) {
+		version := migration.ResolveNode(migratedNode, []string{"version"})
+		if version == nil || version.Value != "0.0.8" {
+			t.Errorf("Expected version to be updated to 0.0.8, got %v", version.Value)
+		}
+	})
+
+	t.Run("ECDSA keystore fields added to operators", func(t *testing.T) {
+		operators := migration.ResolveNode(migratedNode, []string{"context", "operators"})
+		if operators == nil || operators.Kind != yaml.SequenceNode {
+			t.Fatal("Expected operators to exist and be a sequence")
+		}
+
+		// Check first operator has ECDSA keystore fields
+		if len(operators.Content) > 0 {
+			firstOp := operators.Content[0]
+
+			// Check for ECDSA keystore path
+			ecdsaKeystorePath := migration.ResolveNode(firstOp, []string{"ecdsa_keystore_path"})
+			if ecdsaKeystorePath == nil || ecdsaKeystorePath.Value != "keystores/operator1.ecdsa.keystore.json" {
+				t.Errorf("Expected ECDSA keystore path for operator1, got %v", ecdsaKeystorePath)
+			}
+
+			// Check for ECDSA keystore password
+			ecdsaKeystorePassword := migration.ResolveNode(firstOp, []string{"ecdsa_keystore_password"})
+			if ecdsaKeystorePassword == nil || ecdsaKeystorePassword.Value != "testpass" {
+				t.Errorf("Expected ECDSA keystore password 'testpass', got %v", ecdsaKeystorePassword)
+			}
+		}
+
+		// Check second operator
+		if len(operators.Content) > 1 {
+			secondOp := operators.Content[1]
+
+			ecdsaKeystorePath := migration.ResolveNode(secondOp, []string{"ecdsa_keystore_path"})
+			if ecdsaKeystorePath == nil || ecdsaKeystorePath.Value != "keystores/operator2.ecdsa.keystore.json" {
+				t.Errorf("Expected ECDSA keystore path for operator2, got %v", ecdsaKeystorePath)
+			}
+		}
+	})
+
+	t.Run("BLS keystore paths updated to new naming convention", func(t *testing.T) {
+		operators := migration.ResolveNode(migratedNode, []string{"context", "operators"})
+		if operators == nil || operators.Kind != yaml.SequenceNode {
+			t.Fatal("Expected operators to exist and be a sequence")
+		}
+
+		// Check first operator's BLS keystore path
+		if len(operators.Content) > 0 {
+			firstOp := operators.Content[0]
+			blsKeystorePath := migration.ResolveNode(firstOp, []string{"bls_keystore_path"})
+			if blsKeystorePath == nil || blsKeystorePath.Value != "keystores/operator1.bls.keystore.json" {
+				t.Errorf("Expected BLS keystore path to be updated, got %v", blsKeystorePath)
+			}
+		}
+	})
+
+	t.Run("existing fields preserved", func(t *testing.T) {
+		// Check that existing operator fields are preserved
+		firstOp := migration.ResolveNode(migratedNode, []string{"context", "operators", "0"})
+		if firstOp == nil {
+			t.Fatal("Expected first operator to exist")
+		}
+
+		// Check address is preserved
+		address := migration.ResolveNode(firstOp, []string{"address"})
+		if address == nil || address.Value != "0x90F79bf6EB2c4f870365E785982E1f101E93b906" {
+			t.Errorf("Expected operator address to be preserved, got %v", address)
+		}
+
+		// Check ECDSA key is preserved
+		ecdsaKey := migration.ResolveNode(firstOp, []string{"ecdsa_key"})
+		if ecdsaKey == nil || ecdsaKey.Value != "0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6" {
+			t.Errorf("Expected ECDSA key to be preserved, got %v", ecdsaKey)
+		}
+
+		// Check allocations are preserved
+		allocations := migration.ResolveNode(firstOp, []string{"allocations"})
+		if allocations == nil {
+			t.Error("Expected allocations to be preserved")
+		}
+	})
+}
+
+// TestAVSContextMigration_0_0_7_to_0_0_8_WithCustomValues tests migration with custom operator values
+func TestAVSContextMigration_0_0_7_to_0_0_8_WithCustomValues(t *testing.T) {
+	// Create a custom v0.0.7 YAML with some custom values
+	customYAML := `version: 0.0.7
+context:
+  name: "custom-context"
+  operators:
+    - address: "0xCUSTOM_ADDRESS_1"
+      ecdsa_key: "0xCUSTOM_ECDSA_KEY_1"
+      bls_keystore_path: "custom/path/operator1.keystore.json"
+      bls_keystore_password: "custompass1"
+      custom_field: "custom_value_1"
+    - address: "0xCUSTOM_ADDRESS_2"
+      ecdsa_key: "0xCUSTOM_ECDSA_KEY_2"
+      bls_keystore_path: "keystores/operator2.keystore.json"
+      bls_keystore_password: "testpass"
+    - address: "0xCUSTOM_ADDRESS_3"
+      ecdsa_key: "0xCUSTOM_ECDSA_KEY_3"
+      bls_keystore_path: "keystores/custom.keystore.json"
+      bls_keystore_password: "custompass3"
+  artifact:
+    registry: "custom-registry"
+`
+
+	userNode := testNode(t, customYAML)
+
+	// Get the migration step
+	var migrationStep migration.MigrationStep
+	for _, step := range contexts.MigrationChain {
+		if step.From == "0.0.7" && step.To == "0.0.8" {
+			migrationStep = step
+			break
+		}
+	}
+
+	// Execute migration
+	migrationChain := []migration.MigrationStep{migrationStep}
+	migratedNode, err := migration.MigrateNode(userNode, "0.0.7", "0.0.8", migrationChain)
+	if err != nil {
+		t.Fatalf("Migration failed: %v", err)
+	}
+
+	t.Run("custom values preserved with ECDSA keystore fields added", func(t *testing.T) {
+		// Check first operator with custom values
+		firstOp := migration.ResolveNode(migratedNode, []string{"context", "operators", "0"})
+
+		// Custom address preserved
+		address := migration.ResolveNode(firstOp, []string{"address"})
+		if address == nil || address.Value != "0xCUSTOM_ADDRESS_1" {
+			t.Errorf("Expected custom address to be preserved, got %v", address)
+		}
+
+		// Custom ECDSA key preserved
+		ecdsaKey := migration.ResolveNode(firstOp, []string{"ecdsa_key"})
+		if ecdsaKey == nil || ecdsaKey.Value != "0xCUSTOM_ECDSA_KEY_1" {
+			t.Errorf("Expected custom ECDSA key to be preserved, got %v", ecdsaKey)
+		}
+
+		// BLS keystore path updated even for custom paths if they match the pattern
+		blsPath := migration.ResolveNode(firstOp, []string{"bls_keystore_path"})
+		if blsPath == nil || blsPath.Value != "keystores/operator1.bls.keystore.json" {
+			t.Errorf("Expected BLS path to be updated to new convention, got %v", blsPath)
+		}
+
+		// Custom field preserved
+		customField := migration.ResolveNode(firstOp, []string{"custom_field"})
+		if customField == nil || customField.Value != "custom_value_1" {
+			t.Errorf("Expected custom field to be preserved, got %v", customField)
+		}
+
+		// ECDSA keystore fields added based on position
+		ecdsaKeystorePath := migration.ResolveNode(firstOp, []string{"ecdsa_keystore_path"})
+		if ecdsaKeystorePath == nil || ecdsaKeystorePath.Value != "keystores/operator1.ecdsa.keystore.json" {
+			t.Errorf("Expected ECDSA keystore path to be added, got %v", ecdsaKeystorePath)
+		}
+	})
+
+	t.Run("standard operator paths updated", func(t *testing.T) {
+		// Check second operator with standard path
+		secondOp := migration.ResolveNode(migratedNode, []string{"context", "operators", "1"})
+
+		// Custom values preserved
+		address := migration.ResolveNode(secondOp, []string{"address"})
+		if address == nil || address.Value != "0xCUSTOM_ADDRESS_2" {
+			t.Errorf("Expected custom address to be preserved, got %v", address)
+		}
+
+		blsPath := migration.ResolveNode(secondOp, []string{"bls_keystore_path"})
+		if blsPath == nil || blsPath.Value != "keystores/operator2.bls.keystore.json" {
+			t.Errorf("Expected standard BLS path to be updated, got %v", blsPath)
+		}
+
+		// ECDSA keystore fields added
+		ecdsaKeystorePath := migration.ResolveNode(secondOp, []string{"ecdsa_keystore_path"})
+		if ecdsaKeystorePath == nil || ecdsaKeystorePath.Value != "keystores/operator2.ecdsa.keystore.json" {
+			t.Errorf("Expected ECDSA keystore path to be added, got %v", ecdsaKeystorePath)
+		}
+	})
+
+	t.Run("third operator with custom values", func(t *testing.T) {
+		// Check third operator
+		thirdOp := migration.ResolveNode(migratedNode, []string{"context", "operators", "2"})
+
+		// Custom address preserved
+		address := migration.ResolveNode(thirdOp, []string{"address"})
+		if address == nil || address.Value != "0xCUSTOM_ADDRESS_3" {
+			t.Errorf("Expected custom address to be preserved, got %v", address)
+		}
+
+		// Has ECDSA keystore fields based on position
+		ecdsaKeystorePath := migration.ResolveNode(thirdOp, []string{"ecdsa_keystore_path"})
+		if ecdsaKeystorePath == nil || ecdsaKeystorePath.Value != "keystores/operator3.ecdsa.keystore.json" {
+			t.Errorf("Expected operator3 ECDSA keystore path, got %v", ecdsaKeystorePath)
+		}
+	})
+
+	t.Run("custom context name preserved", func(t *testing.T) {
+		name := migration.ResolveNode(migratedNode, []string{"context", "name"})
+		if name == nil || name.Value != "custom-context" {
+			t.Errorf("Expected custom context name to be preserved, got %v", name)
+		}
+	})
+}
+
+// TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.8
 func TestAVSContextMigration_FullChain(t *testing.T) {
 	// Use the embedded v0.0.1 content as our starting point
 	userYAML := string(contexts.ContextYamls["0.0.1"])
 
 	userNode := testNode(t, userYAML)
 
-	// Execute migration through the entire chain to 0.0.7 (where stake conversion happens)
-	migratedNode, err := migration.MigrateNode(userNode, "0.0.1", "0.0.7", contexts.MigrationChain)
+	// Execute migration through the entire chain to 0.0.8 (latest version with ECDSA support)
+	migratedNode, err := migration.MigrateNode(userNode, "0.0.1", "0.0.8", contexts.MigrationChain)
 	if err != nil {
 		t.Fatalf("Full chain migration failed: %v", err)
 	}
 
 	// Verify final state
-	t.Run("final version is 0.0.7", func(t *testing.T) {
+	t.Run("final version is 0.0.8", func(t *testing.T) {
 		version := migration.ResolveNode(migratedNode, []string{"version"})
-		if version == nil || version.Value != "0.0.7" {
-			t.Errorf("Expected final version to be 0.0.7, got %v", version.Value)
+		if version == nil || version.Value != "0.0.8" {
+			t.Errorf("Expected final version to be 0.0.8, got %v", version.Value)
 		}
 	})
 
@@ -900,6 +1134,30 @@ func TestAVSContextMigration_FullChain(t *testing.T) {
 		stake := migration.ResolveNode(migratedNode, []string{"context", "operators", "0", "stake"})
 		if stake != nil && stake.Value != "" {
 			t.Errorf("Expected stake field to be removed or empty after migration, but got %v", stake.Value)
+		}
+	})
+
+	t.Run("ECDSA keystore fields added", func(t *testing.T) {
+		// Check that ECDSA keystore fields were added (from 0.0.7→0.0.8)
+		firstOp := migration.ResolveNode(migratedNode, []string{"context", "operators", "0"})
+		if firstOp == nil {
+			t.Fatal("Expected first operator to exist")
+		}
+
+		ecdsaKeystorePath := migration.ResolveNode(firstOp, []string{"ecdsa_keystore_path"})
+		if ecdsaKeystorePath == nil || ecdsaKeystorePath.Value != "keystores/operator1.ecdsa.keystore.json" {
+			t.Errorf("Expected ECDSA keystore path to be added through full chain, got %v", ecdsaKeystorePath)
+		}
+
+		ecdsaKeystorePassword := migration.ResolveNode(firstOp, []string{"ecdsa_keystore_password"})
+		if ecdsaKeystorePassword == nil || ecdsaKeystorePassword.Value != "testpass" {
+			t.Errorf("Expected ECDSA keystore password to be added through full chain, got %v", ecdsaKeystorePassword)
+		}
+
+		// Check BLS keystore path updated to new convention
+		blsKeystorePath := migration.ResolveNode(firstOp, []string{"bls_keystore_path"})
+		if blsKeystorePath == nil || blsKeystorePath.Value != "keystores/operator1.bls.keystore.json" {
+			t.Errorf("Expected BLS keystore path to be updated through full chain, got %v", blsKeystorePath)
 		}
 	})
 }

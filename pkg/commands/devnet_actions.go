@@ -27,6 +27,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -1058,17 +1059,25 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 	defer client.Close()
 
 	var operatorPrivateKey string
+	var foundOperator bool
 	for _, op := range envCtx.Operators {
-		key, keyErr := crypto.HexToECDSA(strings.TrimPrefix(op.ECDSAKey, "0x"))
+		// Try to load the ECDSA key
+		keyHex, err := loadOperatorECDSAKey(op)
+		if err != nil {
+			continue
+		}
+
+		key, keyErr := crypto.HexToECDSA(keyHex)
 		if keyErr != nil {
 			continue
 		}
 		if strings.EqualFold(crypto.PubkeyToAddress(key.PublicKey).Hex(), operatorAddress) {
-			operatorPrivateKey = op.ECDSAKey
+			operatorPrivateKey = keyHex
+			foundOperator = true
 			break
 		}
 	}
-	if operatorPrivateKey == "" {
+	if !foundOperator {
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
 	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := devnet.GetEigenLayerAddresses(cfg)
@@ -1121,17 +1130,25 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 	defer client.Close()
 
 	var operatorPrivateKey string
+	var foundOperator bool
 	for _, op := range envCtx.Operators {
-		key, keyErr := crypto.HexToECDSA(strings.TrimPrefix(op.ECDSAKey, "0x"))
+		// Try to load the ECDSA key
+		keyHex, err := loadOperatorECDSAKey(op)
+		if err != nil {
+			continue
+		}
+
+		key, keyErr := crypto.HexToECDSA(keyHex)
 		if keyErr != nil {
 			continue
 		}
 		if strings.EqualFold(crypto.PubkeyToAddress(key.PublicKey).Hex(), operatorAddress) {
-			operatorPrivateKey = op.ECDSAKey
+			operatorPrivateKey = keyHex
+			foundOperator = true
 			break
 		}
 	}
-	if operatorPrivateKey == "" {
+	if !foundOperator {
 		return fmt.Errorf("operator with address %s not found in config", operatorAddress)
 	}
 
@@ -1271,14 +1288,20 @@ func delegateToOperator(cCtx *cli.Context, stakerSpec common.StakerSpec, operato
 	// After depositing, delegate to the operator
 	// Extract the private key of the operator we are delegating to in order to create an approval signature
 	var operatorPrivateKey string
+	var foundOperator bool
 	for _, op := range envCtx.Operators {
 		if strings.EqualFold(op.Address, operator.Hex()) {
-			operatorPrivateKey = op.ECDSAKey
+			keyHex, err := loadOperatorECDSAKey(op)
+			if err != nil {
+				return fmt.Errorf("failed to load ECDSA key for operator %s: %w", operator, err)
+			}
+			operatorPrivateKey = keyHex
+			foundOperator = true
 			break
 		}
 	}
-	if operatorPrivateKey == "" {
-		return fmt.Errorf("ECDSAkey not found for operator %s in operators in config.This means we cannot create an approval signature for this delegation", operator)
+	if !foundOperator {
+		return fmt.Errorf("ECDSA key not found for operator %s in operators in config. This means we cannot create an approval signature for this delegation", operator)
 	}
 
 	// expiry is 10 minutes from now
@@ -1446,7 +1469,13 @@ func ModifyAllocationsAction(cCtx *cli.Context, logger iface.Logger) error {
 			logger.Info("Operator %s has no allocations specified, skipping allocation modification", op.Address)
 			continue
 		}
-		if err := modifyAllocations(cCtx, op.Address, op.ECDSAKey, logger); err != nil {
+		// Load ECDSA key for operator
+		operatorKey, err := loadOperatorECDSAKey(op)
+		if err != nil {
+			logger.Debug("Failed to load ECDSA key for operator %s: %v. Continuing...", op.Address, err)
+			continue
+		}
+		if err := modifyAllocations(cCtx, op.Address, operatorKey, logger); err != nil {
 			logger.Debug("Failed to modify allocations for operator %s: %v. Continuing...", op.Address, err)
 			continue
 		}
@@ -1729,14 +1758,32 @@ func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error
 	}
 	// For each created operator set, configure the curve type
 	for _, opSet := range envCtx.OperatorSets {
-		logger.Info("Configuring curve type for operator set %s", opSet.OperatorSetID)
+		// Determine the curve type constant
+		var curveTypeValue uint8
+		switch opSet.CurveType {
+		case common.ECDSACurve:
+			curveTypeValue = devnet.CURVE_TYPE_KEY_REGISTRAR_ECDSA
+		case common.BN254Curve:
+			curveTypeValue = devnet.CURVE_TYPE_KEY_REGISTRAR_BN254
+		case common.UnknownCurve:
+			return fmt.Errorf("unknown curve type for operator set %d - please specify either 'ECDSA' or 'BN254'", opSet.OperatorSetID)
+		default:
+			// Default to BN254 if not specified
+			curveTypeValue = devnet.CURVE_TYPE_KEY_REGISTRAR_BN254
+		}
+
+		logger.Info("Configuring curve type %s for operator set %d", opSet.CurveType, opSet.OperatorSetID)
 
 		// Configure the curve type
-		err = contractCaller.ConfigureOpSetCurveType(cCtx.Context, avsAddress, uint32(opSet.OperatorSetID), uint8(devnet.CURVE_TYPE_KEY_REGISTRAR_BN254))
+		err = contractCaller.ConfigureOpSetCurveType(
+			cCtx.Context, avsAddress,
+			uint32(opSet.OperatorSetID),
+			curveTypeValue,
+		)
 		if err != nil {
 			return fmt.Errorf("failed to configure curve type for operator set %v: %w", opSet.OperatorSetID, err)
 		}
-		logger.Info("Successfully configured curve type for operator set %s", opSet.OperatorSetID)
+		logger.Info("Successfully configured curve type %s for operator set %d", string(opSet.CurveType), opSet.OperatorSetID)
 	}
 
 	return nil
@@ -1893,7 +1940,10 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 		for _, operator := range envCtx.Operators {
 
 			if op.Address == operator.Address {
-				operatorPrivateKey := strings.Trim(operator.ECDSAKey, "0x")
+				operatorPrivateKey, err := loadOperatorECDSAKey(operator)
+				if err != nil {
+					return fmt.Errorf("failed to load ECDSA key for operator %s: %w", operator.Address, err)
+				}
 				operatorAddress := ethcommon.HexToAddress(op.Address)
 				contractCaller, err := common.NewContractCaller(
 					operatorPrivateKey,
@@ -2048,4 +2098,30 @@ func stopBothContainersByPort(cCtx *cli.Context, log iface.Logger, targetPort in
 		log.Info("No container found with port %d. Try %sdevkit avs devnet list%s to get a list of running devnet containers",
 			targetPort, devnet.Cyan, devnet.Reset)
 	}
+}
+
+// loadOperatorECDSAKey loads an operator's ECDSA private key from keystore or plaintext
+func loadOperatorECDSAKey(operator common.OperatorSpec) (string, error) {
+	// Check if ECDSA keystore is configured
+	if operator.ECDSAKeystorePath != "" && operator.ECDSAKeystorePassword != "" {
+		// Load from keystore
+		keystoreData, err := os.ReadFile(operator.ECDSAKeystorePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to read ECDSA keystore file %s: %w", operator.ECDSAKeystorePath, err)
+		}
+
+		key, err := ethkeystore.DecryptKey(keystoreData, operator.ECDSAKeystorePassword)
+		if err != nil {
+			return "", fmt.Errorf("failed to decrypt ECDSA keystore: %w", err)
+		}
+
+		return hex.EncodeToString(crypto.FromECDSA(key.PrivateKey)), nil
+	}
+
+	// Fall back to plaintext key
+	if operator.ECDSAKey != "" {
+		return strings.ToLower(strings.TrimPrefix(operator.ECDSAKey, "0x")), nil
+	}
+
+	return "", fmt.Errorf("no ECDSA key configuration found for operator %s", operator.Address)
 }

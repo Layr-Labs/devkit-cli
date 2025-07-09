@@ -108,6 +108,12 @@ func Transport(cCtx *cli.Context) error {
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
 	}
+
+	// Debug logging to check what's loaded
+	logger.Info("Transporter config loaded - Private key present: %v, BLS key present: %v",
+		envCtx.Transporter.PrivateKey != "",
+		envCtx.Transporter.BlsPrivateKey != "")
+
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
 	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
@@ -154,6 +160,11 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to get l1 chain for ID %d: %v", l1Config.ChainID, err)
 	}
 
+	// Check if private key is empty
+	if envCtx.Transporter.PrivateKey == "" {
+		return fmt.Errorf("Transporter private key is empty. Please check config/contexts/devnet.yaml")
+	}
+
 	txSign, err := txSigner.NewPrivateKeySigner(envCtx.Transporter.PrivateKey)
 	if err != nil {
 		return fmt.Errorf("failed to create private key signer: %v", err)
@@ -182,6 +193,11 @@ func Transport(cCtx *cli.Context) error {
 	root, tree, dist, err := tableCalc.CalculateStakeTableRoot(cCtx.Context, l1Block.NumberU64())
 	if err != nil {
 		return fmt.Errorf("failed to calculate stake table root: %v", err)
+	}
+
+	// Check if BLS private key is empty
+	if envCtx.Transporter.BlsPrivateKey == "" {
+		return fmt.Errorf("Transporter BLS private key is empty. Please check config/contexts/devnet.yaml")
 	}
 
 	scheme := bn254.NewScheme()

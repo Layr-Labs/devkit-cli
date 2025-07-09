@@ -406,22 +406,48 @@ devkit avs deploy-contract
 ```
 
 ### Create Operator Keys (`devkit avs keystore`)
-Create and read keystores for bn254 private keys using the CLI. 
+Create and read keystores for both BLS (BN254) and ECDSA private keys using the CLI.
 
-- To create a keystore
+#### Creating keystores
+
+- **Create a BLS keystore**:
 ```bash
-devkit keystore create --key --path --password
+devkit keystore create --type bn254 --key <bls-private-key> --path ./keystores/operator1.bls.keystore.json --password testpass
 ```
 
-- To read an existing keystore
+- **Create an ECDSA keystore**:
 ```bash
-devkit keystore read --path --password
+devkit keystore create --type ecdsa --key 0x<ecdsa-private-key-hex> --path ./keystores/operator1.ecdsa.keystore.json --password testpass
+```
+
+#### Reading keystores
+
+The read command automatically detects the keystore type (BLS or ECDSA) and decrypts it accordingly:
+
+- **Read a BLS keystore**:
+```bash
+devkit keystore read --path ./keystores/operator1.bls.keystore.json --password testpass
+```
+
+- **Read an ECDSA keystore**:
+```bash
+devkit keystore read --path ./keystores/operator1.ecdsa.keystore.json --password testpass
 ```
 
 **Flag Descriptions**
-- **`key`**: Private key in BigInt format. Example: `5581406963073749409396003982472073860082401912942283565679225591782850437460` 
-- **`path`**: Path to the json file that must also include the filename. Example: `./keystores/operator1.keystore.json`
-- **`password`**: Password to encrypt/decrypt the keystore.
+- **`key`**: Private key (for create command)
+  - For BLS: Private key in BigInt format (e.g., `5581406963073749409396003982472073860082401912942283565679225591782850437460`)
+  - For ECDSA: Private key in hex format with or without 0x prefix (e.g., `0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6`)
+- **`path`**: Full path to the keystore file including filename
+  - BLS keystores use `.bls.keystore.json` naming convention (e.g., `./keystores/operator1.bls.keystore.json`)
+  - ECDSA keystores use `.ecdsa.keystore.json` naming convention (e.g., `./keystores/operator1.ecdsa.keystore.json`)
+- **`password`**: Password to encrypt/decrypt the keystore
+- **`type`**: Curve type for keystore creation (`bn254` for BLS or `ecdsa` for ECDSA). **Required for create command only**
+
+**Notes:**
+- The read command automatically detects keystore type based on the JSON structure
+- ECDSA keystores use the standard Ethereum keystore format (Web3 Secret Storage Definition v3)
+- BLS keystores use a custom format for BN254 curve keys
 
 ### Template Management (`devkit avs template`)
 
