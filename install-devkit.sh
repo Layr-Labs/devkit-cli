@@ -3,7 +3,7 @@
 set -e
 
 # DevKit version
-DEVKIT_VERSION="v0.0.9"
+DEVKIT_VERSION=$(curl -fsSL https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/VERSION)
 DEVKIT_BASE_URL="https://s3.amazonaws.com/eigenlayer-devkit-releases"
 
 # Detect platform
