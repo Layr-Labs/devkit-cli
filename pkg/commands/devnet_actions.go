@@ -13,9 +13,12 @@ import (
 	"math/big"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/Layr-Labs/crypto-libs/pkg/bn254"
@@ -392,29 +395,40 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 	}
 
+	// Create a context that cancels on Ctrl-C (SIGINT) or docker/systemd stop (SIGTERM)
+	ctx, stop := signal.NotifyContext(cCtx.Context, os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Set up waitGroup to handle bg scheduler
+	var wg sync.WaitGroup
+	wg.Add(1)
+
 	// Run Transport against schedule - exit when AVSRun exits
 	if !skipTransporter {
 		// Post initial stake roots to L1
 		if err := Transport(cCtx); err != nil && !errors.Is(err, context.Canceled) {
 			return fmt.Errorf("transport run failed: %w", err)
 		}
+
+		// Shallow-copy cli.Context so that ScheduleTransport sees the new ctx
+		childCtx := *cCtx
+		childCtx.Context = ctx
+
+		// Run scheduler in the background
 		go func() {
-			err := ScheduleTransport(cCtx, config.Context[devnet.DEVNET_CONTEXT].Transporter.Schedule)
-			if err != nil {
+			if err := ScheduleTransport(&childCtx, config.Context[devnet.DEVNET_CONTEXT].Transporter.Schedule); err != nil && !errors.Is(err, context.Canceled) {
 				logger.Error("ScheduleTransport failed: %v", err)
+				stop()
 			}
 		}()
-		// Keep scheduler alive
-		if skipAvsRun {
-			select {}
-		}
 	}
 
-	// sleep for 2 seconds
+	// Sleep for 2 seconds
 	time.Sleep(2 * time.Second)
+
 	// Deploy L2 contracts only if L1 contracts were also deployed
 	if !skipDeployContracts {
-		if err := DeployL2ContractsAction(cCtx); err != nil {
+		if err := DeployL2ContractsAction(cCtx); err != nil && !errors.Is(err, context.Canceled) {
 			logger.Error("deploy-l2-contracts failed: %v", err)
 			return fmt.Errorf("deploy-l2-contracts failed: %w", err)
 		}
@@ -427,7 +441,16 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 	}
 
-	return nil
+	// Wait for the scheduler and close on interrupt
+	done := make(chan struct{})
+	go func() { wg.Wait(); close(done) }()
+
+	select {
+	case <-ctx.Done(): // user interrupt -> stop scheduler, exit
+	case <-done: // scheduler ended on its own -> exit
+	}
+
+	return ctx.Err()
 }
 
 func DeployL2ContractsAction(cCtx *cli.Context) error {
