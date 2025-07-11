@@ -25,7 +25,6 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
-	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -65,8 +64,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	skipTransporter := cCtx.Bool("skip-transporter")
 	useZeus := cCtx.Bool("use-zeus")
 	persist := cCtx.Bool("persist")
+
 	// Migrate config
-	configMigrated, err := migrateConfig(logger)
+	configMigrated, err := configs.MigrateConfig(logger)
 	if err != nil {
 		logger.Error("config migration failed: %w", err)
 	}
@@ -75,7 +75,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Migrate contexts
-	contextsMigrated, err := migrateContexts(logger)
+	contextsMigrated, err := contexts.MigrateContexts(logger)
 	if err != nil {
 		logger.Error("context migrations failed: %w", err)
 	}
@@ -1384,75 +1384,6 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 		logger.Info("Written contract output: %s\n", outPath)
 	}
 	return nil
-}
-
-func migrateConfig(logger iface.Logger) (int, error) {
-	// Set path for context yamls
-	configDir := filepath.Join("config")
-	configPath := filepath.Join(configDir, "config.yaml")
-
-	// Migrate the config
-	err := migration.MigrateYaml(logger, configPath, configs.LatestVersion, configs.MigrationChain)
-	// Check for already upto date and ignore
-	alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
-
-	// For any other error, migration has failed
-	if err != nil && !alreadyUptoDate {
-		return 0, fmt.Errorf("failed to migrate: %v", err)
-	}
-
-	// If config was migrated
-	if !alreadyUptoDate {
-		logger.Info("Migrated %s\n", configPath)
-
-		return 1, nil
-	}
-
-	return 0, nil
-}
-
-func migrateContexts(logger iface.Logger) (int, error) {
-	// Count the number of contexts we migrate
-	contextsMigrated := 0
-
-	// Set path for context yamls
-	contextDir := filepath.Join("config", "contexts")
-
-	// Read all contexts/*.yamls
-	entries, err := os.ReadDir(contextDir)
-	if err != nil {
-		return 0, fmt.Errorf("unable to read context directory: %v", err)
-	}
-
-	// Attempt to upgrade every entry
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
-			continue
-		}
-		contextPath := filepath.Join(contextDir, e.Name())
-
-		// Migrate the context
-		err := migration.MigrateYaml(logger, contextPath, contexts.LatestVersion, contexts.MigrationChain)
-		// Check for already upto date and ignore
-		alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
-
-		// For every other error, migration failed
-		if err != nil && !alreadyUptoDate {
-			logger.Error("failed to migrate: %v", err)
-			continue
-		}
-
-		// If context was migrated
-		if !alreadyUptoDate {
-			// Incr number of contextsMigrated
-			contextsMigrated += 1
-
-			// If migration succeeds
-			logger.Info("Migrated %s\n", contextPath)
-		}
-	}
-
-	return contextsMigrated, nil
 }
 
 func ModifyAllocationsAction(cCtx *cli.Context, logger iface.Logger) error {

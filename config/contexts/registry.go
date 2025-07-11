@@ -2,7 +2,13 @@ package contexts
 
 import (
 	_ "embed"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
 	contextMigrations "github.com/Layr-Labs/devkit-cli/config/contexts/migrations"
@@ -107,4 +113,48 @@ var MigrationChain = []migration.MigrationStep{
 		OldYAML: v0_0_7_default,
 		NewYAML: v0_0_8_default,
 	},
+}
+
+func MigrateContexts(logger iface.Logger) (int, error) {
+	// Count the number of contexts we migrate
+	contextsMigrated := 0
+
+	// Set path for context yamls
+	contextDir := filepath.Join("config", "contexts")
+
+	// Read all contexts/*.yamls
+	entries, err := os.ReadDir(contextDir)
+	if err != nil {
+		return 0, fmt.Errorf("unable to read context directory: %v", err)
+	}
+
+	// Attempt to upgrade every entry
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		contextPath := filepath.Join(contextDir, e.Name())
+
+		// Migrate the context
+		err := migration.MigrateYaml(logger, contextPath, LatestVersion, MigrationChain)
+		// Check for already upto date and ignore
+		alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
+
+		// For every other error, migration failed
+		if err != nil && !alreadyUptoDate {
+			logger.Error("failed to migrate: %v", err)
+			continue
+		}
+
+		// If context was migrated
+		if !alreadyUptoDate {
+			// Incr number of contextsMigrated
+			contextsMigrated += 1
+
+			// If migration succeeds
+			logger.Info("Migrated %s\n", contextPath)
+		}
+	}
+
+	return contextsMigrated, nil
 }

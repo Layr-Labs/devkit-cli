@@ -2,8 +2,12 @@ package configs
 
 import (
 	_ "embed"
+	"errors"
+	"fmt"
+	"path/filepath"
 
 	configMigrations "github.com/Layr-Labs/devkit-cli/config/configs/migrations"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 )
 
@@ -35,4 +39,29 @@ var MigrationChain = []migration.MigrationStep{
 		OldYAML: v0_0_1_default,
 		NewYAML: v0_0_2_default,
 	},
+}
+
+func MigrateConfig(logger iface.Logger) (int, error) {
+	// Set path for context yamls
+	configDir := filepath.Join("config")
+	configPath := filepath.Join(configDir, "config.yaml")
+
+	// Migrate the config
+	err := migration.MigrateYaml(logger, configPath, LatestVersion, MigrationChain)
+	// Check for already upto date and ignore
+	alreadyUptoDate := errors.Is(err, migration.ErrAlreadyUpToDate)
+
+	// For any other error, migration has failed
+	if err != nil && !alreadyUptoDate {
+		return 0, fmt.Errorf("failed to migrate: %v", err)
+	}
+
+	// If config was migrated
+	if !alreadyUptoDate {
+		logger.Info("Migrated %s\n", configPath)
+
+		return 1, nil
+	}
+
+	return 0, nil
 }
