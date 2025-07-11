@@ -219,6 +219,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		"L1_AVS_CONTAINER_NAME="+l1ContainerName,
 		"L2_AVS_CONTAINER_NAME="+l2ContainerName,
 	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("❌ Failed to start devnet: %w", err)
 	}
@@ -277,7 +279,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(4 * time.Second)
 
 	// Fund the wallets defined in config on L1
-	logger.Info("Funding wallets on L!...")
+	logger.Info("Funding wallets on L1...")
 	err = devnet.FundWalletsDevnet(config, l1RpcUrl)
 	if err != nil {
 		return fmt.Errorf("funding L1 devnet wallets failed: %w", err)
