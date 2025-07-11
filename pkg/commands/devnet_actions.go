@@ -1341,10 +1341,17 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 		addressVal := contract.Address
 		abiVal := contract.ABI
 
+		// Skip storing artefacts if values are missing
+		if nameVal == "" || addressVal == "" || abiVal == "" {
+			continue
+		}
+
 		// Read the ABI file
 		raw, err := os.ReadFile(abiVal)
+		// if abi is missing then we cannot write outputs, skip to next entry
 		if err != nil {
-			return fmt.Errorf("read ABI for %s (%s) from %q: %w", nameVal, addressVal, abiVal, err)
+			logger.Error("read ABI for %s (%s) from %q: %w", nameVal, addressVal, abiVal, err)
+			continue
 		}
 
 		// Temporary struct to pick only the "abi" field from the artifact
