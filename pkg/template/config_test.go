@@ -11,7 +11,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	// Test template URL lookup
-	mainBaseURL, mainVersion, err := GetTemplateURLs(config, "task", "go")
+	mainBaseURL, mainVersion, err := GetTemplateURLs(config, "hourglass", "go")
 	if err != nil {
 		t.Fatalf("Failed to get template URLs: %v", err)
 	}
@@ -29,13 +29,25 @@ func TestLoadConfig(t *testing.T) {
 
 	// Test non-existent architecture
 	mainBaseURL, mainVersion, err = GetTemplateURLs(config, "nonexistent", "go")
-	if err != nil {
-		t.Fatalf("Failed to get template URLs: %v", err)
+	if err == nil {
+		t.Fatalf("Expected to fail to get template URLs: %v", err)
 	}
 	if mainBaseURL != "" {
 		t.Errorf("Expected empty URL for nonexistent architecture, got %s", mainBaseURL)
 	}
 	if mainVersion != "" {
 		t.Errorf("Expected empty version for nonexistent architecture, got %s", mainVersion)
+	}
+
+	// Test non-existent language
+	mainBaseURL, mainVersion, err = GetTemplateURLs(config, "hourglass", "nonexistent")
+	if err == nil {
+		t.Fatalf("Expected to fail to get template URLs: %v", err)
+	}
+	if mainBaseURL != "" {
+		t.Errorf("Expected empty URL for nonexistent language, got %s", mainBaseURL)
+	}
+	if mainVersion != "" {
+		t.Errorf("Expected empty version for nonexistent language, got %s", mainVersion)
 	}
 }

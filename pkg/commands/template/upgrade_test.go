@@ -46,21 +46,22 @@ type MockTemplateInfoGetter struct {
 	projectName       string
 	templateURL       string
 	templateVersion   string
+	templateLanguage  string
 	shouldReturnError bool
 }
 
-func (m *MockTemplateInfoGetter) GetInfo() (string, string, string, error) {
+func (m *MockTemplateInfoGetter) GetInfo() (string, string, string, string, error) {
 	if m.shouldReturnError {
-		return "", "", "", fmt.Errorf("config/config.yaml not found")
+		return "", "", "", "", fmt.Errorf("config/config.yaml not found")
 	}
-	return m.projectName, m.templateURL, m.templateVersion, nil
+	return m.projectName, m.templateURL, m.templateVersion, m.templateLanguage, nil
 }
 
-func (m *MockTemplateInfoGetter) GetInfoDefault() (string, string, string, error) {
+func (m *MockTemplateInfoGetter) GetInfoDefault() (string, string, string, string, error) {
 	if m.shouldReturnError {
-		return "", "", "", fmt.Errorf("config/config.yaml not found")
+		return "", "", "", "", fmt.Errorf("config/config.yaml not found")
 	}
-	return m.projectName, m.templateURL, m.templateVersion, nil
+	return m.projectName, m.templateURL, m.templateVersion, m.templateLanguage, nil
 }
 
 func (m *MockTemplateInfoGetter) GetTemplateVersionFromConfig(arch, lang string) (string, error) {
@@ -94,6 +95,7 @@ func TestUpgradeCommand(t *testing.T) {
     name: template-upgrade-test
     templateBaseUrl: https://github.com/Layr-Labs/hourglass-avs-template
     templateVersion: v0.0.3
+    templateLanguage: go
 `
 	configPath := filepath.Join(configDir, common.BaseConfig)
 	err = os.WriteFile(configPath, []byte(configContent), 0644)
@@ -103,9 +105,10 @@ func TestUpgradeCommand(t *testing.T) {
 
 	// Create mock template info getter
 	mockTemplateInfoGetter := &MockTemplateInfoGetter{
-		projectName:     "template-upgrade-test",
-		templateURL:     "https://github.com/Layr-Labs/hourglass-avs-template",
-		templateVersion: "v0.0.4",
+		projectName:      "template-upgrade-test",
+		templateURL:      "https://github.com/Layr-Labs/hourglass-avs-template",
+		templateVersion:  "v0.0.4",
+		templateLanguage: "go",
 	}
 
 	// Create the test command with mocked dependencies

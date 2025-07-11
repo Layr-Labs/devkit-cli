@@ -1,27 +1,21 @@
 package template
 
 import (
+	"fmt"
+
 	"github.com/Layr-Labs/devkit-cli/config"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Architectures map[string]Architecture `yaml:"architectures"`
+	Framework map[string]FrameworkSpec `yaml:"framework"`
 }
 
-type Architecture struct {
-	Languages map[string]Language `yaml:"languages"`
-	Contracts *ContractConfig     `yaml:"contracts,omitempty"`
-}
-
-type ContractConfig struct {
-	Languages map[string]Language `yaml:"languages"`
-}
-
-type Language struct {
-	BaseUrl string `yaml:"baseUrl"`
-	Version string `yaml:"version"`
+type FrameworkSpec struct {
+	Template  string   `yaml:"template"`
+	Version   string   `yaml:"version"`
+	Languages []string `yaml:"languages"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -36,25 +30,27 @@ func LoadConfig() (*Config, error) {
 	return &config, nil
 }
 
-// GetTemplateURLs retrieves both main and contracts template URLs for the given architecture
-// Returns main base URL, main version, contracts base URL, contracts version, and error
-func GetTemplateURLs(config *Config, arch, lang string) (string, string, error) {
-	archConfig, exists := config.Architectures[arch]
-	if !exists {
-		return "", "", nil
+// GetTemplateURLs returns template URL & version for the requested framework + language.
+// Fails fast if the framework does not exist, the template URL is blank, or the
+// language is not declared in the framework's Languages slice.
+func GetTemplateURLs(config *Config, framework, lang string) (string, string, error) {
+	fw, ok := config.Framework[framework]
+	if !ok {
+		return "", "", fmt.Errorf("unknown framework %q", framework)
+	}
+	if fw.Template == "" {
+		return "", "", fmt.Errorf("template URL missing for framework %q", framework)
 	}
 
-	// Get main template URL and version
-	langConfig, exists := archConfig.Languages[lang]
-	if !exists {
-		return "", "", nil
+	// Language gate – only enforce if Languages slice is populated
+	if len(fw.Languages) != 0 {
+		for _, l := range fw.Languages {
+			if l == lang {
+				return fw.Template, fw.Version, nil
+			}
+		}
+		return "", "", fmt.Errorf("language %q not available for framework %q", lang, framework)
 	}
 
-	mainBaseURL := langConfig.BaseUrl
-	mainVersion := langConfig.Version
-	if mainBaseURL == "" {
-		return "", "", nil
-	}
-
-	return mainBaseURL, mainVersion, nil
+	return fw.Template, fw.Version, nil
 }

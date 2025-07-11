@@ -14,7 +14,7 @@ var InfoCommand = &cli.Command{
 		logger := common.LoggerFromContext(cCtx.Context)
 
 		// Get template information
-		projectName, templateBaseURL, templateVersion, err := GetTemplateInfo()
+		projectName, templateBaseURL, templateVersion, templateLanguage, err := GetTemplateInfo()
 		if err != nil {
 			return err
 		}
@@ -26,6 +26,7 @@ var InfoCommand = &cli.Command{
 		}
 		logger.Info("  Template URL: %s", templateBaseURL)
 		logger.Info("  Version: %s", templateVersion)
+		logger.Info("  Language: %s", templateLanguage)
 
 		return nil
 	},

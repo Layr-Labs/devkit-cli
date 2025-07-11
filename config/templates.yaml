@@ -1,12 +1,8 @@
-architectures:
-  task:
+framework:
+  hourglass:
+    template: "https://github.com/Layr-Labs/hourglass-avs-template"
+    version: "v0.0.18"
     languages:
-      go:
-        baseUrl: "https://github.com/Layr-Labs/hourglass-avs-template"
-        version: "v0.0.18"
-      ts:
-        baseUrl: ""
-        version: ""
-      rust:
-        baseUrl: ""
-        version: ""
+      - go
+      - ts
+      - rust

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
+	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/urfave/cli/v2"
 )
@@ -53,6 +54,31 @@ func AVSRun(cCtx *cli.Context) error {
 	// Print task if verbose
 	logger.Debug("Starting offchain AVS components...")
 
+	// Get the config (based on if we're in a test or not)
+	var cfg *common.ConfigWithContextConfig
+
+	// First check if config is in context (for testing)
+	if cfgValue := cCtx.Context.Value(testutils.ConfigContextKey); cfgValue != nil {
+		// Use test config from context
+		cfg = cfgValue.(*common.ConfigWithContextConfig)
+	} else {
+		// Load selected context
+		context := cCtx.String("context")
+
+		// Load from file if not in context
+		var err error
+		cfg, err = common.LoadConfigWithContextConfig(context)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Pull template language from config
+	language := cfg.Config.Project.TemplateLanguage
+	if language == "" {
+		language = "go"
+	}
+
 	// Run the script from root of project dir
 	// (@TODO (GD): this should always be the root of the project, but we need to do this everywhere (ie reading ctx/config etc))
 	const dir = ""
@@ -61,7 +87,7 @@ func AVSRun(cCtx *cli.Context) error {
 	scriptPath := filepath.Join(".devkit", "scripts", "run")
 
 	// Run init on the template init script
-	if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON); err != nil {
+	if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON, []byte(language)); err != nil {
 		return fmt.Errorf("run failed: %w", err)
 	}
 

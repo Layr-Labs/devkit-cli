@@ -26,6 +26,7 @@ type ProjectConfig struct {
 	TelemetryEnabled bool   `json:"telemetry_enabled" yaml:"telemetry_enabled"`
 	TemplateBaseURL  string `json:"templateBaseUrl,omitempty" yaml:"templateBaseUrl,omitempty"`
 	TemplateVersion  string `json:"templateVersion,omitempty" yaml:"templateVersion,omitempty"`
+	TemplateLanguage string `json:"templatelanguage,omitempty" yaml:"templatelanguage,omitempty"`
 }
 
 type ForkConfig struct {

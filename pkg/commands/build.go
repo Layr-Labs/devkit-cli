@@ -63,6 +63,12 @@ var BuildCommand = &cli.Command{
 			return fmt.Errorf("failed to load configurations: %w", err)
 		}
 
+		// Pull template language from config
+		language := cfg.Config.Project.TemplateLanguage
+		if language == "" {
+			language = "go"
+		}
+
 		// Handle version increment
 		version := cfg.Context[contextName].Artifact.Version
 		if version == "" {
@@ -81,6 +87,8 @@ var BuildCommand = &cli.Command{
 			[]byte(cfg.Config.Project.Name),
 			[]byte("--tag"),
 			[]byte(version),
+			[]byte("--lang"),
+			[]byte(language),
 		)
 		if err != nil {
 			logger.Error("Build script failed with error: %v", err)

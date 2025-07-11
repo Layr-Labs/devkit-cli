@@ -41,6 +41,7 @@ func TestGetTemplateInfo(t *testing.T) {
     name: test-project
     templateBaseUrl: https://github.com/Layr-Labs/hourglass-avs-template
     templateVersion: v0.0.3
+    templateLanguage: go
 `
 		configPath := filepath.Join(configDir, common.BaseConfig)
 		err = os.WriteFile(configPath, []byte(configContent), 0644)
@@ -48,7 +49,7 @@ func TestGetTemplateInfo(t *testing.T) {
 			t.Fatalf("Failed to write config file: %v", err)
 		}
 
-		projectName, templateURL, templateVersion, err := GetTemplateInfo()
+		projectName, templateURL, templateVersion, templateLanguage, err := GetTemplateInfo()
 		if err != nil {
 			t.Fatalf("GetTemplateInfo failed: %v", err)
 		}
@@ -61,6 +62,9 @@ func TestGetTemplateInfo(t *testing.T) {
 		}
 		if templateVersion != "v0.0.3" {
 			t.Errorf("Expected template version 'v0.0.3', got '%s'", templateVersion)
+		}
+		if templateLanguage != "go" {
+			t.Errorf("Expected template language 'go', got '%s'", templateLanguage)
 		}
 	})
 
@@ -77,7 +81,7 @@ func TestGetTemplateInfo(t *testing.T) {
 			t.Fatalf("Failed to write config file: %v", err)
 		}
 
-		projectName, templateURL, templateVersion, err := GetTemplateInfo()
+		projectName, templateURL, templateVersion, templateLanguage, err := GetTemplateInfo()
 		if err != nil {
 			t.Fatalf("GetTemplateInfo failed: %v", err)
 		}
@@ -95,6 +99,9 @@ func TestGetTemplateInfo(t *testing.T) {
 		if templateVersion != "unknown" && templateVersion == "" {
 			t.Errorf("Expected template version to be populated, got '%s'", templateVersion)
 		}
+		if templateLanguage == "" {
+			t.Errorf("Expected template language to be populated, got '%s'", templateLanguage)
+		}
 	})
 
 	// Test with missing config file
@@ -105,7 +112,7 @@ func TestGetTemplateInfo(t *testing.T) {
 			t.Fatalf("Failed to remove config file: %v", err)
 		}
 
-		_, _, _, err := GetTemplateInfo()
+		_, _, _, _, err := GetTemplateInfo()
 		if err == nil {
 			t.Errorf("Expected error for missing config file, got nil")
 		}

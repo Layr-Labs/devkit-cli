@@ -145,8 +145,8 @@ func TestCloneRealRepo(t *testing.T) {
 		t.Fatalf("failed to load templates cfg: %v", err)
 	}
 
-	// Use the default task.go template
-	mainBaseURL, mainVersion, err := template.GetTemplateURLs(cfg, "task", "go")
+	// Use the default hourglass.go template
+	mainBaseURL, mainVersion, err := template.GetTemplateURLs(cfg, "hourglass", "go")
 	if err != nil {
 		t.Fatalf("GetTemplateURLs failed: %v", err)
 	}

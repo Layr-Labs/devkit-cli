@@ -104,13 +104,13 @@ func TestCreateCommand(t *testing.T) {
 		}
 
 		// Test template URL lookup
-		mainBaseURL, mainVersion, err := template.GetTemplateURLs(config, "task", "go")
+		mainBaseURL, mainVersion, err := template.GetTemplateURLs(config, "hourglass", "go")
 		if err != nil {
 			t.Fatalf("Failed to get template URLs: %v", err)
 		}
 
 		// Create config.yaml
-		return copyDefaultConfigToProject(logger, targetDir, projectName, "test-uuid", mainBaseURL, mainVersion, false)
+		return copyDefaultConfigToProject(logger, targetDir, projectName, "test-uuid", mainBaseURL, mainVersion, "go", false)
 	}
 
 	app := &cli.App{
