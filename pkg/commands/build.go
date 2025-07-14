@@ -56,25 +56,21 @@ var BuildCommand = &cli.Command{
 		}
 
 		// Migrate config
-		configMigrated, err := configs.MigrateConfig(logger)
+		configsMigratedCount, err := configs.MigrateConfig(logger)
 		if err != nil {
 			logger.Error("config migration failed: %w", err)
 		}
-		if configMigrated > 0 {
-			logger.Info("Config migration complete")
+		if configsMigratedCount > 0 {
+			logger.Info("configs migrated: %d", configsMigratedCount)
 		}
 
 		// Migrate contexts
-		contextsMigrated, err := contexts.MigrateContexts(logger)
+		contextsMigratedCount, err := contexts.MigrateContexts(logger)
 		if err != nil {
 			logger.Error("context migrations failed: %w", err)
 		}
-		if contextsMigrated > 0 {
-			suffix := "s"
-			if contextsMigrated == 1 {
-				suffix = ""
-			}
-			logger.Info("%d context migration%s complete", contextsMigrated, suffix)
+		if contextsMigratedCount > 0 {
+			logger.Info("contexts migrated: %d", contextsMigratedCount)
 		}
 
 		logger.Debug("Project Name: %s", cfg.Config.Project.Name)
