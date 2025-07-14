@@ -60,15 +60,16 @@ devkit --help
 
 ## 🌟 Key Commands Overview
 
-| Command        | Description                                                       |
-|----------------|-------------------------------------------------------------------|
-| `devkit avs create`   | Scaffold a new AVS project                                        |
-| `devkit avs config`   | Configure your Project (`config/config.yaml`) |
-| `devkit avs context`   | Configure your environment and AVS (`config/devnet.yaml`...) |
-| `devkit avs build`    | Compile AVS smart contracts and binaries                          |
-| `devkit avs test`     | Run Go and Forge tests for your AVS                              |
-| `devkit avs devnet`   | Manage local development network                                  |
-| `devkit avs call`     | Simulate AVS task execution locally                               |
+| Command              | Description                                                  |
+|----------------------|--------------------------------------------------------------|
+| `devkit avs create`  | Scaffold a new AVS project                                   |
+| `devkit avs config`  | Configure your Project (`config/config.yaml`)                |
+| `devkit avs context` | Configure your environment and AVS (`config/devnet.yaml`...) |
+| `devkit avs build`   | Compile AVS smart contracts and binaries                     |
+| `devkit avs test`    | Run Go and Forge tests for your AVS                          |
+| `devkit avs devnet`  | Manage local development network                             |
+| `devkit avs release` | Release your AVS application for use by operators            |
+| `devkit avs call`    | Simulate AVS task execution locally                          |
 
 
 ---
