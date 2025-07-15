@@ -27,6 +27,24 @@ var BuildCommand = &cli.Command{
 	Action: func(cCtx *cli.Context) error {
 		logger := common.LoggerFromContext(cCtx.Context)
 
+		// Migrate config
+		configsMigratedCount, err := configs.MigrateConfig(logger)
+		if err != nil {
+			logger.Error("config migration failed: %w", err)
+		}
+		if configsMigratedCount > 0 {
+			logger.Info("configs migrated: %d", configsMigratedCount)
+		}
+
+		// Migrate contexts
+		contextsMigratedCount, err := contexts.MigrateContexts(logger)
+		if err != nil {
+			logger.Error("context migrations failed: %w", err)
+		}
+		if contextsMigratedCount > 0 {
+			logger.Info("contexts migrated: %d", contextsMigratedCount)
+		}
+
 		// Run scriptPath from cwd
 		const dir = ""
 
@@ -47,24 +65,6 @@ var BuildCommand = &cli.Command{
 			if err != nil {
 				return err
 			}
-		}
-
-		// Migrate config
-		configsMigratedCount, err := configs.MigrateConfig(logger)
-		if err != nil {
-			logger.Error("config migration failed: %w", err)
-		}
-		if configsMigratedCount > 0 {
-			logger.Info("configs migrated: %d", configsMigratedCount)
-		}
-
-		// Migrate contexts
-		contextsMigratedCount, err := contexts.MigrateContexts(logger)
-		if err != nil {
-			logger.Error("context migrations failed: %w", err)
-		}
-		if contextsMigratedCount > 0 {
-			logger.Info("contexts migrated: %d", contextsMigratedCount)
 		}
 
 		// Handle version increment
