@@ -27,16 +27,16 @@ curl -fsSL https://raw.githubusercontent.com/Layr-Labs/devkit-cli/main/install-d
 Download the binary for your platform:
 ```bash
 # macOS (Apple Silicon)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-arm64-v0.0.9.tar.gz | tar xz -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.10/devkit-darwin-arm64-v0.0.10.tar.gz | tar xz -C "$HOME/bin"
 
 # macOS (Intel)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-darwin-amd64-v0.0.9.tar.gz | tar xz -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.10/devkit-darwin-amd64-v0.0.10.tar.gz | tar xz -C "$HOME/bin"
 
 # Linux (x86_64 / AMD64)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-amd64-v0.0.9.tar.gz | tar xz -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.10/devkit-linux-amd64-v0.0.10.tar.gz | tar xz -C "$HOME/bin"
 
 # Linux (ARM64 / aarch64)
-mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.9/devkit-linux-arm64-v0.0.9.tar.gz | tar xz -C "$HOME/bin"
+mkdir -p $HOME/bin && curl -sL https://s3.amazonaws.com/eigenlayer-devkit-releases/v0.0.10/devkit-linux-arm64-v0.0.10.tar.gz | tar xz -C "$HOME/bin"
 ```
 
 Add to your PATH:
