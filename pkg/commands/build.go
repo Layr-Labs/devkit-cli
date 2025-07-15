@@ -49,12 +49,6 @@ var BuildCommand = &cli.Command{
 			}
 		}
 
-		// Handle version increment
-		version := cfg.Context["devnet"].Artifact.Version
-		if version == "" {
-			version = "0"
-		}
-
 		// Migrate config
 		configsMigratedCount, err := configs.MigrateConfig(logger)
 		if err != nil {
@@ -71,6 +65,12 @@ var BuildCommand = &cli.Command{
 		}
 		if contextsMigratedCount > 0 {
 			logger.Info("contexts migrated: %d", contextsMigratedCount)
+		}
+
+		// Handle version increment
+		version := cfg.Context["devnet"].Artifact.Version
+		if version == "" {
+			version = "0"
 		}
 
 		logger.Debug("Project Name: %s", cfg.Config.Project.Name)
