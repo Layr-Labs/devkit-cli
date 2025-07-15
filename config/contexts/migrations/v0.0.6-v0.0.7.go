@@ -137,7 +137,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "deployed_l1_contracts"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{}}
+					return &yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{}}
 				},
 			},
 			// Add deployed_l2_contracts section
@@ -145,7 +145,7 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "deployed_l2_contracts"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{}}
+					return &yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{}}
 				},
 			},
 			// Remove deployed_contracts section
