@@ -44,6 +44,22 @@ func Migration_0_0_6_to_0_0_7(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "31338"}
 				},
 			},
+			// Update the transporter private_key
+			{
+				Path:      []string{"context", "transporter", "private_key"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"}
+				},
+			},
+			// Update the transporter bls_private_key
+			{
+				Path:      []string{"context", "transporter", "bls_private_key"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"}
+				},
+			},
 			// Update allocation_manager for l1 chain
 			{
 				Path:      []string{"context", "eigenlayer", "l1", "allocation_manager"},
