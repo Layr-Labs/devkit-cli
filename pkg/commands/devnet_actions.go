@@ -752,9 +752,6 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("loading config and context failed: %w", err)
 		}
-		if contextName == "" {
-			contextName = config.Config.Project.Context
-		}
 
 		// Stop both L1 and L2 containers
 		l1Container := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
