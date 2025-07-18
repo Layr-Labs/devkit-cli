@@ -528,18 +528,11 @@ func VerifyActiveStakeTableRoots(cCtx *cli.Context) error {
 	// Get logger
 	logger := common.LoggerFromContext(cCtx.Context)
 
-	// Ref selected context
-	contextName := cCtx.String("context")
-
 	// Read expected roots from context
-	_, _, contextNode, err := common.LoadContext(contextName)
+	_, _, contextNode, err := common.LoadContext(cCtx.String("context"))
 	if err != nil {
 		return fmt.Errorf("failed to load context YAML: %w", err)
 	}
-	if contextName == "" {
-		contextName = common.GetChildByKey(contextNode, "name").Value
-	}
-
 	transporterNode := common.GetChildByKey(contextNode, "transporter")
 	if transporterNode == nil {
 		return fmt.Errorf("missing 'transporter' section in context")
