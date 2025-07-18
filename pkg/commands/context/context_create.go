@@ -8,6 +8,7 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/urfave/cli/v2"
 )
 
@@ -64,7 +65,7 @@ func CreateContext(contextPath, context string) error {
 	entryName := fmt.Sprintf("%s.yaml", context)
 
 	// Place the context name in place
-	contentString := strings.ReplaceAll(string(content), "devnet", context)
+	contentString := strings.ReplaceAll(string(content), devnet.DEVNET_CONTEXT, context)
 
 	// Write the new context
 	err := os.WriteFile(contextPath, []byte(contentString), 0644)

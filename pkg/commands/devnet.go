@@ -14,6 +14,10 @@ var DevnetCommand = &cli.Command{
 			Name:  "start",
 			Usage: "Starts Docker containers and deploys local contracts",
 			Flags: append([]cli.Flag{
+				&cli.StringFlag{
+					Name:  "context",
+					Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
+				},
 				&cli.BoolFlag{
 					Name:  "reset",
 					Usage: "Wipe and restart the devnet from scratch",

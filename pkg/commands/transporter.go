@@ -35,15 +35,25 @@ var TransportCommand = &cli.Command{
 	Usage: "Transport Stake Root to L1",
 	Subcommands: []*cli.Command{
 		{
-			Name:   "run",
-			Usage:  "Immediately transport stake root to L1",
-			Flags:  append([]cli.Flag{}, common.GlobalFlags...),
+			Name:  "run",
+			Usage: "Immediately transport stake root to L1",
+			Flags: append([]cli.Flag{
+				&cli.StringFlag{
+					Name:  "context",
+					Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
+				},
+			}, common.GlobalFlags...),
 			Action: Transport,
 		},
 		{
-			Name:   "verify",
-			Usage:  "Verify that the context active_stake_roots match onchain state",
-			Flags:  append([]cli.Flag{}, common.GlobalFlags...),
+			Name:  "verify",
+			Usage: "Verify that the context active_stake_roots match onchain state",
+			Flags: append([]cli.Flag{
+				&cli.StringFlag{
+					Name:  "context",
+					Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
+				},
+			}, common.GlobalFlags...),
 			Action: VerifyActiveStakeTableRoots,
 		},
 		{
@@ -51,20 +61,31 @@ var TransportCommand = &cli.Command{
 			Usage: "Schedule transport stake root to L1",
 			Flags: append([]cli.Flag{
 				&cli.StringFlag{
+					Name:  "context",
+					Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
+				},
+				&cli.StringFlag{
 					Name:  "cron-expr",
 					Usage: "Specify a custom schedule to override config schedule",
 					Value: "",
 				},
 			}, common.GlobalFlags...),
 			Action: func(cCtx *cli.Context) error {
+				// Extract vars
+				contextName := cCtx.String("context")
+
 				// Extract context
-				cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+				cfg, err := common.LoadConfigWithContextConfig(contextName)
 				if err != nil {
 					return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
 				}
-				envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+				// Move to selectedContext if different
+				if contextName == "" {
+					contextName = cfg.Config.Project.Context
+				}
+				envCtx, ok := cfg.Context[contextName]
 				if !ok {
-					return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+					return fmt.Errorf("context '%s' not found in configuration", contextName)
 				}
 
 				// Extract cron-expr from flag or context
@@ -99,14 +120,21 @@ func Transport(cCtx *cli.Context) error {
 	// Construct and collate all roots
 	roots := make(map[uint64][32]byte)
 
+	// Extract vars
+	contextName := cCtx.String("context")
+
 	// Extract context
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	// Move to selectedContext if different
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	// Debug logging to check what's loaded
@@ -244,7 +272,7 @@ func Transport(cCtx *cli.Context) error {
 	roots[l1Config.ChainID] = root
 	roots[l2Config.ChainID] = root
 	// Write the roots to context (each time we process one)
-	err = WriteStakeTableRootsToContext(roots)
+	err = WriteStakeTableRootsToContext(cCtx, roots)
 	if err != nil {
 		return fmt.Errorf("failed to write active_stake_roots: %w", err)
 	}
@@ -282,11 +310,17 @@ func Transport(cCtx *cli.Context) error {
 }
 
 // Record StakeTableRoots in the context for later retrieval
-func WriteStakeTableRootsToContext(roots map[uint64][32]byte) error {
+func WriteStakeTableRootsToContext(cCtx *cli.Context, roots map[uint64][32]byte) error {
+	// Pull selected context from global args
+	contextName := cCtx.String("context")
+
 	// Load and navigate context to arrive at context.transporter.active_stake_roots
-	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	yamlPath, rootNode, contextNode, err := common.LoadContext(contextName)
 	if err != nil {
 		return err
+	}
+	if contextName == "" {
+		contextName = common.GetChildByKey(contextNode, "name").Value
 	}
 	transporterNode := common.GetChildByKey(contextNode, "transporter")
 	if transporterNode == nil {
@@ -384,14 +418,21 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 	// Discover and collate all roots
 	roots := make(map[uint64][32]byte)
 
+	// Extract vars
+	contextName := cCtx.String("context")
+
 	// Extract context
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	// Move to selectedContext if different
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return nil, fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return nil, fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	// Get the values from env/config
@@ -493,10 +534,16 @@ func VerifyActiveStakeTableRoots(cCtx *cli.Context) error {
 	// Get logger
 	logger := common.LoggerFromContext(cCtx.Context)
 
+	// Ref selected context
+	contextName := cCtx.String("context")
+
 	// Read expected roots from context
-	_, _, contextNode, err := common.LoadContext("devnet") // @TODO: make dynamic
+	_, _, contextNode, err := common.LoadContext(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load context YAML: %w", err)
+	}
+	if contextName == "" {
+		contextName = common.GetChildByKey(contextNode, "name").Value
 	}
 
 	transporterNode := common.GetChildByKey(contextNode, "transporter")

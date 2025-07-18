@@ -62,6 +62,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Extract vars
+	contextName := cCtx.String("context")
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
 	skipTransporter := cCtx.Bool("skip-transporter")
@@ -86,21 +87,24 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		logger.Info("contexts migrated: %d", contextsMigratedCount)
 	}
 
-	// Load config for devnet
-	config, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Load config for selected context
+	config, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return err
 	}
+	if contextName == "" {
+		contextName = config.Config.Project.Context
+	}
 
 	// Check for context
-	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	yamlPath, rootNode, contextNode, err := common.LoadContext(contextName)
 	if err != nil {
 		return fmt.Errorf("context loading failed: %w", err)
 	}
 
 	// Fetch EigenLayer addresses using Zeus if requested
 	if useZeus {
-		err = common.UpdateContextWithZeusAddresses(cCtx.Context, logger, contextNode, devnet.DEVNET_CONTEXT)
+		err = common.UpdateContextWithZeusAddresses(cCtx.Context, logger, contextNode, contextName)
 		if err != nil {
 			logger.Warn("Failed to fetch addresses from Zeus: %v", err)
 			logger.Info("Continuing with addresses from config...")
@@ -196,11 +200,11 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	l1ContainerName := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
 	l2ContainerName := fmt.Sprintf("devkit-devnet-l2-%s", config.Config.Project.Name)
-	l1ChainConfig, found := config.Context[devnet.DEVNET_CONTEXT].Chains[devnet.L1]
+	l1ChainConfig, found := config.Context[contextName].Chains[devnet.L1]
 	if !found {
 		return fmt.Errorf("failed to find a chain with name: l1 in devnet.yaml")
 	}
-	l2ChainConfig, found := config.Context[devnet.DEVNET_CONTEXT].Chains[devnet.L2]
+	l2ChainConfig, found := config.Context[contextName].Chains[devnet.L2]
 	if !found {
 		return fmt.Errorf("failed to find a chain with name: l2 in devnet.yaml")
 	}
@@ -292,7 +296,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Fund stakers with strategy tokens
-	if devnet.DEVNET_CONTEXT == "devnet" {
+	if contextName == devnet.DEVNET_CONTEXT {
 		logger.Info("Funding stakers with strategy tokens...")
 
 		var tokenAddresses []string
@@ -412,7 +416,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 		// Run scheduler in the background
 		go func() {
-			if err := ScheduleTransport(&childCtx, config.Context[devnet.DEVNET_CONTEXT].Transporter.Schedule); err != nil && !errors.Is(err, context.Canceled) {
+			if err := ScheduleTransport(&childCtx, config.Context[contextName].Transporter.Schedule); err != nil && !errors.Is(err, context.Canceled) {
 				logger.Error("ScheduleTransport failed: %v", err)
 				stop()
 			}
@@ -464,7 +468,9 @@ func DeployL2ContractsAction(cCtx *cli.Context) error {
 
 	// Run scriptPath from cwd
 	const dir = ""
-	const context = "devnet" // @TODO: use selected context name
+
+	// Set context/default if missing
+	contextName := cCtx.String("context")
 
 	// Set path for .devkit scripts
 	scriptsDir := filepath.Join(".devkit", "scripts")
@@ -475,9 +481,12 @@ func DeployL2ContractsAction(cCtx *cli.Context) error {
 	}
 
 	// Check for context
-	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	yamlPath, rootNode, contextNode, err := common.LoadContext(contextName)
 	if err != nil {
 		return fmt.Errorf("context loading failed: %w", err)
+	}
+	if contextName == "" {
+		contextName = common.GetChildByKey(contextNode, "name").Value
 	}
 
 	// Loop scripts with cloned context
@@ -532,7 +541,7 @@ func DeployL2ContractsAction(cCtx *cli.Context) error {
 	}
 	// Empty log line to split these logs from the main body for easy identification
 	logger.Title("Save l2 contract artifacts")
-	err = extractContractOutputs(cCtx, context, contractsList)
+	err = extractContractOutputs(cCtx, contextName, contractsList)
 	if err != nil {
 		return fmt.Errorf("failed to write l2 contract artefacts: %w", err)
 	}
@@ -563,7 +572,9 @@ func DeployContractsAction(cCtx *cli.Context) error {
 
 	// Run scriptPath from cwd
 	const dir = ""
-	const context = "devnet" // @TODO: use selected context name
+
+	// Set context/default if missing
+	contextName := cCtx.String("context")
 
 	// Set path for .devkit scripts
 	scriptsDir := filepath.Join(".devkit", "scripts")
@@ -576,9 +587,12 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	}
 
 	// Check for context
-	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	yamlPath, rootNode, contextNode, err := common.LoadContext(contextName)
 	if err != nil {
 		return fmt.Errorf("context loading failed: %w", err)
+	}
+	if contextName == "" {
+		contextName = common.GetChildByKey(contextNode, "name").Value
 	}
 
 	// Loop scripts with cloned context
@@ -631,7 +645,7 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	if err := contracts.Decode(&contractsList); err != nil {
 		return fmt.Errorf("decode deployed_l1_contracts: %w", err)
 	}
-	err = extractContractOutputs(cCtx, context, contractsList)
+	err = extractContractOutputs(cCtx, contextName, contractsList)
 	if err != nil {
 		return fmt.Errorf("failed to write l1 contract artefacts: %w", err)
 	}
@@ -688,6 +702,8 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		return nil
 	}
 
+	// Extract vars
+	contextName := cCtx.String("context")
 	projectName := cCtx.String("project.name")
 	projectPort := cCtx.Int("port")
 	l1Port := cCtx.Int("l1-port")
@@ -717,9 +733,12 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 	if devnet.FileExistsInRoot(filepath.Join(common.DefaultConfigWithContextConfigPath, common.BaseConfig)) {
 		// Load config
-		config, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+		config, err := common.LoadConfigWithContextConfig(contextName)
 		if err != nil {
 			return err
+		}
+		if contextName == "" {
+			contextName = config.Config.Project.Context
 		}
 
 		// Stop both L1 and L2 containers
@@ -767,18 +786,24 @@ func ListDevnetContainersAction(cCtx *cli.Context) error {
 }
 
 func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
 	uri := cCtx.String("uri")
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 	l1ChainCfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, contextName)
 	}
 	client, err := ethclient.Dial(l1ChainCfg.RPCURL)
 	if err != nil {
@@ -808,18 +833,24 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 }
 
 func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
 
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 	l1ChainCfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, contextName)
 	}
 	client, err := ethclient.Dial(l1ChainCfg.RPCURL)
 	if err != nil {
@@ -857,25 +888,31 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 		}
 	}
 	if !foundInDeployed {
-		return fmt.Errorf("AvsRegistrar contract not found in deployed l1 contracts for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("AvsRegistrar contract not found in deployed l1 contracts for context '%s'", contextName)
 	}
 
 	return contractCaller.SetAVSRegistrar(cCtx.Context, avsAddr, registrarAddr)
 }
 
 func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
 
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 	l1ChainCfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("L1 chain configuration ('%s') not found in context '%s'", devnet.L1, contextName)
 	}
 	client, err := ethclient.Dial(l1ChainCfg.RPCURL)
 	if err != nil {
@@ -921,13 +958,20 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 }
 
 func DelegateToOperatorsAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for delegate to operators: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	logger.Info("Delegating to operators...")
@@ -944,13 +988,20 @@ func DelegateToOperatorsAction(cCtx *cli.Context, logger iface.Logger) error {
 }
 
 func DepositIntoStrategiesAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for deposit into strategies: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	logger.Info("Depositing into strategies...")
@@ -966,13 +1017,19 @@ func DepositIntoStrategiesAction(cCtx *cli.Context, logger iface.Logger) error {
 }
 
 func RegisterOperatorsToEigenLayerFromConfigAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	logger.Info("Registering operators with EigenLayer...")
@@ -993,14 +1050,19 @@ func RegisterOperatorsToEigenLayerFromConfigAction(cCtx *cli.Context, logger ifa
 }
 
 func RegisterOperatorsToAvsFromConfigAction(cCtx *cli.Context, logger iface.Logger) error {
+	// Extract vars
+	contextName := cCtx.String("context")
 
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	logger.Info("Registering operators to AVS from config...")
@@ -1022,12 +1084,17 @@ func RegisterOperatorsToAvsFromConfigAction(cCtx *cli.Context, logger iface.Logg
 
 func FetchZeusAddressesAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx.Context)
+
+	// Extract vars
 	contextName := cCtx.String("context")
 
 	// Check for context
-	yamlPath, rootNode, contextNode, err := common.LoadContext("devnet") // @TODO: use selected context name
+	yamlPath, rootNode, contextNode, err := common.LoadContext(contextName)
 	if err != nil {
 		return fmt.Errorf("context loading failed: %w", err)
+	}
+	if contextName == "" {
+		contextName = common.GetChildByKey(contextNode, "name").Value
 	}
 
 	// Update the context with the fetched addresses
@@ -1055,22 +1122,28 @@ func extractHostPort(portStr string) string {
 }
 
 func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.Logger) error {
+	// Extract vars
+	contextName := cCtx.String("context")
+
 	if operatorAddress == "" {
 		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
 	}
 
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
 
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1123,6 +1196,9 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 }
 
 func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress string, operatorSetID uint32, payloadHex string) error {
+	// Extract vars
+	contextName := cCtx.String("context")
+
 	if operatorAddress == "" {
 		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
 	}
@@ -1130,18 +1206,21 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		return fmt.Errorf("payloadHex parameter is required and cannot be empty")
 	}
 
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
 
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1206,23 +1285,29 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 }
 
 func depositIntoStrategy(cCtx *cli.Context, stakerSpec common.StakerSpec, logger iface.Logger) error {
+	// Extract vars
+	contextName := cCtx.String("context")
+
 	if stakerSpec.StakerAddress == "" {
 		return fmt.Errorf("staker address parameter is required and cannot be empty")
 	}
 
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
 
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1266,20 +1351,25 @@ func depositIntoStrategy(cCtx *cli.Context, stakerSpec common.StakerSpec, logger
 }
 
 func delegateToOperator(cCtx *cli.Context, stakerSpec common.StakerSpec, operator ethcommon.Address, logger iface.Logger) error {
+	// Extract vars
+	contextName := cCtx.String("context")
 
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
 
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1413,13 +1503,20 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 }
 
 func ModifyAllocationsAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	// Load context + config
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for modify allocations: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	for _, op := range envCtx.Operators {
@@ -1444,23 +1541,28 @@ func ModifyAllocationsAction(cCtx *cli.Context, logger iface.Logger) error {
 }
 
 func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivateKey string, logger iface.Logger) error {
+	// Extract vars
+	contextName := cCtx.String("context")
+
 	if operatorAddress == "" {
 		return fmt.Errorf("modifyAllocations:operatorAddress parameter is required and cannot be empty")
 	}
 
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
-
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1582,18 +1684,24 @@ func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivat
 }
 
 func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for set allocation delay: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1676,18 +1784,24 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 
 // ConfigureOpSetCurveType
 func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for configure op set curve type: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1749,18 +1863,24 @@ func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error
 }
 
 func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for request op set generation reservation: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1803,29 +1923,35 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 }
 
 func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logger) error {
+	// Extract vars
+	contextName := cCtx.String("context")
+
 	// Skip this call if funding is disabled
 	if os.Getenv("SKIP_DEVNET_FUNDING") == "true" {
 		log.Println("🔧 Skipping WhitelistChainIdInCrossRegistry (test mode)")
 		return nil
 	}
 
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	l2Cfg, ok := envCtx.Chains[devnet.L2]
 	if !ok {
-		return fmt.Errorf("failed to get l2 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l2 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)
@@ -1872,18 +1998,24 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 }
 
 func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
-	cfg, err := common.LoadConfigWithContextConfig(devnet.DEVNET_CONTEXT)
+	// Extract vars
+	contextName := cCtx.String("context")
+
+	cfg, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for register key in key registrar: %w", err)
 	}
-	envCtx, ok := cfg.Context[devnet.DEVNET_CONTEXT]
+	if contextName == "" {
+		contextName = cfg.Config.Project.Context
+	}
+	envCtx, ok := cfg.Context[contextName]
 	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
 	l1Cfg, ok := envCtx.Chains[devnet.L1]
 	if !ok {
-		return fmt.Errorf("failed to get l1 chain config for context '%s'", devnet.DEVNET_CONTEXT)
+		return fmt.Errorf("failed to get l1 chain config for context '%s'", contextName)
 	}
 
 	client, err := ethclient.Dial(l1Cfg.RPCURL)

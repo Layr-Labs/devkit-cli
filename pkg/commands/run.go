@@ -13,7 +13,12 @@ import (
 var RunCommand = &cli.Command{
 	Name:  "run",
 	Usage: "Start offchain AVS components",
-	Flags: append([]cli.Flag{}, common.GlobalFlags...),
+	Flags: append([]cli.Flag{
+		&cli.StringFlag{
+			Name:  "context",
+			Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
+		},
+	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		// Invoke and return AVSRun
 		return AVSRun(cCtx)
@@ -35,7 +40,7 @@ func AVSRun(cCtx *cli.Context) error {
 	scriptPath := filepath.Join(".devkit", "scripts", "run")
 
 	// Set path for context yaml
-	contextJSON, err := common.LoadRawContext("devnet") // @TODO: use selected context name
+	contextJSON, err := common.LoadRawContext(cCtx.String("context"))
 	if err != nil {
 		return fmt.Errorf("failed to load context: %w", err)
 	}
