@@ -311,16 +311,10 @@ func Transport(cCtx *cli.Context) error {
 
 // Record StakeTableRoots in the context for later retrieval
 func WriteStakeTableRootsToContext(cCtx *cli.Context, roots map[uint64][32]byte) error {
-	// Pull selected context from global args
-	contextName := cCtx.String("context")
-
 	// Load and navigate context to arrive at context.transporter.active_stake_roots
-	yamlPath, rootNode, contextNode, err := common.LoadContext(contextName)
+	yamlPath, rootNode, contextNode, err := common.LoadContext(cCtx.String("context"))
 	if err != nil {
 		return err
-	}
-	if contextName == "" {
-		contextName = common.GetChildByKey(contextNode, "name").Value
 	}
 	transporterNode := common.GetChildByKey(contextNode, "transporter")
 	if transporterNode == nil {
