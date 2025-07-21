@@ -7,8 +7,6 @@ import (
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
-	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 	"gopkg.in/yaml.v3"
 
 	"github.com/urfave/cli/v2"
@@ -54,21 +52,13 @@ var BuildCommand = &cli.Command{
 		// Load selected context
 		contextName := cCtx.String("context")
 
-		// First check if config is in context (for testing)
-		if cfgValue := cCtx.Context.Value(testutils.ConfigContextKey); cfgValue != nil {
-			// Use test config from context
-			cfg = cfgValue.(*common.ConfigWithContextConfig)
-			contextName = devnet.DEVNET_CONTEXT
-		} else {
-			// Load from file if not in context
-			var err error
-			cfg, err = common.LoadConfigWithContextConfig(contextName)
-			if err != nil {
-				return err
-			}
-			if contextName == "" {
-				contextName = cfg.Config.Project.Context
-			}
+		// Load from file if not in context
+		cfg, err = common.LoadConfigWithContextConfig(contextName)
+		if err != nil {
+			return err
+		}
+		if contextName == "" {
+			contextName = cfg.Config.Project.Context
 		}
 
 		// Handle version increment

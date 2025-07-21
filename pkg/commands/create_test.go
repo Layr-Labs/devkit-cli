@@ -13,6 +13,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
@@ -190,7 +191,7 @@ build:
 		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
-	if err := buildApp.Run([]string{"app", "build"}); err != nil {
+	if err := buildApp.Run([]string{"app", "build", "--context", devnet.DEVNET_CONTEXT}); err != nil {
 		t.Errorf("Failed to execute build command: %v", err)
 	}
 }

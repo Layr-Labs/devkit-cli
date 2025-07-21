@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/urfave/cli/v2"
@@ -25,6 +27,9 @@ func TestBuildCommand(t *testing.T) {
 	}
 	contextsDir := filepath.Join(configDir, "contexts")
 	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(configs.ConfigYamls[configs.LatestVersion]), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
@@ -75,7 +80,7 @@ build:
 		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
-	if err := app.Run([]string{"app", "build"}); err != nil {
+	if err := app.Run([]string{"app", "build", "--context", devnet.DEVNET_CONTEXT}); err != nil {
 		t.Errorf("Failed to execute build command: %v", err)
 	}
 }
@@ -91,6 +96,9 @@ func TestBuildCommand_NoContracts(t *testing.T) {
 	}
 	contextsDir := filepath.Join(configDir, "contexts")
 	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(configs.ConfigYamls[configs.LatestVersion]), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
@@ -126,7 +134,7 @@ echo "Mock build executed"`
 		Commands: []*cli.Command{testutils.WithTestConfigAndNoopLogger(BuildCommand)},
 	}
 
-	if err := app.Run([]string{"app", "build"}); err != nil {
+	if err := app.Run([]string{"app", "build", "--context", devnet.DEVNET_CONTEXT}); err != nil {
 		t.Errorf("Failed to execute build command: %v", err)
 	}
 }
@@ -141,6 +149,9 @@ func TestBuildCommand_ContextCancellation(t *testing.T) {
 	}
 	contextsDir := filepath.Join(configDir, "contexts")
 	if err := os.MkdirAll(contextsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.yaml"), []byte(configs.ConfigYamls[configs.LatestVersion]), 0644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(contextsDir, "devnet.yaml"), []byte(contexts.ContextYamls[contexts.LatestVersion]), 0644); err != nil {
@@ -177,7 +188,7 @@ echo "Mock build executed"`
 
 	done := make(chan error, 1)
 	go func() {
-		done <- app.RunContext(ctx, []string{"app", "build"})
+		done <- app.RunContext(ctx, []string{"app", "build", "--context", devnet.DEVNET_CONTEXT})
 	}()
 
 	cancel()
