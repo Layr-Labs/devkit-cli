@@ -77,7 +77,7 @@ var DevnetCommand = &cli.Command{
 			Name:   "deploy-contracts",
 			Usage:  "Deploy all L1/L2 and AVS contracts to devnet",
 			Flags:  []cli.Flag{},
-			Action: DeployContractsAction,
+			Action: DeployL1ContractsAction,
 		},
 		{
 			Name:  "stop",

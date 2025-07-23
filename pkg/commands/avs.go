@@ -16,6 +16,7 @@ var AVSCommand = &cli.Command{
 		context.Command,
 		BuildCommand,
 		DevnetCommand,
+		DeployCommand,
 		TransportCommand,
 		RunCommand,
 		TestCommand,

@@ -151,19 +151,19 @@ func Transport(cCtx *cli.Context) error {
 
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
-	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
+	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, common.L1)
 	if err != nil {
 		l1RpcUrl = devnet.DEFAULT_L1_ANVIL_RPCURL
 	}
-	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L2)
+	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, common.L2)
 	if err != nil {
 		l2RpcUrl = devnet.DEFAULT_L2_ANVIL_RPCURL
 	}
-	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
+	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, common.L1, logger)
 	if err != nil {
 		l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
 	}
-	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L2, logger)
+	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, common.L2, logger)
 	if err != nil {
 		l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
 	}
@@ -454,19 +454,19 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
-	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L1)
+	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, common.L1)
 	if err != nil {
 		l1RpcUrl = devnet.DEFAULT_L1_ANVIL_RPCURL
 	}
-	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, devnet.L2)
+	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, common.L2)
 	if err != nil {
 		l2RpcUrl = devnet.DEFAULT_L2_ANVIL_RPCURL
 	}
-	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L1, logger)
+	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, common.L1, logger)
 	if err != nil {
 		l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
 	}
-	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, devnet.L2, logger)
+	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, common.L2, logger)
 	if err != nil {
 		l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
 	}
