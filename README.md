@@ -295,7 +295,32 @@ Publishes your AVS release to the EigenLayer ReleaseManager contract, making it 
 Before publishing a release, ensure you have:
 1. Built your AVS with `devkit avs build`
 2. A running devnet
-3. Properly configured registry in your context
+3. Properly configured registry in your context (or specify the command parameter)
+4. **Set release metadata URI** for your operator sets (see below)
+
+> [!IMPORTANT]
+> You must set a release metadata URI before publishing releases. The metadata URI provides important information about your release to operators.
+
+#### Setting Release Metadata URI
+
+Before publishing a release, set the metadata URI for your operator sets:
+
+```bash
+# Set metadata URI for operator set 0
+devkit avs release uri --metadata-uri "https://example.com/metadata.json" --operator-set-id 0
+
+# Set metadata URI for operator set 1
+devkit avs release uri --metadata-uri "https://example.com/metadata.json" --operator-set-id 1
+```
+
+**Required Flags:**
+- `--metadata-uri`: The URI pointing to your release metadata
+- `--operator-set-id`: The operator set ID to configure
+
+**Optional Flags:**
+- `--avs-address`: AVS address (uses context if not provided)
+
+#### Publishing a Release
 
 Run this from your project directory:
 > [!IMPORTANT]

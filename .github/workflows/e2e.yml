@@ -49,7 +49,7 @@ jobs:
 
       - name: Run devkit avs build
         env:
-            DOCKER_BUILDKIT: 1
+          DOCKER_BUILDKIT: 1
         run: |
           cd ./my-awesome-avs/
           devkit avs build
@@ -91,6 +91,24 @@ jobs:
         run: |
           cd ./my-awesome-avs/
           devkit avs transport verify
+
+      - name: Set release metadata URI
+        run: |
+          cd ./my-awesome-avs/
+
+          # Set URI for operator set 0
+          devkit avs release uri \
+            --metadata-uri "https://github.com/example/metadata-0.json" \
+            --operator-set-id 0
+
+          echo "✅ Set metadata URI for operator set 0"
+
+          # Set URI for operator set 1
+          devkit avs release uri \
+            --metadata-uri "https://github.com/example/metadata-1.json" \
+            --operator-set-id 1
+
+          echo "✅ Set metadata URI for operator set 1"
 
       - name: Stop devnet
         run: |

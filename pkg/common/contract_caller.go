@@ -707,7 +707,7 @@ func (cc *ContractCaller) GetRegistry() *contracts.ContractRegistry {
 	return cc.registry
 }
 
-func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.Address, artifacts []releasemanager.IReleaseManagerTypesArtifact, operatorSetId uint32, upgradeByTime int64) error {
+func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.Address, artifacts []releasemanager.IReleaseManagerTypesArtifact, operatorSetId uint32, upgradeByTime uint32) error {
 	opts, err := cc.buildTxOpts()
 	if err != nil {
 		return fmt.Errorf("failed to build transaction options: %w", err)
@@ -719,21 +719,57 @@ func (cc *ContractCaller) PublishRelease(ctx context.Context, avsAddress common.
 	operatorSet := releasemanager.OperatorSet{Avs: avsAddress, Id: operatorSetId}
 	release := releasemanager.IReleaseManagerTypesRelease{
 		Artifacts:     artifacts,
-		UpgradeByTime: uint32(upgradeByTime),
+		UpgradeByTime: upgradeByTime,
 	}
 	return cc.SendAndWaitForTransaction(ctx, "PublishRelease", func() (*types.Transaction, error) {
 		tx, err := releaseManager.PublishRelease(opts, operatorSet, release)
 		if err == nil && tx != nil {
-			cc.logger.Debug(
-				"Transaction hash for PublishRelease: %s\n"+
+			cc.logger.Info("Transaction hash for PublishRelease: %s", tx.Hash().Hex())
+		}
+		return tx, err
+	})
+}
+
+func (cc *ContractCaller) GetReleaseMetadataUri(avsAddress common.Address, operatorSetId uint32) (string, error) {
+	releaseManager, err := cc.registry.GetReleaseManager(cc.releaseManagerAddr)
+	if err != nil {
+		return "", fmt.Errorf("failed to get ReleaseManager: %w", err)
+	}
+	operatorSet := releasemanager.OperatorSet{Avs: avsAddress, Id: operatorSetId}
+	uri, err := releaseManager.GetMetadataURI(&bind.CallOpts{}, operatorSet)
+	if err == nil {
+		cc.logger.Info("release metadata uri found %s, for %s", uri, operatorSet)
+	}
+	return uri, err
+}
+
+func (cc *ContractCaller) SetReleaseMetadata(
+	ctx context.Context,
+	metadataUri string,
+	avsAddress common.Address,
+	operatorSetId uint32,
+) error {
+	opts, err := cc.buildTxOpts()
+	if err != nil {
+		return fmt.Errorf("failed to build transaction options: %w", err)
+	}
+	releaseManager, err := cc.registry.GetReleaseManager(cc.releaseManagerAddr)
+	if err != nil {
+		return fmt.Errorf("failed to set ReleaseManager metadata uri: %w", err)
+	}
+	operatorSet := releasemanager.OperatorSet{Avs: avsAddress, Id: operatorSetId}
+	return cc.SendAndWaitForTransaction(ctx, "PublishMetadataURI", func() (*types.Transaction, error) {
+		tx, err := releaseManager.PublishMetadataURI(opts, operatorSet, metadataUri)
+		if err == nil && tx != nil {
+			cc.logger.Info(
+				"Transaction hash for PublishMetadataUri: %s\n"+
 					"operatorSet: %s\n"+
-					"release: %s",
+					"uri: %s",
 				tx.Hash().Hex(),
 				operatorSet,
-				release,
+				metadataUri,
 			)
 		}
 		return tx, err
 	})
-
 }
