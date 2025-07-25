@@ -21,6 +21,10 @@ var ReleaseCommand = &cli.Command{
 			Name:  "publish",
 			Usage: "Publish a new AVS release",
 			Flags: append(common.GlobalFlags, []cli.Flag{
+				&cli.StringFlag{
+					Name:  "context",
+					Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
+				},
 				&cli.Int64Flag{
 					Name:     "upgrade-by-time",
 					Usage:    "Unix timestamp by which the upgrade must be completed",
@@ -37,6 +41,10 @@ var ReleaseCommand = &cli.Command{
 			Name:  "uri",
 			Usage: "Set release metadata URI for an operator set",
 			Flags: append(common.GlobalFlags, []cli.Flag{
+				&cli.StringFlag{
+					Name:  "context",
+					Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
+				},
 				&cli.StringFlag{
 					Name:     "metadata-uri",
 					Usage:    "Metadata URI to set for the release",
