@@ -568,17 +568,16 @@ func DepositIntoStrategiesAction(cCtx *cli.Context, logger iface.Logger) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, err := common.LoadConfigWithContextConfig(contextName)
-	if err != nil {
-		return fmt.Errorf("failed to load configurations for deposit into strategies: %w", err)
-	}
+	// Load config for selected context
+	var cfg *common.ConfigWithContextConfig
+	var err error
 	if contextName == "" {
 		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
 	} else {
 		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
 	}
 	if err != nil {
-		return fmt.Errorf("loading config and context failed: %w", err)
+		return fmt.Errorf("failed to load configurations for deposit into strategies: %w", err)
 	}
 
 	// Extract context details
