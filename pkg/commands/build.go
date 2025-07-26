@@ -53,12 +53,9 @@ var BuildCommand = &cli.Command{
 		contextName := cCtx.String("context")
 
 		// Load from file if not in context
-		cfg, err = common.LoadConfigWithContextConfig(contextName)
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
 		if err != nil {
 			return err
-		}
-		if contextName == "" {
-			contextName = cfg.Config.Project.Context
 		}
 
 		// Handle version increment

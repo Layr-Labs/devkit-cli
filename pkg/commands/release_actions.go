@@ -33,14 +33,10 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	contextName := cCtx.String("context")
 
 	// Get build artifact from context first to read registry URL and version
-	cfg, err := common.LoadConfigWithContextConfig(contextName)
+	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
 	}
-	if contextName == "" {
-		contextName = cfg.Config.Project.Context
-	}
-
 	if cfg.Context[contextName].Artifact == nil {
 		return fmt.Errorf("no artifact found in context. Please run 'devkit avs build' first")
 	}
@@ -158,7 +154,7 @@ func processOperatorSetsAndPublishReleaseOnChain(
 	ociBuilder := artifact.NewOCIArtifactBuilder(logger)
 
 	// Get AVS name from context for artifact naming
-	cfg, err := common.LoadConfigWithContextConfig(contextName)
+	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
 	}
@@ -324,7 +320,7 @@ func publishReleaseToReleaseManagerAction(
 	upgradeByTime int64,
 	artifacts []releasemanager.IReleaseManagerTypesArtifact,
 ) error {
-	cfg, err := common.LoadConfigWithContextConfig(contextName)
+	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
 	}
@@ -388,14 +384,10 @@ func setReleaseMetadataURIAction(cCtx *cli.Context) error {
 	contextName := cCtx.String("context")
 
 	// Load configuration
-	cfg, err := common.LoadConfigWithContextConfig(contextName)
+	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
 	}
-	if contextName == "" {
-		contextName = cfg.Config.Project.Context
-	}
-
 	// Get AVS address from flag or context
 	var avsAddress string
 	if avsAddressStr != "" {

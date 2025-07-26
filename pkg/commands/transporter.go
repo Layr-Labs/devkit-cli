@@ -75,13 +75,9 @@ var TransportCommand = &cli.Command{
 				contextName := cCtx.String("context")
 
 				// Extract context
-				cfg, err := common.LoadConfigWithContextConfig(contextName)
+				cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
 				if err != nil {
 					return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
-				}
-				// Move to selectedContext if different
-				if contextName == "" {
-					contextName = cfg.Config.Project.Context
 				}
 				envCtx, ok := cfg.Context[contextName]
 				if !ok {
@@ -124,13 +120,9 @@ func Transport(cCtx *cli.Context) error {
 	contextName := cCtx.String("context")
 
 	// Extract context
-	cfg, err := common.LoadConfigWithContextConfig(contextName)
+	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
-	}
-	// Move to selectedContext if different
-	if contextName == "" {
-		contextName = cfg.Config.Project.Context
 	}
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
@@ -416,13 +408,9 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 	contextName := cCtx.String("context")
 
 	// Extract context
-	cfg, err := common.LoadConfigWithContextConfig(contextName)
+	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
-	}
-	// Move to selectedContext if different
-	if contextName == "" {
-		contextName = cfg.Config.Project.Context
 	}
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
