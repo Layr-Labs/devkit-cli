@@ -576,9 +576,9 @@ func updateContextWithVersion(contextName, version string) error {
 	var rootNode, contextNode *yaml.Node
 	var err error
 	if contextName == "" {
-		yamlPath, rootNode, contextNode, contextName, err = common.LoadDefaultContext()
+		yamlPath, rootNode, contextNode, _, err = common.LoadDefaultContext()
 	} else {
-		yamlPath, rootNode, contextNode, contextName, err = common.LoadContext(contextName)
+		yamlPath, rootNode, contextNode, _, err = common.LoadContext(contextName)
 	}
 	if err != nil {
 		return fmt.Errorf("context loading failed: %w", err)

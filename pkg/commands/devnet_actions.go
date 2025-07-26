@@ -745,9 +745,9 @@ func StopDevnetAction(cCtx *cli.Context) error {
 		var err error
 		var config *common.ConfigWithContextConfig
 		if contextName == "" {
-			config, contextName, err = common.LoadDefaultConfigWithContextConfig()
+			config, _, err = common.LoadDefaultConfigWithContextConfig()
 		} else {
-			config, contextName, err = common.LoadConfigWithContextConfig(contextName)
+			config, _, err = common.LoadConfigWithContextConfig(contextName)
 		}
 		if err != nil {
 			return fmt.Errorf("loading config and context failed: %w", err)
