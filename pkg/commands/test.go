@@ -38,8 +38,17 @@ func AVSTest(cCtx *cli.Context) error {
 	// Set path for .devkit scripts
 	scriptPath := filepath.Join(".devkit", "scripts", "test")
 
+	// Check for flagged contextName
+	contextName := cCtx.String("context")
+
 	// Set path for context yaml
-	contextJSON, err := common.LoadRawContext(cCtx.String("context"))
+	var err error
+	var contextJSON []byte
+	if contextName == "" {
+		contextJSON, _, err = common.LoadDefaultRawContext()
+	} else {
+		contextJSON, _, err = common.LoadRawContext(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load context: %w", err)
 	}

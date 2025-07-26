@@ -34,6 +34,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
 
 type DeployContractTransport struct {
@@ -88,15 +89,20 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Load config for selected context
-	config, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	var config *common.ConfigWithContextConfig
+	if contextName == "" {
+		config, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		config, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("loading config and context failed: %w", err)
 	}
 
-	// Check for context
-	yamlPath, rootNode, contextNode, err := common.LoadContext(contextName)
+	// Load the context nodes
+	yamlPath, rootNode, contextNode, contextName, err := common.LoadContext(contextName)
 	if err != nil {
-		return fmt.Errorf("context loading failed: %w", err)
+		return fmt.Errorf("loading context nodes failed: %w", err)
 	}
 
 	// Fetch EigenLayer addresses using Zeus if requested
@@ -451,9 +457,9 @@ func StartDevnetAction(cCtx *cli.Context) error {
 }
 
 func DeployL2ContractsAction(cCtx *cli.Context) error {
-
 	// Get logger
 	logger := common.LoggerFromContext(cCtx.Context)
+
 	// Check if docker is running, else try to start it
 	err := common.EnsureDockerIsRunning(cCtx)
 	if err != nil {
@@ -478,7 +484,13 @@ func DeployL2ContractsAction(cCtx *cli.Context) error {
 	}
 
 	// Check for context
-	yamlPath, rootNode, contextNode, contextName, err := common.LoadContext(contextName)
+	var yamlPath string
+	var rootNode, contextNode *yaml.Node
+	if contextName == "" {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadDefaultContext()
+	} else {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadContext(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("context loading failed: %w", err)
 	}
@@ -581,7 +593,13 @@ func DeployContractsAction(cCtx *cli.Context) error {
 	}
 
 	// Check for context
-	yamlPath, rootNode, contextNode, contextName, err := common.LoadContext(contextName)
+	var yamlPath string
+	var rootNode, contextNode *yaml.Node
+	if contextName == "" {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadDefaultContext()
+	} else {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadContext(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("context loading failed: %w", err)
 	}
@@ -724,9 +742,15 @@ func StopDevnetAction(cCtx *cli.Context) error {
 
 	if devnet.FileExistsInRoot(filepath.Join(common.DefaultConfigWithContextConfigPath, common.BaseConfig)) {
 		// Load config
-		config, _, err := common.LoadConfigWithContextConfig(contextName)
+		var err error
+		var config *common.ConfigWithContextConfig
+		if contextName == "" {
+			config, contextName, err = common.LoadDefaultConfigWithContextConfig()
+		} else {
+			config, contextName, err = common.LoadConfigWithContextConfig(contextName)
+		}
 		if err != nil {
-			return err
+			return fmt.Errorf("loading config and context failed: %w", err)
 		}
 
 		// Stop both L1 and L2 containers
@@ -776,10 +800,18 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
-	if err != nil {
-		return fmt.Errorf("failed to load configurations: %w", err)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
 	}
+	if err != nil {
+		return fmt.Errorf("loading config and context failed: %w", err)
+	}
+
 	uri := cCtx.String("uri")
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
@@ -820,10 +852,19 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
-	if err != nil {
-		return fmt.Errorf("failed to load configurations: %w", err)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
 	}
+	if err != nil {
+		return fmt.Errorf("loading config and context failed: %w", err)
+	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -878,10 +919,19 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
-	if err != nil {
-		return fmt.Errorf("failed to load configurations: %w", err)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
 	}
+	if err != nil {
+		return fmt.Errorf("loading config and context failed: %w", err)
+	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -937,10 +987,19 @@ func DelegateToOperatorsAction(cCtx *cli.Context, logger iface.Logger) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for delegate to operators: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -963,10 +1022,19 @@ func DepositIntoStrategiesAction(cCtx *cli.Context, logger iface.Logger) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for deposit into strategies: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -988,10 +1056,19 @@ func RegisterOperatorsToEigenLayerFromConfigAction(cCtx *cli.Context, logger ifa
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1018,10 +1095,19 @@ func RegisterOperatorsToAvsFromConfigAction(cCtx *cli.Context, logger iface.Logg
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1051,7 +1137,14 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 	contextName := cCtx.String("context")
 
 	// Check for context
-	yamlPath, rootNode, contextNode, contextName, err := common.LoadContext(contextName)
+	var yamlPath string
+	var rootNode, contextNode *yaml.Node
+	var err error
+	if contextName == "" {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadDefaultContext()
+	} else {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadContext(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("context loading failed: %w", err)
 	}
@@ -1088,10 +1181,19 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 		return fmt.Errorf("operatorAddress parameter is required and cannot be empty")
 	}
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1161,10 +1263,19 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		return fmt.Errorf("payloadHex parameter is required and cannot be empty")
 	}
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1243,10 +1354,19 @@ func depositIntoStrategy(cCtx *cli.Context, stakerSpec common.StakerSpec, logger
 		return fmt.Errorf("staker address parameter is required and cannot be empty")
 	}
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1301,10 +1421,19 @@ func delegateToOperator(cCtx *cli.Context, stakerSpec common.StakerSpec, operato
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1449,11 +1578,19 @@ func ModifyAllocationsAction(cCtx *cli.Context, logger iface.Logger) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	// Load context + config
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for modify allocations: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1488,10 +1625,19 @@ func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivat
 		return fmt.Errorf("modifyAllocations:operatorAddress parameter is required and cannot be empty")
 	}
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1624,10 +1770,19 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for set allocation delay: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1721,10 +1876,19 @@ func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for configure op set curve type: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1797,10 +1961,19 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for request op set generation reservation: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1860,10 +2033,19 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 		return nil
 	}
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -1926,10 +2108,19 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for register key in key registrar: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)

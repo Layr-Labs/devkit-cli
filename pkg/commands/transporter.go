@@ -74,11 +74,19 @@ var TransportCommand = &cli.Command{
 				// Extract vars
 				contextName := cCtx.String("context")
 
-				// Extract context
-				cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+				// Load config according to provided contextName
+				var err error
+				var cfg *common.ConfigWithContextConfig
+				if contextName == "" {
+					cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+				} else {
+					cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+				}
 				if err != nil {
 					return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
 				}
+
+				// Extract context details
 				envCtx, ok := cfg.Context[contextName]
 				if !ok {
 					return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -119,11 +127,18 @@ func Transport(cCtx *cli.Context) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	// Extract context
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
 	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -303,11 +318,23 @@ func Transport(cCtx *cli.Context) error {
 
 // Record StakeTableRoots in the context for later retrieval
 func WriteStakeTableRootsToContext(cCtx *cli.Context, roots map[uint64][32]byte) error {
-	// Load and navigate context to arrive at context.transporter.active_stake_roots
-	yamlPath, rootNode, contextNode, err := common.LoadContext(cCtx.String("context"))
-	if err != nil {
-		return err
+	// Get flag selected contextName
+	contextName := cCtx.String("context")
+
+	// Check for context
+	var yamlPath string
+	var rootNode, contextNode *yaml.Node
+	var err error
+	if contextName == "" {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadDefaultContext()
+	} else {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadContext(contextName)
 	}
+	if err != nil {
+		return fmt.Errorf("context loading failed: %w", err)
+	}
+
+	// Navigate context to arrive at context.transporter.active_stake_roots
 	transporterNode := common.GetChildByKey(contextNode, "transporter")
 	if transporterNode == nil {
 		return fmt.Errorf("'transporter' section missing in context")
@@ -407,11 +434,19 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 	// Extract vars
 	contextName := cCtx.String("context")
 
-	// Extract context
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load configurations for whitelist chain id in cross registry: %w", err)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
 	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to load configurations for getting onchain stake table roots: %w", err)
+	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return nil, fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -516,11 +551,22 @@ func VerifyActiveStakeTableRoots(cCtx *cli.Context) error {
 	// Get logger
 	logger := common.LoggerFromContext(cCtx.Context)
 
-	// Read expected roots from context
-	_, _, contextNode, err := common.LoadContext(cCtx.String("context"))
-	if err != nil {
-		return fmt.Errorf("failed to load context YAML: %w", err)
+	// Get flag selected contextName
+	contextName := cCtx.String("context")
+
+	// Check for context
+	var contextNode *yaml.Node
+	var err error
+	if contextName == "" {
+		_, _, contextNode, _, err = common.LoadDefaultContext()
+	} else {
+		_, _, contextNode, _, err = common.LoadContext(contextName)
 	}
+	if err != nil {
+		return fmt.Errorf("context loading failed: %w", err)
+	}
+
+	// Navigate context to arrive at context.transporter.active_stake_roots
 	transporterNode := common.GetChildByKey(contextNode, "transporter")
 	if transporterNode == nil {
 		return fmt.Errorf("missing 'transporter' section in context")

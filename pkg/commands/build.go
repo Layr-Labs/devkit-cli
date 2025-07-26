@@ -52,10 +52,14 @@ var BuildCommand = &cli.Command{
 		// Load selected context
 		contextName := cCtx.String("context")
 
-		// Load from file if not in context
-		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+		// Load config according to provided contextName
+		if contextName == "" {
+			cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+		} else {
+			cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+		}
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to load configurations: %w", err)
 		}
 
 		// Handle version increment

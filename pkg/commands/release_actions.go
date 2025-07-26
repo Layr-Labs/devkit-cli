@@ -33,10 +33,18 @@ func publishReleaseAction(cCtx *cli.Context) error {
 	contextName := cCtx.String("context")
 
 	// Get build artifact from context first to read registry URL and version
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
 	}
+
+	// Extract context details
 	if cfg.Context[contextName].Artifact == nil {
 		return fmt.Errorf("no artifact found in context. Please run 'devkit avs build' first")
 	}
@@ -154,7 +162,13 @@ func processOperatorSetsAndPublishReleaseOnChain(
 	ociBuilder := artifact.NewOCIArtifactBuilder(logger)
 
 	// Get AVS name from context for artifact naming
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
 	}
@@ -320,10 +334,19 @@ func publishReleaseToReleaseManagerAction(
 	upgradeByTime int64,
 	artifacts []releasemanager.IReleaseManagerTypesArtifact,
 ) error {
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
-	if err != nil {
-		return fmt.Errorf("failed to load configurations for operator registration: %w", err)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
 	}
+	if err != nil {
+		return fmt.Errorf("failed to load configurations: %w", err)
+	}
+
+	// Extract context details
 	envCtx, ok := cfg.Context[contextName]
 	if !ok {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
@@ -383,11 +406,18 @@ func setReleaseMetadataURIAction(cCtx *cli.Context) error {
 	avsAddressStr := cCtx.String("avs-address")
 	contextName := cCtx.String("context")
 
-	// Load configuration
-	cfg, contextName, err := common.LoadConfigWithContextConfig(contextName)
+	// Load config according to provided contextName
+	var err error
+	var cfg *common.ConfigWithContextConfig
+	if contextName == "" {
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
+	} else {
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to load context config: %w", err)
 	}
+
 	// Get AVS address from flag or context
 	var avsAddress string
 	if avsAddressStr != "" {
@@ -542,9 +572,16 @@ func updateContextWithDigest(contextName, digest string) error {
 // updateContextWithVersion updates the context YAML file with the new version
 func updateContextWithVersion(contextName, version string) error {
 	// Load the context yaml file
-	yamlPath, rootNode, contextNode, err := common.LoadContext(contextName)
+	var yamlPath string
+	var rootNode, contextNode *yaml.Node
+	var err error
+	if contextName == "" {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadDefaultContext()
+	} else {
+		yamlPath, rootNode, contextNode, contextName, err = common.LoadContext(contextName)
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("context loading failed: %w", err)
 	}
 
 	// Get or create artifact section
