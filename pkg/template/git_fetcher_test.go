@@ -145,7 +145,7 @@ func TestCloneRealRepo(t *testing.T) {
 		t.Fatalf("failed to load templates cfg: %v", err)
 	}
 
-	// Use the default hourglass.go template
+	// Use the default hourglass go template
 	mainBaseURL, mainVersion, err := template.GetTemplateURLs(cfg, "hourglass", "go")
 	if err != nil {
 		t.Fatalf("GetTemplateURLs failed: %v", err)
@@ -185,5 +185,4 @@ func TestCloneRealRepo(t *testing.T) {
 	if len(rows) > 0 {
 		t.Error("expected at least one completed progress row, got none")
 	}
-
 }

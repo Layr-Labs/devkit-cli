@@ -211,36 +211,29 @@ var CreateCommand = &cli.Command{
 }
 
 func getTemplateURLs(cCtx *cli.Context) (string, string, string, error) {
-	// If overrides are provided, we do not need to check the templates.yaml for content
-	templateBaseOverride := cCtx.String("template-url")
-	templateVersionOverride := cCtx.String("template-version")
+	baseURL := cCtx.String("template-url")
+	version := cCtx.String("template-version")
+	lang := cCtx.String("lang")
 
-	// If no overrides are provided, we check the templates.yaml for available frameworks
-	mainBaseURL, mainVersion, mainLang := "", "", cCtx.String("lang")
-	if templateBaseOverride == "" && templateVersionOverride == "" {
+	// If no overrides provided, get from config
+	if baseURL == "" && version == "" {
 		cfg, err := template.LoadConfig()
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to load templates cfg: %w", err)
 		}
+
 		framework := cCtx.String("framework")
-		mainBaseURL, mainVersion, err = template.GetTemplateURLs(cfg, framework, mainLang)
+		baseURL, version, err = template.GetTemplateURLs(cfg, framework, lang)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to get template URLs: %w", err)
 		}
-		if mainBaseURL == "" {
-			return "", "", "", fmt.Errorf("no template found for framework %s and language %s", framework, mainLang)
+
+		if baseURL == "" {
+			return "", "", "", fmt.Errorf("no template found for framework %s and language %s", framework, lang)
 		}
 	}
 
-	// If overrides are provided, they take precedence over the details in templates.yaml
-	if templateBaseOverride != "" {
-		mainBaseURL = templateBaseOverride
-	}
-	if templateVersionOverride != "" {
-		mainVersion = templateVersionOverride
-	}
-
-	return mainBaseURL, mainVersion, mainLang, nil
+	return baseURL, version, lang, nil
 }
 
 func createProjectDir(logger iface.Logger, targetDir string, overwrite bool) error {

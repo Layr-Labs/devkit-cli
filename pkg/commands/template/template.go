@@ -14,13 +14,13 @@ import (
 // GetTemplateInfo reads the template information from the project config
 // Returns projectName, templateBaseURL, templateVersion, templateLanguage, error
 func GetTemplateInfo() (string, string, string, string, error) {
-	// Ensure we're in a project directory (check for config/config.yaml)
+	// Check for config file
 	configPath := filepath.Join("config", common.BaseConfig)
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return "", "", "", "", fmt.Errorf("config/config.yaml not found. Make sure you're in a devkit project directory")
 	}
 
-	// Read the config file to get the template URL
+	// Read and parse config
 	configData, err := os.ReadFile(configPath)
 	if err != nil {
 		return "", "", "", "", fmt.Errorf("failed to read config file: %w", err)
@@ -31,53 +31,31 @@ func GetTemplateInfo() (string, string, string, string, error) {
 		return "", "", "", "", fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// Extract project name and template info
+	// Extract values with defaults
 	projectName := ""
 	templateBaseURL := ""
-	templateVersion := "unknown" // Default version
+	templateVersion := "unknown"
 	templateLanguage := "go"
 
-	if configSection, ok := configMap["config"].(map[string]interface{}); ok {
-		if projectMap, ok := configSection["project"].(map[string]interface{}); ok {
-			if name, ok := projectMap["name"].(string); ok {
-				projectName = name
-			}
-			if url, ok := projectMap["templateBaseUrl"].(string); ok {
-				templateBaseURL = url
-			}
-			if version, ok := projectMap["templateVersion"].(string); ok {
-				templateVersion = version
-			}
-			if language, ok := projectMap["templateLanguage"].(string); ok {
-				templateLanguage = language
-			}
+	// Navigate to config.project section and extract values
+	if config, ok := configMap["config"].(map[string]interface{}); ok {
+		if project, ok := config["project"].(map[string]interface{}); ok {
+			projectName, _ = project["name"].(string)
+			templateBaseURL, _ = project["templateURL"].(string)
+			templateVersion = getStringOrDefault(project, "templateVersion", templateVersion)
+			templateLanguage = getStringOrDefault(project, "templateLanguage", templateLanguage)
 		}
 	}
 
-	// If no template URL was found in the config, use the default from templates.yaml
+	// Use defaults if templateBaseURL is empty
 	if templateBaseURL == "" {
-		// Load templates configuration
-		templateConfig, err := template.LoadConfig()
-		if err == nil {
-			// Default to "hourglass" framework and "go" language
-			defaultFramework := "hourglass"
-			defaultLang := "go"
+		templateBaseURL = "https://github.com/Layr-Labs/hourglass-avs-template"
 
-			// Look up the default template URL
-			mainBaseURL, _, _ := template.GetTemplateURLs(templateConfig, defaultFramework, defaultLang)
-
-			// Use the default values
-			templateBaseURL = mainBaseURL
-		}
-
-		// If we still don't have a URL, use a hardcoded fallback
-		if templateBaseURL == "" {
-			templateBaseURL = "https://github.com/Layr-Labs/hourglass-avs-template"
-		}
-
-		// If we still don't have a language, fallback to go
-		if templateLanguage == "" {
-			templateLanguage = "go"
+		// Try to get from template config (optional)
+		if cfg, err := template.LoadConfig(); err == nil {
+			if url, _, _ := template.GetTemplateURLs(cfg, "hourglass", "go"); url != "" {
+				templateBaseURL = url
+			}
 		}
 	}
 
@@ -90,7 +68,7 @@ func GetTemplateInfoDefault() (string, string, string, string, error) {
 	// Default values
 	projectName := ""
 	templateBaseURL := ""
-	templateVersion := "unknown"
+	templateVersion := "https://github.com/Layr-Labs/hourglass-avs-template"
 	templateLanguage := "go"
 
 	// Try to load templates configuration
@@ -107,17 +85,15 @@ func GetTemplateInfoDefault() (string, string, string, string, error) {
 		templateBaseURL = mainBaseURL
 	}
 
-	// If we still don't have a URL, use a hardcoded fallback
-	if templateBaseURL == "" {
-		templateBaseURL = "https://github.com/Layr-Labs/hourglass-avs-template"
-	}
-
-	// If we still don't have a language, fallback to go
-	if templateLanguage == "" {
-		templateLanguage = "go"
-	}
-
 	return projectName, templateBaseURL, templateVersion, templateLanguage, nil
+}
+
+// Helper function to get string value or return default
+func getStringOrDefault(m map[string]interface{}, key, defaultValue string) string {
+	if val, ok := m[key].(string); ok {
+		return val
+	}
+	return defaultValue
 }
 
 // Command defines the main "template" command for template operations

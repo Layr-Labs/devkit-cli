@@ -69,6 +69,9 @@ var BuildCommand = &cli.Command{
 			language = "go"
 		}
 
+		// Log the type of project being ran
+		logger.Info("Building %s AVS project", language)
+
 		// Handle version increment
 		version := cfg.Context[contextName].Artifact.Version
 		if version == "" {

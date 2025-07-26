@@ -79,6 +79,9 @@ func AVSRun(cCtx *cli.Context) error {
 		language = "go"
 	}
 
+	// Log the type of project being ran
+	logger.Info("Running %s AVS project", language)
+
 	// Run the script from root of project dir
 	// (@TODO (GD): this should always be the root of the project, but we need to do this everywhere (ie reading ctx/config etc))
 	const dir = ""
