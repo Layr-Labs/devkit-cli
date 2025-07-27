@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ '**' ]
 
+permissions:
+  contents: read
+
 env:
   FOUNDRY_PROFILE: ci
   L1_FORK_URL: ${{ secrets.L1_FORK_URL }}

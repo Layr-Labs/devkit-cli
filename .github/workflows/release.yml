@@ -5,6 +5,9 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: read
+
 env:
   FOUNDRY_PROFILE: ci
   L1_FORK_URL: ${{ secrets.L1_FORK_URL }}
@@ -52,7 +55,9 @@ jobs:
   build-create-release:
     runs-on: ubuntu-latest
     needs: [lint, test]
-    permissions: write-all
+    permissions:
+      contents: write
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
