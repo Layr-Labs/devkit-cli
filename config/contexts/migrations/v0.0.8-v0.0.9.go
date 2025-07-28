@@ -76,6 +76,14 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xb3Cd1A457dEa9A9A6F6406c6419B1c326670A96F"}
 				},
 			},
+			// Add skip-setup flag to avs config
+			{
+				Path:      []string{"context", "avs", "skip_setup"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "false"}
+				},
+			},
 		},
 	}
 
