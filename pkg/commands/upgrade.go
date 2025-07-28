@@ -148,9 +148,24 @@ func PerformUpgrade(version, binDir string, logger iface.Logger) error {
 		if err != nil {
 			return fmt.Errorf("error reading tarball: %w", err)
 		}
-
-		targetPath := filepath.Join(binDir, filepath.Base(hdr.Name))
-		outFile, err := os.Create(targetPath)
+		// Validate and sanitize the archive entry path
+		cleanName := filepath.Clean(hdr.Name)
+		if strings.Contains(cleanName, "..") || filepath.IsAbs(cleanName) {
+			return fmt.Errorf("invalid file path in archive: %s", hdr.Name)
+		}
+		targetPath := filepath.Join(binDir, cleanName)
+		absTargetPath, err := filepath.Abs(targetPath)
+		if err != nil {
+			return fmt.Errorf("error resolving file path: %w", err)
+		}
+		absBinDir, err := filepath.Abs(binDir)
+		if err != nil {
+			return fmt.Errorf("error resolving binDir path: %w", err)
+		}
+		if !strings.HasPrefix(absTargetPath, absBinDir) {
+			return fmt.Errorf("file path escapes target directory: %s", absTargetPath)
+		}
+		outFile, err := os.Create(absTargetPath)
 		if err != nil {
 			return fmt.Errorf("error creating file: %w", err)
 		}
