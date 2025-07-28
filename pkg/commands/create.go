@@ -15,12 +15,16 @@ import (
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
-	progresslogger "github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/template"
 
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )
+
+func copyToDest(src, dst string) error {
+	cmd := exec.Command("cp", "-a", src+"/.", dst)
+	return cmd.Run()
+}
 
 // CreateCommand defines the "create" command
 var CreateCommand = &cli.Command{
@@ -71,7 +75,6 @@ var CreateCommand = &cli.Command{
 
 		// get logger
 		logger := common.LoggerFromContext(cCtx.Context)
-		tracker := common.ProgressTrackerFromContext(cCtx.Context)
 
 		// use dest from dir flag or positional
 		var targetDir string
@@ -103,6 +106,11 @@ var CreateCommand = &cli.Command{
 			return err
 		}
 
+		// DEBUG: Log the URLs being used
+		logger.Info("DEBUG: Template URL override: '%s'", cCtx.String("template-url"))
+		logger.Info("DEBUG: All args: %v", cCtx.Args().Slice())
+		logger.Info("DEBUG: Final mainBaseURL: %s", mainBaseURL)
+
 		// Create project directories
 		if err := createProjectDir(logger, targetDir, cCtx.Bool("overwrite")); err != nil {
 			return err
@@ -113,20 +121,9 @@ var CreateCommand = &cli.Command{
 			logger.Info("Template version: %s", mainVersion)
 		}
 
-		// Fetch main template
-		fetcher := &template.GitFetcher{
-
-			Client: template.NewGitClient(),
-			Logger: *progresslogger.NewProgressLogger(
-				logger,
-				tracker,
-			),
-			Config: template.GitFetcherConfig{
-				Verbose: cCtx.Bool("verbose"),
-			},
-		}
-		if err := fetcher.Fetch(cCtx.Context, mainBaseURL, mainVersion, targetDir); err != nil {
-			return fmt.Errorf("failed to fetch template from %s: %w", mainBaseURL, err)
+		// Copy the provided template-url (directory) to the target directory
+		if err := copyToDest(mainBaseURL, targetDir); err != nil {
+			return fmt.Errorf("failed to copy template from %s: %w", mainBaseURL, err)
 		}
 
 		// Copy DevKit README.md to templates README.md
