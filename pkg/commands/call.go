@@ -25,8 +25,6 @@ var CallCommand = &cli.Command{
 		// Get logger
 		logger := common.LoggerFromContext(cCtx.Context)
 
-		logger.Debug("Testing AVS tasks...")
-
 		// Check for flagged contextName
 		contextName := cCtx.String("context")
 
@@ -34,12 +32,31 @@ var CallCommand = &cli.Command{
 		var err error
 		var contextJSON []byte
 		if contextName == "" {
-			contextJSON, _, err = common.LoadDefaultRawContext()
+			contextJSON, contextName, err = common.LoadDefaultRawContext()
 		} else {
-			contextJSON, _, err = common.LoadRawContext(contextName)
+			contextJSON, contextName, err = common.LoadRawContext(contextName)
 		}
 		if err != nil {
 			return fmt.Errorf("failed to load context: %w", err)
+		}
+
+		// Prevent runs when context is not devnet
+		if contextName != "devnet" {
+			cmdParams := reconstructCommandParams(cCtx.Args().Slice())
+
+			return fmt.Errorf(
+				"call failed: `devkit avs call` only available on devnet - please run `devkit avs call --context devnet %s`",
+				cmdParams,
+			)
+		}
+
+		// Print task if verbose
+		logger.Debug("Testing AVS tasks...")
+
+		// Check that args are provided
+		parts := cCtx.Args().Slice()
+		if len(parts) == 0 {
+			return fmt.Errorf("no parameters supplied")
 		}
 
 		// Run scriptPath from cwd
@@ -47,12 +64,6 @@ var CallCommand = &cli.Command{
 
 		// Set path for .devkit scripts
 		scriptPath := filepath.Join(".devkit", "scripts", "call")
-
-		// Check that args are provided
-		parts := cCtx.Args().Slice()
-		if len(parts) == 0 {
-			return fmt.Errorf("no parameters supplied")
-		}
 
 		// Parse the params from the provided args
 		paramsMap, err := parseParams(strings.Join(parts, " "))
@@ -89,4 +100,25 @@ func parseParams(input string) (map[string]string, error) {
 	}
 
 	return result, nil
+}
+
+func reconstructQuotes(val string) string {
+	if strings.Contains(val, `"`) {
+		return "'" + val + "'"
+	}
+	return `"` + val + `"`
+}
+
+func reconstructCommandParams(argv []string) string {
+	var out []string
+	for _, arg := range argv {
+		parts := strings.SplitN(arg, "=", 2)
+		if len(parts) == 2 {
+			k, v := parts[0], parts[1]
+			out = append(out, fmt.Sprintf("%s=%s", k, reconstructQuotes(v)))
+		} else {
+			out = append(out, arg)
+		}
+	}
+	return strings.Join(out, " ")
 }

@@ -81,6 +81,11 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("loading config and context failed: %w", err)
 	}
 
+	// Prevent runs when context is not devnet
+	if contextName != "devnet" {
+		return fmt.Errorf("devnet start failed: `devkit avs devnet start` only available on devnet - please run `devkit avs devnet start --context devnet`")
+	}
+
 	// Load the context nodes
 	yamlPath, rootNode, contextNode, contextName, err := common.LoadContext(contextName)
 	if err != nil {
