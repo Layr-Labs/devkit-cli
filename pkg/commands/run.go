@@ -45,7 +45,7 @@ func AVSRun(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to load context: %w", err)
 	}
 
-	// Run init on the template init script
+	// Run run on the template run script
 	if _, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectNonJSONResponse, contextJSON); err != nil {
 		return fmt.Errorf("run failed: %w", err)
 	}

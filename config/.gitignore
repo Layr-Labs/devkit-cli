@@ -9,6 +9,7 @@ devkit
 # Build outputs
 /bin/
 /out/
+build/
 *.test
 
 # Dependency directories (if you're not committing vendor)
@@ -35,3 +36,9 @@ config/contexts/**/*
 
 # Environment
 .env
+.env.private
+
+# Blockchain
+mnemonic.txt
+contracts/out
+contracts/cache

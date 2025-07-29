@@ -74,6 +74,7 @@ type StakerDeposits struct {
 }
 
 type AvsConfig struct {
+	SkipSetup          bool   `json:"skip_setup" yaml:"skip_setup"`
 	Address            string `json:"address" yaml:"address"`
 	MetadataUri        string `json:"metadata_url" yaml:"metadata_url"`
 	AVSPrivateKey      string `json:"avs_private_key" yaml:"avs_private_key"`

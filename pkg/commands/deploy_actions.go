@@ -141,9 +141,15 @@ func StartDeployL1Action(cCtx *cli.Context) error {
 	// Sleep for 1 second to make sure new context values have been written
 	time.Sleep(1 * time.Second)
 
+	// Extract context details
+	envCtx, ok := config.Context[contextName]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
+	}
+
 	// Register AVS with EigenLayer
 	logger.Title("Registering AVS with EigenLayer...")
-	if !cCtx.Bool("skip-setup") {
+	if !(cCtx.Bool("skip-setup") || envCtx.Avs.SkipSetup) {
 		if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
 			return fmt.Errorf("updating AVS metadata failed: %w", err)
 		}
