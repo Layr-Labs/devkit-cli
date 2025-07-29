@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 
 	"github.com/urfave/cli/v2"
 )
@@ -41,7 +42,7 @@ var CallCommand = &cli.Command{
 		}
 
 		// Prevent runs when context is not devnet
-		if contextName != "devnet" {
+		if contextName != devnet.DEVNET_CONTEXT {
 			cmdParams := reconstructCommandParams(cCtx.Args().Slice())
 
 			return fmt.Errorf(

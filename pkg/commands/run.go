@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 
 	"github.com/urfave/cli/v2"
 )
@@ -45,7 +46,7 @@ func AVSRun(cCtx *cli.Context) error {
 	}
 
 	// Prevent runs when context is not devnet
-	if contextName != "devnet" {
+	if contextName != devnet.DEVNET_CONTEXT {
 		return fmt.Errorf("run failed: `devkit avs run` only available on devnet - please run `devkit avs run --context devnet`")
 	}
 

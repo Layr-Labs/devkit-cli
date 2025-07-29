@@ -82,7 +82,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Prevent runs when context is not devnet
-	if contextName != "devnet" {
+	if contextName != devnet.DEVNET_CONTEXT {
 		return fmt.Errorf("devnet start failed: `devkit avs devnet start` only available on devnet - please run `devkit avs devnet start --context devnet`")
 	}
 
