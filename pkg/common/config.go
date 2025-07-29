@@ -166,6 +166,7 @@ type StakeRootEntry struct {
 }
 
 type Transporter struct {
+	SkipTransporter  bool             `json:"skip_transporter" yaml:"skip_transporter"`
 	Schedule         string           `json:"schedule" yaml:"schedule"`
 	PrivateKey       string           `json:"private_key" yaml:"private_key"`
 	BlsPrivateKey    string           `json:"bls_private_key" yaml:"bls_private_key"`

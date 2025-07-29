@@ -84,6 +84,14 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "false"}
 				},
 			},
+			// Add skip-transporter flag to transporter config
+			{
+				Path:      []string{"context", "transporter", "skip_transporter"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "false"}
+				},
+			},
 		},
 	}
 

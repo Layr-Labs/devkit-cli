@@ -190,7 +190,16 @@ func StartDeployL1Action(cCtx *cli.Context) error {
 		logger.Info("Skipping AVS setup steps...")
 	}
 
-	logger.Info("\n%s L1 Deployment complete - wait for transporter before deploying L2 contracts", caser.String(contextName))
+	// Run initial Transport to ensure table is transported before L2 deploy
+	if !(cCtx.Bool("skip-transporter") || envCtx.Transporter.SkipTransporter) {
+		// Post initial stake roots to L1
+		if err := Transport(cCtx); err != nil && !errors.Is(err, context.Canceled) {
+			return fmt.Errorf("transport run failed: %w", err)
+		}
+	}
+
+	// L1 Deployment complete
+	logger.Info("\n%s L1 Deployment complete", caser.String(contextName))
 
 	return nil
 }
@@ -274,7 +283,7 @@ func DeployL1ContractsAction(cCtx *cli.Context) error {
 			operators := common.GetChildByKey(contextNode, "operators")
 			operatorCount := len(operators.Content)
 			if operatorCount == 0 {
-				logger.Info("No operators available to register %s", contextName)
+				logger.Info("No operators available to register for %s", contextName)
 				continue
 			}
 		}

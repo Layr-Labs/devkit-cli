@@ -151,46 +151,52 @@ func Transport(cCtx *cli.Context) error {
 
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
-	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, common.L1)
-	if err != nil {
-		l1RpcUrl = devnet.DEFAULT_L1_ANVIL_RPCURL
+
+	// Unpack chain config from context
+	l1Config, ok := envCtx.Chains[common.L1]
+	if !ok {
+		return fmt.Errorf("L1 chain config not found in context ('%s')", contextName)
 	}
-	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, common.L2)
-	if err != nil {
-		l2RpcUrl = devnet.DEFAULT_L2_ANVIL_RPCURL
-	}
-	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, common.L1, logger)
-	if err != nil {
-		l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
-	}
-	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, common.L2, logger)
-	if err != nil {
-		l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
+	l2Config, ok := envCtx.Chains[common.L2]
+	if !ok {
+		return fmt.Errorf("L2 chain config not found in context ('%s')", contextName)
 	}
 
-	err = devnet.AdvanceBlocks(cCtx, l1RpcUrl, 100)
-	if err != nil {
-		return fmt.Errorf("failed to advance blocks: %v", err)
+	// Unpack chain details from chain configs
+	l1RpcUrl := l1Config.RPCURL
+	l2RpcUrl := l2Config.RPCURL
+	l1ChainId := l1Config.ChainID
+	l2ChainId := l2Config.ChainID
+
+	// Attempt to advance blocks
+	if contextName == devnet.DEVNET_CONTEXT {
+		err = devnet.AdvanceBlocks(cCtx, l1RpcUrl, 100)
+		if err != nil {
+			return fmt.Errorf("failed to advance blocks: %v", err)
+		}
+	} else {
+		// Wait for one block to be mined
+		time.Sleep(12 * time.Second)
 	}
 
 	cm := chainManager.NewChainManager()
 
-	l1Config := &chainManager.ChainConfig{
+	l1ChainManagerConfig := &chainManager.ChainConfig{
 		ChainID: uint64(l1ChainId),
 		RPCUrl:  l1RpcUrl,
 	}
-	l2Config := &chainManager.ChainConfig{
+	l2ChainManagerConfig := &chainManager.ChainConfig{
 		ChainID: uint64(l2ChainId),
 		RPCUrl:  l2RpcUrl,
 	}
-	if err := cm.AddChain(l1Config); err != nil {
+	if err := cm.AddChain(l1ChainManagerConfig); err != nil {
 		return fmt.Errorf("failed to add l1 chain: %v", err)
 	}
-	if err := cm.AddChain(l2Config); err != nil {
+	if err := cm.AddChain(l2ChainManagerConfig); err != nil {
 		return fmt.Errorf("failed to add l2 chain: %v", err)
 	}
 
-	l1Client, err := cm.GetChainForId(l1Config.ChainID)
+	l1Client, err := cm.GetChainForId(l1ChainManagerConfig.ChainID)
 	if err != nil {
 		return fmt.Errorf("failed to get l1 chain for ID %d: %v", l1Config.ChainID, err)
 	}
@@ -212,10 +218,13 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create StakeTableRootCalculator: %v", err)
 	}
 
-	logger.Info("Syncing chains...")
-	err = devnet.SyncL1L2Timestamps(cCtx, l1RpcUrl, l2RpcUrl)
-	if err != nil {
-		return fmt.Errorf("failed to sync chains: %v", err)
+	// Sync chains so that timestamps match on both anvil instances (for devnet)
+	if contextName == devnet.DEVNET_CONTEXT {
+		logger.Info("Syncing chains...")
+		err = devnet.SyncL1L2Timestamps(cCtx, l1RpcUrl, l2RpcUrl)
+		if err != nil {
+			return fmt.Errorf("failed to sync chains: %v", err)
+		}
 	}
 
 	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
@@ -264,20 +273,27 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create transport: %v", err)
 	}
 
+	// Provide chainIds to ignore for Devnets
+	var ignoreChainIds = []*big.Int{}
+	if contextName == devnet.DEVNET_CONTEXT {
+		ignoreChainIds = []*big.Int{new(big.Int).SetUint64(11155111), new(big.Int).SetUint64(84532)}
+	}
+
+	// Transport globalTableRoot
 	err = stakeTransport.SignAndTransportGlobalTableRoot(
 		cCtx.Context,
 		root,
 		referenceTimestamp,
 		l1Block.NumberU64(),
-		[]*big.Int{new(big.Int).SetUint64(11155111), new(big.Int).SetUint64(84532)},
+		ignoreChainIds,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to sign and transport global table root: %v", err)
 	}
 
 	// Collect the provided roots
-	roots[l1Config.ChainID] = root
-	roots[l2Config.ChainID] = root
+	roots[l1ChainManagerConfig.ChainID] = root
+	roots[l2ChainManagerConfig.ChainID] = root
 	// Write the roots to context (each time we process one)
 	err = WriteStakeTableRootsToContext(cCtx, roots)
 	if err != nil {
@@ -303,7 +319,7 @@ func Transport(cCtx *cli.Context) error {
 			root,
 			tree,
 			dist,
-			[]*big.Int{new(big.Int).SetUint64(11155111), new(big.Int).SetUint64(84532)},
+			ignoreChainIds,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to sign and transport AVS stake table for opset %v: %v", opset, err)
@@ -454,48 +470,48 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
-	l1RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, common.L1)
-	if err != nil {
-		l1RpcUrl = devnet.DEFAULT_L1_ANVIL_RPCURL
+
+	// Unpack chain config from context
+	l1Config, ok := envCtx.Chains[common.L1]
+	if !ok {
+		return nil, fmt.Errorf("L1 chain config not found in context ('%s')", contextName)
 	}
-	l2RpcUrl, err := devnet.GetDevnetRPCUrlDefault(cfg, common.L2)
-	if err != nil {
-		l2RpcUrl = devnet.DEFAULT_L2_ANVIL_RPCURL
+	l2Config, ok := envCtx.Chains[common.L2]
+	if !ok {
+		return nil, fmt.Errorf("L2 chain config not found in context ('%s')", contextName)
 	}
-	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, common.L1, logger)
-	if err != nil {
-		l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
-	}
-	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(cfg, common.L2, logger)
-	if err != nil {
-		l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
-	}
+
+	// Unpack chain details from chain configs
+	l1RpcUrl := l1Config.RPCURL
+	l2RpcUrl := l2Config.RPCURL
+	l1ChainId := l1Config.ChainID
+	l2ChainId := l2Config.ChainID
 
 	// Get a new chainManager
 	cm := chainManager.NewChainManager()
 
 	// Configure L1 chain
-	l1Config := &chainManager.ChainConfig{
+	l1ChainManagerConfig := &chainManager.ChainConfig{
 		ChainID: uint64(l1ChainId),
 		RPCUrl:  l1RpcUrl,
 	}
 
 	// Configure L2 chain
-	l2Config := &chainManager.ChainConfig{
+	l2ChainManagerConfig := &chainManager.ChainConfig{
 		ChainID: uint64(l2ChainId),
 		RPCUrl:  l2RpcUrl,
 	}
 
-	if err := cm.AddChain(l1Config); err != nil {
+	if err := cm.AddChain(l1ChainManagerConfig); err != nil {
 		return nil, fmt.Errorf("failed to add l1 chain: %v", err)
 	}
-	if err := cm.AddChain(l2Config); err != nil {
+	if err := cm.AddChain(l2ChainManagerConfig); err != nil {
 		return nil, fmt.Errorf("failed to add l2 chain: %v", err)
 	}
 
-	l1Client, err := cm.GetChainForId(l1Config.ChainID)
+	l1Client, err := cm.GetChainForId(l1ChainManagerConfig.ChainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain for ID %d: %v", l1Config.ChainID, err)
+		return nil, fmt.Errorf("failed to get chain for ID %d: %v", l1ChainManagerConfig.ChainID, err)
 	}
 
 	// Construct registry caller
@@ -515,8 +531,8 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 	// Iterate and collect all roots for all chainIds
 	for i, chainId := range chainIds {
-		// Ignore 11155111 and 84532 from chainIds
-		if chainId.Uint64() == 11155111 || chainId.Uint64() == 84532 {
+		// Ignore 11155111 and 84532 from chainIds if checking devnet
+		if contextName == devnet.DEVNET_CONTEXT && (chainId.Uint64() == 11155111 || chainId.Uint64() == 84532) {
 			continue
 		}
 
@@ -541,6 +557,12 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 
 		// Collect the provided root
 		roots[chainId.Uint64()] = root
+	}
+
+	// Print discovered roots
+	logger.Info("Successfully collected StakeTableRoots...")
+	for k, v := range roots {
+		logger.Info(" - ChainId: %d, Root: %x", k, v)
 	}
 
 	return roots, nil
