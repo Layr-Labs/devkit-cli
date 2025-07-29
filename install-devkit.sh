@@ -74,6 +74,9 @@ echo "✅ DevKit installed to $INSTALL_DIR/devkit"
 if [[ "$INSTALL_DIR" == "$HOME/bin" ]] && [[ ":$PATH:" != *":$HOME/bin:"* ]]; then
     echo "💡 Add $HOME/bin to your PATH:"
     echo "   echo 'export PATH=\"\$HOME/bin:\$PATH\"' >> ~/.$(basename $SHELL)rc"
+    echo "   # Then reload your shell:"
+    echo "   source ~/.$(basename $SHELL)rc"
+    echo "   # Or open a new terminal window."
 fi
 
 echo "🚀 Verify installation: $INSTALL_DIR/devkit --help"
