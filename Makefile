@@ -40,9 +40,9 @@ lint: ## Run linter
 install: build ## Install binary and completion scripts
 	@mkdir -p ~/bin
 	@cp $(BIN)/$(APP_NAME) ~/bin/
-	@if ! npm list -g @layr-labs/zeus@1.5.2 >/dev/null 2>&1; then \
-		echo "Installing @layr-labs/zeus@1.5.2..."; \
-		npm install -g @layr-labs/zeus@1.5.2; \
+	@if ! npm list -g @layr-labs/zeus@1.5.9 >/dev/null 2>&1; then \
+		echo "Installing @layr-labs/zeus@1.5.9..."; \
+		npm install -g @layr-labs/zeus@1.5.9; \
 	fi
 	@mkdir -p ~/.local/share/bash-completion/completions
 	@mkdir -p ~/.zsh/completions

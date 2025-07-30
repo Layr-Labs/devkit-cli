@@ -19,12 +19,14 @@ type L1ZeusAddressData struct {
 	KeyRegistrar         string `json:"keyRegistrar"`
 	ReleaseManager       string `json:"releaseManager"`
 	OperatorTableUpdater string `json:"operatorTableUpdater"`
+	TaskMailBox          string `json:"taskMailBox"`
 }
 
 type L2ZeusAddressData struct {
 	OperatorTableUpdater     string `json:"operatorTableUpdater"`
 	ECDSACertificateVerifier string `json:"ecdsaCertificateVerifier"`
 	BN254CertificateVerifier string `json:"bn254CertificateVerifier"`
+	TaskMailBox              string `json:"taskMailBox"`
 }
 
 // GetZeusAddresses runs the zeus env show mainnet command and extracts core EigenLayer addresses
@@ -110,6 +112,13 @@ func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressD
 		}
 	}
 
+	// Get TaskMailBox address
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_TaskMailbox_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			l1Addresses.TaskMailBox = strVal
+		}
+	}
+
 	// Verify we have both addresses
 	if l1Addresses.AllocationManager == "" || l1Addresses.DelegationManager == "" || l1Addresses.StrategyManager == "" || l1Addresses.CrossChainRegistry == "" || l1Addresses.KeyRegistrar == "" || l1Addresses.ReleaseManager == "" || l1Addresses.OperatorTableUpdater == "" {
 		logger.Warn("failed to extract required addresses from zeus output")
@@ -134,6 +143,13 @@ func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressD
 	if val, ok := l2ZeusData["ZEUS_DEPLOYED_BN254CertificateVerifier_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
 			l2Addresses.BN254CertificateVerifier = strVal
+		}
+	}
+
+	// Get TaskMailBox address
+	if val, ok := l2ZeusData["ZEUS_DEPLOYED_TaskMailbox_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			l2Addresses.TaskMailBox = strVal
 		}
 	}
 
