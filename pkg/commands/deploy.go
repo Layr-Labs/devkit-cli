@@ -38,12 +38,12 @@ var DeployCommand = &cli.Command{
 				{
 					Name:  "l2",
 					Usage: "Deploy L2 contracts to specified network",
-					Flags: []cli.Flag{
+					Flags: append([]cli.Flag{
 						&cli.StringFlag{
 							Name:  "context",
 							Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
 						},
-					},
+					}, common.GlobalFlags...),
 					Action: StartDeployL2Action,
 				},
 			},

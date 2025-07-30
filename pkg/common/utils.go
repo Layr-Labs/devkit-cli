@@ -14,6 +14,8 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/progress"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/BN254CertificateVerifier"
+	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ECDSACertificateVerifier"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IKeyRegistrar"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -182,6 +184,36 @@ func (cc *ContractCaller) GetOperatorRegistrationMessageHash(
 		Avs: avsAddress,
 		Id:  operatorSetId,
 	}, keyData)
+}
+
+func (cc *ContractCaller) GetBN254OperatorSetOwner(
+	ctx context.Context,
+	avsAddress common.Address,
+	operatorSetId uint32,
+) (common.Address, error) {
+	certVerifier, err := BN254CertificateVerifier.NewBN254CertificateVerifier(cc.certVerifier, cc.ethclient)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to create BN254CertificateVerifier contract: %w", err)
+	}
+	return certVerifier.GetOperatorSetOwner(&bind.CallOpts{Context: ctx}, BN254CertificateVerifier.OperatorSet{
+		Avs: avsAddress,
+		Id:  operatorSetId,
+	})
+}
+
+func (cc *ContractCaller) GetECDSAOperatorSetOwner(
+	ctx context.Context,
+	avsAddress common.Address,
+	operatorSetId uint32,
+) (common.Address, error) {
+	certVerifier, err := ECDSACertificateVerifier.NewECDSACertificateVerifier(cc.certVerifier, cc.ethclient)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to create ECDSACertificateVerifier contract: %w", err)
+	}
+	return certVerifier.GetOperatorSetOwner(&bind.CallOpts{Context: ctx}, ECDSACertificateVerifier.OperatorSet{
+		Avs: avsAddress,
+		Id:  operatorSetId,
+	})
 }
 
 func (cc *ContractCaller) EncodeBN254KeyData(pubKey *bn254.PublicKey) ([]byte, error) {

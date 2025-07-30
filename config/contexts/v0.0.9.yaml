@@ -21,7 +21,6 @@ context:
         block_time: 3
   # Stake Root Transporter configuration
   transporter:
-    skip_transporter: false
     schedule: "0 */2 * * *"
     private_key: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"
     bls_private_key: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"

@@ -21,14 +21,16 @@ import (
 type ContractType string
 
 const (
-	AllocationManagerContract  ContractType = "AllocationManager"
-	DelegationManagerContract  ContractType = "DelegationManager"
-	StrategyManagerContract    ContractType = "StrategyManager"
-	StrategyContract           ContractType = "Strategy"
-	ERC20Contract              ContractType = "ERC20"
-	KeyRegistrarContract       ContractType = "KeyRegistrar"
-	CrossChainRegistryContract ContractType = "CrossChainRegistry"
-	ReleaseManagerContract     ContractType = "ReleaseManager"
+	AllocationManagerContract        ContractType = "AllocationManager"
+	DelegationManagerContract        ContractType = "DelegationManager"
+	StrategyManagerContract          ContractType = "StrategyManager"
+	StrategyContract                 ContractType = "Strategy"
+	ERC20Contract                    ContractType = "ERC20"
+	KeyRegistrarContract             ContractType = "KeyRegistrar"
+	CrossChainRegistryContract       ContractType = "CrossChainRegistry"
+	ReleaseManagerContract           ContractType = "ReleaseManager"
+	BN254CertificateVerifierContract ContractType = "BN254CertificateVerifier"
+	ECDSACertificateVerifierContract ContractType = "ECDSACertificateVerifier"
 )
 
 // ContractInfo holds metadata about a contract

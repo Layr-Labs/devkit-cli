@@ -83,6 +83,19 @@ func StartDeployL1Action(cCtx *cli.Context) error {
 		return fmt.Errorf("context loading failed: %w", err)
 	}
 
+	// Extract context details
+	envCtx, ok := cfg.Context[contextName]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
+	}
+	l1ChainCfg, ok := envCtx.Chains[common.L1]
+	if !ok {
+		return fmt.Errorf("L2 chain not found in configuration")
+	}
+
+	// Log the action
+	logger.Info("Starting L1 (%d) deployment to %s\n", l1ChainCfg.ChainID, contextName)
+
 	// Fetch EigenLayer addresses using Zeus if requested
 	if useZeus {
 		err = common.UpdateContextWithZeusAddresses(cCtx.Context, logger, contextNode, contextName)
@@ -146,12 +159,6 @@ func StartDeployL1Action(cCtx *cli.Context) error {
 	// Sleep for 1 second to make sure new context values have been written
 	time.Sleep(1 * time.Second)
 
-	// Extract context details
-	envCtx, ok := cfg.Context[contextName]
-	if !ok {
-		return fmt.Errorf("context '%s' not found in configuration", contextName)
-	}
-
 	// Register AVS with EigenLayer
 	logger.Title("Registering AVS with EigenLayer...")
 	if !(cCtx.Bool("skip-setup") || envCtx.Avs.SkipSetup) {
@@ -190,16 +197,8 @@ func StartDeployL1Action(cCtx *cli.Context) error {
 		logger.Info("Skipping AVS setup steps...")
 	}
 
-	// Run initial Transport to ensure table is transported before L2 deploy
-	if !(cCtx.Bool("skip-transporter") || envCtx.Transporter.SkipTransporter) {
-		// Post initial stake roots to L1
-		if err := Transport(cCtx); err != nil && !errors.Is(err, context.Canceled) {
-			return fmt.Errorf("transport run failed: %w", err)
-		}
-	}
-
 	// L1 Deployment complete
-	logger.Info("\n%s L1 Deployment complete", caser.String(contextName))
+	logger.Info("\n%s L1 Deployment complete\n", caser.String(contextName))
 
 	return nil
 }
@@ -211,17 +210,91 @@ func StartDeployL2Action(cCtx *cli.Context) error {
 
 	// Load config for selected context
 	contextName := cCtx.String("context")
+	var cfg *common.ConfigWithContextConfig
 	var err error
 	if contextName == "" {
-		_, contextName, err = common.LoadDefaultConfigWithContextConfig()
+		cfg, contextName, err = common.LoadDefaultConfigWithContextConfig()
 	} else {
-		_, contextName, err = common.LoadConfigWithContextConfig(contextName)
+		cfg, contextName, err = common.LoadConfigWithContextConfig(contextName)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to load configurations: %w", err)
 	}
 
-	// @TODO(gd): call getOperatorSetOwner() on L2::CertVerifier (if zero address - halt and advise)
+	// Extract context details
+	envCtx, ok := cfg.Context[contextName]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
+	}
+	l2ChainCfg, ok := envCtx.Chains[common.L2]
+	if !ok {
+		return fmt.Errorf("L2 chain not found in configuration")
+	}
+	client, err := ethclient.Dial(l2ChainCfg.RPCURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L2 RPC at %s: %w", l2ChainCfg.RPCURL, err)
+	}
+	defer client.Close()
+
+	// Log the action
+	logger.Info("Starting L2 (%d) deployment to %s\n", l2ChainCfg.ChainID, contextName)
+
+	// Get operatorSets, check curveType, use contractCaller to check getOperatorSetOwner()
+	if len(envCtx.OperatorSets) > 0 {
+		// Collect AVS address
+		avsAddr := envCtx.Avs.Address
+		transportedOpSets := 0
+
+		// For each OperatorSets check if the transport has happened yet
+		for _, opSet := range envCtx.OperatorSets {
+			logger.Debug("Checking owner of AVS: %s and OperatorSet: %d", avsAddr, opSet.OperatorSetID)
+
+			// Collect appropriate CertVerifier based on curveType
+			var certVerifierAddr string
+			if opSet.CurveType == common.BN254Curve {
+				certVerifierAddr = envCtx.EigenLayer.L2.BN254CertificateVerifier
+			} else if opSet.CurveType == common.ECDSACurve {
+				certVerifierAddr = envCtx.EigenLayer.L2.ECDSACertificateVerifier
+			}
+
+			// Pass certVerifierAddr to contractCaller
+			if certVerifierAddr != "" {
+				contractCaller, err := common.NewContractCaller(
+					envCtx.Avs.AVSPrivateKey,
+					big.NewInt(int64(l2ChainCfg.ChainID)),
+					client,
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(certVerifierAddr),
+					logger,
+				)
+
+				// Attempt to get owner from appropriate certVerifier
+				var owner ethcommon.Address
+				if opSet.CurveType == common.BN254Curve {
+					owner, err = contractCaller.GetBN254OperatorSetOwner(cCtx.Context, ethcommon.HexToAddress(avsAddr), uint32(opSet.OperatorSetID))
+				} else if opSet.CurveType == common.ECDSACurve {
+					owner, err = contractCaller.GetECDSAOperatorSetOwner(cCtx.Context, ethcommon.HexToAddress(avsAddr), uint32(opSet.OperatorSetID))
+				}
+
+				logger.Debug(" - Owner is set: %s", owner)
+
+				// Test to make sure the transporter has ran before deploying to L2
+				if err == nil && owner != ethcommon.HexToAddress("") {
+					transportedOpSets++
+				}
+			}
+		}
+
+		// Throw error if any of the operatorSets has not been registered yet
+		if transportedOpSets < len(envCtx.OperatorSets) {
+			return fmt.Errorf("waiting on transporter, try again soon...")
+		}
+	}
 
 	// Deploy L2 contracts after transporter has been ran and operatorSetOwner has been set
 	if err := DeployL2ContractsAction(cCtx); err != nil && !errors.Is(err, context.Canceled) {
@@ -504,6 +577,7 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -553,6 +627,7 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
@@ -620,6 +695,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
@@ -876,6 +952,7 @@ func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error
 		ethcommon.HexToAddress(keyRegistrarAddr),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -961,6 +1038,7 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 		ethcommon.HexToAddress(keyRegistrarAddr),
 		ethcommon.HexToAddress(crossChainRegistryAddr),
 		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -1036,6 +1114,7 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 					ethcommon.HexToAddress(""),
 					ethcommon.HexToAddress(""),
 					ethcommon.HexToAddress(keyRegistrarAddr),
+					ethcommon.HexToAddress(""),
 					ethcommon.HexToAddress(""),
 					ethcommon.HexToAddress(""),
 					logger,

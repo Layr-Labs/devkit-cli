@@ -469,6 +469,7 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 		common.HexToAddress(eigenLayer.L1.KeyRegistrar),
 		common.HexToAddress(""),
 		common.HexToAddress(""),
+		common.HexToAddress(""),
 		logger,
 	)
 	if err != nil {

@@ -295,6 +295,7 @@ func checkMetadataURIExists(logger iface.Logger, contextName string, cfg *common
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(releaseManagerAddress),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -380,6 +381,7 @@ func publishReleaseToReleaseManagerAction(
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(releaseManagerAddress),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -472,6 +474,7 @@ func setReleaseMetadataURIAction(cCtx *cli.Context) error {
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(releaseManagerAddress),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {

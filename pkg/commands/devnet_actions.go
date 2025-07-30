@@ -712,6 +712,7 @@ func registerOperatorEL(cCtx *cli.Context, operatorAddress string, logger iface.
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -795,6 +796,7 @@ func registerOperatorAVS(cCtx *cli.Context, logger iface.Logger, operatorAddress
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -865,6 +867,7 @@ func depositIntoStrategy(cCtx *cli.Context, stakerSpec common.StakerSpec, logger
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
+		ethcommon.HexToAddress(""),
 		logger,
 	)
 	if err != nil {
@@ -929,6 +932,7 @@ func delegateToOperator(cCtx *cli.Context, stakerSpec common.StakerSpec, operato
 		ethcommon.HexToAddress(allocationManagerAddr),
 		ethcommon.HexToAddress(delegationManagerAddr),
 		ethcommon.HexToAddress(strategyManagerAddr),
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
@@ -1123,6 +1127,7 @@ func modifyAllocations(cCtx *cli.Context, operatorAddress string, operatorPrivat
 				ethcommon.HexToAddress(allocationManagerAddr),
 				ethcommon.HexToAddress(delegationManagerAddr),
 				ethcommon.HexToAddress(strategyManagerAddr),
+				ethcommon.HexToAddress(""),
 				ethcommon.HexToAddress(""),
 				ethcommon.HexToAddress(""),
 				ethcommon.HexToAddress(""),
@@ -1334,6 +1339,7 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		crossChainRegistryAddr,
+		ethcommon.HexToAddress(""),
 		ethcommon.HexToAddress(""),
 		logger,
 	)

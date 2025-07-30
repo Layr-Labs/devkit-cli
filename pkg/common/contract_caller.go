@@ -39,9 +39,10 @@ type ContractCaller struct {
 	keyRegistrarAddr       common.Address
 	crossChainRegistryAddr common.Address
 	releaseManagerAddr     common.Address
+	certVerifier           common.Address
 }
 
-func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, keyRegistrarAddr common.Address, crossChainRegistryAddr common.Address, releaseManagerAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
+func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient.Client, allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, keyRegistrarAddr, crossChainRegistryAddr, releaseManagerAddr, certVerifierAddr common.Address, logger iface.Logger) (*ContractCaller, error) {
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %w", err)
@@ -68,6 +69,7 @@ func NewContractCaller(privateKeyHex string, chainID *big.Int, client *ethclient
 		keyRegistrarAddr:       keyRegistrarAddr,
 		crossChainRegistryAddr: crossChainRegistryAddr,
 		releaseManagerAddr:     releaseManagerAddr,
+		certVerifier:           certVerifierAddr,
 	}, nil
 }
 

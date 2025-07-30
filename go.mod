@@ -7,7 +7,7 @@ toolchain go1.24.2
 replace github.com/Layr-Labs/devkit-cli => ./
 
 require (
-	github.com/Layr-Labs/eigenlayer-contracts v1.7.0-rc.4
+	github.com/Layr-Labs/eigenlayer-contracts v1.8.0-rc.0
 	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737
 	github.com/Layr-Labs/multichain-go v0.0.9
 	github.com/google/uuid v1.6.0
