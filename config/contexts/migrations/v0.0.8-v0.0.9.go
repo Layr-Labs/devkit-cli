@@ -17,7 +17,7 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l1", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "8825097"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "8836180"}
 				},
 			},
 			// Update L2 fork block
@@ -25,7 +25,7 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l2", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "28753690"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "28820370"}
 				},
 			},
 			// Update L1 CrossChainRegistry address
