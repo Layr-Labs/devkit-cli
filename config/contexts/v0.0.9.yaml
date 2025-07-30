@@ -9,7 +9,7 @@ context:
       chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
-        block: 8836180
+        block: 8836193
         url: ""
         block_time: 3
     l2:
