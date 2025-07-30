@@ -95,14 +95,14 @@ type EigenLayerL1Config struct {
 	KeyRegistrar         string `json:"key_registrar" yaml:"key_registrar"`
 	ReleaseManager       string `json:"release_manager" yaml:"release_manager"`
 	OperatorTableUpdater string `json:"operator_table_updater" yaml:"operator_table_updater"`
-	TaskMailBox          string `json:"task_mail_box" yaml:"task_mail_box"`
+	TaskMailbox          string `json:"task_mailbox" yaml:"task_mailbox"`
 }
 
 type EigenLayerL2Config struct {
 	BN254CertificateVerifier string `json:"bn254_certificate_verifier" yaml:"bn254_certificate_verifier"`
 	ECDSACertificateVerifier string `json:"ecdsa_certificate_verifier" yaml:"ecdsa_certificate_verifier"`
 	OperatorTableUpdater     string `json:"operator_table_updater" yaml:"operator_table_updater"`
-	TaskMailBox              string `json:"task_mail_box" yaml:"task_mail_box"`
+	TaskMailbox              string `json:"task_mailbox" yaml:"task_mailbox"`
 }
 
 type ChainConfig struct {

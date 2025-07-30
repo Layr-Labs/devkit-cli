@@ -283,7 +283,7 @@ Run this from your project directory:
 devkit avs call --signature="(uint256,string)" args='(5,"hello")'
 ```
 
-Optionally, submit tasks directly to the on-chain TaskMailBox contract via a frontend or another method for more realistic testing scenarios.
+Optionally, submit tasks directly to the on-chain TaskMailbox contract via a frontend or another method for more realistic testing scenarios.
 
 ### 8️⃣ Publish AVS Release (`devkit avs release`)
 
