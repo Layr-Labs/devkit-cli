@@ -228,6 +228,8 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	releaseManagerVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.ReleaseManager}
 	operatorTableUpdaterKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
 	operatorTableUpdaterVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.OperatorTableUpdater}
+	taskMailBoxKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "task_mail_box"}
+	taskMailBoxVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.TaskMailBox}
 
 	// Replace existing or append new entries in l1 section
 	SetMappingValue(l1Map, allocationManagerKey, allocationManagerVal)
@@ -237,6 +239,7 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	SetMappingValue(l1Map, keyRegistrarKey, keyRegistrarVal)
 	SetMappingValue(l1Map, releaseManagerKey, releaseManagerVal)
 	SetMappingValue(l1Map, operatorTableUpdaterKey, operatorTableUpdaterVal)
+	SetMappingValue(l1Map, taskMailBoxKey, taskMailBoxVal)
 
 	// Find or create "l2" mapping entry under eigenlayer
 	l2Map := GetChildByKey(parentMap, "l2")
@@ -255,11 +258,14 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	l2ECDSACertificateVerifierVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.ECDSACertificateVerifier}
 	bn254Key := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "bn254_certificate_verifier"}
 	bn254Val := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.BN254CertificateVerifier}
+	l2TaskMailBoxKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "task_mail_box"}
+	l2TaskMailBoxVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.TaskMailBox}
 
 	// Replace existing or append new entries in l2 section
 	SetMappingValue(l2Map, l2OperatorTableUpdaterKey, l2OperatorTableUpdaterVal)
 	SetMappingValue(l2Map, l2ECDSACertificateVerifierKey, l2ECDSACertificateVerifierVal)
 	SetMappingValue(l2Map, bn254Key, bn254Val)
+	SetMappingValue(l2Map, l2TaskMailBoxKey, l2TaskMailBoxVal)
 
 	return nil
 }
