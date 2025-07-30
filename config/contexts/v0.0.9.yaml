@@ -116,10 +116,12 @@ context:
       key_registrar: "0xA4dB30D08d8bbcA00D40600bee9F029984dB162a"
       release_manager: "0xd9Cb89F1993292dEC2F973934bC63B0f2A702776"
       operator_table_updater: "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476"
+      task_mailbox: "0xB99CC53e8db7018f557606C2a5B066527bF96b26"
     l2:
       bn254_certificate_verifier: "0xff58A373c18268F483C1F5cA03Cf885c0C43373a"
       operator_table_updater: "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476"
       ecdsa_certificate_verifier: "0xb3Cd1A457dEa9A9A6F6406c6419B1c326670A96F"
+      task_mailbox: "0xB99CC53e8db7018f557606C2a5B066527bF96b26"
   # L1 Contracts deployed on `devnet start`
   deployed_l1_contracts: []
   # L2 Contracts deployed on `devnet start`
