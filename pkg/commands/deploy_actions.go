@@ -1057,7 +1057,7 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 		} else if opSet.CurveType == common.ECDSACurve {
 			tableCalculatorAddr = ecdsaTableCalculatorAddr
 		}
-		// Create reservation against appropriate TableCaclulator
+		// Create reservation against appropriate TableCalculator
 		err = contractCaller.CreateGenerationReservation(cCtx.Context, uint32(opSet.OperatorSetID), ethcommon.HexToAddress(tableCalculatorAddr), avsAddress)
 		if err != nil {
 			return fmt.Errorf("failed to request op set generation reservation: %w", err)
