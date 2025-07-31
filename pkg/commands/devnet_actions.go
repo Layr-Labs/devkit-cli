@@ -92,6 +92,12 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("loading context nodes failed: %w", err)
 	}
 
+	// Extract context details
+	envCtx, ok := config.Context[contextName]
+	if !ok {
+		return fmt.Errorf("context '%s' not found in configuration", contextName)
+	}
+
 	// Fetch EigenLayer addresses using Zeus if requested
 	if useZeus {
 		err = common.UpdateContextWithZeusAddresses(cCtx.Context, logger, contextNode, contextName)
@@ -190,11 +196,11 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	l1ContainerName := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
 	l2ContainerName := fmt.Sprintf("devkit-devnet-l2-%s", config.Config.Project.Name)
-	l1ChainConfig, found := config.Context[contextName].Chains[common.L1]
+	l1ChainConfig, found := envCtx.Chains[common.L1]
 	if !found {
 		return fmt.Errorf("failed to find a chain with name: l1 in devnet.yaml")
 	}
-	l2ChainConfig, found := config.Context[contextName].Chains[common.L2]
+	l2ChainConfig, found := envCtx.Chains[common.L2]
 	if !found {
 		return fmt.Errorf("failed to find a chain with name: l2 in devnet.yaml")
 	}
@@ -332,7 +338,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		time.Sleep(1 * time.Second)
 
 		logger.Title("Registering AVS with EigenLayer...")
-		if !cCtx.Bool("skip-setup") {
+		if !(cCtx.Bool("skip-setup") || envCtx.Avs.SkipSetup) {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
 				return fmt.Errorf("updating AVS metadata failed: %w", err)
 			}
@@ -406,7 +412,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 		// Run scheduler in the background
 		go func() {
-			if err := ScheduleTransport(&childCtx, config.Context[contextName].Transporter.Schedule); err != nil && !errors.Is(err, context.Canceled) {
+			if err := ScheduleTransport(&childCtx, envCtx.Transporter.Schedule); err != nil && !errors.Is(err, context.Canceled) {
 				logger.Error("ScheduleTransport failed: %v", err)
 				stop()
 			}
