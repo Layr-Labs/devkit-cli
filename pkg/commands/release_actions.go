@@ -282,7 +282,7 @@ func checkMetadataURIExists(logger iface.Logger, contextName string, cfg *common
 	avsPrivateKey = strings.TrimPrefix(avsPrivateKey, "0x")
 
 	// Get contract addresses
-	_, _, _, _, _, _, releaseManagerAddress := common.GetEigenLayerAddresses(contextName, cfg)
+	_, _, _, _, _, _, _, releaseManagerAddress := common.GetEigenLayerAddresses(contextName, cfg)
 
 	// Create contract caller
 	contractCaller, err := common.NewContractCaller(
@@ -369,7 +369,7 @@ func publishReleaseToReleaseManagerAction(
 	}
 	// Trim 0x
 	avsPrivateKey = strings.TrimPrefix(avsPrivateKey, "0x")
-	_, _, _, _, _, _, releaseManagerAddress := common.GetEigenLayerAddresses(contextName, cfg)
+	_, _, _, _, _, _, _, releaseManagerAddress := common.GetEigenLayerAddresses(contextName, cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		avsPrivateKey,
@@ -461,7 +461,7 @@ func setReleaseMetadataURIAction(cCtx *cli.Context) error {
 	avsPrivateKey = strings.TrimPrefix(avsPrivateKey, "0x")
 
 	// Get contract addresses
-	_, _, _, _, _, _, releaseManagerAddress := common.GetEigenLayerAddresses(contextName, cfg)
+	_, _, _, _, _, _, _, releaseManagerAddress := common.GetEigenLayerAddresses(contextName, cfg)
 
 	// Create contract caller
 	contractCaller, err := common.NewContractCaller(

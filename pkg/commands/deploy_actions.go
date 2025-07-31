@@ -565,7 +565,7 @@ func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
@@ -618,7 +618,7 @@ func SetAVSRegistrarAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
@@ -686,7 +686,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 		return fmt.Errorf("failed to connect to L1 RPC at %s: %w", l1ChainCfg.RPCURL, err)
 	}
 	defer client.Close()
-	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
+	allocationManagerAddr, delegationManagerAddr, strategyManagerAddr, _, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		envCtx.Avs.AVSPrivateKey,
@@ -940,7 +940,7 @@ func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error
 
 	avsAddress := ethcommon.HexToAddress(envCtx.Avs.Address)
 	avsPrivateKeyOrGivenPermissionByAvs := envCtx.Avs.AVSPrivateKey
-	_, _, _, keyRegistrarAddr, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
+	_, _, _, keyRegistrarAddr, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		avsPrivateKeyOrGivenPermissionByAvs,
@@ -1026,7 +1026,7 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 
 	avsAddress := ethcommon.HexToAddress(envCtx.Avs.Address)
 	avsPrivateKeyOrGivenPermissionByAvs := envCtx.Avs.AVSPrivateKey
-	_, _, _, keyRegistrarAddr, crossChainRegistryAddr, bn254TableCalculatorAddr, _ := common.GetEigenLayerAddresses(contextName, cfg)
+	_, _, _, keyRegistrarAddr, crossChainRegistryAddr, bn254TableCalculatorAddr, ecdsaTableCalculatorAddr, _ := common.GetEigenLayerAddresses(contextName, cfg)
 
 	contractCaller, err := common.NewContractCaller(
 		avsPrivateKeyOrGivenPermissionByAvs,
@@ -1050,7 +1050,15 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 
 	// Create reservations for each opset
 	for _, opSet := range envCtx.OperatorSets {
-		err = contractCaller.CreateGenerationReservation(cCtx.Context, uint32(opSet.OperatorSetID), ethcommon.HexToAddress(bn254TableCalculatorAddr), avsAddress)
+		// Select appropriate table calculator address
+		var tableCalculatorAddr string
+		if opSet.CurveType == common.BN254Curve {
+			tableCalculatorAddr = bn254TableCalculatorAddr
+		} else if opSet.CurveType == common.ECDSACurve {
+			tableCalculatorAddr = ecdsaTableCalculatorAddr
+		}
+		// Create reservation against appropriate TableCaclulator
+		err = contractCaller.CreateGenerationReservation(cCtx.Context, uint32(opSet.OperatorSetID), ethcommon.HexToAddress(tableCalculatorAddr), avsAddress)
 		if err != nil {
 			return fmt.Errorf("failed to request op set generation reservation: %w", err)
 		}
@@ -1094,7 +1102,7 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 	}
 
 	avsAddress := ethcommon.HexToAddress(envCtx.Avs.Address)
-	_, _, _, keyRegistrarAddr, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
+	_, _, _, keyRegistrarAddr, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
 
 	for _, op := range envCtx.OperatorRegistrations {
 

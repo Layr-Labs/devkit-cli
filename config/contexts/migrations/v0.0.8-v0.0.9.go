@@ -76,12 +76,20 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xb3Cd1A457dEa9A9A6F6406c6419B1c326670A96F"}
 				},
 			},
-			// Add skip-setup flag to avs config
+			// Update L1 BN254TableCalculator address
 			{
-				Path:      []string{"context", "avs", "skip_setup"},
+				Path:      []string{"context", "eigenlayer", "l1", "bn254_table_calculator"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "false"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xa19E3B00cf4aC46B5e6dc0Bbb0Fb0c86D0D65603"}
+				},
+			},
+			// Update L1 ECDSATableCalculator address
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "ecdsa_table_calculator"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xaCB5DE6aa94a1908E6FA577C2ade65065333B450"}
 				},
 			},
 		},

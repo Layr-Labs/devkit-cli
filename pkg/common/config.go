@@ -91,6 +91,7 @@ type EigenLayerL1Config struct {
 	DelegationManager    string `json:"delegation_manager" yaml:"delegation_manager"`
 	StrategyManager      string `json:"strategy_manager" yaml:"strategy_manager"`
 	BN254TableCalculator string `json:"bn254_table_calculator" yaml:"bn254_table_calculator"`
+	ECDSATableCalculator string `json:"ecdsa_table_calculator" yaml:"ecdsa_table_calculator"`
 	CrossChainRegistry   string `json:"cross_chain_registry" yaml:"cross_chain_registry"`
 	KeyRegistrar         string `json:"key_registrar" yaml:"key_registrar"`
 	ReleaseManager       string `json:"release_manager" yaml:"release_manager"`
