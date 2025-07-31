@@ -6,7 +6,6 @@ import (
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
-	"github.com/Layr-Labs/devkit-cli/pkg/testutils"
 
 	"github.com/urfave/cli/v2"
 )
@@ -54,23 +53,10 @@ func AVSRun(cCtx *cli.Context) error {
 	// Print task if verbose
 	logger.Debug("Starting offchain AVS components...")
 
-	// Get the config (based on if we're in a test or not)
-	var cfg *common.ConfigWithContextConfig
-
-	// First check if config is in context (for testing)
-	if cfgValue := cCtx.Context.Value(testutils.ConfigContextKey); cfgValue != nil {
-		// Use test config from context
-		cfg = cfgValue.(*common.ConfigWithContextConfig)
-	} else {
-		// Load selected context
-		context := cCtx.String("context")
-
-		// Load from file if not in context
-		var err error
-		cfg, err = common.LoadConfigWithContextConfig(context)
-		if err != nil {
-			return err
-		}
+	// Load the config fetch templateLanguage
+	cfg, _, err := common.LoadConfigWithContextConfig(contextName)
+	if err != nil {
+		return err
 	}
 
 	// Pull template language from config
