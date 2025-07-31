@@ -9,7 +9,7 @@ replace github.com/Layr-Labs/devkit-cli => ./
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.8.0-rc.0
 	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737
-	github.com/Layr-Labs/multichain-go v0.0.9
+	github.com/Layr-Labs/multichain-go v0.0.11
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/opencontainers/go-digest v1.0.0
@@ -73,6 +73,7 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/supranational/blst v0.3.15 // indirect
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect

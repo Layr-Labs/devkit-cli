@@ -8,8 +8,8 @@ github.com/Layr-Labs/eigenlayer-contracts v1.8.0-rc.0 h1:Sb8qPzW2XARXkh1uzE5Zlod
 github.com/Layr-Labs/eigenlayer-contracts v1.8.0-rc.0/go.mod h1:Ie8YE3EQkTHqG6/tnUS0He7/UPMkXPo/3OFXwSy0iRo=
 github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737 h1:UnBl34Y3xxQ4WTQ/O36dtY0CtHXZXvgyWxwEdJRCdHQ=
 github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737/go.mod h1:bNDHU6OHvYrjPaUe/0GSUrfvO6OjGFWIWPehC0U6K40=
-github.com/Layr-Labs/multichain-go v0.0.9 h1:/qr9yAmdnuCfMCXuhi4wpHdy0sAN7zhOtrAk9QKqV4s=
-github.com/Layr-Labs/multichain-go v0.0.9/go.mod h1:rP0WltaST6GpZjBFUnMU8hU3E4viziMFEE2m78PsRjk=
+github.com/Layr-Labs/multichain-go v0.0.11 h1:WDpTzaL8EmQzGrjCMSL3Fykg54Di3GIgYQ85JyJzw2Y=
+github.com/Layr-Labs/multichain-go v0.0.11/go.mod h1:eQQLSZYnFyecHcsil5l1whR15ffZdbzKrXMJbequqjM=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/VictoriaMetrics/fastcache v1.12.2 h1:N0y9ASrJ0F6h0QaC3o6uJb3NIZ9VKLjCM7NQbSmF7WI=
@@ -262,6 +262,8 @@ github.com/shirou/gopsutil v3.21.11+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMT
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
+github.com/stretchr/objx v0.5.2 h1:xuMeJ0Sdp5ZMRXx/aWO6RZxdr3beISkG5/G/aIRr3pY=
+github.com/stretchr/objx v0.5.2/go.mod h1:FRsXN1f5AsAjCGJKqEizvkpNtU+EGNCLh3NxZ/8L+MA=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
