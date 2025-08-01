@@ -52,6 +52,14 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xA4dB30D08d8bbcA00D40600bee9F029984dB162a"}
 				},
 			},
+			// Update L2 TaskMailbox address
+			{
+				Path:      []string{"context", "eigenlayer", "l2", "task_mailbox"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xB99CC53e8db7018f557606C2a5B066527bF96b26"}
+				},
+			},
 			// Update L2 OperatorTableUpdater address
 			{
 				Path:      []string{"context", "eigenlayer", "l2", "operator_table_updater"},
