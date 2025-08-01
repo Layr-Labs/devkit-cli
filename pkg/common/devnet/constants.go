@@ -2,8 +2,8 @@ package devnet
 
 // Foundry Image Date : 21 April 2025
 const FOUNDRY_IMAGE = "ghcr.io/foundry-rs/foundry:stable"
-const L1_CHAIN_ARGS = "--gas-limit 140000000 --base-fee 0 --gas-price 1000000"
-const L2_CHAIN_ARGS = "--gas-limit 140000000 --base-fee 0 --gas-price 1000000"
+const L1_CHAIN_ARGS = "--gas-limit 140000000 --base-fee 0 --gas-price 1000000 --no-rate-limit"
+const L2_CHAIN_ARGS = "--gas-limit 140000000 --base-fee 0 --gas-price 1000000 --no-rate-limit"
 
 const FUND_VALUE = "1000000000000000000"
 const DEVNET_CONTEXT = "devnet"
