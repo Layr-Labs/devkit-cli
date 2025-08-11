@@ -227,6 +227,16 @@ func (cc *ContractCaller) RegisterAsOperator(ctx context.Context, operatorAddres
 		return fmt.Errorf("failed to get DelegationManager: %w", err)
 	}
 
+	exists, err := delegationManager.IsOperator(nil, operatorAddress)
+	if err != nil {
+		return fmt.Errorf("failed to check operator exists %d: %w", operatorAddress, err)
+	}
+
+	if exists {
+		cc.logger.Info("Operator '%d' already registered, skipping", operatorAddress)
+		return nil
+	}
+
 	err = cc.SendAndWaitForTransaction(ctx, fmt.Sprintf("RegisterAsOperator for %s", operatorAddress.Hex()), func() (*types.Transaction, error) {
 		tx, err := delegationManager.RegisterAsOperator(opts, operatorAddress, allocationDelay, metadataURI)
 		if err == nil && tx != nil {
