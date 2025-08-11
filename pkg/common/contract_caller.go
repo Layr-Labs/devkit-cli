@@ -233,7 +233,7 @@ func (cc *ContractCaller) RegisterAsOperator(ctx context.Context, operatorAddres
 	}
 
 	if exists {
-		cc.logger.Info("Operator '%d' already registered, skipping", operatorAddress)
+		cc.logger.Info("Operator '%s' already registered, skipping", operatorAddress)
 		return nil
 	}
 
@@ -753,7 +753,19 @@ func (cc *ContractCaller) RegisterKeyInKeyRegistrar(ctx context.Context, operato
 	if err != nil {
 		return fmt.Errorf("signature not in correct subgroup: %w", err)
 	}
+
 	operatorSet := keyregistrar.OperatorSet{Avs: avsAddress, Id: opSetId}
+
+	exists, err := keyRegistrar.IsRegistered(nil, operatorSet, operatorAddress)
+	if err != nil {
+		return fmt.Errorf("failed to check operator (%d) is registered: %w", operatorAddress, err)
+	}
+
+	if exists {
+		cc.logger.Info("Operator '%s' already registered for operatorSet '%d' and AVS '%s', skipping", operatorAddress, opSetId, avsAddress)
+		return nil
+	}
+
 	err = cc.SendAndWaitForTransaction(ctx, "RegisterKeyInKeyRegistrar", func() (*types.Transaction, error) {
 		tx, err := keyRegistrar.RegisterKey(opts, operatorAddress, operatorSet, keyData, g1Bytes)
 		return tx, err
