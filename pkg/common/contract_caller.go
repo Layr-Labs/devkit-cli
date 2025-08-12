@@ -199,7 +199,7 @@ func (cc *ContractCaller) CreateOperatorSets(ctx context.Context, avsAddress com
 	}
 
 	err = cc.SendAndWaitForTransaction(ctx, "CreateOperatorSets", func() (*types.Transaction, error) {
-		tx, err := allocationManager.CreateOperatorSets(opts, avsAddress, createSetParams)
+		tx, err := allocationManager.CreateOperatorSets(opts, avsAddress, filteredParams)
 		if err == nil && tx != nil {
 			cc.logger.Debug(
 				"Transaction hash for CreateOperatorSets: %s\n"+
