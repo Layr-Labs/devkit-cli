@@ -338,7 +338,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		time.Sleep(1 * time.Second)
 
 		logger.Title("Registering AVS with EigenLayer...")
-		if !(cCtx.Bool("skip-setup") || envCtx.Avs.SkipSetup) {
+		if !cCtx.Bool("skip-setup") {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
 				return fmt.Errorf("updating AVS metadata failed: %w", err)
 			}
@@ -1472,14 +1472,14 @@ func stopBothContainersByPort(cCtx *cli.Context, log iface.Logger, targetPort in
 // loadOperatorECDSAKey loads an operator's ECDSA private key from keystore or plaintext
 func loadOperatorECDSAKey(operator common.OperatorSpec) (string, error) {
 	// Check if ECDSA keystore is configured
-	if operator.ECDSAKeystorePath != "" && operator.ECDSAKeystorePassword != "" {
+	if len(operator.Keystores) > 0 && operator.Keystores[0].ECDSAKeystorePath != "" && operator.Keystores[0].ECDSAKeystorePassword != "" {
 		// Load from keystore
-		keystoreData, err := os.ReadFile(operator.ECDSAKeystorePath)
+		keystoreData, err := os.ReadFile(operator.Keystores[0].ECDSAKeystorePath)
 		if err != nil {
-			return "", fmt.Errorf("failed to read ECDSA keystore file %s: %w", operator.ECDSAKeystorePath, err)
+			return "", fmt.Errorf("failed to read ECDSA keystore file %s: %w", operator.Keystores[0].ECDSAKeystorePath, err)
 		}
 
-		key, err := ethkeystore.DecryptKey(keystoreData, operator.ECDSAKeystorePassword)
+		key, err := ethkeystore.DecryptKey(keystoreData, operator.Keystores[0].ECDSAKeystorePassword)
 		if err != nil {
 			return "", fmt.Errorf("failed to decrypt ECDSA keystore: %w", err)
 		}

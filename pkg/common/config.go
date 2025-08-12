@@ -35,14 +35,21 @@ type ForkConfig struct {
 }
 
 type OperatorSpec struct {
-	Address               string               `json:"address" yaml:"address"`
-	ECDSAKey              string               `json:"ecdsa_key,omitempty" yaml:"ecdsa_key,omitempty"`
-	ECDSAKeystorePath     string               `json:"ecdsa_keystore_path,omitempty" yaml:"ecdsa_keystore_path,omitempty"`
-	ECDSAKeystorePassword string               `json:"ecdsa_keystore_password,omitempty" yaml:"ecdsa_keystore_password,omitempty"`
-	BlsKeystorePath       string               `json:"bls_keystore_path" yaml:"bls_keystore_path"`
-	BlsKeystorePassword   string               `json:"bls_keystore_password" yaml:"bls_keystore_password"`
-	Stake                 string               `json:"stake,omitempty" yaml:"stake,omitempty"`
-	Allocations           []OperatorAllocation `json:"allocations,omitempty" yaml:"allocations,omitempty"`
+	Address     string               `json:"address" yaml:"address"`
+	ECDSAKey    string               `json:"ecdsa_key,omitempty" yaml:"ecdsa_key,omitempty"`
+	Stake       string               `json:"stake,omitempty" yaml:"stake,omitempty"`
+	Keystores   []OperatorKeystores  `json:"keystores,omitempty" yaml:"keystores,omitempty"`
+	Allocations []OperatorAllocation `json:"allocations,omitempty" yaml:"allocations,omitempty"`
+}
+
+// OperatorKeystore defines keystore data available to an operator
+type OperatorKeystores struct {
+	AVSAddress            string `json:"avs,omitempty" yaml:"avs,omitempty"`
+	OperatorSet           uint64 `json:"operatorSet,omitempty" yaml:"operatorSet,omitempty"`
+	ECDSAKeystorePath     string `json:"ecdsa_keystore_path,omitempty" yaml:"ecdsa_keystore_path,omitempty"`
+	ECDSAKeystorePassword string `json:"ecdsa_keystore_password,omitempty" yaml:"ecdsa_keystore_password,omitempty"`
+	BlsKeystorePath       string `json:"bls_keystore_path" yaml:"bls_keystore_path"`
+	BlsKeystorePassword   string `json:"bls_keystore_password" yaml:"bls_keystore_password"`
 }
 
 // OperatorAllocation defines strategy allocation for an operator
@@ -74,7 +81,6 @@ type StakerDeposits struct {
 }
 
 type AvsConfig struct {
-	SkipSetup        bool   `json:"skip_setup" yaml:"skip_setup"`
 	Address          string `json:"address" yaml:"address"`
 	MetadataUri      string `json:"metadata_url" yaml:"metadata_url"`
 	AVSPrivateKey    string `json:"avs_private_key" yaml:"avs_private_key"`

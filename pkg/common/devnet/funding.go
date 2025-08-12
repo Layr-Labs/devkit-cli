@@ -307,14 +307,14 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 		var privateKey *ecdsa.PrivateKey
 
 		// Check if ECDSA keystore is configured
-		if operator.ECDSAKeystorePath != "" && operator.ECDSAKeystorePassword != "" {
+		if len(operator.Keystores) > 0 && operator.Keystores[0].ECDSAKeystorePath != "" && operator.Keystores[0].ECDSAKeystorePassword != "" {
 			// Load from keystore
-			keystoreData, err := os.ReadFile(operator.ECDSAKeystorePath)
+			keystoreData, err := os.ReadFile(operator.Keystores[0].ECDSAKeystorePath)
 			if err != nil {
-				log.Fatalf("failed to read ECDSA keystore file %s: %v", operator.ECDSAKeystorePath, err)
+				log.Fatalf("failed to read ECDSA keystore file %s: %v", operator.Keystores[0].ECDSAKeystorePath, err)
 			}
 
-			key, err := keystore.DecryptKey(keystoreData, operator.ECDSAKeystorePassword)
+			key, err := keystore.DecryptKey(keystoreData, operator.Keystores[0].ECDSAKeystorePassword)
 			if err != nil {
 				log.Fatalf("failed to decrypt ECDSA keystore: %v", err)
 			}
