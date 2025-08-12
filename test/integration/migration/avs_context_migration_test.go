@@ -1077,16 +1077,16 @@ context:
         block: "22222222"
   eigenlayer:
     l1:
-      cross_chain_registry: "0xOLD_L1_CCR"
-      operator_table_updater: "0xOLD_L1_OTU"
-      key_registrar: "0xOLD_L1_KR"
-      bn254_table_calculator: "0xOLD_L1_BN254_TC"
-      ecdsa_table_calculator: "0xOLD_L1_ECDSA_TC"
+      cross_chain_registry: "0xOLD_L1_C_C_R"
+      operator_table_updater: "0xOLD_L1_O_T_U"
+      key_registrar: "0xOLD_L1_K_R"
+      bn254_table_calculator: "0xOLD_L1_BN254_T_C"
+      ecdsa_table_calculator: "0xOLD_L1_ECDSA_T_C"
     l2:
-      task_mailbox: "0xOLD_L2_TM"
-      operator_table_updater: "0xOLD_L2_OTU"
-      bn254_certificate_verifier: "0xOLD_L2_BN254_CV"
-      ecdsa_certificate_verifier: "0xOLD_L2_ECDSA_CV"
+      task_mailbox: "0xOLD_L2_T_M"
+      operator_table_updater: "0xOLD_L2_O_T_U"
+      bn254_certificate_verifier: "0xOLD_L2_BN254_C_V"
+      ecdsa_certificate_verifier: "0xOLD_L2_ECDSA_C_V"
   avs:
     address: "0xAVS"
 `
@@ -1134,46 +1134,46 @@ context:
 	})
 
 	t.Run("L1 addresses updated", func(t *testing.T) {
-		CCR := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "cross_chain_registry"})
-		OTU := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "operator_table_updater"})
-		KR := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "key_registrar"})
-		BN := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "bn254_table_calculator"})
-		EC := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "ecdsa_table_calculator"})
+		C_C_R := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "cross_chain_registry"})
+		O_T_U := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "operator_table_updater"})
+		K_R := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "key_registrar"})
+		B_N := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "bn254_table_calculator"})
+		E_C := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "ecdsa_table_calculator"})
 
-		if CCR == nil || CCR.Value != "0x287381B1570d9048c4B4C7EC94d21dDb8Aa1352a" {
-			t.Errorf("l1.cross_chain_registry updated wrong, got %v", CCR)
+		if C_C_R == nil || C_C_R.Value != "0x287381B1570d9048c4B4C7EC94d21dDb8Aa1352a" {
+			t.Errorf("l1.cross_chain_registry updated wrong, got %v", C_C_R)
 		}
-		if OTU == nil || OTU.Value != "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476" {
-			t.Errorf("l1.operator_table_updater updated wrong, got %v", OTU)
+		if O_T_U == nil || O_T_U.Value != "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476" {
+			t.Errorf("l1.operator_table_updater updated wrong, got %v", O_T_U)
 		}
-		if KR == nil || KR.Value != "0xA4dB30D08d8bbcA00D40600bee9F029984dB162a" {
-			t.Errorf("l1.key_registrar updated wrong, got %v", KR)
+		if K_R == nil || K_R.Value != "0xA4dB30D08d8bbcA00D40600bee9F029984dB162a" {
+			t.Errorf("l1.key_registrar updated wrong, got %v", K_R)
 		}
-		if BN == nil || BN.Value != "0xa19E3B00cf4aC46B5e6dc0Bbb0Fb0c86D0D65603" {
-			t.Errorf("l1.bn254_table_calculator updated wrong, got %v", BN)
+		if B_N == nil || B_N.Value != "0xa19E3B00cf4aC46B5e6dc0Bbb0Fb0c86D0D65603" {
+			t.Errorf("l1.bn254_table_calculator updated wrong, got %v", B_N)
 		}
-		if EC == nil || EC.Value != "0xaCB5DE6aa94a1908E6FA577C2ade65065333B450" {
-			t.Errorf("l1.ecdsa_table_calculator updated wrong, got %v", EC)
+		if E_C == nil || E_C.Value != "0xaCB5DE6aa94a1908E6FA577C2ade65065333B450" {
+			t.Errorf("l1.ecdsa_table_calculator updated wrong, got %v", E_C)
 		}
 	})
 
 	t.Run("L2 addresses updated", func(t *testing.T) {
-		TM := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "task_mailbox"})
-		OTU := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "operator_table_updater"})
-		BN := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "bn254_certificate_verifier"})
-		EC := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"})
+		T_M := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "task_mailbox"})
+		O_T_U := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "operator_table_updater"})
+		B_N := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "bn254_certificate_verifier"})
+		E_C := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"})
 
-		if TM == nil || TM.Value != "0xB99CC53e8db7018f557606C2a5B066527bF96b26" {
-			t.Errorf("l2.task_mailbox updated wrong, got %v", TM)
+		if T_M == nil || T_M.Value != "0xB99CC53e8db7018f557606C2a5B066527bF96b26" {
+			t.Errorf("l2.task_mailbox updated wrong, got %v", T_M)
 		}
-		if OTU == nil || OTU.Value != "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476" {
-			t.Errorf("l2.operator_table_updater updated wrong, got %v", OTU)
+		if O_T_U == nil || O_T_U.Value != "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476" {
+			t.Errorf("l2.operator_table_updater updated wrong, got %v", O_T_U)
 		}
-		if BN == nil || BN.Value != "0xff58A373c18268F483C1F5cA03Cf885c0C43373a" {
-			t.Errorf("l2.bn254_certificate_verifier updated wrong, got %v", BN)
+		if B_N == nil || B_N.Value != "0xff58A373c18268F483C1F5cA03Cf885c0C43373a" {
+			t.Errorf("l2.bn254_certificate_verifier updated wrong, got %v", B_N)
 		}
-		if EC == nil || EC.Value != "0xb3Cd1A457dEa9A9A6F6406c6419B1c326670A96F" {
-			t.Errorf("l2.ecdsa_certificate_verifier updated wrong, got %v", EC)
+		if E_C == nil || E_C.Value != "0xb3Cd1A457dEa9A9A6F6406c6419B1c326670A96F" {
+			t.Errorf("l2.ecdsa_certificate_verifier updated wrong, got %v", E_C)
 		}
 	})
 
