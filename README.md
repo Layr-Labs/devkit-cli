@@ -521,6 +521,60 @@ devkit avs build --verbose
 ```
 
 ---
+
+## Deploying to Testnet (v0.1.0+)
+
+As of **v0.1.0**, DevKit supports deploying AVS contracts to public testnets. This is the next step after local development and testing.
+
+### Create a Testnet Context
+
+You must create a separate context for your testnet deployment:
+
+```bash
+devkit avs context create --context testnet
+```
+
+Set it as the active context:
+
+```bash
+devkit avs config --set project.context="testnet"
+```
+
+Edit the testnet configuration to set RPC endpoints, keys, and other environment details:
+
+```bash
+devkit avs context --edit --context testnet
+```
+
+> **Tip:**  
+> Use reliable archive RPC endpoints for both L1 and L2 chains. Configure private keys for deployment wallets in the testnet context file or via `.env` for security.
+
+---
+
+### Deploy AVS Contracts to Testnet
+
+Once the `testnet` context is configured and active, you can deploy to each chain:
+
+- **Deploy L1 contracts**:
+```bash
+devkit avs deploy contracts l1
+```
+
+- **Deploy L2 contracts**:
+```bash
+devkit avs deploy contracts l2
+```
+
+> Both commands will use the RPC URLs and keys from your active context.
+
+---
+
+### Next Steps After Deployment
+- Verify contract addresses in your testnet context file.
+- Register operators and run your AVS offchain services pointing to the testnet.
+- Optionally, publish a release for operators using `devkit avs release publish`.
+
+
 ## Upgrade Process
 
 
