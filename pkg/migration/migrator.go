@@ -20,10 +20,14 @@ type PatchCondition interface {
 
 // Available conditions
 type Always struct{}
+type Exists struct{}
 type IfUnchanged struct{}
 
 // Always applies unconditionally
 func (Always) ShouldApply(_, _ *yaml.Node) bool { return true }
+
+// Exists applies only if the userNode is present
+func (Exists) ShouldApply(userNode, _ *yaml.Node) bool { return userNode != nil }
 
 // IfUnchanged applies only if userNode equals oldNode
 func (IfUnchanged) ShouldApply(userNode, oldNode *yaml.Node) bool {

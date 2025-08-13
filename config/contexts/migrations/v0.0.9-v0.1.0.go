@@ -2,6 +2,7 @@ package contextMigrations
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
@@ -9,6 +10,13 @@ import (
 )
 
 func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
+	// Add missing strategy upgrade to move stETH from holesky to sepolia
+	const (
+		oldStrat = "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
+		newStrat = "0x8b29d91e67b013e855EaFe0ad704aC4Ab086a574"
+	)
+
+	// Patch all changes in context
 	engine := migration.PatchEngine{
 		Old:  old,
 		New:  new,
@@ -105,6 +113,58 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 						)
 					}
 					return out
+				},
+			},
+			// Rewrite strategy_address in stakers[].deposits[]
+			{
+				Path:      []string{"context", "stakers"},
+				Condition: migration.Exists{},
+				Transform: func(node *yaml.Node) *yaml.Node {
+					// node is a seq of stakers
+					for _, staker := range node.Content {
+						if staker.Kind != yaml.MappingNode {
+							continue
+						}
+						deposits := migration.ResolveNode(staker, []string{"deposits"})
+						if deposits == nil || deposits.Kind != yaml.SequenceNode {
+							continue
+						}
+						for _, dep := range deposits.Content {
+							if dep.Kind != yaml.MappingNode {
+								continue
+							}
+							if sa := migration.ResolveNode(dep, []string{"strategy_address"}); sa != nil && strings.EqualFold(sa.Value, oldStrat) {
+								sa.Value = newStrat
+							}
+						}
+					}
+					return node
+				},
+			},
+			// Rewrite strategy_address in operators[].allocations[]
+			{
+				Path:      []string{"context", "operators"},
+				Condition: migration.Exists{},
+				Transform: func(node *yaml.Node) *yaml.Node {
+					// node is a seq of operators
+					for _, op := range node.Content {
+						if op.Kind != yaml.MappingNode {
+							continue
+						}
+						allocs := migration.ResolveNode(op, []string{"allocations"})
+						if allocs == nil || allocs.Kind != yaml.SequenceNode {
+							continue
+						}
+						for _, alloc := range allocs.Content {
+							if alloc.Kind != yaml.MappingNode {
+								continue
+							}
+							if sa := migration.ResolveNode(alloc, []string{"strategy_address"}); sa != nil && strings.EqualFold(sa.Value, oldStrat) {
+								sa.Value = newStrat
+							}
+						}
+					}
+					return node
 				},
 			},
 		},
