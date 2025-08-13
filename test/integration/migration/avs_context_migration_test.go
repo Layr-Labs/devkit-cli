@@ -1354,6 +1354,108 @@ context:
 	})
 }
 
+func TestAVSContextMigration_0_0_9_to_0_1_0_StrategyAddressRewrite(t *testing.T) {
+	const (
+		oldStrat = "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
+		// lowercased variant exercises case-insensitive match
+		oldStratLower = "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3"
+		newStrat      = "0x8b29d91e67b013e855EaFe0ad704aC4Ab086a574"
+		otherStrat    = "0x0000000000000000000000000000000000000001"
+	)
+
+	// Minimal 0.0.9 doc with both stakers.deposits and operators.allocations
+	customYAML := `version: 0.0.9
+context:
+  name: "ctx"
+  avs:
+    address: "0xAVS"
+  stakers:
+    - address: "0xS1"
+      ecdsa_key: "0xS1KEY"
+      deposits:
+        - strategy_address: "` + oldStratLower + `"
+          name: "stETH_Strategy"
+          deposit_amount: "1ETH"
+    - address: "0xS2"
+      ecdsa_key: "0xS2KEY"
+      deposits:
+        - strategy_address: "` + otherStrat + `"
+          name: "stETH_Strategy"
+          deposit_amount: "2ETH"
+  operators:
+    - address: "0xOP1"
+      ecdsa_key: "0xK1"
+      ecdsa_keystore_path: "keystores/op1.ecdsa.json"
+      ecdsa_keystore_password: "pass1"
+      bls_keystore_path: "keystores/op1.bls.json"
+      bls_keystore_password: "bpass1"
+      allocations:
+        - strategy_address: "` + oldStrat + `"
+          name: "stETH_Strategy"
+          operator_set_allocations:
+            - operator_set: "0"
+              allocation_in_wads: "500000000000000000"
+    - address: "0xOP2"
+      ecdsa_key: "0xK2"
+      ecdsa_keystore_path: "keystores/op2.ecdsa.json"
+      ecdsa_keystore_password: "pass2"
+      bls_keystore_path: "keystores/op2.bls.json"
+      bls_keystore_password: "bpass2"
+      allocations:
+        - strategy_address: "` + otherStrat + `"
+          name: "stETH_Strategy"
+          operator_set_allocations:
+            - operator_set: "1"
+              allocation_in_wads: "500000000000000000"
+`
+
+	userNode := testNode(t, customYAML)
+
+	var step migration.MigrationStep
+	for _, s := range contexts.MigrationChain {
+		if s.From == "0.0.9" && s.To == "0.1.0" {
+			step = s
+			break
+		}
+	}
+	if step.Apply == nil {
+		t.Fatalf("migration step 0.0.9 -> 0.1.0 not found")
+	}
+
+	migrated, err := migration.MigrateNode(userNode, "0.0.9", "0.1.0", []migration.MigrationStep{step})
+	if err != nil {
+		t.Fatalf("Migration failed: %v", err)
+	}
+
+	// version
+	if v := migration.ResolveNode(migrated, []string{"version"}); v == nil || v.Value != "0.1.0" {
+		t.Fatalf("expected version 0.1.0, got %v", v)
+	}
+
+	// stakers[].deposits[].strategy_address rewritten
+	if got := migration.ResolveNode(migrated, []string{"context", "stakers", "0", "deposits", "0", "strategy_address"}); got == nil || got.Value != newStrat {
+		t.Fatalf("staker[0] deposit strategy_address not rewritten, got %v", got)
+	}
+	// non matching untouched
+	if got := migration.ResolveNode(migrated, []string{"context", "stakers", "1", "deposits", "0", "strategy_address"}); got == nil || got.Value != otherStrat {
+		t.Fatalf("staker[1] deposit strategy_address mutated unexpectedly, got %v", got)
+	}
+
+	// operators[].allocations[].strategy_address rewritten
+	if got := migration.ResolveNode(migrated, []string{"context", "operators", "0", "allocations", "0", "strategy_address"}); got == nil || got.Value != newStrat {
+		t.Fatalf("operator[0] allocation strategy_address not rewritten, got %v", got)
+	}
+	// non matching untouched
+	if got := migration.ResolveNode(migrated, []string{"context", "operators", "1", "allocations", "0", "strategy_address"}); got == nil || got.Value != otherStrat {
+		t.Fatalf("operator[1] allocation strategy_address mutated unexpectedly, got %v", got)
+	}
+
+	// sanity: keystore reshape still happened for OP1
+	if ks := migration.ResolveNode(migrated, []string{"context", "operators", "0", "keystores"}); ks == nil || ks.Kind != yaml.SequenceNode || len(ks.Content) != 2 {
+		t.Fatalf("operator[0] keystores not created properly, got %#v", ks)
+	}
+}
+
 // TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.8
 func TestAVSContextMigration_FullChain(t *testing.T) {
 	// Use the embedded v0.0.1 content as our starting point
