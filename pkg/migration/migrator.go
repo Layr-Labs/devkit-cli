@@ -36,6 +36,17 @@ func (IfUnchanged) ShouldApply(userNode, oldNode *yaml.Node) bool {
 	return bytes.Equal(ub, ob)
 }
 
+// Which node to use as the starting point for a replacement
+type Base int
+
+// Enum for available Base options
+const (
+	BaseAuto Base = iota // default when omitted
+	BaseNew
+	BaseUser
+	BaseOld
+)
+
 // PatchRule defines a YAML node patch rule
 type PatchRule struct {
 	// Path: sequence of map keys or sequence indices (as strings)
@@ -46,6 +57,8 @@ type PatchRule struct {
 	Transform func(newNode *yaml.Node) *yaml.Node
 	// Remove: if true, delete the node instead of patching
 	Remove bool
+	// Which node to base the patch on
+	Base Base
 }
 
 // MigrationStep represents one version-to-version migration
@@ -78,18 +91,41 @@ func (e *PatchEngine) Apply() error {
 		oldNode := ResolveNode(e.Old, rule.Path)
 		newNode := ResolveNode(e.New, rule.Path)
 
-		// insert new node if missing
+		// chose the base node to use for patch operation
+		choose := func(exists bool) *yaml.Node {
+			switch rule.Base {
+			case BaseNew:
+				return newNode
+			case BaseUser:
+				return userNode
+			case BaseOld:
+				return oldNode
+			default:
+				if !exists {
+					// insert uses New by default
+					return newNode
+				}
+				if rule.Transform == nil {
+					// legacy behavior picks newNode
+					return newNode
+				}
+				// transforms default to User
+				return userNode
+			}
+		}
+
 		if userNode == nil {
 			parent, _ := findParent(e.User, rule.Path)
 			if parent == nil {
 				continue
 			}
-			repl := ResolveNode(e.New, rule.Path)
-			if repl == nil {
+			base := choose(false)
+			if base == nil {
 				continue
 			}
+			repl := CloneNode(base)
 			if rule.Transform != nil {
-				repl = rule.Transform(CloneNode(repl))
+				repl = rule.Transform(repl)
 			}
 			insertNode(parent, len(parent.Content), rule.Path[len(rule.Path)-1], CloneNode(repl))
 			continue
@@ -106,9 +142,13 @@ func (e *PatchEngine) Apply() error {
 				continue
 			}
 			// choose replacement
-			repl := newNode
+			base := choose(true)
+			if base == nil {
+				base = userNode
+			}
+			repl := CloneNode(base)
 			if rule.Transform != nil {
-				repl = rule.Transform(CloneNode(newNode))
+				repl = rule.Transform(repl)
 			}
 			// overwrite in place
 			*userNode = *CloneNode(repl)

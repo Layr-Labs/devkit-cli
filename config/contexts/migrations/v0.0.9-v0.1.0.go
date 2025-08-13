@@ -26,6 +26,7 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 			{
 				Path:      []string{"context", "operators"},
 				Condition: migration.Always{},
+				Base:      migration.BaseUser,
 				Transform: func(_ *yaml.Node) *yaml.Node {
 					avsNode := migration.ResolveNode(user, []string{"context", "avs", "address"})
 					avsAddr := ""
@@ -119,6 +120,7 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 			{
 				Path:      []string{"context", "stakers"},
 				Condition: migration.Exists{},
+				Base:      migration.BaseUser,
 				Transform: func(node *yaml.Node) *yaml.Node {
 					// node is a seq of stakers
 					for _, staker := range node.Content {
@@ -145,6 +147,7 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 			{
 				Path:      []string{"context", "operators"},
 				Condition: migration.Exists{},
+				Base:      migration.BaseUser,
 				Transform: func(node *yaml.Node) *yaml.Node {
 					// node is a seq of operators
 					for _, op := range node.Content {
