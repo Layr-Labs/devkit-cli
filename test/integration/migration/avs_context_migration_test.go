@@ -1063,6 +1063,297 @@ context:
 	})
 }
 
+func TestAVSContextMigration_0_0_8_to_0_0_9_PatchesAndAddsSkipSetup(t *testing.T) {
+	// v0.0.8 input with existing structure and old values
+	const in = `version: 0.0.8
+context:
+  name: "pre-009"
+  chains:
+    l1:
+      fork:
+        block: "11111111"
+    l2:
+      fork:
+        block: "22222222"
+  eigenlayer:
+    l1:
+      cross_chain_registry: "0xOLD_L1_C_C_R"
+      operator_table_updater: "0xOLD_L1_O_T_U"
+      key_registrar: "0xOLD_L1_K_R"
+      bn254_table_calculator: "0xOLD_L1_BN254_T_C"
+      ecdsa_table_calculator: "0xOLD_L1_ECDSA_T_C"
+    l2:
+      task_mailbox: "0xOLD_L2_T_M"
+      operator_table_updater: "0xOLD_L2_O_T_U"
+      bn254_certificate_verifier: "0xOLD_L2_BN254_C_V"
+      ecdsa_certificate_verifier: "0xOLD_L2_ECDSA_C_V"
+  avs:
+    address: "0xAVS"
+`
+
+	userNode := testNode(t, in)
+
+	// find the step 0.0.8 -> 0.0.9
+	var step migration.MigrationStep
+	for _, s := range contexts.MigrationChain {
+		if s.From == "0.0.8" && s.To == "0.0.9" {
+			step = s
+			break
+		}
+	}
+	if step.Apply == nil {
+		t.Fatalf("migration step 0.0.8 -> 0.0.9 not found")
+	}
+
+	out, err := migration.MigrateNode(userNode, "0.0.8", "0.0.9", []migration.MigrationStep{step})
+	if err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	// print migrated YAML for debugging
+	if b, err := yaml.Marshal(out); err == nil {
+		t.Log("\n" + string(b))
+	}
+
+	t.Run("version bumped", func(t *testing.T) {
+		v := migration.ResolveNode(out, []string{"version"})
+		if v == nil || v.Value != "0.0.9" {
+			t.Errorf("want version 0.0.9, got %v", v)
+		}
+	})
+
+	t.Run("fork blocks updated", func(t *testing.T) {
+		l1 := migration.ResolveNode(out, []string{"context", "chains", "l1", "fork", "block"})
+		l2 := migration.ResolveNode(out, []string{"context", "chains", "l2", "fork", "block"})
+		if l1 == nil || l1.Value != "8836193" {
+			t.Errorf("l1.fork.block want 8836193, got %v", l1)
+		}
+		if l2 == nil || l2.Value != "28820370" {
+			t.Errorf("l2.fork.block want 28820370, got %v", l2)
+		}
+	})
+
+	t.Run("L1 addresses updated", func(t *testing.T) {
+		C_C_R := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "cross_chain_registry"})
+		O_T_U := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "operator_table_updater"})
+		K_R := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "key_registrar"})
+		B_N := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "bn254_table_calculator"})
+		E_C := migration.ResolveNode(out, []string{"context", "eigenlayer", "l1", "ecdsa_table_calculator"})
+
+		if C_C_R == nil || C_C_R.Value != "0x287381B1570d9048c4B4C7EC94d21dDb8Aa1352a" {
+			t.Errorf("l1.cross_chain_registry updated wrong, got %v", C_C_R)
+		}
+		if O_T_U == nil || O_T_U.Value != "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476" {
+			t.Errorf("l1.operator_table_updater updated wrong, got %v", O_T_U)
+		}
+		if K_R == nil || K_R.Value != "0xA4dB30D08d8bbcA00D40600bee9F029984dB162a" {
+			t.Errorf("l1.key_registrar updated wrong, got %v", K_R)
+		}
+		if B_N == nil || B_N.Value != "0xa19E3B00cf4aC46B5e6dc0Bbb0Fb0c86D0D65603" {
+			t.Errorf("l1.bn254_table_calculator updated wrong, got %v", B_N)
+		}
+		if E_C == nil || E_C.Value != "0xaCB5DE6aa94a1908E6FA577C2ade65065333B450" {
+			t.Errorf("l1.ecdsa_table_calculator updated wrong, got %v", E_C)
+		}
+	})
+
+	t.Run("L2 addresses updated", func(t *testing.T) {
+		T_M := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "task_mailbox"})
+		O_T_U := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "operator_table_updater"})
+		B_N := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "bn254_certificate_verifier"})
+		E_C := migration.ResolveNode(out, []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"})
+
+		if T_M == nil || T_M.Value != "0xB99CC53e8db7018f557606C2a5B066527bF96b26" {
+			t.Errorf("l2.task_mailbox updated wrong, got %v", T_M)
+		}
+		if O_T_U == nil || O_T_U.Value != "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476" {
+			t.Errorf("l2.operator_table_updater updated wrong, got %v", O_T_U)
+		}
+		if B_N == nil || B_N.Value != "0xff58A373c18268F483C1F5cA03Cf885c0C43373a" {
+			t.Errorf("l2.bn254_certificate_verifier updated wrong, got %v", B_N)
+		}
+		if E_C == nil || E_C.Value != "0xb3Cd1A457dEa9A9A6F6406c6419B1c326670A96F" {
+			t.Errorf("l2.ecdsa_certificate_verifier updated wrong, got %v", E_C)
+		}
+	})
+
+	t.Run("unrelated fields preserved", func(t *testing.T) {
+		name := migration.ResolveNode(out, []string{"context", "name"})
+		if name == nil || name.Value != "pre-009" {
+			t.Errorf("context.name mutated, got %v", name)
+		}
+	})
+}
+
+func TestAVSContextMigration_0_0_9_to_0_1_0_FixedOpSets(t *testing.T) {
+	// v0.0.9 input with flat keystore fields
+	customYAML := `version: 0.0.9
+context:
+  name: "custom-context"
+  avs:
+    address: "0xAVS_ADDR"
+  operators:
+    - address: "0xOP1"
+      ecdsa_key: "0xECDSAKEY1"
+      ecdsa_keystore_path: "keystores/operator1.ecdsa.keystore.json"
+      ecdsa_keystore_password: "pass1"
+      bls_keystore_path: "keystores/operator1.bls.keystore.json"
+      bls_keystore_password: "bpass1"
+      custom_field: "keepme1"
+    - address: "0xOP2"
+      ecdsa_key: "0xECDSAKEY2"
+      ecdsa_keystore_path: "keystores/operator2.ecdsa.keystore.json"
+      ecdsa_keystore_password: "pass2"
+      bls_keystore_path: "keystores/operator2.bls.keystore.json"
+      bls_keystore_password: "bpass2"
+  allocations:
+    - strategy_address: "0xSTRAT"
+      name: "stETH_Strategy"
+      operator_set_allocations:
+        - operator_set: "0"
+          allocation_in_wads: "500000000000000000"
+        - operator_set: "1"
+          allocation_in_wads: "500000000000000000"
+`
+
+	userNode := testNode(t, customYAML)
+
+	// locate the 0.0.9 -> 0.1.0 step from the chain
+	var step migration.MigrationStep
+	for _, s := range contexts.MigrationChain {
+		if s.From == "0.0.9" && s.To == "0.1.0" {
+			step = s
+			break
+		}
+	}
+	if step.Apply == nil {
+		t.Fatalf("migration step 0.0.9 -> 0.1.0 not found")
+	}
+
+	migrated, err := migration.MigrateNode(userNode, "0.0.9", "0.1.0", []migration.MigrationStep{step})
+	if err != nil {
+		t.Fatalf("Migration failed: %v", err)
+	}
+
+	t.Run("version bumped", func(t *testing.T) {
+		v := migration.ResolveNode(migrated, []string{"version"})
+		if v == nil || v.Value != "0.1.0" {
+			t.Errorf("expected version 0.1.0, got %v", v)
+		}
+	})
+
+	t.Run("operator 1 keystores created and fields preserved", func(t *testing.T) {
+		op := migration.ResolveNode(migrated, []string{"context", "operators", "0"})
+		if op == nil {
+			t.Fatal("operator[0] missing")
+		}
+
+		// preserved fields
+		if got := migration.ResolveNode(op, []string{"address"}); got == nil || got.Value != "0xOP1" {
+			t.Errorf("address not preserved, got %v", got)
+		}
+		if got := migration.ResolveNode(op, []string{"ecdsa_key"}); got == nil || got.Value != "0xECDSAKEY1" {
+			t.Errorf("ecdsa_key not preserved, got %v", got)
+		}
+		if got := migration.ResolveNode(op, []string{"custom_field"}); got == nil || got.Value != "keepme1" {
+			t.Errorf("custom_field not preserved, got %v", got)
+		}
+
+		// old flat fields removed
+		for _, k := range []string{"ecdsa_keystore_path", "ecdsa_keystore_password", "bls_keystore_path", "bls_keystore_password", "keystore"} {
+			if n := migration.ResolveNode(op, []string{k}); n != nil {
+				t.Errorf("expected %s to be removed, found %v", k, n)
+			}
+		}
+
+		// new keystores
+		ks := migration.ResolveNode(op, []string{"keystores"})
+		if ks == nil || ks.Kind != 2 /* yaml.SequenceNode */ || len(ks.Content) != 2 {
+			t.Fatalf("expected keystores sequence with 2 entries, got %#v", ks)
+		}
+
+		// entry 1: operatorSet 0
+		ks0 := ks.Content[0]
+		check := func(path []string, want string) {
+			n := migration.ResolveNode(ks0, path)
+			if n == nil || n.Value != want {
+				t.Errorf("expected %v == %q, got %v", path, want, n)
+			}
+		}
+		check([]string{"avs"}, "0xAVS_ADDR")
+		check([]string{"operatorSet"}, "0")
+		check([]string{"ecdsa_keystore_path"}, "keystores/operator1.ecdsa.keystore.json")
+		check([]string{"ecdsa_keystore_password"}, "pass1")
+		check([]string{"bls_keystore_path"}, "keystores/operator1.bls.keystore.json")
+		check([]string{"bls_keystore_password"}, "bpass1")
+
+		// entry 2: operatorSet 1, suffix .2
+		ks1 := ks.Content[1]
+		check2 := func(path []string, want string) {
+			n := migration.ResolveNode(ks1, path)
+			if n == nil || n.Value != want {
+				t.Errorf("expected %v == %q, got %v", path, want, n)
+			}
+		}
+		check2([]string{"avs"}, "0xAVS_ADDR")
+		check2([]string{"operatorSet"}, "1")
+		check2([]string{"ecdsa_keystore_path"}, "keystores/operator1.ecdsa.keystore.json")
+		check2([]string{"ecdsa_keystore_password"}, "pass1")
+		check2([]string{"bls_keystore_path"}, "keystores/operator1.bls.keystore.json")
+		check2([]string{"bls_keystore_password"}, "bpass1")
+	})
+
+	t.Run("operator 2 keystores created", func(t *testing.T) {
+		op := migration.ResolveNode(migrated, []string{"context", "operators", "1"})
+		if op == nil {
+			t.Fatal("operator[1] missing")
+		}
+		if got := migration.ResolveNode(op, []string{"address"}); got == nil || got.Value != "0xOP2" {
+			t.Errorf("address not preserved, got %v", got)
+		}
+
+		ks := migration.ResolveNode(op, []string{"keystores"})
+		if ks == nil || ks.Kind != 2 || len(ks.Content) != 2 {
+			t.Fatalf("expected keystores sequence with 2 entries, got %#v", ks)
+		}
+
+		ks0 := migration.ResolveNode(ks, []string{"0"})
+		ks1 := migration.ResolveNode(ks, []string{"1"})
+
+		if n := migration.ResolveNode(ks0, []string{"operatorSet"}); n == nil || n.Value != "0" {
+			t.Errorf("operatorSet[0] expected 0, got %v", n)
+		}
+		if n := migration.ResolveNode(ks1, []string{"operatorSet"}); n == nil || n.Value != "1" {
+			t.Errorf("operatorSet[1] expected 1, got %v", n)
+		}
+
+		// verify suffixing on operator2
+		if n := migration.ResolveNode(ks0, []string{"ecdsa_keystore_path"}); n == nil || n.Value != "keystores/operator2.ecdsa.keystore.json" {
+			t.Errorf("unexpected ecdsa path[0]: %v", n)
+		}
+		if n := migration.ResolveNode(ks1, []string{"ecdsa_keystore_path"}); n == nil || n.Value != "keystores/operator2.ecdsa.keystore.json" {
+			t.Errorf("unexpected ecdsa path[1]: %v", n)
+		}
+		if n := migration.ResolveNode(ks0, []string{"bls_keystore_path"}); n == nil || n.Value != "keystores/operator2.bls.keystore.json" {
+			t.Errorf("unexpected bls path[0]: %v", n)
+		}
+		if n := migration.ResolveNode(ks1, []string{"bls_keystore_path"}); n == nil || n.Value != "keystores/operator2.bls.keystore.json" {
+			t.Errorf("unexpected bls path[1]: %v", n)
+		}
+	})
+
+	t.Run("allocations and context name preserved", func(t *testing.T) {
+		name := migration.ResolveNode(migrated, []string{"context", "name"})
+		if name == nil || name.Value != "custom-context" {
+			t.Errorf("context name not preserved, got %v", name)
+		}
+		allocs := migration.ResolveNode(migrated, []string{"context", "allocations"})
+		if allocs == nil || allocs.Kind != 2 || len(allocs.Content) != 1 {
+			t.Errorf("allocations mutated, got %#v", allocs)
+		}
+	})
+}
+
 // TestAVSContextMigration_FullChain tests migrating through the entire chain from 0.0.1 to 0.0.8
 func TestAVSContextMigration_FullChain(t *testing.T) {
 	// Use the embedded v0.0.1 content as our starting point

@@ -161,7 +161,7 @@ func StartDeployL1Action(cCtx *cli.Context) error {
 
 	// Register AVS with EigenLayer
 	logger.Title("Registering AVS with EigenLayer...")
-	if !(cCtx.Bool("skip-setup") || envCtx.Avs.SkipSetup) {
+	if !cCtx.Bool("skip-setup") {
 		if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
 			return fmt.Errorf("updating AVS metadata failed: %w", err)
 		}
@@ -976,6 +976,8 @@ func ConfigureOpSetCurveTypeAction(cCtx *cli.Context, logger iface.Logger) error
 
 		logger.Info("Configuring curve type %s for operator set %d", opSet.CurveType, opSet.OperatorSetID)
 
+		// Check current curveType - throw if we are attempting to change it
+
 		// Configure the curve type
 		err = contractCaller.ConfigureOpSetCurveType(
 			cCtx.Context, avsAddress,
@@ -1130,10 +1132,24 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 				if err != nil {
 					return fmt.Errorf("failed to create contract caller: %w", err)
 				}
-				blskeystorePath := operator.BlsKeystorePath
-				blskeystorePassword := operator.BlsKeystorePassword
-				keystoreData, err := keystore.LoadKeystoreFile(blskeystorePath)
 
+				var blskeystorePath, blskeystorePassword string
+				for _, ks := range operator.Keystores {
+					if ks.OperatorSet == op.OperatorSetID {
+						blskeystorePath = ks.BlsKeystorePath
+						blskeystorePassword = ks.BlsKeystorePassword
+						break
+					}
+				}
+
+				if blskeystorePath == "" {
+					return fmt.Errorf("no bls keystore found for OperatorSet %d", op.OperatorSetID)
+				}
+
+				keystoreData, err := keystore.LoadKeystoreFile(blskeystorePath)
+				if err != nil {
+					return fmt.Errorf("failed to load keystore %q: %w", blskeystorePath, err)
+				}
 				if err != nil {
 					return fmt.Errorf("failed to load the keystore file from given path %s error %w", blskeystorePath, err)
 				}
