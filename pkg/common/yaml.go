@@ -163,34 +163,34 @@ func CleanYAML(v interface{}) interface{} {
 }
 
 // GetChildByKey returns the value node associated with the given key from a MappingNode
-func GetChildByKey(n *yaml.Node, path string) *yaml.Node {
-	if n == nil {
+func GetChildByKey(node *yaml.Node, path string) *yaml.Node {
+	if node == nil {
 		return nil
 	}
-	cur := n
+	currNode := node
 	for _, seg := range strings.Split(path, ".") {
 		// map lookup part before any index
-		key, idx := seg, -1
-		if i := strings.Index(seg, "["); i >= 0 {
-			key = seg[:i]
-			j := strings.Index(seg[i:], "]")
-			if j <= 1 {
+		key, segIdx := seg, -1
+		if idx := strings.Index(seg, "["); idx >= 0 {
+			key = seg[:idx]
+			closeIdxOffset := strings.Index(seg[idx:], "]")
+			if closeIdxOffset <= 1 {
 				return nil
 			}
-			v, err := strconv.Atoi(seg[i+1 : i+j])
+			idxVal, err := strconv.Atoi(seg[idx+1 : idx+closeIdxOffset])
 			if err != nil {
 				return nil
 			}
-			idx = v
+			segIdx = idxVal
 		}
 		if key != "" {
-			if cur.Kind != yaml.MappingNode {
+			if currNode.Kind != yaml.MappingNode {
 				return nil
 			}
 			found := false
-			for i := 0; i+1 < len(cur.Content); i += 2 {
-				if cur.Content[i].Value == key {
-					cur = cur.Content[i+1]
+			for idx := 0; idx+1 < len(currNode.Content); idx += 2 {
+				if currNode.Content[idx].Value == key {
+					currNode = currNode.Content[idx+1]
 					found = true
 					break
 				}
@@ -199,14 +199,14 @@ func GetChildByKey(n *yaml.Node, path string) *yaml.Node {
 				return nil
 			}
 		}
-		if idx >= 0 {
-			if cur.Kind != yaml.SequenceNode || idx < 0 || idx >= len(cur.Content) {
+		if segIdx >= 0 {
+			if currNode.Kind != yaml.SequenceNode || segIdx < 0 || segIdx >= len(currNode.Content) {
 				return nil
 			}
-			cur = cur.Content[idx]
+			currNode = currNode.Content[segIdx]
 		}
 	}
-	return cur
+	return currNode
 }
 
 // CloneNode performs a deep copy of a *yaml.Node, including its content and comments
