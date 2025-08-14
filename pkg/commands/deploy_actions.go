@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,9 +35,14 @@ type DeployContractTransport struct {
 }
 
 type DeployContractJson struct {
-	Name    string      `json:"name"`
-	Address string      `json:"address"`
-	ABI     interface{} `json:"abi"`
+	Name      string      `json:"name"`
+	Address   string      `json:"address"`
+	ABI       interface{} `json:"abi"`
+	ChainInfo ChainInfo   `json:"chainInfo"`
+}
+
+type ChainInfo struct {
+	ChainId int64 `json:"chainId"`
 }
 
 func StartDeployL1Action(cCtx *cli.Context) error {
@@ -409,7 +415,14 @@ func DeployL1ContractsAction(cCtx *cli.Context) error {
 	if err := contracts.Decode(&contractsList); err != nil {
 		return fmt.Errorf("decode deployed_l1_contracts: %w", err)
 	}
-	err = extractContractOutputs(cCtx, contextName, contractsList)
+	// Get the chainId
+	chainId := common.GetChildByKey(contextNode, "chains.l1.chain_id")
+	if chainId == nil {
+		return fmt.Errorf("chains.l1.chain_id node not found")
+	}
+	// Title line to split these logs from the main body for easy identification
+	logger.Title("Save L1 contract artifacts")
+	err = extractContractOutputs(cCtx, contextName, contractsList, chainId.Value)
 	if err != nil {
 		return fmt.Errorf("failed to write l1 contract artefacts: %w", err)
 	}
@@ -515,9 +528,14 @@ func DeployL2ContractsAction(cCtx *cli.Context) error {
 	if err := contracts.Decode(&contractsList); err != nil {
 		return fmt.Errorf("decode deployed_l2_contracts: %w", err)
 	}
-	// Empty log line to split these logs from the main body for easy identification
-	logger.Title("Save l2 contract artifacts")
-	err = extractContractOutputs(cCtx, contextName, contractsList)
+	// Get the chainId
+	chainId := common.GetChildByKey(contextNode, "chains.l2.chain_id")
+	if chainId == nil {
+		return fmt.Errorf("chains.l2.chain_id node not found")
+	}
+	// Title line to split these logs from the main body for easy identification
+	logger.Title("Save L2 contract artifacts")
+	err = extractContractOutputs(cCtx, contextName, contractsList, chainId.Value)
 	if err != nil {
 		return fmt.Errorf("failed to write l2 contract artefacts: %w", err)
 	}
@@ -839,13 +857,19 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 	return nil
 }
 
-func extractContractOutputs(cCtx *cli.Context, context string, contractsList []DeployContractTransport) error {
+func extractContractOutputs(cCtx *cli.Context, context string, contractsList []DeployContractTransport, chainId string) error {
 	logger := common.LoggerFromContext(cCtx.Context)
 
 	// Push contract artefacts to ./contracts/outputs
 	outDir := filepath.Join("contracts", "outputs", context)
 	if err := os.MkdirAll(outDir, fs.ModePerm); err != nil {
 		return fmt.Errorf("create output dir: %w", err)
+	}
+
+	// Convert chainId to int
+	chainIdInt, err := strconv.ParseInt(chainId, 10, 64)
+	if err != nil {
+		return fmt.Errorf("failed to convert chainId: %w", err)
 	}
 
 	// For each contract extract details and produce json file in outputs/<context>/<contract.name>.json
@@ -885,6 +909,9 @@ func extractContractOutputs(cCtx *cli.Context, context string, contractsList []D
 			Name:    nameVal,
 			Address: addressVal,
 			ABI:     abi.ABI,
+			ChainInfo: ChainInfo{
+				ChainId: chainIdInt,
+			},
 		}
 
 		// Marshal with indentation
