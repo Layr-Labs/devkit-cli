@@ -39,7 +39,7 @@ var CreateCommand = &cli.Command{
 			Value: "go",
 		},
 		&cli.StringFlag{
-			Name:  "framework",
+			Name:  "template",
 			Usage: "Specifies AVS architecture (task-based/hourglass, epoch-based, etc.)",
 			Value: "hourglass",
 		},
@@ -89,7 +89,7 @@ var CreateCommand = &cli.Command{
 		// in verbose mode, detail the situation
 		logger.Debug("Creating new AVS project: %s", projectName)
 		logger.Debug("Directory: %s", cCtx.String("dir"))
-		logger.Debug("Framework: %s", cCtx.String("framework"))
+		logger.Debug("Template: %s", cCtx.String("template"))
 		logger.Debug("Language: %s", cCtx.String("lang"))
 		logger.Debug("Environment: %s", cCtx.String("env"))
 		if cCtx.String("template-path") != "" {
@@ -222,14 +222,14 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, string, error) {
 			return "", "", "", fmt.Errorf("failed to load templates cfg: %w", err)
 		}
 
-		framework := cCtx.String("framework")
-		baseURL, version, err = template.GetTemplateURLs(cfg, framework, lang)
+		selectedTemplate := cCtx.String("template")
+		baseURL, version, err = template.GetTemplateURLs(cfg, selectedTemplate, lang)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to get template URLs: %w", err)
 		}
 
 		if baseURL == "" {
-			return "", "", "", fmt.Errorf("no template found for framework %s and language %s", framework, lang)
+			return "", "", "", fmt.Errorf("no template found for template %s and language %s", selectedTemplate, lang)
 		}
 	}
 

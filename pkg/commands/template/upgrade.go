@@ -35,15 +35,15 @@ func (g *defaultTemplateInfoGetter) GetInfoDefault() (string, string, string, st
 // GetTemplateVersionFromConfig returns the version field for a framework-specific template
 // and validates that the requested language is present in the declared list.
 // An empty Languages slice means “any language”.
-func (g *defaultTemplateInfoGetter) GetTemplateVersionFromConfig(framework, lang string) (string, error) {
+func (g *defaultTemplateInfoGetter) GetTemplateVersionFromConfig(selectedTemplate, lang string) (string, error) {
 	cfg, err := template.LoadConfig()
 	if err != nil {
 		return "", fmt.Errorf("load template cfg: %w", err)
 	}
 
-	fw, ok := cfg.Framework[framework]
+	fw, ok := cfg.Framework[selectedTemplate]
 	if !ok {
-		return "", fmt.Errorf("framework %s not found", framework)
+		return "", fmt.Errorf("framework %s not found", selectedTemplate)
 	}
 
 	if len(fw.Languages) > 0 {
@@ -55,7 +55,7 @@ func (g *defaultTemplateInfoGetter) GetTemplateVersionFromConfig(framework, lang
 			}
 		}
 		if !found {
-			return "", fmt.Errorf("language %s not available for framework %s - available languages: %s", lang, framework, strings.Join(fw.Languages, ", "))
+			return "", fmt.Errorf("language %s not available for framework %s - available languages: %s", lang, selectedTemplate, strings.Join(fw.Languages, ", "))
 		}
 	}
 
@@ -81,7 +81,7 @@ func createUpgradeCommand(
 				Value: "go",
 			},
 			&cli.StringFlag{
-				Name:  "framework",
+				Name:  "template",
 				Usage: "AVS architecture used to generate project files (task-based/hourglass, epoch-based, etc.)",
 				Value: "hourglass",
 			},
@@ -91,9 +91,9 @@ func createUpgradeCommand(
 			logger := common.LoggerFromContext(cCtx.Context)
 			tracker := common.ProgressTrackerFromContext(cCtx.Context)
 
-			framework := cCtx.String("framework")
+			selectedTemplate := cCtx.String("template")
 			lang := cCtx.String("lang")
-			latestVersion, err := infoGetter.GetTemplateVersionFromConfig(framework, lang)
+			latestVersion, err := infoGetter.GetTemplateVersionFromConfig(selectedTemplate, lang)
 			if err != nil {
 				return fmt.Errorf("failed to get latest version: %w", err)
 			}
