@@ -1,7 +1,7 @@
 framework:
   hourglass:
     template: "https://github.com/Layr-Labs/hourglass-avs-template"
-    version: "v0.0.18"
+    version: "v0.0.19"
     languages:
       - go
       - ts
