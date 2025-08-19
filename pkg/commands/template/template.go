@@ -41,7 +41,7 @@ func GetTemplateInfo() (string, string, string, string, error) {
 	if config, ok := configMap["config"].(map[string]interface{}); ok {
 		if project, ok := config["project"].(map[string]interface{}); ok {
 			projectName, _ = project["name"].(string)
-			templateBaseURL, _ = project["templateURL"].(string)
+			templateBaseURL, _ = project["templateBaseUrl"].(string)
 			templateVersion = getStringOrDefault(project, "templateVersion", templateVersion)
 			templateLanguage = getStringOrDefault(project, "templateLanguage", templateLanguage)
 		}
@@ -68,7 +68,7 @@ func GetTemplateInfoDefault() (string, string, string, string, error) {
 	// Default values
 	projectName := ""
 	templateBaseURL := ""
-	templateVersion := "https://github.com/Layr-Labs/hourglass-avs-template"
+	templateVersion := ""
 	templateLanguage := "go"
 
 	// Try to load templates configuration

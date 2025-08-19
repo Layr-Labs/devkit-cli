@@ -423,7 +423,7 @@ This step is optional. The devkit `devkit avs devnet start` command already star
 devkit avs run
 ```
 
-### Deploy AVS Contracts (`devkit avs deploy-contract`)
+### Deploy AVS Contracts (`devkit avs devnet deploy-contracts`)
 
 Deploy your AVS's onchain contracts independently of the full devnet setup.
 
@@ -432,7 +432,7 @@ This step is **optional**. The `devkit avs devnet start` command already handles
 > Note: Testnet support is not yet implemented, but this command is structured to support such workflows in the future.
 
 ```bash
-devkit avs deploy-contract
+devkit avs devnet deploy-contracts
 ```
 
 ### Create Operator Keys (`devkit avs keystore`)
