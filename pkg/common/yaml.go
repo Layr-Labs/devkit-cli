@@ -2,10 +2,12 @@ package common
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -393,6 +395,104 @@ func WriteToPath(root *yaml.Node, path []string, val string) (*yaml.Node, error)
 	}
 
 	return root, nil
+}
+
+// ToStringID converts a value of various numeric or string types into a string ID.
+func ToStringID(value any) string {
+	switch v := value.(type) {
+	case string:
+		return v
+
+	case float64: // JSON numbers default to float64
+		return strconv.FormatInt(int64(v), 10)
+
+	case int:
+		return strconv.Itoa(v)
+
+	case int64:
+		return strconv.FormatInt(v, 10)
+
+	case json.Number: // when decoder.UseNumber(true) is set
+		if i, err := v.Int64(); err == nil {
+			return strconv.FormatInt(i, 10)
+		}
+		return v.String()
+
+	default:
+		return ""
+	}
+}
+
+// NormalizeToKeyedMap converts a slice or map of objects into a map keyed by the given field.
+func NormalizeToKeyedMap(input any, idField string) map[string]map[string]any {
+	keyed := make(map[string]map[string]any)
+
+	switch typed := input.(type) {
+	case []any:
+		for _, elem := range typed {
+			obj, ok := elem.(map[string]any)
+			if !ok {
+				continue
+			}
+			id := ToStringID(obj[idField])
+			if id == "" {
+				continue
+			}
+			keyed[id] = obj
+		}
+
+	case map[string]any:
+		for mapKey, rawObj := range typed {
+			obj, ok := rawObj.(map[string]any)
+			if !ok {
+				continue
+			}
+			id := ToStringID(obj[idField])
+			if id == "" {
+				id = mapKey // fallback to key if idField missing
+			}
+			keyed[id] = obj
+		}
+	}
+
+	return keyed
+}
+
+// MapToSortedSlice converts a keyed map back to a slice sorted by numeric id if possible.
+func MapToSortedSlice(keyed map[string]map[string]any) []any {
+	type keyedObj struct {
+		idStr   string
+		idNum   int64
+		hasNum  bool
+		payload map[string]any
+	}
+
+	objs := make([]keyedObj, 0, len(keyed))
+	for id, obj := range keyed {
+		num, err := strconv.ParseInt(id, 10, 64)
+		objs = append(objs, keyedObj{
+			idStr:   id,
+			idNum:   num,
+			hasNum:  err == nil,
+			payload: obj,
+		})
+	}
+
+	sort.Slice(objs, func(i, j int) bool {
+		if objs[i].hasNum && objs[j].hasNum {
+			return objs[i].idNum < objs[j].idNum
+		}
+		if objs[i].hasNum != objs[j].hasNum {
+			return objs[i].hasNum // numeric ids before non-numeric
+		}
+		return objs[i].idStr < objs[j].idStr
+	})
+
+	sorted := make([]any, 0, len(objs))
+	for _, entry := range objs {
+		sorted = append(sorted, entry.payload)
+	}
+	return sorted
 }
 
 // sanitizeValue trims quotes from user input

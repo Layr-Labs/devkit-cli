@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -224,9 +225,10 @@ func StartDeployL2Action(cCtx *cli.Context) error {
 
 			// Collect appropriate CertVerifier based on curveType
 			var certVerifierAddr string
-			if opSet.CurveType == common.BN254Curve {
+			switch opSet.CurveType {
+			case common.BN254Curve:
 				certVerifierAddr = envCtx.EigenLayer.L2.BN254CertificateVerifier
-			} else if opSet.CurveType == common.ECDSACurve {
+			case common.ECDSACurve:
 				certVerifierAddr = envCtx.EigenLayer.L2.ECDSACertificateVerifier
 			}
 
@@ -248,9 +250,10 @@ func StartDeployL2Action(cCtx *cli.Context) error {
 
 				// Attempt to get owner from appropriate certVerifier
 				var owner ethcommon.Address
-				if opSet.CurveType == common.BN254Curve {
+				switch opSet.CurveType {
+				case common.BN254Curve:
 					owner, err = contractCaller.GetBN254OperatorSetOwner(cCtx.Context, ethcommon.HexToAddress(avsAddr), uint32(opSet.OperatorSetID))
-				} else if opSet.CurveType == common.ECDSACurve {
+				case common.ECDSACurve:
 					owner, err = contractCaller.GetECDSAOperatorSetOwner(cCtx.Context, ethcommon.HexToAddress(avsAddr), uint32(opSet.OperatorSetID))
 				}
 
@@ -265,7 +268,7 @@ func StartDeployL2Action(cCtx *cli.Context) error {
 
 		// Throw error if any of the operatorSets has not been registered yet
 		if transportedOpSets < len(envCtx.OperatorSets) {
-			return fmt.Errorf("waiting on transporter, try again soon...")
+			return fmt.Errorf("waiting on transporter, try again soon")
 		}
 	}
 
@@ -361,6 +364,51 @@ func DeployL1ContractsAction(cCtx *cli.Context) error {
 		outMap, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectJSONResponse, inputJSON)
 		if err != nil {
 			return fmt.Errorf("%s failed: %w", name, err)
+		}
+
+		// Merge getOperatorSets result with context provided OperatorSets
+		if name == "getOperatorSets" {
+			// Debug provided OperatorSets
+			if pretty, err := json.MarshalIndent(outMap, "", "  "); err == nil {
+				logger.Debug("getOperatorSets raw:\n%s", string(pretty))
+			}
+
+			// Read existing operator_sets from context and normalize to map[id]obj
+			currentCtxIface, err := common.NodeToInterface(contextNode)
+			if err != nil {
+				return fmt.Errorf("context decode failed: %w", err)
+			}
+			currSets := map[string]map[string]any{}
+			if curr, ok := currentCtxIface.(map[string]any); ok {
+				if val, ok := curr["operator_sets"]; ok {
+					currSets = common.NormalizeToKeyedMap(val, "operator_set_id")
+				}
+			}
+
+			// Normalize new results to map[id]obj
+			raw, ok := outMap["operator_sets"]
+			if !ok {
+				return fmt.Errorf("getOperatorSets response missing required field operator_sets")
+			}
+			newSets := common.NormalizeToKeyedMap(raw, "operator_set_id")
+			if len(newSets) == 0 {
+				return fmt.Errorf("getOperatorSets.operator_sets empty or invalid")
+			}
+
+			// Merge by id - new wins
+			maps.Copy(currSets, newSets)
+
+			// Convert back to []interface{} sorted by numeric id
+			mergedSlice := common.MapToSortedSlice(currSets)
+
+			// Write back as array
+			envelope := map[string]any{"operator_sets": mergedSlice}
+			node, err := common.InterfaceToNode(envelope)
+			if err != nil {
+				return fmt.Errorf("%s output invalid after normalization: %w", name, err)
+			}
+			common.DeepMerge(contextNode, node)
+			continue
 		}
 
 		// Convert to node for merge
@@ -1048,9 +1096,10 @@ func CreateGenerationReservationAction(cCtx *cli.Context, logger iface.Logger) e
 	for _, opSet := range envCtx.OperatorSets {
 		// Select appropriate table calculator address
 		var tableCalculatorAddr string
-		if opSet.CurveType == common.BN254Curve {
+		switch opSet.CurveType {
+		case common.BN254Curve:
 			tableCalculatorAddr = bn254TableCalculatorAddr
-		} else if opSet.CurveType == common.ECDSACurve {
+		case common.ECDSACurve:
 			tableCalculatorAddr = ecdsaTableCalculatorAddr
 		}
 		// Create reservation against appropriate TableCalculator
@@ -1141,9 +1190,6 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 				}
 
 				keystoreData, err := keystore.LoadKeystoreFile(blskeystorePath)
-				if err != nil {
-					return fmt.Errorf("failed to load keystore %q: %w", blskeystorePath, err)
-				}
 				if err != nil {
 					return fmt.Errorf("failed to load the keystore file from given path %s error %w", blskeystorePath, err)
 				}

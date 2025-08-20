@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"os"
 	"reflect"
 	"testing"
@@ -324,5 +325,73 @@ func TestWriteToPath_MappingCreation(t *testing.T) {
 	m := out.(map[string]interface{})["foo"].(map[string]interface{})["bar"]
 	if m != "baz" {
 		t.Errorf("expected foo.bar=baz, got %v", m)
+	}
+}
+
+func TestToStringID(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  string
+	}{
+		{"string", "abc", "abc"},
+		{"float64", float64(42), "42"},
+		{"int", int(7), "7"},
+		{"int64", int64(99), "99"},
+		{"json.Number", json.Number("123"), "123"},
+		{"invalid", struct{}{}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ToStringID(tt.input)
+			if got != tt.want {
+				t.Errorf("ToStringID(%v) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeToKeyedMap_FromSlice(t *testing.T) {
+	input := []any{
+		map[string]any{"operator_set_id": 1, "foo": "a"},
+		map[string]any{"operator_set_id": 2, "foo": "b"},
+	}
+	got := NormalizeToKeyedMap(input, "operator_set_id")
+	if len(got) != 2 || got["1"]["foo"] != "a" || got["2"]["foo"] != "b" {
+		t.Errorf("unexpected map: %#v", got)
+	}
+}
+
+func TestNormalizeToKeyedMap_FromMap(t *testing.T) {
+	input := map[string]any{
+		"x": map[string]any{"foo": "bar"},
+	}
+	got := NormalizeToKeyedMap(input, "operator_set_id")
+	if len(got) != 1 || got["x"]["foo"] != "bar" {
+		t.Errorf("unexpected map: %#v", got)
+	}
+}
+
+func TestMapToSortedSlice(t *testing.T) {
+	keyed := map[string]map[string]any{
+		"10": {"operator_set_id": 10},
+		"2":  {"operator_set_id": 2},
+		"a":  {"operator_set_id": "a"},
+	}
+	slice := MapToSortedSlice(keyed)
+
+	// should be sorted numerically first: 2, 10, then "a"
+	if len(slice) != 3 {
+		t.Fatalf("expected 3 elements, got %d", len(slice))
+	}
+	if slice[0].(map[string]any)["operator_set_id"] != 2 {
+		t.Errorf("expected first element id=2, got %#v", slice[0])
+	}
+	if slice[1].(map[string]any)["operator_set_id"] != 10 {
+		t.Errorf("expected second element id=10, got %#v", slice[1])
+	}
+	if slice[2].(map[string]any)["operator_set_id"] != "a" {
+		t.Errorf("expected third element id=a, got %#v", slice[2])
 	}
 }
