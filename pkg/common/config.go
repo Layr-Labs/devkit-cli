@@ -104,6 +104,7 @@ type EigenLayerL1Config struct {
 	ReleaseManager       string `json:"release_manager" yaml:"release_manager"`
 	OperatorTableUpdater string `json:"operator_table_updater" yaml:"operator_table_updater"`
 	TaskMailbox          string `json:"task_mailbox" yaml:"task_mailbox"`
+	PermissionController string `json:"permission_controller" yaml:"permission_controller"`
 }
 
 type EigenLayerL2Config struct {

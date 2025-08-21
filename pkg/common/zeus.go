@@ -20,6 +20,7 @@ type L1ZeusAddressData struct {
 	ReleaseManager       string `json:"releaseManager"`
 	OperatorTableUpdater string `json:"operatorTableUpdater"`
 	TaskMailbox          string `json:"taskMailbox"`
+	PermissionController string `json:"permissionController"`
 }
 
 type L2ZeusAddressData struct {
@@ -116,6 +117,13 @@ func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressD
 	if val, ok := l1ZeusData["ZEUS_DEPLOYED_TaskMailbox_Proxy"]; ok {
 		if strVal, ok := val.(string); ok {
 			l1Addresses.TaskMailbox = strVal
+		}
+	}
+
+	// Get PermissionController address
+	if val, ok := l1ZeusData["ZEUS_DEPLOYED_PermissionController_Proxy"]; ok {
+		if strVal, ok := val.(string); ok {
+			l1Addresses.PermissionController = strVal
 		}
 	}
 
@@ -230,6 +238,8 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	operatorTableUpdaterVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.OperatorTableUpdater}
 	taskMailboxKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "task_mailbox"}
 	taskMailboxVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.TaskMailbox}
+	permissionControllerKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "permission_controller"}
+	permissionControllerVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l1Addresses.PermissionController}
 
 	// Replace existing or append new entries in l1 section
 	SetMappingValue(l1Map, allocationManagerKey, allocationManagerVal)
@@ -240,6 +250,7 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	SetMappingValue(l1Map, releaseManagerKey, releaseManagerVal)
 	SetMappingValue(l1Map, operatorTableUpdaterKey, operatorTableUpdaterVal)
 	SetMappingValue(l1Map, taskMailboxKey, taskMailboxVal)
+	SetMappingValue(l1Map, permissionControllerKey, permissionControllerVal)
 
 	// Find or create "l2" mapping entry under eigenlayer
 	l2Map := GetChildByKey(parentMap, "l2")
