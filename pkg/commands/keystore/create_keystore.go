@@ -44,7 +44,7 @@ var CreateCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		logger := common.LoggerFromContext(cCtx.Context)
+		logger := common.LoggerFromContext(cCtx)
 
 		privateKey := cCtx.String("key")
 		path := cCtx.String("path")

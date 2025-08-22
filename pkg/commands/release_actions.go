@@ -24,7 +24,7 @@ import (
 )
 
 func publishReleaseAction(cCtx *cli.Context) error {
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Get values from flags
 	upgradeByTime := cCtx.Int64("upgrade-by-time")
@@ -399,7 +399,7 @@ func publishReleaseToReleaseManagerAction(
 
 // setReleaseMetadataURIAction handles the "release uri" subcommand
 func setReleaseMetadataURIAction(cCtx *cli.Context) error {
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Get values from flags
 	metadataURI := cCtx.String("metadata-uri")

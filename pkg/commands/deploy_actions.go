@@ -47,7 +47,7 @@ type ChainInfo struct {
 
 func StartDeployL1Action(cCtx *cli.Context) error {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 	caser := cases.Title(language.English)
 
 	// Extract vars
@@ -178,7 +178,7 @@ func StartDeployL1Action(cCtx *cli.Context) error {
 
 func StartDeployL2Action(cCtx *cli.Context) error {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 	caser := cases.Title(language.English)
 
 	// Load config for selected context
@@ -282,7 +282,7 @@ func StartDeployL2Action(cCtx *cli.Context) error {
 
 func DeployL1ContractsAction(cCtx *cli.Context) error {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 	caser := cases.Title(language.English)
 
 	// Check if docker is running, else try to start it
@@ -407,7 +407,7 @@ func DeployL1ContractsAction(cCtx *cli.Context) error {
 
 func DeployL2ContractsAction(cCtx *cli.Context) error {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 	caser := cases.Title(language.English)
 
 	// Check if docker is running, else try to start it
@@ -791,7 +791,7 @@ func RegisterOperatorsToAvsFromConfigAction(cCtx *cli.Context, logger iface.Logg
 }
 
 func FetchZeusAddressesAction(cCtx *cli.Context) error {
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Extract vars
 	contextName := cCtx.String("context")
@@ -825,7 +825,7 @@ func FetchZeusAddressesAction(cCtx *cli.Context) error {
 }
 
 func extractContractOutputs(cCtx *cli.Context, context string, contractsList []DeployContractTransport, chainId string) error {
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Push contract artefacts to ./contracts/outputs
 	outDir := filepath.Join("contracts", "outputs", context)

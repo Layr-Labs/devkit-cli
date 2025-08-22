@@ -28,7 +28,7 @@ var RunCommand = &cli.Command{
 
 func AVSRun(cCtx *cli.Context) error {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Check for flagged contextName
 	contextName := cCtx.String("context")

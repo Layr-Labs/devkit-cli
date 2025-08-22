@@ -87,12 +87,12 @@ func WithProgressTracker(ctx context.Context, tracker iface.ProgressTracker) con
 
 // LoggerFromContext retrieves the logger from the context
 // If no logger is found, it returns a non-verbose logger as fallback
-func LoggerFromContext(ctx context.Context) iface.Logger {
-	if logger, ok := ctx.Value(loggerContextKey{}).(iface.Logger); ok {
+func LoggerFromContext(cCtx *cli.Context) iface.Logger {
+	if logger, ok := cCtx.Context.Value(loggerContextKey{}).(iface.Logger); ok {
 		return logger
 	}
-	// Fallback to non-verbose logger if not found in context
-	log, _ := GetLogger(false)
+	// Fallback to logger according to verbose flag if not found in context
+	log, _ := GetLoggerFromCLIContext(cCtx)
 	return log
 }
 

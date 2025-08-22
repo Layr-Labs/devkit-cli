@@ -12,14 +12,14 @@ import (
 )
 
 // EnsureDockerIsRunning checks if Docker is running and attempts to launch Docker Desktop if not.
-func EnsureDockerIsRunning(ctx *cli.Context) error {
-	logger := LoggerFromContext(ctx.Context)
+func EnsureDockerIsRunning(cCtx *cli.Context) error {
+	logger := LoggerFromContext(cCtx)
 	dockerPingTimeout := 2 * time.Second
 	if !isDockerInstalled() {
 		return fmt.Errorf("docker is not installed. Please install Docker Desktop from https://www.docker.com/products/docker-desktop")
 	}
 
-	if err := isDockerRunning(ctx.Context, dockerPingTimeout); err == nil {
+	if err := isDockerRunning(cCtx.Context, dockerPingTimeout); err == nil {
 		return nil
 	}
 
@@ -27,12 +27,12 @@ func EnsureDockerIsRunning(ctx *cli.Context) error {
 
 	switch runtime.GOOS {
 	case "darwin":
-		err := exec.CommandContext(ctx.Context, "open", "-a", "Docker").Start()
+		err := exec.CommandContext(cCtx.Context, "open", "-a", "Docker").Start()
 		if err != nil {
 			return fmt.Errorf("failed to launch Docker Desktop: %w", err)
 		}
 	case "windows":
-		err := exec.CommandContext(ctx.Context, "powershell", "Start-Process", "Docker Desktop").Start()
+		err := exec.CommandContext(cCtx.Context, "powershell", "Start-Process", "Docker Desktop").Start()
 		if err != nil {
 			return fmt.Errorf("failed to launch Docker Desktop: %w", err)
 		}
@@ -42,7 +42,7 @@ func EnsureDockerIsRunning(ctx *cli.Context) error {
 			return nil
 		} else {
 
-			err := exec.CommandContext(ctx.Context, "systemctl", "start", "docker").Start()
+			err := exec.CommandContext(cCtx.Context, "systemctl", "start", "docker").Start()
 			if err != nil {
 				return fmt.Errorf("failed to launch Docker Desktop: %w", err)
 			}
@@ -61,13 +61,13 @@ func EnsureDockerIsRunning(ctx *cli.Context) error {
 
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-cCtx.Done():
+			return cCtx.Err()
 		case <-timeout:
 			return fmt.Errorf("timed out waiting for Docker to start after %s: error: %v",
 				time.Since(start).Round(time.Millisecond), lastErr)
 		case <-ticker.C:
-			if err := isDockerRunning(ctx.Context, dockerPingTimeout); err == nil {
+			if err := isDockerRunning(cCtx.Context, dockerPingTimeout); err == nil {
 				logger.Info("\n✅ Docker is now running.")
 				return nil
 			} else {

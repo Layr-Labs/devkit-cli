@@ -75,27 +75,27 @@ var CreateContextCommand = &cli.Command{
 	Action: contextCreateAction,
 }
 
-func contextCreateAction(c *cli.Context) error {
-	logger := common.LoggerFromContext(c.Context)
+func contextCreateAction(cCtx *cli.Context) error {
+	logger := common.LoggerFromContext(cCtx)
 
 	// Use flag provided name
-	name := c.String("context")
+	name := cCtx.String("context")
 
 	// Get context name from arg
 	if name == "" {
-		name = c.Args().Get(0)
+		name = cCtx.Args().Get(0)
 	}
 
 	// If no context is provided show help
 	if name == "" {
-		return cli.ShowSubcommandHelp(c)
+		return cli.ShowSubcommandHelp(cCtx)
 	}
 
 	// Locate the context directory
 	cntxDir := filepath.Join("config", "contexts")
 
 	// Guard existence early
-	if err := ensureContextCreatable(cntxDir, name, c.Bool("overwrite")); err != nil {
+	if err := ensureContextCreatable(cntxDir, name, cCtx.Bool("overwrite")); err != nil {
 		return err
 	}
 
@@ -117,7 +117,7 @@ func contextCreateAction(c *cli.Context) error {
 		}
 
 		// Set the current context in config
-		if c.Bool("use") {
+		if cCtx.Bool("use") {
 			err := setCurrentContext(name)
 			if err != nil {
 				return fmt.Errorf("failed to set current context %s: %w", entryName, err)
@@ -135,13 +135,13 @@ func contextCreateAction(c *cli.Context) error {
 		}
 
 		// Log creation
-		logContextCreated(logger, cntxDir, name, &ctxDoc, c.Bool("use"))
+		logContextCreated(logger, cntxDir, name, &ctxDoc, cCtx.Bool("use"))
 
 		return nil
 	}
 
 	// L1
-	l1RPCURL, err := getL1RPCURL(c)
+	l1RPCURL, err := getL1RPCURL(cCtx)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func contextCreateAction(c *cli.Context) error {
 	}
 
 	// L2
-	l2RPCURL, err := getL2RPCURL(c)
+	l2RPCURL, err := getL2RPCURL(cCtx)
 	if err != nil {
 		return err
 	}
@@ -161,15 +161,15 @@ func contextCreateAction(c *cli.Context) error {
 	}
 
 	// Keys and AVS basics
-	deployerKey, err := getDeployerKey(c)
+	deployerKey, err := getDeployerKey(cCtx)
 	if err != nil {
 		return err
 	}
-	appKey, err := getAppKey(c)
+	appKey, err := getAppKey(cCtx)
 	if err != nil {
 		return err
 	}
-	avsCfg, err := getAVSSetup(c)
+	avsCfg, err := getAVSSetup(cCtx)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func contextCreateAction(c *cli.Context) error {
 	)
 
 	// Persist and optionally make current
-	if err := saveContext(cntxDir, name, ctxDoc, c.Bool("use"), logger); err != nil {
+	if err := saveContext(cntxDir, name, ctxDoc, cCtx.Bool("use"), logger); err != nil {
 		return err
 	}
 
@@ -192,7 +192,7 @@ func contextCreateAction(c *cli.Context) error {
 	if err != nil {
 		logger.Title("Could not load context YAML for Zeus update: %v", err)
 	} else {
-		if err := common.UpdateContextWithZeusAddresses(c.Context, logger, contextNode, contextName); err != nil {
+		if err := common.UpdateContextWithZeusAddresses(cCtx.Context, logger, contextNode, contextName); err != nil {
 			logger.Info("Failed to fetch addresses from Zeus: %v", err)
 			logger.Info("Continuing with addresses from config...")
 		} else {
@@ -203,7 +203,7 @@ func contextCreateAction(c *cli.Context) error {
 		}
 	}
 
-	logContextCreated(logger, cntxDir, name, ctxDoc, c.Bool("use"))
+	logContextCreated(logger, cntxDir, name, ctxDoc, cCtx.Bool("use"))
 	return nil
 }
 
@@ -218,8 +218,8 @@ func ensureContextCreatable(cntxDir, ctxName string, overwrite bool) error {
 	return nil
 }
 
-func getL1RPCURL(c *cli.Context) (string, error) {
-	l1RPCURL := c.String("l1-rpc-url")
+func getL1RPCURL(cCtx *cli.Context) (string, error) {
+	l1RPCURL := cCtx.String("l1-rpc-url")
 	if l1RPCURL == "" {
 		url, err := output.InputString(
 			"Enter L1 RPC URL",
@@ -255,8 +255,8 @@ func getChainIDFromRPC(rpcURL string, logger iface.Logger) (*big.Int, error) {
 	return chainID, nil
 }
 
-func getL2RPCURL(c *cli.Context) (string, error) {
-	l2RPCURL := c.String("l2-rpc-url")
+func getL2RPCURL(cCtx *cli.Context) (string, error) {
+	l2RPCURL := cCtx.String("l2-rpc-url")
 	if l2RPCURL == "" {
 		url, err := output.InputString(
 			"Enter L2 RPC URL",
@@ -275,8 +275,8 @@ func getL2RPCURL(c *cli.Context) (string, error) {
 	return l2RPCURL, nil
 }
 
-func getDeployerKey(c *cli.Context) (string, error) {
-	deployerPrivateKey := c.String("deployer-private-key")
+func getDeployerKey(cCtx *cli.Context) (string, error) {
+	deployerPrivateKey := cCtx.String("deployer-private-key")
 	if deployerPrivateKey == "" {
 		val, err := output.InputString(
 			"Enter a funded Deployer Private Key",
@@ -295,8 +295,8 @@ func getDeployerKey(c *cli.Context) (string, error) {
 	return "0x" + strip0x(deployerPrivateKey), nil
 }
 
-func getAppKey(c *cli.Context) (string, error) {
-	appPrivateKey := c.String("app-private-key")
+func getAppKey(cCtx *cli.Context) (string, error) {
+	appPrivateKey := cCtx.String("app-private-key")
 	if appPrivateKey == "" {
 		val, err := output.InputString(
 			"Enter a funded App private key",
@@ -315,8 +315,8 @@ func getAppKey(c *cli.Context) (string, error) {
 	return "0x" + strip0x(appPrivateKey), nil
 }
 
-func getAVSSetup(c *cli.Context) (*common.AvsConfig, error) {
-	privateKey, err := getAVSPrivateKey(c)
+func getAVSSetup(cCtx *cli.Context) (*common.AvsConfig, error) {
+	privateKey, err := getAVSPrivateKey(cCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -324,11 +324,11 @@ func getAVSSetup(c *cli.Context) (*common.AvsConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	metadataURL, err := getAVSMetadataURL(c)
+	metadataURL, err := getAVSMetadataURL(cCtx)
 	if err != nil {
 		return nil, err
 	}
-	registrar, err := getRegistrarAddress(c)
+	registrar, err := getRegistrarAddress(cCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -343,8 +343,8 @@ func getAVSSetup(c *cli.Context) (*common.AvsConfig, error) {
 	return cfg, nil
 }
 
-func getAVSPrivateKey(c *cli.Context) (string, error) {
-	pk := c.String("avs-private-key")
+func getAVSPrivateKey(cCtx *cli.Context) (string, error) {
+	pk := cCtx.String("avs-private-key")
 	if pk == "" {
 		val, err := output.InputString(
 			"Enter a funded AVS private key",
@@ -374,8 +374,8 @@ func derivePublicKey(pkHex string) (string, error) {
 	return strings.ToLower(addr.Hex()), nil
 }
 
-func getAVSMetadataURL(c *cli.Context) (string, error) {
-	u := c.String("avs-metadata-url")
+func getAVSMetadataURL(cCtx *cli.Context) (string, error) {
+	u := cCtx.String("avs-metadata-url")
 	if u == "" {
 		val, err := output.InputString(
 			"Enter AVS metadata URL",
@@ -394,8 +394,8 @@ func getAVSMetadataURL(c *cli.Context) (string, error) {
 	return u, nil
 }
 
-func getRegistrarAddress(c *cli.Context) (string, error) {
-	addr := c.String("registrar-address")
+func getRegistrarAddress(cCtx *cli.Context) (string, error) {
+	addr := cCtx.String("registrar-address")
 	if addr == "" {
 		val, err := output.InputString(
 			"Enter Registrar contract address",

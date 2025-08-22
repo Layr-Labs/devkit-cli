@@ -38,7 +38,7 @@ var Command = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		logger := common.LoggerFromContext(cCtx.Context)
+		logger := common.LoggerFromContext(cCtx)
 
 		// Identify the context we are working against
 		context := cCtx.String("context")

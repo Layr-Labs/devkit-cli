@@ -31,7 +31,7 @@ var TelemetryCommand = &cli.Command{
 		},
 	},
 	Action: func(cCtx *cli.Context) error {
-		logger := common.LoggerFromContext(cCtx.Context)
+		logger := common.LoggerFromContext(cCtx)
 
 		enable := cCtx.Bool("enable")
 		disable := cCtx.Bool("disable")

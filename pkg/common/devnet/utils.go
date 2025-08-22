@@ -32,15 +32,15 @@ func IsPortAvailable(port int) bool {
 }
 
 // / Stops the container and removes it
-func StopAndRemoveContainer(ctx *cli.Context, containerName string) {
-	logger := common.LoggerFromContext(ctx.Context)
+func StopAndRemoveContainer(cCtx *cli.Context, containerName string) {
+	logger := common.LoggerFromContext(cCtx)
 
-	if err := exec.CommandContext(ctx.Context, "docker", "stop", containerName).Run(); err != nil {
+	if err := exec.CommandContext(cCtx.Context, "docker", "stop", containerName).Run(); err != nil {
 		logger.Error("⚠️  Failed to stop container %s: %v", containerName, err)
 	} else {
 		logger.Info("✅ Stopped container %s", containerName)
 	}
-	if err := exec.CommandContext(ctx.Context, "docker", "rm", containerName).Run(); err != nil {
+	if err := exec.CommandContext(cCtx.Context, "docker", "rm", containerName).Run(); err != nil {
 		logger.Error("⚠️  Failed to remove container %s: %v", containerName, err)
 	} else {
 		logger.Info("✅ Removed container %s", containerName)

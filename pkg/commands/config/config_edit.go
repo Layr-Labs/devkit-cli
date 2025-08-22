@@ -42,7 +42,7 @@ var DefaultConfigPath = filepath.Join("config")
 
 // editConfig is the main entry point for the edit config functionality
 func EditConfig(cCtx *cli.Context, configPath string, editTarget EditTarget, context string) error {
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Find an available editor
 	editor, err := findEditor()

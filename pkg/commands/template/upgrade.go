@@ -88,7 +88,7 @@ func createUpgradeCommand(
 		},
 		Action: func(cCtx *cli.Context) error {
 			// Get logger
-			logger := common.LoggerFromContext(cCtx.Context)
+			logger := common.LoggerFromContext(cCtx)
 			tracker := common.ProgressTrackerFromContext(cCtx.Context)
 
 			selectedTemplate := cCtx.String("template")

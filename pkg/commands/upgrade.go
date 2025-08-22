@@ -59,7 +59,7 @@ var githubReleasesURL = func(version string) string {
 
 // UpgradeDevkit resolves the latest version if needed and invokes PerformUpgrade to install the new version
 func UpgradeDevkit(cCtx *cli.Context) error {
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Get current version
 	currentVersion := version.GetVersion()

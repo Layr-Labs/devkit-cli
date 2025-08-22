@@ -24,7 +24,7 @@ var CallCommand = &cli.Command{
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
 		// Get logger
-		logger := common.LoggerFromContext(cCtx.Context)
+		logger := common.LoggerFromContext(cCtx)
 
 		// Check for flagged contextName
 		contextName := cCtx.String("context")

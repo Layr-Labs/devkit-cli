@@ -24,7 +24,7 @@ var BuildCommand = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		logger := common.LoggerFromContext(cCtx.Context)
+		logger := common.LoggerFromContext(cCtx)
 
 		// Migrate config
 		configsMigratedCount, err := configs.MigrateConfig(logger)

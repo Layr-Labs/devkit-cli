@@ -93,8 +93,8 @@ func collectFlagValues(ctx *cli.Context) map[string]interface{} {
 	return flags
 }
 
-func setupTelemetry(ctx *cli.Context) telemetry.Client {
-	logger := common.LoggerFromContext(ctx.Context)
+func setupTelemetry(cCtx *cli.Context) telemetry.Client {
+	logger := common.LoggerFromContext(cCtx)
 
 	// Get effective telemetry preference (project takes precedence over global)
 	telemetryEnabled, err := common.GetEffectiveTelemetryPreference()
@@ -108,7 +108,7 @@ func setupTelemetry(ctx *cli.Context) telemetry.Client {
 		return telemetry.NewNoopClient()
 	}
 
-	appEnv, ok := common.AppEnvironmentFromContext(ctx.Context)
+	appEnv, ok := common.AppEnvironmentFromContext(cCtx.Context)
 	if !ok {
 		return telemetry.NewNoopClient()
 	}
@@ -123,7 +123,7 @@ func setupTelemetry(ctx *cli.Context) telemetry.Client {
 
 // WithFirstRunTelemetryPrompt handles first-run telemetry setup
 func WithFirstRunTelemetryPrompt(cCtx *cli.Context) error {
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Check if this is the first run
 	isFirstRun, err := common.IsFirstRun()

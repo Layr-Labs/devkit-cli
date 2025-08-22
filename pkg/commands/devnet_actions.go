@@ -42,7 +42,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Extract vars
 	contextName := cCtx.String("context")
@@ -451,7 +451,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 func StopDevnetAction(cCtx *cli.Context) error {
 	// Get logger
-	log := common.LoggerFromContext(cCtx.Context)
+	log := common.LoggerFromContext(cCtx)
 
 	// Read flags
 	stopAllContainers := cCtx.Bool("all")

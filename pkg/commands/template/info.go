@@ -11,7 +11,7 @@ var InfoCommand = &cli.Command{
 	Usage: "Display information about the current project template",
 	Action: func(cCtx *cli.Context) error {
 		// Get logger
-		logger := common.LoggerFromContext(cCtx.Context)
+		logger := common.LoggerFromContext(cCtx)
 
 		// Get template information
 		projectName, templateBaseURL, templateVersion, templateLanguage, err := GetTemplateInfo()

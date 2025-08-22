@@ -29,7 +29,7 @@ var Command = &cli.Command{
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
-		logger := common.LoggerFromContext(cCtx.Context)
+		logger := common.LoggerFromContext(cCtx)
 
 		// Identify the top level config .yaml
 		cfgPath := filepath.Join("config", common.BaseConfig)

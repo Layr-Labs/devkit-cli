@@ -27,7 +27,7 @@ var TestCommand = &cli.Command{
 
 func AVSTest(cCtx *cli.Context) error {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Print task if verbose
 	logger.Debug("Running AVS tests...")

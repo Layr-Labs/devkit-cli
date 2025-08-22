@@ -119,7 +119,7 @@ func Transport(cCtx *cli.Context) error {
 	}
 
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Construct and collate all roots
 	roots := make(map[uint64][32]byte)
@@ -442,7 +442,7 @@ func WriteStakeTableRootsToContext(cCtx *cli.Context, roots map[uint64][32]byte)
 // Get all stake table roots from appropriate OperatorTableUpdaters
 func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Discover and collate all roots
 	roots := make(map[uint64][32]byte)
@@ -571,7 +571,7 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 // Verify the context stored ActiveStakeRoots match onchain state
 func VerifyActiveStakeTableRoots(cCtx *cli.Context) error {
 	// Get logger
-	logger := common.LoggerFromContext(cCtx.Context)
+	logger := common.LoggerFromContext(cCtx)
 
 	// Get flag selected contextName
 	contextName := cCtx.String("context")
