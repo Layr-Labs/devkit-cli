@@ -117,7 +117,7 @@ type EigenLayerL2Config struct {
 type ChainConfig struct {
 	ChainID int         `json:"chain_id" yaml:"chain_id"`
 	RPCURL  string      `json:"rpc_url" yaml:"rpc_url"`
-	Fork    *ForkConfig `json:"fork" yaml:"fork"`
+	Fork    *ForkConfig `json:"fork,omitempty" yaml:"fork,omitempty"`
 }
 
 type DeployedL1Contracts struct {
@@ -196,17 +196,17 @@ type ArtifactConfig struct {
 type ChainContextConfig struct {
 	Name                  string                 `json:"name" yaml:"name"`
 	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
-	Transporter           Transporter            `json:"transporter" yaml:"transporter"`
+	Transporter           Transporter            `json:"transporter,omitempty" yaml:"transporter,omitempty"`
 	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
 	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`
+	Stakers               []StakerSpec           `json:"stakers" yaml:"stakers"`
 	Operators             []OperatorSpec         `json:"operators" yaml:"operators"`
 	Avs                   AvsConfig              `json:"avs" yaml:"avs"`
 	EigenLayer            *EigenLayerConfig      `json:"eigenlayer" yaml:"eigenlayer"`
-	DeployedL1Contracts   []DeployedL1Contracts  `json:"deployed_l1_contracts,omitempty" yaml:"deployed_l1_contracts,omitempty"`
-	DeployedL2Contracts   []DeployedL2Contracts  `json:"deployed_l2_contracts,omitempty" yaml:"deployed_l2_contracts,omitempty"`
+	DeployedL1Contracts   []DeployedL1Contracts  `json:"deployed_l1_contracts" yaml:"deployed_l1_contracts"`
+	DeployedL2Contracts   []DeployedL2Contracts  `json:"deployed_l2_contracts" yaml:"deployed_l2_contracts"`
 	OperatorSets          []OperatorSet          `json:"operator_sets" yaml:"operator_sets"`
 	OperatorRegistrations []OperatorRegistration `json:"operator_registrations" yaml:"operator_registrations"`
-	Stakers               []StakerSpec           `json:"stakers" yaml:"stakers"`
 	Artifact              *ArtifactConfig        `json:"artifact" yaml:"artifact"`
 }
 

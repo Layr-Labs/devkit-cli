@@ -1,10 +1,14 @@
 package common
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"regexp"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"gopkg.in/yaml.v3"
@@ -30,144 +34,98 @@ type L2ZeusAddressData struct {
 	TaskMailbox              string `json:"taskMailbox"`
 }
 
-// GetZeusAddresses runs the zeus env show mainnet command and extracts core EigenLayer addresses
+// GetZeusAddresses runs the zeus env show commands and extracts core EigenLayer addresses.
 func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressData, *L2ZeusAddressData, error) {
+	var (
+		l1Raw, l2Raw []byte
+		err          error
+	)
 
-	// Run the zeus command with JSON output
-	cmd := exec.CommandContext(ctx, "zeus", "env", "show", "testnet-sepolia", "--json")
-	output, err := cmd.CombinedOutput()
+	// Run L1
+	l1Raw, err = runZeusJSON(ctx, "testnet-sepolia")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to execute zeus env show testnet-sepolia --json: %w - output: %s", err, string(output))
+		return nil, nil, fmt.Errorf("zeus L1: %w", err)
 	}
 
-	// Parse the JSON output
-	var l1ZeusData map[string]interface{}
-	if err := json.Unmarshal(output, &l1ZeusData); err != nil {
-		return nil, nil, fmt.Errorf("failed to parse Zeus JSON output: %w", err)
-	}
-
-	l2cmd := exec.CommandContext(context.Background(), "zeus", "env", "show", "testnet-base-sepolia", "--json")
-	l2output, err := l2cmd.CombinedOutput()
+	// Run L2
+	l2Raw, err = runZeusJSON(ctx, "testnet-base-sepolia")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to execute zeus env show testnet-base-sepolia --json: %w - output: %s", err, string(l2output))
+		return nil, nil, fmt.Errorf("zeus L2: %w", err)
 	}
 
-	// Parse the L2 JSON output
-	var l2ZeusData map[string]interface{}
-	if err := json.Unmarshal(l2output, &l2ZeusData); err != nil {
-		return nil, nil, fmt.Errorf("failed to parse Zeus JSON output: %w", err)
+	// Parse the JSON outputs
+	var (
+		l1ZeusData map[string]interface{}
+		l2ZeusData map[string]interface{}
+	)
+	if err := json.Unmarshal(l1Raw, &l1ZeusData); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse Zeus L1 JSON: %w; json=%q", err, truncate(string(l1Raw), 400))
+	}
+	if err := json.Unmarshal(l2Raw, &l2ZeusData); err != nil {
+		return nil, nil, fmt.Errorf("failed to parse Zeus L2 JSON: %w; json=%q", err, truncate(string(l2Raw), 400))
 	}
 
-	logger.Info("Parsing Zeus JSON output")
+	logger.Info("Parsing Zeus JSON output\n\n")
 
-	// Extract the addresses
-	l1Addresses := &L1ZeusAddressData{}
-	l2Addresses := &L2ZeusAddressData{}
+	// Extract addresses
+	l1 := &L1ZeusAddressData{}
+	l2 := &L2ZeusAddressData{}
 
-	// Get AllocationManager address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_AllocationManager_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.AllocationManager = strVal
-		}
+	// L1 keys
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_AllocationManager_Proxy"].(string); ok {
+		l1.AllocationManager = v
+	}
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_DelegationManager_Proxy"].(string); ok {
+		l1.DelegationManager = v
+	}
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_StrategyManager_Proxy"].(string); ok {
+		l1.StrategyManager = v
+	}
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_CrossChainRegistry_Proxy"].(string); ok {
+		l1.CrossChainRegistry = v
+	}
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_KeyRegistrar_Proxy"].(string); ok {
+		l1.KeyRegistrar = v
+	}
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_ReleaseManager_Proxy"].(string); ok {
+		l1.ReleaseManager = v
+	}
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_OperatorTableUpdater_Proxy"].(string); ok {
+		l1.OperatorTableUpdater = v
+	}
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_TaskMailbox_Proxy"].(string); ok {
+		l1.TaskMailbox = v
+	}
+	if v, ok := l1ZeusData["ZEUS_DEPLOYED_PermissionController_Proxy"].(string); ok {
+		l1.PermissionController = v
 	}
 
-	// Get DelegationManager address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_DelegationManager_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.DelegationManager = strVal
-		}
+	if l1.AllocationManager == "" || l1.DelegationManager == "" || l1.StrategyManager == "" ||
+		l1.CrossChainRegistry == "" || l1.KeyRegistrar == "" || l1.ReleaseManager == "" || l1.OperatorTableUpdater == "" {
+		logger.Warn("failed to extract required L1 addresses from zeus output")
+		return nil, nil, fmt.Errorf("missing required L1 addresses")
 	}
 
-	// Get StrategyManager address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_StrategyManager_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.StrategyManager = strVal
-		}
+	// L2 keys
+	if v, ok := l2ZeusData["ZEUS_DEPLOYED_OperatorTableUpdater_Proxy"].(string); ok {
+		l2.OperatorTableUpdater = v
+	}
+	if v, ok := l2ZeusData["ZEUS_DEPLOYED_ECDSACertificateVerifier_Proxy"].(string); ok {
+		l2.ECDSACertificateVerifier = v
+	}
+	if v, ok := l2ZeusData["ZEUS_DEPLOYED_BN254CertificateVerifier_Proxy"].(string); ok {
+		l2.BN254CertificateVerifier = v
+	}
+	if v, ok := l2ZeusData["ZEUS_DEPLOYED_TaskMailbox_Proxy"].(string); ok {
+		l2.TaskMailbox = v
 	}
 
-	// Get CrossChainRegistry address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_CrossChainRegistry_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.CrossChainRegistry = strVal
-		}
-	}
-
-	// Get KeyRegistrar address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_KeyRegistrar_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.KeyRegistrar = strVal
-		}
-	}
-
-	// Get ReleaseManager address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_ReleaseManager_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.ReleaseManager = strVal
-		}
-	}
-
-	// Get OperatorTableUpdater address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_OperatorTableUpdater_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.OperatorTableUpdater = strVal
-		}
-	}
-
-	// Get TaskMailbox address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_TaskMailbox_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.TaskMailbox = strVal
-		}
-	}
-
-	// Get PermissionController address
-	if val, ok := l1ZeusData["ZEUS_DEPLOYED_PermissionController_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l1Addresses.PermissionController = strVal
-		}
-	}
-
-	// Verify we have both addresses
-	if l1Addresses.AllocationManager == "" || l1Addresses.DelegationManager == "" || l1Addresses.StrategyManager == "" || l1Addresses.CrossChainRegistry == "" || l1Addresses.KeyRegistrar == "" || l1Addresses.ReleaseManager == "" || l1Addresses.OperatorTableUpdater == "" {
-		logger.Warn("failed to extract required addresses from zeus output")
-		return nil, nil, fmt.Errorf("failed to extract required addresses from zeus output")
-	}
-
-	// Get OperatorTableUpdater address
-	if val, ok := l2ZeusData["ZEUS_DEPLOYED_OperatorTableUpdater_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l2Addresses.OperatorTableUpdater = strVal
-		}
-	}
-
-	// Get ECDSACertificateVerifier address
-	if val, ok := l2ZeusData["ZEUS_DEPLOYED_ECDSACertificateVerifier_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l2Addresses.ECDSACertificateVerifier = strVal
-		}
-	}
-
-	// Get BN254CertificateVerifier address
-	if val, ok := l2ZeusData["ZEUS_DEPLOYED_BN254CertificateVerifier_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l2Addresses.BN254CertificateVerifier = strVal
-		}
-	}
-
-	// Get TaskMailbox address
-	if val, ok := l2ZeusData["ZEUS_DEPLOYED_TaskMailbox_Proxy"]; ok {
-		if strVal, ok := val.(string); ok {
-			l2Addresses.TaskMailbox = strVal
-		}
-	}
-
-	return l1Addresses, l2Addresses, nil
+	return l1, l2, nil
 }
 
 // UpdateContextWithZeusAddresses updates the context configuration with addresses from Zeus
-func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger, ctx *yaml.Node, contextName string) error {
-
-	logger.Info("Fetching EigenLayer core addresses for L1 and L2 from Zeus...")
+func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger, contextMap *yaml.Node, contextName string) error {
+	logger.Title("Fetching EigenLayer core addresses for L1 and L2 from Zeus...")
 	l1Addresses, l2Addresses, err := GetZeusAddresses(context, logger)
 	if err != nil {
 		return err
@@ -183,43 +141,19 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	}
 	logger.Info("Found addresses: %s", b)
 
-	logger.Info("Updating context with Zeus addresses...")
+	logger.Info("\nUpdating context with Zeus addresses...\n\n")
 
-	// Find or create "eigenlayer" mapping entry
-	parentMap := GetChildByKey(ctx, "eigenlayer")
-	if parentMap == nil {
-		// Create key node
-		keyNode := &yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Tag:   "!!str",
-			Value: "eigenlayer",
-		}
-		// Create empty map node
-		parentMap = &yaml.Node{
-			Kind:    yaml.MappingNode,
-			Tag:     "!!map",
-			Content: []*yaml.Node{},
-		}
-		ctx.Content = append(ctx.Content, keyNode, parentMap)
+	// contextMap must be the mapping node for "context". Guard it.
+	if contextMap == nil || contextMap.Kind != yaml.MappingNode {
+		return fmt.Errorf("expected context mapping node")
 	}
 
-	// Find or create "l1" mapping entry under eigenlayer
-	l1Map := GetChildByKey(parentMap, "l1")
-	if l1Map == nil {
-		// Create l1 key node
-		l1KeyNode := &yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Tag:   "!!str",
-			Value: "l1",
-		}
-		// Create empty l1 map node
-		l1Map = &yaml.Node{
-			Kind:    yaml.MappingNode,
-			Tag:     "!!map",
-			Content: []*yaml.Node{},
-		}
-		parentMap.Content = append(parentMap.Content, l1KeyNode, l1Map)
-	}
+	// eigenlayer: {}
+	eigen := ensureMapping(contextMap, "eigenlayer")
+	// l1: {}
+	l1Map := ensureMapping(eigen, "l1")
+	// l2: {}
+	l2Map := ensureMapping(eigen, "l2")
 
 	// Prepare nodes for L1 contracts
 	allocationManagerKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "allocation_manager"}
@@ -252,16 +186,6 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	SetMappingValue(l1Map, taskMailboxKey, taskMailboxVal)
 	SetMappingValue(l1Map, permissionControllerKey, permissionControllerVal)
 
-	// Find or create "l2" mapping entry under eigenlayer
-	l2Map := GetChildByKey(parentMap, "l2")
-	if l2Map == nil {
-		// Create l2 key node
-		l2KeyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "l2"}
-		// Create empty l2 map node
-		l2Map = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{}}
-		parentMap.Content = append(parentMap.Content, l2KeyNode, l2Map)
-	}
-
 	// Prepare nodes for L2 contracts
 	l2OperatorTableUpdaterKey := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "operator_table_updater"}
 	l2OperatorTableUpdaterVal := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: l2Addresses.OperatorTableUpdater}
@@ -279,4 +203,122 @@ func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger
 	SetMappingValue(l2Map, l2TaskMailboxKey, l2TaskMailboxVal)
 
 	return nil
+}
+
+func runZeusJSON(ctx context.Context, env string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "zeus", "env", "show", env, "--json")
+	// Keep stdout clean. Do not merge stderr.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	// Reduce noise from Zeus if it supports these envs.
+	// They are harmless if unknown.
+	cmd.Env = append(os.Environ(),
+		"NO_COLOR=1",
+		"CLICOLOR=0",
+	)
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("exec failed: %w; stderr=%s", err, truncate(stderr.String(), 800))
+	}
+
+	// Clean stdout and extract the first JSON value
+	clean := sanitizeCLIJSON(stdout.Bytes())
+	slice, err := extractFirstTopLevelJSON(clean)
+	if err != nil {
+		return nil, fmt.Errorf("failed to locate JSON payload: %w; cleaned=%q", err, truncate(string(clean), 800))
+	}
+	return slice, nil
+}
+
+// Remove ANSI escapes and lines starting with '+' (xtrace), preserve the rest.
+func sanitizeCLIJSON(b []byte) []byte {
+	ansi := regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
+	s := ansi.ReplaceAll(b, nil)
+	var out []byte
+	sc := bufio.NewScanner(bytes.NewReader(s))
+	for sc.Scan() {
+		line := bytes.TrimSpace(sc.Bytes())
+		if len(line) == 0 || line[0] == '+' {
+			continue
+		}
+		out = append(out, line...)
+		out = append(out, '\n')
+	}
+	return bytes.TrimSpace(out)
+}
+
+// Return the first complete top-level JSON object or array from text.
+func extractFirstTopLevelJSON(in []byte) ([]byte, error) {
+	start := bytes.IndexAny(in, "{[")
+	if start < 0 {
+		return nil, fmt.Errorf("no JSON start found")
+	}
+	open := in[start]
+	close := byte('}')
+	if open == '[' {
+		close = ']'
+	}
+
+	depth := 0
+	inStr := false
+	esc := false
+	for i := start; i < len(in); i++ {
+		c := in[i]
+		if inStr {
+			if esc {
+				esc = false
+			} else if c == '\\' {
+				esc = true
+			} else if c == '"' {
+				inStr = false
+			}
+			continue
+		}
+		switch c {
+		case '"':
+			inStr = true
+		case open:
+			depth++
+		case close:
+			depth--
+			if depth == 0 {
+				return in[start : i+1], nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("unterminated JSON")
+}
+
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "...(truncated)"
+}
+
+// ensureMapping finds key under parent mapping and ensures its value node is a mapping.
+// It returns the value node (which will be a *yaml.Node{Kind: MappingNode}).
+func ensureMapping(parent *yaml.Node, key string) *yaml.Node {
+	if parent == nil || parent.Kind != yaml.MappingNode {
+		panic("ensureMapping: parent must be a mapping node")
+	}
+	// search existing pair
+	for i := 0; i+1 < len(parent.Content); i += 2 {
+		k := parent.Content[i]
+		v := parent.Content[i+1]
+		if k.Kind == yaml.ScalarNode && k.Value == key {
+			if v.Kind != yaml.MappingNode {
+				// replace with an empty mapping
+				parent.Content[i+1] = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+			}
+			return parent.Content[i+1]
+		}
+	}
+	// create new key: value: {}
+	keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
+	valNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	parent.Content = append(parent.Content, keyNode, valNode)
+	return valNode
 }

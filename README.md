@@ -534,20 +534,8 @@ You must create a separate context for your testnet deployment:
 devkit avs context create --context testnet
 ```
 
-Set it as the active context:
-
-```bash
-devkit avs config --set project.context="testnet"
-```
-
-Edit the testnet configuration to set RPC endpoints, keys, and other environment details:
-
-```bash
-devkit avs context --edit --context testnet
-```
-
 > **Tip:**  
-> Use reliable archive RPC endpoints for both L1 and L2 chains. Configure private keys for deployment wallets in the testnet context file or via `.env` for security.
+> Use reliable archive RPC endpoints for both L1 and L2 chains.
 
 ---
 
@@ -571,8 +559,9 @@ devkit avs deploy contracts l2
 
 ### Next Steps After Deployment
 - Verify contract addresses in your testnet context file.
-- Register operators and run your AVS offchain services pointing to the testnet.
-- Optionally, publish a release for operators using `devkit avs release publish`.
+- Register operators and run your AVS offchain services pointing to your testnet deployment (for hourglass, [use hgctl](https://github.com/Layr-Labs/hourglass-monorepo/tree/master/hgctl-go)).
+- Register metadata for your OperatorSets using `devkit avs release uri --metadata-uri "<metadata-uri>" --operator-set-id <operator-set-id>`  
+- Optionally, publish a release for operators using `devkit avs release publish --upgrade-by-time <unix-timestamp>`.
 
 
 ## Upgrade Process

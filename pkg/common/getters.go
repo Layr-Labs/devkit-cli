@@ -12,7 +12,7 @@ func GetForkUrlDefault(contextName string, cfg *ConfigWithContextConfig, chainNa
 		return l1ForkUrl, nil
 	}
 
-	// Check in env first for l2 fork url
+	// Check in env first for L2 fork url
 	l2ForkUrl := os.Getenv("L2_FORK_URL")
 	if chainName == "l2" && l2ForkUrl != "" {
 		return l2ForkUrl, nil
