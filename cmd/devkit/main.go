@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -32,7 +33,10 @@ func main() {
 			verbose := common.PeelBoolFromFlags(os.Args[1:], "--verbose", "-v")
 			// Set verbose directly if it appears in subcommand flags
 			if verbose {
-				cCtx.Set("verbose", "true")
+				err := cCtx.Set("verbose", "true")
+				if err != nil {
+					return fmt.Errorf("failed to set verbose flag globally: %w", err)
+				}
 			}
 
 			// Get logger based on CLI context (handles verbosity internally)
