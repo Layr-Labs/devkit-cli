@@ -33,7 +33,7 @@ func setupCLIContext(cmd *cli.Command, args []string, flags map[string]string) *
 
 	argv := append([]string{}, args...)
 
-	// Stable ordering and --key=value to avoid value mis-association
+	// Stable ordering and --key=value to avoid value miss-association
 	if len(flags) > 0 {
 		keys := make([]string, 0, len(flags))
 		for k := range flags {
