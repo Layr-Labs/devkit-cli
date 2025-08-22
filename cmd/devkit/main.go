@@ -28,6 +28,13 @@ func main() {
 			}
 			common.WithAppEnvironment(cCtx)
 
+			// Parse verbose flags from raw argv to capture from subcommand flags
+			verbose := common.PeelBoolFromFlags(os.Args[1:], "--verbose", "-v")
+			// Set verbose directly if it appears in subcommand flags
+			if verbose {
+				cCtx.Set("verbose", "true")
+			}
+
 			// Get logger based on CLI context (handles verbosity internally)
 			logger, tracker := common.GetLoggerFromCLIContext(cCtx)
 

@@ -314,3 +314,68 @@ func CompareVersions(v1, v2 string) (bool, error) {
 
 	return patch1 > patch2, nil
 }
+
+// PeelBoolFromFlags reports whether a boolean CLI flag is set anywhere in args,
+// It supports these forms:
+//
+//	--verbose
+//	--verbose=true|false|1|0|yes|no|t|f
+//	--verbose true|false|1|0|yes|no|t|f
+//	-v
+//	-v=true|false|1|0|yes|no|t|f
+//	-v true|false|1|0|yes|no|t|f
+//
+// The last occurrence wins. If a flag is present without an explicit value, it is treated as true.
+func PeelBoolFromFlags(args []string, longFlag, shortFlag string) bool {
+	// isBoolLiteral parses common truthy and falsy string literals.
+	isBoolLiteral := func(s string) (ok bool, value bool) {
+		switch strings.ToLower(s) {
+		case "1", "t", "true", "yes", "y":
+			return true, true
+		case "0", "f", "false", "no", "n":
+			return true, false
+		default:
+			return false, false
+		}
+	}
+
+	value := false
+
+	for i := 0; i < len(args); i++ {
+		token := args[i]
+
+		switch {
+		// Exact long or short flag, possibly followed by a separate value token.
+		case token == longFlag || token == shortFlag:
+			// If the next token exists and is a boolean literal, consume it.
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				if ok, v := isBoolLiteral(args[i+1]); ok {
+					value = v
+					i++ // consume the value token
+					continue
+				}
+			}
+			// No explicit value provided. Presence implies true.
+			value = true
+
+		// Equals form for the long flag, for example --verbose=true.
+		case strings.HasPrefix(token, longFlag+"="):
+			if ok, v := isBoolLiteral(strings.TrimPrefix(token, longFlag+"=")); ok {
+				value = v
+			} else {
+				// Treat unknown values as presence implies true.
+				value = true
+			}
+
+		// Equals form for the short flag, for example -v=false.
+		case strings.HasPrefix(token, shortFlag+"="):
+			if ok, v := isBoolLiteral(strings.TrimPrefix(token, shortFlag+"=")); ok {
+				value = v
+			} else {
+				value = true
+			}
+		}
+	}
+
+	return value
+}
