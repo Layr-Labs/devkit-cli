@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/commands"
+	containercmd "github.com/Layr-Labs/devkit-cli/pkg/commands/container"
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/keystore"
 	"github.com/Layr-Labs/devkit-cli/pkg/commands/version"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
@@ -58,6 +59,7 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			commands.AVSCommand,
+			containercmd.Command,
 			keystore.KeystoreCommand,
 			version.VersionCommand,
 			commands.UpgradeCommand,
