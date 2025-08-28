@@ -3,7 +3,6 @@ package container
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/output"
@@ -12,92 +11,56 @@ import (
 
 // InitCommand: devkit container init [name] [dockerfile]
 var InitCommand = &cli.Command{
-    Name:      "init",
-    Usage:     "Initialize existing project with Dockerfile",
-    ArgsUsage: "<name> <dockerfile>",
-    Flags:     append([]cli.Flag{}, common.GlobalFlags...),
-    Action: func(cCtx *cli.Context) error {
-        logger := common.LoggerFromContext(cCtx)
+	Name:      "init",
+	Usage:     "Initialize existing project with compute tee project",
+	ArgsUsage: "",
+	Flags:     append([]cli.Flag{}, common.GlobalFlags...),
+	Action: func(cCtx *cli.Context) error {
+		logger := common.LoggerFromContext(cCtx)
 
-        name := cCtx.Args().Get(0)
-        df := cCtx.Args().Get(1)
+		ok, err := output.Confirm("Are you sure you want to initialize a project with compute tee project?")
+		if err != nil {
+			return fmt.Errorf("confirmation failed: %w", err)
+		}
+		if !ok {
+			return fmt.Errorf("user cancelled")
+		}
 
-        if name == "" {
-            var err error
-            name, err = output.InputString(
-                "Project name:",
-                "Name of the existing project",
-                "",
-                func(s string) error {
-                    if s == "" {
-                        return fmt.Errorf("name cannot be empty")
-                    }
-                    return nil
-                },
-            )
-            if err != nil {
-                return fmt.Errorf("prompt failed: %w", err)
-            }
-        }
+		// check if Dockerfile exists
+		if _, err := os.Stat("Dockerfile"); err == nil {
+			logger.Info("Dockerfile already exists. Continuing...")
+		} else {
+			logger.Info("Dockerfile does not exist. Creating...")
+			// create Dockerfile
+			err := os.WriteFile("Dockerfile", []byte("FROM ubuntu:20.04\nRUN apt-get update && apt-get install -y curl\nRUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && apt-get install -y nodejs\nRUN npm install -g yarn\nRUN yarn install\nRUN yarn build\nRUN yarn start"), 0o644)
+			if err != nil {
+				return fmt.Errorf("failed to create Dockerfile: %w", err)
+			}
+			logger.Info("Dockerfile created successfully")
+		}
 
-        if df == "" {
-            if _, err := os.Stat("Dockerfile"); err == nil {
-                df = "Dockerfile"
-            } else {
-                var err error
-                df, err = output.InputString(
-                    "Path to Dockerfile:",
-                    "Provide a Dockerfile path",
-                    "",
-                    func(s string) error {
-                        if s == "" {
-                            return fmt.Errorf("dockerfile path required")
-                        }
-                        if _, e := os.Stat(s); e != nil {
-                            return fmt.Errorf("dockerfile not accessible: %v", e)
-                        }
-                        return nil
-                    },
-                )
-                if err != nil {
-                    return fmt.Errorf("prompt failed: %w", err)
-                }
-            }
-        }
+		// check if .compute-tee folder exists
+		if _, err := os.Stat(".compute-tee"); err == nil {
+			logger.Info(".compute-tee folder already exists. Continuing...")
+		} else {
+			logger.Info(".compute-tee folder does not exist. Creating...")
+			// create .compute-tee/context folder
+			err := os.MkdirAll(".compute-tee/context", 0o755)
+			if err != nil {
+				return fmt.Errorf("failed to create .compute-tee folder: %w", err)
+			}
+			logger.Info(".compute-tee/context folder created successfully")
+		}
 
-        if _, err := os.Stat(df); err != nil {
-            return fmt.Errorf("dockerfile not accessible: %w", err)
-        }
-
-        dest := filepath.Join(".", "Dockerfile")
-        if _, err := os.Stat(dest); err == nil && df != dest {
-            ok, err := output.Confirm("Dockerfile already exists. Overwrite?")
-            if err != nil {
-                return fmt.Errorf("confirmation failed: %w", err)
-            }
-            if !ok {
-                logger.Info("Skipped Dockerfile overwrite")
-                return nil
-            }
-        }
-
-        if df != dest {
-            if err := copyFile(df, dest); err != nil {
-                return fmt.Errorf("failed to place Dockerfile: %w", err)
-            }
-        }
-
-        logger.Info("Initialized Dockerfile for %s", name)
-        return nil
-    },
+		logger.Info("Initialized Dockerfile and .compute-tee/context folder")
+		return nil
+	},
 }
 
 func copyFile(src, dst string) error {
-    in, err := os.ReadFile(src)
-    if err != nil {
-        return err
-    }
-    return os.WriteFile(dst, in, 0o644)
+	in, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(dst, in, 0o644)
 }
-
-

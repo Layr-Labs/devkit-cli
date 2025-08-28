@@ -6,3 +6,8 @@ framework:
       - go
       - ts
       - rust
+  tee:
+    template: "https://github.com/Layr-Labs/tee-avs-template"
+    version: "feat/compute-container"
+    languages:
+      - ts
