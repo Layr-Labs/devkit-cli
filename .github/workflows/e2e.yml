@@ -85,10 +85,46 @@ jobs:
           echo "❌ Devnet failed to start"
           exit 1
 
-      - name: Call AVS
+      - name: Call AVS and assert result is produced
+        shell: bash
         run: |
+          set -euo pipefail
           cd ./my-awesome-avs/
-          devkit avs call -- signature="(uint256,string)" args='(5,"hello")'
+
+          # Stream stderr to log and capture to file
+          devkit avs call -- signature="(uint256,string)" args='(5,"hello")' \
+            1>/dev/null 2> >(tee call_stderr.log >&2) || true
+
+          # Optional: normalize by stripping ANSI control codes
+          sed -E 's/\x1B\[[0-9;]*[A-Za-z]//g' call_stderr.log > call_stderr.clean
+
+          LOG="call_stderr.clean"
+
+          # Fail fast on explicit timeout
+          if grep -q "Timeout: TaskVerified() not seen" "$LOG"; then
+            echo "❌ Timeout waiting for TaskVerified()"
+            tail -n 200 "$LOG" || true
+            exit 1
+          fi
+
+          # Ensure success marker is present
+          if ! grep -q "TaskVerified event received:" "$LOG"; then
+            echo "❌ No 'TaskVerified event received' marker found"
+            tail -n 200 "$LOG" || true
+            exit 1
+          fi
+
+          # Extract result bytes: " - result: 0x..."
+          RESULT_BYTES="$(grep -m1 -E '^[[:space:]-]*result:' "$LOG" | sed 's/.*result:\s*//')"
+
+          # Validate non-empty hex payload
+          if [[ -z "${RESULT_BYTES}" ]] || ! [[ "${RESULT_BYTES}" =~ ^0x[0-9a-fA-F]{2,}$ ]]; then
+            echo "❌ Invalid or empty result bytes: '${RESULT_BYTES:-<empty>}'"
+            tail -n 200 "$LOG" || true
+            exit 1
+          fi
+
+          echo "✅ Result received: ${RESULT_BYTES}"
 
       - name: Verify stake table roots
         run: |
