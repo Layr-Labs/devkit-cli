@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
+	"github.com/Layr-Labs/devkit-cli/pkg/common/devnet"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/logger"
 	"github.com/Layr-Labs/devkit-cli/pkg/telemetry"
 
@@ -255,8 +256,9 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 	if contextName == "" {
 		_, contextName, err = common.LoadDefaultRawContext()
 	}
+	// If there is an error pulling the context, assume we're in devnet
 	if err != nil {
-		return fmt.Errorf("failed to load context: %w", err)
+		contextName = devnet.DEVNET_CONTEXT
 	}
 
 	// Set context_name in metrics
