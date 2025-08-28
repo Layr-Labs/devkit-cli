@@ -247,6 +247,22 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 	metrics := telemetry.NewMetricsContext()
 	ctx.Context = telemetry.WithMetricsContext(ctx.Context, metrics)
 
+	// Check for flagged contextName
+	contextName := ctx.String("context")
+
+	// Check config for contextName
+	var err error
+	if contextName == "" {
+		_, contextName, err = common.LoadDefaultRawContext()
+	}
+	if err != nil {
+		return fmt.Errorf("failed to load context: %w", err)
+	}
+
+	// Set context_name in metrics
+	metrics.Properties["context_name"] = contextName
+
+	// Set appEnv details in metrics
 	if appEnv, ok := common.AppEnvironmentFromContext(ctx.Context); ok {
 		metrics.Properties["cli_version"] = appEnv.CLIVersion
 		metrics.Properties["os"] = appEnv.OS
@@ -255,6 +271,7 @@ func WithCommandMetricsContext(ctx *cli.Context) error {
 		metrics.Properties["user_uuid"] = appEnv.UserUUID
 	}
 
+	// Set flags in metrics
 	for k, v := range collectFlagValues(ctx) {
 		metrics.Properties[k] = fmt.Sprintf("%v", v)
 	}

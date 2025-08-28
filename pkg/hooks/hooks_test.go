@@ -42,6 +42,7 @@ func MockWithTelemetry(action cli.ActionFunc, mockClient telemetry.Client) cli.A
 		metrics.Properties["arch"] = runtime.GOARCH
 		metrics.Properties["project_uuid"] = "test-uuid"
 		metrics.Properties["user_uuid"] = "user-uuid"
+		metrics.Properties["context_name"] = "devnet"
 
 		// Add command flags as properties
 		flags := collectFlagValues(ctx)
