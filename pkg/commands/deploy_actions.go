@@ -755,7 +755,7 @@ func CreateAVSOperatorSetsAction(cCtx *cli.Context, logger iface.Logger) error {
 		}
 	}
 
-	logger.Info("creating operatorSets")
+	logger.Info("Creating operatorSets")
 
 	return contractCaller.CreateOperatorSets(cCtx.Context, avsAddr, createSetParams)
 }

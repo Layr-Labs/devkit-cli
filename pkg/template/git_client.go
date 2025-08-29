@@ -186,7 +186,7 @@ func (g *GitClient) Clone(
 	return nil
 }
 
-// ParseCloneOutput scans git’s progress output and emits events
+// ParseCloneOutput scans gits progress output and emits events
 func (g *GitClient) ParseCloneOutput(r io.Reader, rep Reporter, dest string, ref string) error {
 	scanner := bufio.NewScanner(r)
 	parent, module := ".", ""

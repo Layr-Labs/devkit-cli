@@ -9,14 +9,14 @@ context:
       chain_id: 31337
       rpc_url: "http://localhost:8545"
       fork:
-        block: 8836193
+        block: 9085290
         url: ""
         block_time: 3
     l2:
       chain_id: 31338
       rpc_url: "http://localhost:9545"
       fork:
-        block: 28820370
+        block: 30327360
         url: ""
         block_time: 3
   # Stake Root Transporter configuration

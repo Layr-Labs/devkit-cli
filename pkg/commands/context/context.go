@@ -63,7 +63,7 @@ var Command = &cli.Command{
 		} else if cCtx.String("context") == "" && len(cCtx.Args().Slice()) > 0 {
 			// Select the last arg
 			last := len(args) - 1
-			// Only treat as context if it’s not a key=value
+			// Only treat as context if its not a key=value
 			if !strings.Contains(args[last], "=") {
 				context = args[last]
 				args = args[:last]

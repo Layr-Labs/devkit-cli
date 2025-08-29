@@ -176,7 +176,7 @@ func migrateKeystoreFiles() error {
 	// Migrate each operator's keystores
 	for i := 1; i <= 5; i++ {
 		operatorNum := fmt.Sprintf("operator%d", i)
-		
+
 		// Old and new BLS keystore names
 		oldBLSName := fmt.Sprintf("%s.keystore.json", operatorNum)
 		newBLSName := fmt.Sprintf("%s.bls.keystore.json", operatorNum)
@@ -194,7 +194,7 @@ func migrateKeystoreFiles() error {
 		// Add ECDSA keystore from embedded files
 		ecdsaName := fmt.Sprintf("%s.ecdsa.keystore.json", operatorNum)
 		ecdsaPath := filepath.Join(keystoreDir, ecdsaName)
-		
+
 		// Only create ECDSA keystore if it doesn't already exist
 		if _, err := os.Stat(ecdsaPath); os.IsNotExist(err) {
 			// Get ECDSA keystore content from embedded files

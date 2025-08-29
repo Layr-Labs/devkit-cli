@@ -179,11 +179,34 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x44632dfBdCb6D3E21EF613B0ca8A6A0c618F5a37"}
 				},
 			},
+			// Update L1 fork block
+			{
+				Path:      []string{"context", "chains", "l1", "fork", "block"},
+				Condition: migration.Always{},
+				Base:      migration.BaseUser,
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "9085290"}
+				},
+			},
+			// Update L2 fork block
+			{
+				Path:      []string{"context", "chains", "l2", "fork", "block"},
+				Condition: migration.Always{},
+				Base:      migration.BaseUser,
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return &yaml.Node{Kind: yaml.ScalarNode, Value: "30327360"}
+				},
+			},
 		},
 	}
 
 	if err := engine.Apply(); err != nil {
 		return nil, err
+	}
+
+	// Update BLS keystore files
+	if err := updateKeystoreFiles(); err != nil {
+		return nil, fmt.Errorf("failed to migrate keystore files: %w", err)
 	}
 
 	// Upgrade the version

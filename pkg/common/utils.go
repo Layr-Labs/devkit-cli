@@ -3,7 +3,6 @@ package common
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
 	"regexp"
@@ -248,7 +247,6 @@ func (cc *ContractCaller) EncodeBN254KeyData(pubKey *bn254.PublicKey) ([]byte, e
 		},
 	}
 
-	log.Printf("keyRegistrarAddr: %s", cc.keyRegistrarAddr)
 	keyRegistrarContract, err := IKeyRegistrar.NewIKeyRegistrar(cc.keyRegistrarAddr, cc.ethclient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key registrar contract: %w", err)

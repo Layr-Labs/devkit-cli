@@ -47,7 +47,7 @@ func CallTemplateScript(cmdCtx context.Context, logger iface.Logger, dir string,
 
 	// Exec the command
 	if err := cmd.Run(); err != nil {
-		// if it’s an ExitError, check if it was killed by a signal
+		// if its an ExitError, check if it was killed by a signal
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			if ws, ok := exitErr.ProcessState.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
