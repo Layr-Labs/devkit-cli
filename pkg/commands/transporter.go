@@ -304,19 +304,19 @@ func Transport(cCtx *cli.Context) error {
 		}
 
 		// Use provided OperatorTableUpdaterTransactor address
-		addr := addresses[i]
+		tableUpdaterAddr := addresses[i]
 
 		// Update owner on OperatorTableUpdaterTransactor address
 		rpcURL := l1Config.RPCURL
 		if chainId.Uint64() == uint64(l2ChainId) {
 			rpcURL = l2Config.RPCURL
 		}
-		transferOwnership(logger, rpcURL, addr, envCtx.Transporter.PrivateKey)
+		transferOwnership(logger, rpcURL, tableUpdaterAddr, envCtx.Transporter.PrivateKey)
 
-		// Read the current generator (avs,id) from OperatorTableUpdater ---
-		gen, err := getGenerator(cCtx.Context, logger, cm, chainId, addr)
+		// Read the current generator (avs,id) from OperatorTableUpdater
+		gen, err := getGenerator(cCtx.Context, logger, cm, chainId, tableUpdaterAddr)
 		if err != nil {
-			return fmt.Errorf("getGenerator chain %d at %s: %w", chainId.Uint64(), addr.Hex(), err)
+			return fmt.Errorf("getGenerator chain %d at %s: %w", chainId.Uint64(), tableUpdaterAddr.Hex(), err)
 		}
 
 		// Move to a new unconfigered operatorSet
@@ -350,7 +350,7 @@ func Transport(cCtx *cli.Context) error {
 			return fmt.Errorf("failed to create contract caller: %w", err)
 		}
 
-		// Derive BN254 keys from the hex string (no keystore files needed) ---
+		// Derive BN254 keys from the hex string (no keystore files needed)
 		blsHex := strings.TrimPrefix(envCtx.Transporter.BlsPrivateKey, "0x")
 
 		// Extract key details
@@ -363,9 +363,9 @@ func Transport(cCtx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("convert BLS key: %w", err)
 		}
-		blsPub := blsPriv.Public() // <- this is what EncodeBN254KeyData expects
+		blsPub := blsPriv.Public()
 
-		// Encode keyData for KeyRegistrar from the PUBLIC key ---
+		// Encode keyData for KeyRegistrar from the PUBLIC key
 		keyData, err := contractCaller.EncodeBN254KeyData(blsPub)
 		if err != nil {
 			return fmt.Errorf("encode key data: %w", err)
@@ -419,9 +419,12 @@ func Transport(cCtx *cli.Context) error {
 			return fmt.Errorf("register key in key registrar: %w", err)
 		}
 
+		// Get the certificateVerifier Addr on this chain
+		certificateVerifierAddr := readBN254CertificateVerifier(cCtx.Context, logger, rpcURL, tableUpdaterAddr)
+
 		// Update generator using the transporter BLS key
-		if err := updateGeneratorFromContext(cCtx.Context, logger, cm, chainId, addr, txSign, envCtx.Transporter.BlsPrivateKey, gen); err != nil {
-			return fmt.Errorf("updateGenerator chain %d at %s: %w", chainId.Uint64(), addr.Hex(), err)
+		if err := updateGeneratorFromContext(cCtx.Context, logger, cm, chainId, tableUpdaterAddr, certificateVerifierAddr, txSign, envCtx.Transporter.BlsPrivateKey, gen); err != nil {
+			return fmt.Errorf("updateGenerator chain %d at %s: %w", chainId.Uint64(), tableUpdaterAddr.Hex(), err)
 		}
 	}
 
@@ -704,14 +707,14 @@ func GetOnchainStakeTableRoots(cCtx *cli.Context) (map[uint64][32]byte, error) {
 		}
 
 		// Use provided OperatorTableUpdaterTransactor address
-		addr := addresses[i]
+		tableUpdaterAddr := addresses[i]
 		chain, err := cm.GetChainForId(chainId.Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get chain for ID %d: %w", chainId, err)
 		}
 
 		// Get the OperatorTableUpdaterTransactor at the provided chains address
-		transactor, err := IOperatorTableUpdater.NewIOperatorTableUpdater(addr, chain.RPCClient)
+		transactor, err := IOperatorTableUpdater.NewIOperatorTableUpdater(tableUpdaterAddr, chain.RPCClient)
 		if err != nil {
 			return nil, fmt.Errorf("failed to bind NewIOperatorTableUpdaterTransactor: %w", err)
 		}
@@ -1094,7 +1097,7 @@ func getGenerator(
 	logger iface.Logger,
 	cm chainManager.IChainManager,
 	chainId *big.Int,
-	updaterAddr ethcommon.Address,
+	tableUpdaterAddr ethcommon.Address,
 ) (IOperatorTableUpdater.OperatorSet, error) {
 	chain, err := cm.GetChainForId(chainId.Uint64())
 	if err != nil {
@@ -1106,7 +1109,7 @@ func getGenerator(
       {"inputs":[],"name":"getGenerator","outputs":[{"components":[{"internalType":"address","name":"avs","type":"address"},{"internalType":"uint32","name":"id","type":"uint32"}],"internalType":"struct OperatorSet","name":"","type":"tuple"}],"stateMutability":"view","type":"function"}
     ]`)
 
-	c := bind.NewBoundContract(updaterAddr, abiGet, chain.RPCClient, nil, nil)
+	c := bind.NewBoundContract(tableUpdaterAddr, abiGet, chain.RPCClient, nil, nil)
 
 	var outs []any
 	if err := c.Call(&bind.CallOpts{Context: ctx}, &outs, "getGenerator"); err != nil {
@@ -1187,7 +1190,8 @@ func updateGeneratorFromContext(
 	logger iface.Logger,
 	cm chainManager.IChainManager,
 	chainId *big.Int,
-	updaterAddr ethcommon.Address,
+	tableUpdaterAddr ethcommon.Address,
+	certificateVerifierAddr ethcommon.Address,
 	txSign txSigner.ITransactionSigner,
 	blsHex string,
 	gen IOperatorTableUpdater.OperatorSet,
@@ -1197,7 +1201,7 @@ func updateGeneratorFromContext(
 		return fmt.Errorf("get chain %d: %w", chainId.Uint64(), err)
 	}
 
-	updaterTx, err := IOperatorTableUpdater.NewIOperatorTableUpdater(updaterAddr, chain.RPCClient)
+	updaterTx, err := IOperatorTableUpdater.NewIOperatorTableUpdater(tableUpdaterAddr, chain.RPCClient)
 	if err != nil {
 		return fmt.Errorf("bind updater tx: %w", err)
 	}
@@ -1234,7 +1238,7 @@ func updateGeneratorFromContext(
 	info := BN254OperatorInfo{Pubkey: pkG1, Weights: []*big.Int{big.NewInt(1)}}
 
 	// Calculate the root leaf
-	root, err := calcOperatorInfoLeaf(ctx, logger, chain.RPCClient, updaterAddr, info)
+	root, err := calcOperatorInfoLeaf(ctx, logger, chain.RPCClient, certificateVerifierAddr, info)
 	if err != nil {
 		return fmt.Errorf("calc operatorInfo leaf: %w", err)
 	}
@@ -1269,6 +1273,28 @@ func updateGeneratorFromContext(
 func readOwner(ctx context.Context, logger iface.Logger, c *rpc.Client, ab abi.ABI, proxy ethcommon.Address) ethcommon.Address {
 	data, _ := ab.Pack("owner")
 	call := map[string]any{"to": proxy.Hex(), "data": hexutil.Encode(data)}
+	var out string
+	if err := c.CallContext(ctx, &out, "eth_call", call, "latest"); err != nil {
+		logger.Error("failed to call contract: %w", err)
+	}
+	b := ethcommon.FromHex(out)
+	return ethcommon.BytesToAddress(b[len(b)-20:])
+}
+
+func readBN254CertificateVerifier(ctx context.Context, logger iface.Logger, rpcURL string, addr ethcommon.Address) ethcommon.Address {
+	// Dial to this chains RPCUrl
+	c, err := rpc.DialContext(ctx, rpcURL)
+	if err != nil {
+		logger.Error("failed to connect to rpc: %w", err)
+	}
+
+	// Minimal ABI: bn254CertificateVerifier() -> address bn254CertificateVerifier
+	certificateVerifierAbi := mustABI(logger, `[
+		{"inputs":[],"name":"bn254CertificateVerifier","outputs":[{"type":"address"}],"stateMutability":"view","type":"function"}
+	]`)
+
+	data, _ := certificateVerifierAbi.Pack("bn254CertificateVerifier")
+	call := map[string]any{"to": addr.Hex(), "data": hexutil.Encode(data)}
 	var out string
 	if err := c.CallContext(ctx, &out, "eth_call", call, "latest"); err != nil {
 		logger.Error("failed to call contract: %w", err)
