@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"math/big"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +26,7 @@ import (
 	"github.com/Layr-Labs/multichain-go/pkg/transport"
 	"github.com/Layr-Labs/multichain-go/pkg/txSigner"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	ethcommon "github.com/ethereum/go-ethereum/common"
@@ -883,7 +883,7 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 		logger.Error("failed to connect to rpc: %w", err)
 	}
 
-	// Your private key - used only to derive the new owner address
+	// Transporter private key - used to derive the new owner address
 	priv := mustKey(logger, privateKey)
 	newOwner := crypto.PubkeyToAddress(priv.PublicKey)
 
@@ -893,21 +893,21 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	  {"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"}
 	]`)
 
-	// read current owner
+	// Read current owner
 	currOwner := readOwner(ctx, logger, c, ownableABI, proxy)
 	logger.Info("Current owner: %s", currOwner.Hex())
 
-	// impersonate the current owner and fund it
+	// Impersonate the current owner and fund it
 	impersonate(ctx, logger, c, currOwner)
 	defer stopImpersonate(ctx, c, currOwner)
 
-	// pack transferOwnership(newOwner)
+	// Pack transferOwnership(newOwner)
 	calldata, err := ownableABI.Pack("transferOwnership", newOwner)
 	if err != nil {
 		logger.Error("failed to pack callData %w", err)
 	}
 
-	// send tx via eth_sendTransaction from the impersonated owner to the proxy
+	// Send tx via eth_sendTransaction from the impersonated owner to the proxy
 	tx := map[string]any{
 		"from":  currOwner.Hex(),
 		"to":    proxy.Hex(),
@@ -919,11 +919,11 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 		logger.Error("failed to send tx: %w", err)
 	}
 
-	// await for tx receipt
+	// Await for tx receipt
 	mustWaitReceipt(ctx, logger, c, txHash)
 	logger.Info("TransferOwnership tx: %s", txHash.Hex())
 
-	// verify
+	// Verify
 	newOwnerRead := readOwner(ctx, logger, c, ownableABI, proxy)
 	logger.Info("New owner: %s", newOwnerRead.Hex())
 }
@@ -975,13 +975,9 @@ func configureCurveTypeAsAVS(
 		return nil
 	}
 
-	// Impersonate AVS & fund it
-	var ok bool
-	if err := c.CallContext(ctx, &ok, "anvil_impersonateAccount", avs.Hex()); err != nil {
-		return fmt.Errorf("impersonate avs: %w", err)
-	}
-	defer func() { _ = c.CallContext(ctx, &ok, "anvil_stopImpersonatingAccount", avs.Hex()) }()
-	_ = c.CallContext(ctx, &ok, "anvil_setBalance", avs.Hex(), "0x56BC75E2D63100000") // 100 ETH
+	// Impersonate the current owner and fund it
+	impersonate(ctx, logger, c, avs)
+	defer stopImpersonate(ctx, c, avs)
 
 	// Send configureOperatorSet from the AVS
 	calldataCfg, err := krABI.Pack("configureOperatorSet", opSet, curveType)
@@ -1007,7 +1003,30 @@ func configureCurveTypeAsAVS(
 	return nil
 }
 
-// call calculateOperatorInfoLeaf via a bound contract
+// Read BN254CertificateVerifier from TableUpdater
+func readBN254CertificateVerifier(ctx context.Context, logger iface.Logger, rpcURL string, addr ethcommon.Address) ethcommon.Address {
+	// Connect to provided RPC
+	c, err := rpc.DialContext(ctx, rpcURL)
+	if err != nil {
+		logger.Error("failed to connect to rpc: %w", err)
+	}
+
+	// Minimal ABI: bn254CertificateVerifier() -> address bn254CertificateVerifier
+	certificateVerifierAbi := mustABI(logger, `[
+		{"inputs":[],"name":"bn254CertificateVerifier","outputs":[{"type":"address"}],"stateMutability":"view","type":"function"}
+	]`)
+
+	data, _ := certificateVerifierAbi.Pack("bn254CertificateVerifier")
+	call := map[string]any{"to": addr.Hex(), "data": hexutil.Encode(data)}
+	var out string
+	if err := c.CallContext(ctx, &out, "eth_call", call, "latest"); err != nil {
+		logger.Error("failed to call contract: %w", err)
+	}
+	b := ethcommon.FromHex(out)
+	return ethcommon.BytesToAddress(b[len(b)-20:])
+}
+
+// Call calculateOperatorInfoLeaf via a bound contract
 func calcOperatorInfoLeaf(
 	ctx context.Context,
 	logger iface.Logger,
@@ -1016,49 +1035,7 @@ func calcOperatorInfoLeaf(
 	info BN254OperatorInfo,
 ) ([32]byte, error) {
 	abiCalc := mustABI(logger, `[
-		{
-			"inputs": [
-				{
-					"components": [
-						{
-							"components": [
-								{
-									"internalType": "uint256",
-									"name": "X",
-									"type": "uint256"
-								},
-								{
-									"internalType": "uint256",
-									"name": "Y",
-									"type": "uint256"
-								}
-							],
-							"internalType": "struct BN254.G1Point",
-							"name": "pubkey",
-							"type": "tuple"
-						},
-						{
-							"internalType": "uint256[]",
-							"name": "weights",
-							"type": "uint256[]"
-						}
-					],
-					"internalType": "struct IOperatorTableCalculatorTypes.BN254OperatorInfo",
-					"name": "operatorInfo",
-					"type": "tuple"
-				}
-			],
-			"name": "calculateOperatorInfoLeaf",
-			"outputs": [
-				{
-					"internalType": "bytes32",
-					"name": "",
-					"type": "bytes32"
-				}
-			],
-			"stateMutability": "pure",
-			"type": "function"
-		}
+		{"inputs":[{"components":[{"components":[{"internalType":"uint256","name":"X","type":"uint256"},{"internalType":"uint256","name":"Y","type":"uint256"}],"internalType":"struct BN254.G1Point","name":"pubkey","type":"tuple"},{"internalType":"uint256[]","name":"weights","type":"uint256[]"}],"internalType":"struct IOperatorTableCalculatorTypes.BN254OperatorInfo","name":"operatorInfo","type":"tuple"}],"name":"calculateOperatorInfoLeaf","outputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"stateMutability":"pure","type":"function"}
 	]`)
 
 	c := bind.NewBoundContract(addr, abiCalc, backend, nil, nil)
@@ -1091,7 +1068,7 @@ func calcOperatorInfoLeaf(
 	return leaf, nil
 }
 
-// Read OperatorTableUpdater.getGenerator() as a typed struct.
+// Read OperatorTableUpdater.getGenerator() as a typed struct
 func getGenerator(
 	ctx context.Context,
 	logger iface.Logger,
@@ -1106,82 +1083,43 @@ func getGenerator(
 
 	// Minimal ABI: getGenerator() -> (address avs, uint32 id)
 	abiGet := mustABI(logger, `[
-      {"inputs":[],"name":"getGenerator","outputs":[{"components":[{"internalType":"address","name":"avs","type":"address"},{"internalType":"uint32","name":"id","type":"uint32"}],"internalType":"struct OperatorSet","name":"","type":"tuple"}],"stateMutability":"view","type":"function"}
-    ]`)
+		{"inputs":[],"name":"getGenerator","outputs":[{"components":[{"internalType":"address","name":"avs","type":"address"},{"internalType":"uint32","name":"id","type":"uint32"}],"internalType":"struct OperatorSet","name":"","type":"tuple"}],"stateMutability":"view","type":"function"}
+	]`)
 
-	c := bind.NewBoundContract(tableUpdaterAddr, abiGet, chain.RPCClient, nil, nil)
-
-	var outs []any
-	if err := c.Call(&bind.CallOpts{Context: ctx}, &outs, "getGenerator"); err != nil {
-		return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("getGenerator call: %w", err)
-	}
-	if len(outs) != 1 {
-		return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unexpected outputs len: %d", len(outs))
+	// Pack calldata
+	data, err := abiGet.Pack("getGenerator")
+	if err != nil {
+		return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("pack getGenerator: %w", err)
 	}
 
-	v := reflect.ValueOf(outs[0])
-	switch v.Kind() {
-	case reflect.Struct:
-		fAvs := v.FieldByName("Avs")
-		fId := v.FieldByName("Id")
-		if !fAvs.IsValid() || !fId.IsValid() {
-			return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("tuple missing fields Avs/Id")
-		}
-		avs, ok := fAvs.Interface().(ethcommon.Address)
-		if !ok {
-			return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unexpected Avs type: %T", fAvs.Interface())
-		}
-		var id uint32
-		switch fId.Kind() {
-		case reflect.Uint32:
-			id = uint32(fId.Uint())
-		case reflect.Uint64:
-			id = uint32(fId.Uint())
-		case reflect.Uint:
-			id = uint32(fId.Uint())
-		case reflect.Int32:
-			id = uint32(fId.Int())
-		case reflect.Int64:
-			id = uint32(fId.Int())
-		case reflect.Int:
-			id = uint32(fId.Int())
-		default:
-			return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unexpected Id kind: %s", fId.Kind())
-		}
-		return IOperatorTableUpdater.OperatorSet{Avs: avs, Id: id}, nil
-
-	case reflect.Slice:
-		// Some decoders may return the tuple as a 2-element slice
-		if v.Len() != 2 {
-			return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("tuple slice wrong length: %d", v.Len())
-		}
-		avs, ok := v.Index(0).Interface().(ethcommon.Address)
-		if !ok {
-			return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unexpected Avs type: %T", v.Index(0).Interface())
-		}
-		// Coerce Id safely
-		idVal := v.Index(1)
-		var id uint32
-		switch idVal.Kind() {
-		case reflect.Uint32:
-			id = uint32(idVal.Uint())
-		case reflect.Uint64:
-			id = uint32(idVal.Uint())
-		case reflect.Uint:
-			id = uint32(idVal.Uint())
-		case reflect.Int32:
-			id = uint32(idVal.Int())
-		case reflect.Int64:
-			id = uint32(idVal.Int())
-		case reflect.Int:
-			id = uint32(idVal.Int())
-		default:
-			return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unexpected Id kind in slice: %s", idVal.Kind())
-		}
-		return IOperatorTableUpdater.OperatorSet{Avs: avs, Id: id}, nil
-	default:
-		return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unexpected tuple type: %T", outs[0])
+	// Do the eth_call
+	raw, err := chain.RPCClient.CallContract(ctx, ethereum.CallMsg{
+		To:   &tableUpdaterAddr,
+		Data: data,
+	}, nil)
+	if err != nil {
+		return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("eth_call getGenerator: %w", err)
 	}
+
+	// Use Outputs.Unpack, then cast
+	vals, err := abiGet.Methods["getGenerator"].Outputs.Unpack(raw)
+	if err != nil {
+		return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unpack getGenerator: %w", err)
+	}
+	if len(vals) != 1 {
+		return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unexpected outputs len: %d", len(vals))
+	}
+
+	// The decoder created an anonymous struct with the right fields
+	out, ok := vals[0].(struct {
+		Avs ethcommon.Address `json:"avs"`
+		Id  uint32            `json:"id"`
+	})
+	if !ok {
+		return IOperatorTableUpdater.OperatorSet{}, fmt.Errorf("unexpected type %T", vals[0])
+	}
+
+	return IOperatorTableUpdater.OperatorSet{Avs: out.Avs, Id: out.Id}, nil
 }
 
 // Update the generator onchain to verify against context provided BLS key
@@ -1260,11 +1198,11 @@ func updateGeneratorFromContext(
 		return fmt.Errorf("updateGenerator tx: %w", err)
 	}
 
-	rcpt, err := bind.WaitMined(ctx, chain.RPCClient, tx)
+	receipt, err := bind.WaitMined(ctx, chain.RPCClient, tx)
 	if err != nil {
 		return fmt.Errorf("wait mined: %w", err)
 	}
-	if rcpt.Status != 1 {
+	if receipt.Status != 1 {
 		return fmt.Errorf("updateGenerator reverted: %s", tx.Hash().Hex())
 	}
 	return nil
@@ -1281,34 +1219,12 @@ func readOwner(ctx context.Context, logger iface.Logger, c *rpc.Client, ab abi.A
 	return ethcommon.BytesToAddress(b[len(b)-20:])
 }
 
-func readBN254CertificateVerifier(ctx context.Context, logger iface.Logger, rpcURL string, addr ethcommon.Address) ethcommon.Address {
-	// Dial to this chains RPCUrl
-	c, err := rpc.DialContext(ctx, rpcURL)
-	if err != nil {
-		logger.Error("failed to connect to rpc: %w", err)
-	}
-
-	// Minimal ABI: bn254CertificateVerifier() -> address bn254CertificateVerifier
-	certificateVerifierAbi := mustABI(logger, `[
-		{"inputs":[],"name":"bn254CertificateVerifier","outputs":[{"type":"address"}],"stateMutability":"view","type":"function"}
-	]`)
-
-	data, _ := certificateVerifierAbi.Pack("bn254CertificateVerifier")
-	call := map[string]any{"to": addr.Hex(), "data": hexutil.Encode(data)}
-	var out string
-	if err := c.CallContext(ctx, &out, "eth_call", call, "latest"); err != nil {
-		logger.Error("failed to call contract: %w", err)
-	}
-	b := ethcommon.FromHex(out)
-	return ethcommon.BytesToAddress(b[len(b)-20:])
-}
-
 func impersonate(ctx context.Context, logger iface.Logger, c *rpc.Client, who ethcommon.Address) {
 	var ok bool
 	if err := c.CallContext(ctx, &ok, "anvil_impersonateAccount", who.Hex()); err != nil {
 		logger.Error("failed to impersonate: %w", err)
 	}
-	// fund so it can pay gas
+	// Fund so it can pay gas
 	_ = c.CallContext(ctx, &ok, "anvil_setBalance", who.Hex(), "0x56BC75E2D63100000") // 100 ETH
 }
 
@@ -1329,23 +1245,23 @@ func mustKey(logger iface.Logger, hex string) *ecdsa.PrivateKey {
 	if strings.HasPrefix(hex, "0x") || strings.HasPrefix(hex, "0X") {
 		hex = hex[2:]
 	}
-	k, err := crypto.HexToECDSA(hex)
+	key, err := crypto.HexToECDSA(hex)
 	if err != nil {
 		logger.Error("invalid key: %w", err)
 	}
-	return k
+	return key
 }
 
 func mustWaitReceipt(ctx context.Context, logger iface.Logger, c *rpc.Client, h ethcommon.Hash) {
-	var r Receipt
+	var receipt Receipt
 	for {
-		_ = c.CallContext(ctx, &r, "eth_getTransactionReceipt", h)
-		if r.TransactionHash != (ethcommon.Hash{}) {
+		_ = c.CallContext(ctx, &receipt, "eth_getTransactionReceipt", h)
+		if receipt.TransactionHash != (ethcommon.Hash{}) {
 			break
 		}
 		time.Sleep(150 * time.Millisecond)
 	}
-	if r.Status != 1 {
+	if receipt.Status != 1 {
 		// Get reason
 		var trace map[string]any
 		_ = c.CallContext(ctx, &trace, "debug_traceTransaction", h.Hex(), map[string]any{"disableStack": true})

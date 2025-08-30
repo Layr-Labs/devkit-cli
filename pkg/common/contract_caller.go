@@ -436,7 +436,7 @@ func (cc *ContractCaller) CreateApprovalSignature(ctx context.Context, stakerAdd
 	if err != nil {
 		return DelegationManager.ISignatureUtilsMixinTypesSignatureWithExpiry{}, fmt.Errorf("failed to parse private key: %w", err)
 	}
-	cc.logger.Info("Signing approval signature for staker %s, operator %s, approver %s, salt %s, expiry %s", stakerAddress.Hex(), operatorAddress.Hex(), approverAddress.Hex(), approverSalt, expiry.String())
+	cc.logger.Info("Signing approval signature for staker %s, operator %s, approver %s, salt %s, expiry %s", stakerAddress.Hex(), operatorAddress.Hex(), approverAddress.Hex(), common.BytesToHash(approverSalt[:]).Hex(), expiry.String())
 
 	// sign the digest hash - convert [32]byte to []byte
 	signature, err := crypto.Sign(delegationApprovalDigestHash[:], privateKey)
