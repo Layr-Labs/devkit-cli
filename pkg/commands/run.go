@@ -37,9 +37,9 @@ func AVSRun(cCtx *cli.Context) error {
 	var err error
 	var contextJSON []byte
 	if contextName == "" {
-		contextJSON, contextName, err = common.LoadDefaultRawContext()
+		contextJSON, contextName, err = common.LoadDefaultRawConfigWithContext()
 	} else {
-		contextJSON, contextName, err = common.LoadRawContext(contextName)
+		contextJSON, contextName, err = common.LoadRawConfigWithContext(contextName)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to load context: %w", err)

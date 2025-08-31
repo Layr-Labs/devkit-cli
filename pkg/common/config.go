@@ -318,6 +318,33 @@ func LoadDefaultContext() (string, *yaml.Node, *yaml.Node, string, error) {
 	return LoadContext(selectedContext)
 }
 
+func LoadConfig() (string, *yaml.Node, *yaml.Node, error) {
+	// Set path for context yaml
+	configDir := filepath.Join("config")
+	yamlPath := path.Join(configDir, "config.yaml")
+
+	// Load YAML as *yaml.Node
+	rootNode, err := LoadYAML(yamlPath)
+	if err != nil {
+		return yamlPath, nil, nil, err
+	}
+
+	// YAML is parsed into a DocumentNode:
+	//   - rootNode.Content[0] is the top-level MappingNode
+	//   - It contains the 'config' mapping we're interested in
+	if len(rootNode.Content) == 0 {
+		return yamlPath, rootNode, nil, fmt.Errorf("empty YAML root node")
+	}
+
+	// Navigate context to arrive at config node
+	projectNode := GetChildByKey(rootNode.Content[0], "config")
+	if projectNode == nil {
+		return yamlPath, rootNode, nil, fmt.Errorf("missing 'config' key in ./config/config.yaml")
+	}
+
+	return yamlPath, rootNode, projectNode, nil
+}
+
 func LoadContext(contextName string) (string, *yaml.Node, *yaml.Node, string, error) {
 	// Set path for context yaml
 	contextDir := filepath.Join("config", "contexts")
@@ -336,7 +363,7 @@ func LoadContext(contextName string) (string, *yaml.Node, *yaml.Node, string, er
 		return yamlPath, rootNode, nil, contextName, fmt.Errorf("empty YAML root node")
 	}
 
-	// Navigate context to arrive at context.transporter.active_stake_roots
+	// Navigate context to arrive at context node
 	contextNode := GetChildByKey(rootNode.Content[0], "context")
 	if contextNode == nil {
 		return yamlPath, rootNode, nil, contextName, fmt.Errorf("missing 'context' key in ./config/contexts/%s.yaml", contextName)
@@ -371,6 +398,50 @@ func LoadRawContext(contextName string) ([]byte, string, error) {
 	}
 
 	contextBytes, err := json.Marshal(map[string]interface{}{"context": ctxMap})
+	if err != nil {
+		return nil, contextName, fmt.Errorf("marshal context: %w", err)
+	}
+
+	return contextBytes, contextName, nil
+}
+
+func LoadDefaultRawConfigWithContext() ([]byte, string, error) {
+	// Load the projects config
+	currentConfig, err := LoadBaseConfigYaml()
+	// If there is any error loading the yaml
+	if err != nil {
+		return nil, "", fmt.Errorf("error loading yaml: %w", err)
+	}
+	// Default to project selected context
+	contextName := currentConfig.Config.Project.Context
+
+	return LoadRawConfigWithContext(contextName)
+}
+
+func LoadRawConfigWithContext(contextName string) ([]byte, string, error) {
+	// Load the base config
+	_, _, configNode, err := LoadConfig()
+	if err != nil {
+		return nil, contextName, err
+	}
+
+	// Load the current config according to selected context
+	_, _, contextNode, contextName, err := LoadContext(contextName)
+	if err != nil {
+		return nil, contextName, err
+	}
+
+	var cfgMap map[string]interface{}
+	if err := configNode.Decode(&cfgMap); err != nil {
+		return nil, contextName, fmt.Errorf("decode config node: %w", err)
+	}
+
+	var ctxMap map[string]interface{}
+	if err := contextNode.Decode(&ctxMap); err != nil {
+		return nil, contextName, fmt.Errorf("decode context node: %w", err)
+	}
+
+	contextBytes, err := json.Marshal(map[string]interface{}{"context": ctxMap, "config": cfgMap})
 	if err != nil {
 		return nil, contextName, fmt.Errorf("marshal context: %w", err)
 	}
