@@ -215,21 +215,29 @@ func getTemplateURLs(cCtx *cli.Context) (string, string, string, error) {
 	version := cCtx.String("template-version")
 	lang := cCtx.String("lang")
 
-	// If no overrides provided, get from config
-	if baseURL == "" && version == "" {
+	// If overrides are omitted, get from config
+	if baseURL == "" || version == "" {
 		cfg, err := template.LoadConfig()
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to load templates cfg: %w", err)
 		}
 
 		selectedTemplate := cCtx.String("template")
-		baseURL, version, err = template.GetTemplateURLs(cfg, selectedTemplate, lang)
+		defaultBaseURL, defaultVersion, err := template.GetTemplateURLs(cfg, selectedTemplate, lang)
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to get template URLs: %w", err)
 		}
 
-		if baseURL == "" {
+		if defaultBaseURL == "" {
 			return "", "", "", fmt.Errorf("no template found for template %s and language %s", selectedTemplate, lang)
+		}
+
+		// If no baseUrl/version is provided use template defaults
+		if baseURL == "" {
+			baseURL = defaultBaseURL
+		}
+		if version == "" {
+			version = defaultVersion
 		}
 	}
 
