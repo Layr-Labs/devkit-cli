@@ -62,7 +62,10 @@ var TransportCommand = &cli.Command{
 					Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
 				},
 			}, common.GlobalFlags...),
-			Action: Transport,
+			Action: func(cCtx *cli.Context) error {
+				// Initial transport will take ownership and set a locally controller generator
+				return Transport(cCtx, true)
+			},
 		},
 		{
 			Name:  "verify",
@@ -130,7 +133,7 @@ var TransportCommand = &cli.Command{
 	},
 }
 
-func Transport(cCtx *cli.Context) error {
+func Transport(cCtx *cli.Context, initialRun bool) error {
 	// Get a raw zap logger to pass to operatorTableCalculator and transport
 	rawLogger, err := logger.NewLogger(&logger.LoggerConfig{Debug: true})
 	if err != nil {
@@ -278,153 +281,156 @@ func Transport(cCtx *cli.Context) error {
 		return fmt.Errorf("failed to create in-memory BLS signer: %v", err)
 	}
 
-	// Transfer ownership to our context configured PrivateKey
-	transferOwnership(logger, l1Config.RPCURL, crossChainRegistryAddress, envCtx.Transporter.PrivateKey)
+	// On initial devnet Transport we take ownership of contracts and configure generator to use context keys
+	if contextName == devnet.DEVNET_CONTEXT && initialRun {
+		// Transfer ownership to our context configured PrivateKey
+		transferOwnership(logger, l1Config.RPCURL, crossChainRegistryAddress, envCtx.Transporter.PrivateKey)
 
-	// Construct registry caller
-	ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, l1Client.RPCClient)
-	if err != nil {
-		return fmt.Errorf("failed to get CrossChainRegistryCaller for %s: %v", crossChainRegistryAddress, err)
-	}
-
-	// Get chains from contract
-	chainIds, addresses, err := ccRegistryCaller.GetSupportedChains(&bind.CallOpts{})
-	if err != nil {
-		return fmt.Errorf("failed to get supported chains: %w", err)
-	}
-	if len(chainIds) == 0 {
-		return fmt.Errorf("no supported chains found in cross-chain registry")
-	}
-
-	// Iterate and collect all roots for all chainIds
-	for i, chainId := range chainIds {
-		// Ignore non devnet chainIds if checking devnet
-		if contextName == devnet.DEVNET_CONTEXT && !(int(chainId.Uint64()) == l1ChainId || int(chainId.Uint64()) == l2ChainId) {
-			continue
-		}
-
-		// Use provided OperatorTableUpdaterTransactor address
-		tableUpdaterAddr := addresses[i]
-
-		// Update owner on OperatorTableUpdaterTransactor address
-		rpcURL := l1Config.RPCURL
-		if chainId.Uint64() == uint64(l2ChainId) {
-			rpcURL = l2Config.RPCURL
-		}
-		transferOwnership(logger, rpcURL, tableUpdaterAddr, envCtx.Transporter.PrivateKey)
-
-		// Read the current generator (avs,id) from OperatorTableUpdater
-		gen, err := getGenerator(cCtx.Context, logger, cm, chainId, tableUpdaterAddr)
+		// Construct registry caller
+		ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, l1Client.RPCClient)
 		if err != nil {
-			return fmt.Errorf("getGenerator chain %d at %s: %w", chainId.Uint64(), tableUpdaterAddr.Hex(), err)
+			return fmt.Errorf("failed to get CrossChainRegistryCaller for %s: %v", crossChainRegistryAddress, err)
 		}
 
-		// Move to a new unconfigered operatorSet
-		if gen.Id == 1 {
-			gen.Id = 2
-		} else {
-			gen.Id = 1
-		}
-
-		// Connect to an ethClient to construct contractCaller
-		client, err := ethclient.Dial(l1RpcUrl)
+		// Get chains from contract
+		chainIds, addresses, err := ccRegistryCaller.GetSupportedChains(&bind.CallOpts{})
 		if err != nil {
-			return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+			return fmt.Errorf("failed to get supported chains: %w", err)
+		}
+		if len(chainIds) == 0 {
+			return fmt.Errorf("no supported chains found in cross-chain registry")
 		}
 
-		// Construct contractCaller with KeyRegistrar
-		contractCaller, err := common.NewContractCaller(
-			envCtx.Transporter.PrivateKey,
-			big.NewInt(int64(l1ChainId)),
-			client,
-			ethcommon.HexToAddress(""),
-			ethcommon.HexToAddress(""),
-			ethcommon.HexToAddress(""),
-			ethcommon.HexToAddress(envCtx.EigenLayer.L1.KeyRegistrar),
-			ethcommon.HexToAddress(""),
-			ethcommon.HexToAddress(""),
-			ethcommon.HexToAddress(""),
-			logger,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to create contract caller: %w", err)
-		}
+		// Iterate and collect all roots for all chainIds
+		for i, chainId := range chainIds {
+			// Ignore non devnet chainIds if checking devnet
+			if contextName == devnet.DEVNET_CONTEXT && !(int(chainId.Uint64()) == l1ChainId || int(chainId.Uint64()) == l2ChainId) {
+				continue
+			}
 
-		// Derive BN254 keys from the hex string (no keystore files needed)
-		blsHex := strings.TrimPrefix(envCtx.Transporter.BlsPrivateKey, "0x")
+			// Use provided OperatorTableUpdaterTransactor address
+			tableUpdaterAddr := addresses[i]
 
-		// Extract key details
-		scheme := bn254.NewScheme()
-		skGeneric, err := scheme.NewPrivateKeyFromHexString(blsHex)
-		if err != nil {
-			return fmt.Errorf("parse BLS hex: %w", err)
-		}
-		blsPriv, err := bn254.NewPrivateKeyFromBytes(skGeneric.Bytes())
-		if err != nil {
-			return fmt.Errorf("convert BLS key: %w", err)
-		}
-		blsPub := blsPriv.Public()
+			// Update owner on OperatorTableUpdaterTransactor address
+			rpcURL := l1Config.RPCURL
+			if chainId.Uint64() == uint64(l2ChainId) {
+				rpcURL = l2Config.RPCURL
+			}
+			transferOwnership(logger, rpcURL, tableUpdaterAddr, envCtx.Transporter.PrivateKey)
 
-		// Encode keyData for KeyRegistrar from the PUBLIC key
-		keyData, err := contractCaller.EncodeBN254KeyData(blsPub)
-		if err != nil {
-			return fmt.Errorf("encode key data: %w", err)
-		}
+			// Read the current generator (avs,id) from OperatorTableUpdater
+			gen, err := getGenerator(cCtx.Context, logger, cm, chainId, tableUpdaterAddr)
+			if err != nil {
+				return fmt.Errorf("getGenerator chain %d at %s: %w", chainId.Uint64(), tableUpdaterAddr.Hex(), err)
+			}
 
-		// Configure the curve type
-		if err := configureCurveTypeAsAVS(
-			cCtx.Context,
-			logger,
-			l1RpcUrl, // KeyRegistrar is on L1
-			ethcommon.HexToAddress(envCtx.EigenLayer.L1.KeyRegistrar),
-			gen.Avs,
-			uint32(gen.Id),
-			common.CURVE_TYPE_KEY_REGISTRAR_BN254,
-		); err != nil {
-			return fmt.Errorf("configure curve type as AVS: %w", err)
-		}
+			// Move to a new unconfigered operatorSet
+			if gen.Id == 1 {
+				gen.Id = 2
+			} else {
+				gen.Id = 1
+			}
 
-		// EOA/operator address you want to register for this OperatorSet
-		opEOA := mustKey(logger, envCtx.Transporter.PrivateKey)
-		operatorAddress := crypto.PubkeyToAddress(opEOA.PublicKey)
+			// Connect to an ethClient to construct contractCaller
+			client, err := ethclient.Dial(l1RpcUrl)
+			if err != nil {
+				return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+			}
 
-		// Build the message hash per registrar rules and sign with BLS private key
-		msgHash, err := contractCaller.GetOperatorRegistrationMessageHash(
-			cCtx.Context,
-			operatorAddress,
-			gen.Avs,
-			uint32(gen.Id),
-			keyData,
-		)
-		if err != nil {
-			return fmt.Errorf("registration hash: %w", err)
-		}
+			// Construct contractCaller with KeyRegistrar
+			contractCaller, err := common.NewContractCaller(
+				envCtx.Transporter.PrivateKey,
+				big.NewInt(int64(l1ChainId)),
+				client,
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(envCtx.EigenLayer.L1.KeyRegistrar),
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(""),
+				logger,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create contract caller: %w", err)
+			}
 
-		// Sign the message hash with BLS key
-		sig, err := blsPriv.SignSolidityCompatible(msgHash)
-		if err != nil {
-			return fmt.Errorf("BLS sign: %w", err)
-		}
-		bn254Signature := bn254.Signature(*sig)
+			// Derive BN254 keys from the hex string (no keystore files needed)
+			blsHex := strings.TrimPrefix(envCtx.Transporter.BlsPrivateKey, "0x")
 
-		// Register in KeyRegistrar
-		if err := contractCaller.RegisterKeyInKeyRegistrar(
-			cCtx.Context,
-			operatorAddress,
-			gen.Avs,
-			uint32(gen.Id),
-			keyData,
-			bn254Signature,
-		); err != nil {
-			return fmt.Errorf("register key in key registrar: %w", err)
-		}
+			// Extract key details
+			scheme := bn254.NewScheme()
+			skGeneric, err := scheme.NewPrivateKeyFromHexString(blsHex)
+			if err != nil {
+				return fmt.Errorf("parse BLS hex: %w", err)
+			}
+			blsPriv, err := bn254.NewPrivateKeyFromBytes(skGeneric.Bytes())
+			if err != nil {
+				return fmt.Errorf("convert BLS key: %w", err)
+			}
+			blsPub := blsPriv.Public()
 
-		// Get the certificateVerifier Addr on this chain
-		certificateVerifierAddr := readBN254CertificateVerifier(cCtx.Context, logger, rpcURL, tableUpdaterAddr)
+			// Encode keyData for KeyRegistrar from the PUBLIC key
+			keyData, err := contractCaller.EncodeBN254KeyData(blsPub)
+			if err != nil {
+				return fmt.Errorf("encode key data: %w", err)
+			}
 
-		// Update generator using the transporter BLS key
-		if err := updateGeneratorFromContext(cCtx.Context, logger, cm, chainId, tableUpdaterAddr, certificateVerifierAddr, txSign, envCtx.Transporter.BlsPrivateKey, gen); err != nil {
-			return fmt.Errorf("updateGenerator chain %d at %s: %w", chainId.Uint64(), tableUpdaterAddr.Hex(), err)
+			// Configure the curve type
+			if err := configureCurveTypeAsAVS(
+				cCtx.Context,
+				logger,
+				l1RpcUrl, // KeyRegistrar is on L1
+				ethcommon.HexToAddress(envCtx.EigenLayer.L1.KeyRegistrar),
+				gen.Avs,
+				uint32(gen.Id),
+				common.CURVE_TYPE_KEY_REGISTRAR_BN254,
+			); err != nil {
+				return fmt.Errorf("configure curve type as AVS: %w", err)
+			}
+
+			// EOA/operator address you want to register for this OperatorSet
+			opEOA := mustKey(logger, envCtx.Transporter.PrivateKey)
+			operatorAddress := crypto.PubkeyToAddress(opEOA.PublicKey)
+
+			// Build the message hash per registrar rules and sign with BLS private key
+			msgHash, err := contractCaller.GetOperatorRegistrationMessageHash(
+				cCtx.Context,
+				operatorAddress,
+				gen.Avs,
+				uint32(gen.Id),
+				keyData,
+			)
+			if err != nil {
+				return fmt.Errorf("registration hash: %w", err)
+			}
+
+			// Sign the message hash with BLS key
+			sig, err := blsPriv.SignSolidityCompatible(msgHash)
+			if err != nil {
+				return fmt.Errorf("BLS sign: %w", err)
+			}
+			bn254Signature := bn254.Signature(*sig)
+
+			// Register in KeyRegistrar
+			if err := contractCaller.RegisterKeyInKeyRegistrar(
+				cCtx.Context,
+				operatorAddress,
+				gen.Avs,
+				uint32(gen.Id),
+				keyData,
+				bn254Signature,
+			); err != nil {
+				return fmt.Errorf("register key in key registrar: %w", err)
+			}
+
+			// Get the certificateVerifier Addr on this chain
+			certificateVerifierAddr := readBN254CertificateVerifier(cCtx.Context, logger, rpcURL, tableUpdaterAddr)
+
+			// Update generator using the transporter BLS key
+			if err := updateGeneratorFromContext(cCtx.Context, logger, cm, chainId, tableUpdaterAddr, certificateVerifierAddr, txSign, envCtx.Transporter.BlsPrivateKey, gen); err != nil {
+				return fmt.Errorf("updateGenerator chain %d at %s: %w", chainId.Uint64(), tableUpdaterAddr.Hex(), err)
+			}
 		}
 	}
 
@@ -839,7 +845,7 @@ func ScheduleTransport(cCtx *cli.Context, cronExpr string) error {
 
 	// Run the scheduler with transport func
 	return ScheduleTransportWithParserAndFunc(cCtx, cronExpr, parser, func() {
-		if err := Transport(cCtx); err != nil {
+		if err := Transport(cCtx, false); err != nil {
 			log.Printf("Scheduled transport failed: %v", err)
 		}
 	})

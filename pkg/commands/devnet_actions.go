@@ -402,7 +402,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Run Transport against schedule - exit when AVSRun exits
 	if !skipTransporter {
 		// Post initial stake roots to L1
-		if err := Transport(cCtx); err != nil && !errors.Is(err, context.Canceled) {
+		if err := Transport(cCtx, true); err != nil && !errors.Is(err, context.Canceled) {
 			return fmt.Errorf("transport run failed: %w", err)
 		}
 
