@@ -10,8 +10,8 @@ github.com/Layr-Labs/eigenlayer-contracts v1.8.0-testnet-final h1:f+dHuhY4mrgBOw
 github.com/Layr-Labs/eigenlayer-contracts v1.8.0-testnet-final/go.mod h1:Ie8YE3EQkTHqG6/tnUS0He7/UPMkXPo/3OFXwSy0iRo=
 github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737 h1:UnBl34Y3xxQ4WTQ/O36dtY0CtHXZXvgyWxwEdJRCdHQ=
 github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737/go.mod h1:bNDHU6OHvYrjPaUe/0GSUrfvO6OjGFWIWPehC0U6K40=
-github.com/Layr-Labs/multichain-go v0.0.12 h1:fCRDOeKJg4gW7WPBc8kZfuIhtpUO+RUk0bf+Lx+AiIc=
-github.com/Layr-Labs/multichain-go v0.0.12/go.mod h1:BTDGFUQZwuwZPnYfTTwj0+xAsUIGbWE5zXiZi6v3W9A=
+github.com/Layr-Labs/multichain-go v0.0.13 h1:4wQ2gpd2DUy13aaKwP8lRHfgPhyBbUo95HSIWQYypPg=
+github.com/Layr-Labs/multichain-go v0.0.13/go.mod h1:EK4rp+68FMQ5BYdSc7s1KWCGsT8cbQyTwENFEVtUR6M=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/Netflix/go-expect v0.0.0-20220104043353-73e0943537d2 h1:+vx7roKuyA63nhn5WAunQHLTznkw5W8b1Xc0dNjp83s=
