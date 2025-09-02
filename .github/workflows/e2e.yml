@@ -117,6 +117,13 @@ jobs:
           # Extract result bytes: " - result: 0x..."
           RESULT_BYTES="$(grep -m1 -E '^[[:space:]-]*TaskResult:' "$LOG" | sed 's/.*TaskResult:\s*//')"
 
+          # Validate non-empty hex payload
+          if [[ -z "${RESULT_BYTES}" ]] || ! [[ "${RESULT_BYTES}" =~ ^0x[0-9a-fA-F]*$ ]]; then
+            echo "❌ Invalid or empty result bytes: '${RESULT_BYTES:-<empty>}'"
+            tail -n 200 "$LOG" || true
+            exit 1
+          fi
+
           echo "✅ Result received: ${RESULT_BYTES}"
 
       - name: Verify stake table roots
