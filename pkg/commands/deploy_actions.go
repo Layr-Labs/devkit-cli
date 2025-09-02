@@ -1206,6 +1206,16 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 				keyAddr := crypto.PubkeyToAddress(operatorECDSA.PublicKey)
 				keyData := keyAddr.Bytes()
 
+				// Validate public keys match
+				if keyAddr != operatorAddress {
+					return fmt.Errorf("provided key does not match operatorAddress: %s", operatorAddress)
+				}
+
+				// Validate private keys match
+				if operatorPrivHex != strings.TrimPrefix(operator.ECDSAKey, "0x") {
+					return fmt.Errorf("provided ECDSA keystore does not match operators private key for: %s", operatorAddress)
+				}
+
 				// EIP-712 digest from contract
 				msgHash, err := kr.GetECDSAKeyRegistrationMessageHash(nil, operatorAddress, operatorSet, keyAddr)
 				if err != nil {
