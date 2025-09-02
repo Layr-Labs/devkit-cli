@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/Layr-Labs/crypto-libs/pkg/bn254"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/contracts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
@@ -736,7 +735,14 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	return nil
 }
 
-func (cc *ContractCaller) RegisterKeyInKeyRegistrar(ctx context.Context, operatorAddress common.Address, avsAddress common.Address, opSetId uint32, keyData []byte, signature bn254.Signature) error {
+func (cc *ContractCaller) RegisterKeyInKeyRegistrar(
+	ctx context.Context,
+	operatorAddress common.Address,
+	avsAddress common.Address,
+	opSetId uint32,
+	keyData []byte,
+	signature []byte,
+) error {
 	opts, err := cc.buildTxOpts()
 	if err != nil {
 		return fmt.Errorf("failed to build transaction options: %w", err)
@@ -745,13 +751,6 @@ func (cc *ContractCaller) RegisterKeyInKeyRegistrar(ctx context.Context, operato
 	keyRegistrar, err := cc.registry.GetKeyRegistrar(cc.keyRegistrarAddr)
 	if err != nil {
 		return fmt.Errorf("failed to get KeyRegistrar: %w", err)
-	}
-	g1Point := &bn254.G1Point{
-		G1Affine: signature.GetG1Point(),
-	}
-	g1Bytes, err := g1Point.ToPrecompileFormat()
-	if err != nil {
-		return fmt.Errorf("signature not in correct subgroup: %w", err)
 	}
 
 	operatorSet := keyregistrar.OperatorSet{Avs: avsAddress, Id: opSetId}
@@ -767,8 +766,7 @@ func (cc *ContractCaller) RegisterKeyInKeyRegistrar(ctx context.Context, operato
 	}
 
 	err = cc.SendAndWaitForTransaction(ctx, "RegisterKeyInKeyRegistrar", func() (*types.Transaction, error) {
-		tx, err := keyRegistrar.RegisterKey(opts, operatorAddress, operatorSet, keyData, g1Bytes)
-		return tx, err
+		return keyRegistrar.RegisterKey(opts, operatorAddress, operatorSet, keyData, signature)
 	})
 	return err
 }
@@ -843,4 +841,17 @@ func (cc *ContractCaller) SetReleaseMetadata(
 		}
 		return tx, err
 	})
+}
+
+// abi.encode(uint256 x, uint256 y)
+func (cc *ContractCaller) PackUint256Pair(x, y *big.Int) ([]byte, error) {
+	t, err := abi.NewType("uint256", "", nil)
+	if err != nil {
+		return nil, err
+	}
+	args := abi.Arguments{
+		{Type: t},
+		{Type: t},
+	}
+	return args.Pack(x, y)
 }

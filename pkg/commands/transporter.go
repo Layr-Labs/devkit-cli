@@ -405,21 +405,33 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 				return fmt.Errorf("registration hash: %w", err)
 			}
 
-			// Sign the message hash with BLS key
-			sig, err := blsPriv.SignSolidityCompatible(msgHash)
+			// Ensure [32]byte input to the signer
+			var digest [32]byte
+			copy(digest[:], msgHash[:])
+
+			// Sign with BN254 key
+			sig, err := blsPriv.SignSolidityCompatible(digest)
 			if err != nil {
 				return fmt.Errorf("BLS sign: %w", err)
 			}
-			bn254Signature := bn254.Signature(*sig)
 
-			// Register in KeyRegistrar
+			// Convert G1 point to abi.encode(uint256 x, uint256 y)
+			x := sig.GetG1Point().X.BigInt(new(big.Int))
+			y := sig.GetG1Point().Y.BigInt(new(big.Int))
+
+			sigBytes, err := contractCaller.PackUint256Pair(x, y)
+			if err != nil {
+				return fmt.Errorf("pack BN254 signature: %w", err)
+			}
+
+			// Register BLS key in KeyRegistrar with raw bytes
 			if err := contractCaller.RegisterKeyInKeyRegistrar(
 				cCtx.Context,
 				operatorAddress,
 				gen.Avs,
 				uint32(gen.Id),
 				keyData,
-				bn254Signature,
+				sigBytes,
 			); err != nil {
 				return fmt.Errorf("register key in key registrar: %w", err)
 			}

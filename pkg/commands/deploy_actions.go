@@ -14,14 +14,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Layr-Labs/crypto-libs/pkg/bn254"
 	"github.com/Layr-Labs/crypto-libs/pkg/keystore"
 	"github.com/Layr-Labs/devkit-cli/config/configs"
 	"github.com/Layr-Labs/devkit-cli/config/contexts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	allocationmanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/AllocationManager"
+	keyregistrar "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/KeyRegistrar"
 	ethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/text/cases"
@@ -1146,86 +1147,149 @@ func RegisterKeyInKeyRegistrarAction(cCtx *cli.Context, logger iface.Logger) err
 		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
+	// Bind to keyRegistrar
 	avsAddress := ethcommon.HexToAddress(envCtx.Avs.Address)
-	_, _, _, keyRegistrarAddr, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
+	_, _, _, keyRegistrarAddrHex, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
+	krAddr := ethcommon.HexToAddress(keyRegistrarAddrHex)
+	kr, err := keyregistrar.NewKeyRegistrar(krAddr, client)
+	if err != nil {
+		return fmt.Errorf("failed to bind KeyRegistrar at %s: %w", krAddr.Hex(), err)
+	}
 
 	for _, op := range envCtx.OperatorRegistrations {
-
 		for _, operator := range envCtx.Operators {
+			if op.Address != operator.Address {
+				continue
+			}
 
-			if op.Address == operator.Address {
-				operatorPrivateKey, err := loadOperatorECDSAKey(operator)
+			// Tx signer (EOA): hex string private key
+			operatorPrivHex, err := loadOperatorECDSAKey(operator)
+			if err != nil {
+				return fmt.Errorf("failed to load ECDSA key for operator %s: %w", operator.Address, err)
+			}
+			operatorAddress := ethcommon.HexToAddress(op.Address)
+
+			// Build the caller
+			contractCaller, err := common.NewContractCaller(
+				operatorPrivHex,
+				big.NewInt(int64(l1Cfg.ChainID)),
+				client,
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(""),
+				krAddr, // key registrar
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(""),
+				ethcommon.HexToAddress(""),
+				logger,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create contract caller: %w", err)
+			}
+
+			// We need the parsed *ecdsa.PrivateKey for ECDSA signing and address derivation
+			operatorECDSA, err := crypto.HexToECDSA(strings.TrimPrefix(operatorPrivHex, "0x"))
+			if err != nil {
+				return fmt.Errorf("invalid operator ECDSA key hex: %w", err)
+			}
+
+			// Discover curve type
+			operatorSet := keyregistrar.OperatorSet{Avs: avsAddress, Id: uint32(op.OperatorSetID)}
+			curveType, err := kr.GetOperatorSetCurveType(nil, operatorSet)
+			if err != nil {
+				return fmt.Errorf("failed to get operator set curve type: %w", err)
+			}
+
+			switch curveType {
+			case common.CURVE_TYPE_KEY_REGISTRAR_ECDSA:
+				// keyData = 20-byte address
+				keyAddr := crypto.PubkeyToAddress(operatorECDSA.PublicKey)
+				keyData := keyAddr.Bytes()
+
+				// EIP-712 digest from contract
+				msgHash, err := kr.GetECDSAKeyRegistrationMessageHash(nil, operatorAddress, operatorSet, keyAddr)
 				if err != nil {
-					return fmt.Errorf("failed to load ECDSA key for operator %s: %w", operator.Address, err)
-				}
-				operatorAddress := ethcommon.HexToAddress(op.Address)
-				contractCaller, err := common.NewContractCaller(
-					operatorPrivateKey,
-					big.NewInt(int64(l1Cfg.ChainID)),
-					client,
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(keyRegistrarAddr),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					logger,
-				)
-				if err != nil {
-					return fmt.Errorf("failed to create contract caller: %w", err)
+					return fmt.Errorf("failed to get ECDSA hash: %w", err)
 				}
 
-				var blskeystorePath, blskeystorePassword string
+				// 65-byte r||s||v with v in {27,28}
+				sig, err := crypto.Sign(msgHash[:], operatorECDSA)
+				if err != nil {
+					return fmt.Errorf("failed to sign ECDSA: %w", err)
+				}
+				if sig[64] < 27 {
+					sig[64] += 27
+				}
+
+				if err := contractCaller.RegisterKeyInKeyRegistrar(
+					cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keyData, sig,
+				); err != nil {
+					return fmt.Errorf("failed to register ECDSA key: %w", err)
+				}
+				logger.Info("Registered ECDSA key for operator %s", operator.Address)
+
+			case common.CURVE_TYPE_KEY_REGISTRAR_BN254:
+				// Load BN254 key for this set
+				var blsKeystorePath, blsKeystorePassword string
 				for _, ks := range operator.Keystores {
 					if ks.OperatorSet == op.OperatorSetID {
-						blskeystorePath = ks.BlsKeystorePath
-						blskeystorePassword = ks.BlsKeystorePassword
+						blsKeystorePath = ks.BlsKeystorePath
+						blsKeystorePassword = ks.BlsKeystorePassword
 						break
 					}
 				}
-
-				if blskeystorePath == "" {
-					return fmt.Errorf("no bls keystore found for OperatorSet %d", op.OperatorSetID)
+				if blsKeystorePath == "" {
+					return fmt.Errorf("no BLS keystore found for OperatorSet %d", op.OperatorSetID)
 				}
 
-				keystoreData, err := keystore.LoadKeystoreFile(blskeystorePath)
+				ksData, err := keystore.LoadKeystoreFile(blsKeystorePath)
 				if err != nil {
-					return fmt.Errorf("failed to load the keystore file from given path %s error %w", blskeystorePath, err)
+					return fmt.Errorf("failed to load the keystore file from given path %s error %w", blsKeystorePath, err)
 				}
-
-				privateKey, err := keystoreData.GetBN254PrivateKey(blskeystorePassword)
+				blsPriv, err := ksData.GetBN254PrivateKey(blsKeystorePassword)
 				if err != nil {
-					return fmt.Errorf("failed to extract the private key from the keystore file")
-
+					return fmt.Errorf("failed to extract BN254 private key from keystore: %w", err)
 				}
 
-				keyData, err := contractCaller.EncodeBN254KeyData(privateKey.Public())
+				keyData, err := contractCaller.EncodeBN254KeyData(blsPriv.Public())
 				if err != nil {
-					return fmt.Errorf("failed to encode key data: %w", err)
+					return fmt.Errorf("failed to encode BN254 key data: %w", err)
 				}
 
-				messageHash, err := contractCaller.GetOperatorRegistrationMessageHash(cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keyData)
+				// EIP-712 digest from contract
+				msgHash, err := kr.GetBN254KeyRegistrationMessageHash(nil, operatorAddress, operatorSet, keyData)
 				if err != nil {
 					return fmt.Errorf("failed to get operator registration message hash: %w", err)
 				}
 
-				signature, err := privateKey.SignSolidityCompatible(messageHash)
+				// Ensure [32]byte for the BLS signer
+				var digest [32]byte
+				copy(digest[:], msgHash[:])
+
+				blsSig, err := blsPriv.SignSolidityCompatible(digest)
 				if err != nil {
-					return fmt.Errorf("failed to sign message hash: %w", err)
+					return fmt.Errorf("failed to sign BN254 message hash: %w", err)
+				}
+				x := blsSig.GetG1Point().X.BigInt(new(big.Int))
+				y := blsSig.GetG1Point().Y.BigInt(new(big.Int))
+				sigBytes, err := contractCaller.PackUint256Pair(x, y)
+				if err != nil {
+					return fmt.Errorf("failed to pack BN254 signature: %w", err)
 				}
 
-				bn254Signature := bn254.Signature(*signature)
-
-				err = contractCaller.RegisterKeyInKeyRegistrar(cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keyData, bn254Signature)
-				if err != nil {
-					return fmt.Errorf("failed to register key in key registrar: %w", err)
+				if err := contractCaller.RegisterKeyInKeyRegistrar(
+					cCtx.Context, operatorAddress, avsAddress, uint32(op.OperatorSetID), keyData, sigBytes,
+				); err != nil {
+					return fmt.Errorf("failed to register BN254 key: %w", err)
 				}
-				logger.Info("Successfully registered key in key registrar for operator %s", operator.Address)
+				logger.Info("Registered BN254 key for operator %s", operator.Address)
+
+			default:
+				return fmt.Errorf("unsupported curve type %d for operatorSet %d", curveType, op.OperatorSetID)
 			}
 		}
-
 	}
+
 	logger.Info("Successfully registered keys in key registrar")
 	return nil
 }
