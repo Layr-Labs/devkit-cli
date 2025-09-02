@@ -174,7 +174,6 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 			{
 				Path:      []string{"context", "eigenlayer", "l1", "permission_controller"},
 				Condition: migration.Always{},
-				Base:      migration.BaseUser,
 				Transform: func(_ *yaml.Node) *yaml.Node {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x44632dfBdCb6D3E21EF613B0ca8A6A0c618F5a37"}
 				},
@@ -183,7 +182,6 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 			{
 				Path:      []string{"context", "chains", "l1", "fork", "block"},
 				Condition: migration.Always{},
-				Base:      migration.BaseUser,
 				Transform: func(_ *yaml.Node) *yaml.Node {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "9085290"}
 				},
@@ -192,7 +190,6 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 			{
 				Path:      []string{"context", "chains", "l2", "fork", "block"},
 				Condition: migration.Always{},
-				Base:      migration.BaseUser,
 				Transform: func(_ *yaml.Node) *yaml.Node {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "30327360"}
 				},
