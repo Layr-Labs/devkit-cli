@@ -281,7 +281,7 @@ func copyDefaultConfigToProject(logger iface.Logger, targetDir, projectName, pro
 	if err := yaml.Unmarshal([]byte(configContent), &cfg); err != nil {
 		return fmt.Errorf("failed to unmarshal config YAML: %w", err)
 	}
-	cfg.Config.Project.Name = projectName
+	cfg.Config.Project.Name = filepath.Base(projectName)
 	cfg.Config.Project.ProjectUUID = projectUUID
 	cfg.Config.Project.TelemetryEnabled = telemetryEnabled
 	cfg.Config.Project.TemplateBaseURL = templateBaseURL
