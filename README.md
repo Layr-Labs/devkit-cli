@@ -1,11 +1,11 @@
 ## ⚠️ Disclaimer: Closed Alpha Not Production Ready
-EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
+EigenCloud DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
 
 # EigenCloud Development Kit (DevKit) 🚀
 
 **A CLI toolkit for scaffolding, developing, and testing EigenLayer Autonomous Verifiable Services (AVS).**
 
-EigenLayer DevKit streamlines AVS development, enabling you to:
+EigenCloud DevKit streamlines AVS development, enabling you to:
 * Quickly scaffold projects
 * Compile contracts
 * Run local networks
@@ -56,7 +56,7 @@ make install
 devkit --help
 ```
 
-![EigenLayer DevKit User Flow](assets/devkit-user-flow.png)
+![EigenCloud DevKit User Flow](assets/devkit-user-flow.png)
 
 ## 🌟 Key Commands Overview
 
