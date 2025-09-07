@@ -1,7 +1,7 @@
 ## ⚠️ Disclaimer: Closed Alpha Not Production Ready
 EigenLayer DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
 
-# EigenLayer Development Kit (DevKit) 🚀
+# EigenCloud Development Kit (DevKit) 🚀
 
 **A CLI toolkit for scaffolding, developing, and testing EigenLayer Autonomous Verifiable Services (AVS).**
 
