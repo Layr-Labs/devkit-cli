@@ -9,7 +9,7 @@ import (
 
 var AVSCommand = &cli.Command{
 	Name:  "avs",
-	Usage: "Manage EigenLayer AVS (Autonomous Verifiable Services) projects",
+	Usage: "Manage EigenCloud AVS (Autonomous Verifiable Services) projects",
 	Subcommands: []*cli.Command{
 		CreateCommand,
 		config.Command,
