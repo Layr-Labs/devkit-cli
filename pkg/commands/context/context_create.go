@@ -523,16 +523,6 @@ func validatePrivateKey(input string) error {
 	return nil
 }
 
-func validateEthAddress(input string) error {
-	if input == "" {
-		return fmt.Errorf("address cannot be empty")
-	}
-	if !ethcommon.IsHexAddress(input) {
-		return fmt.Errorf("must be a valid 0x prefixed EVM address")
-	}
-	return nil
-}
-
 func validateMetadataURL(input string) error {
 	if input == "" {
 		return fmt.Errorf("metadata URL cannot be empty")
