@@ -328,16 +328,12 @@ func getAVSSetup(cCtx *cli.Context) (*common.AvsConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	registrar, err := getRegistrarAddress(cCtx)
-	if err != nil {
-		return nil, err
-	}
 
 	cfg := &common.AvsConfig{
 		Address:          address,
 		AVSPrivateKey:    privateKey,
 		MetadataUri:      metadataURL,
-		RegistrarAddress: registrar,
+		RegistrarAddress: "",
 	}
 
 	return cfg, nil
@@ -392,26 +388,6 @@ func getAVSMetadataURL(cCtx *cli.Context) (string, error) {
 		return "", fmt.Errorf("invalid AVS metadata URL: %w", err)
 	}
 	return u, nil
-}
-
-func getRegistrarAddress(cCtx *cli.Context) (string, error) {
-	addr := cCtx.String("registrar-address")
-	if addr == "" {
-		val, err := output.InputString(
-			"Enter Registrar contract address",
-			"The on chain registrar contract address, 0x prefixed",
-			"",
-			validateEthAddress,
-		)
-		if err != nil {
-			return "", fmt.Errorf("failed to get registrar address: %w", err)
-		}
-		return val, nil
-	}
-	if err := validateEthAddress(addr); err != nil {
-		return "", fmt.Errorf("invalid registrar address: %w", err)
-	}
-	return addr, nil
 }
 
 func CreateContext(
