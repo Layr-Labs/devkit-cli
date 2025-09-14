@@ -16,7 +16,6 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/output"
 	"gopkg.in/yaml.v3"
 
-	ethcommon "github.com/ethereum/go-ethereum/common"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 
