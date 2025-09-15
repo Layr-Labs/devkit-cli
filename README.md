@@ -1,5 +1,5 @@
-## ⚠️ Disclaimer: Closed Alpha Not Production Ready
-EigenCloud DevKit is currently in a closed alpha stage and is intended strictly for local experimentation and development. It has not been audited, and should not be used in any live environment, including public testnets or mainnet. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
+## ⚠️ Disclaimer: Unaudited Code
+EigenCloud DevKit has not been audited. Users are strongly discouraged from pushing generated projects to remote repositories without reviewing and sanitizing sensitive configuration files (e.g. devnet.yaml), which may contain private keys or other sensitive material.
 
 # EigenCloud Development Kit (DevKit) 🚀
 
