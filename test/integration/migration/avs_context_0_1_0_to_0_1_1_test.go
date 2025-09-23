@@ -58,8 +58,8 @@ context:
 
 	t.Run("L1 block height updated", func(t *testing.T) {
 		blockNode := migration.ResolveNode(migrated, []string{"context", "chains", "l1", "fork", "block"})
-		if blockNode == nil || blockNode.Value != "9259025" {
-			t.Errorf("expected L1 block 9259025, got %v", blockNode)
+		if blockNode == nil || blockNode.Value != "9259079" {
+			t.Errorf("expected L1 block 9259079, got %v", blockNode)
 		}
 	})
 

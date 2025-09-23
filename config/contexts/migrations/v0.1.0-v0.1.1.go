@@ -17,7 +17,7 @@ func Migration_0_1_0_to_0_1_1(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "chains", "l1", "fork", "block"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "9259025"}
+					return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "9259079"}
 				},
 			},
 			// Update L2 fork block
