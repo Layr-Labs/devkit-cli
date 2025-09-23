@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
-	"github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/bn254"
-	blskeystore "github.com/Layr-Labs/hourglass-monorepo/ponos/pkg/signing/keystore"
+	"github.com/Layr-Labs/crypto-libs/pkg/bn254"
+	blskeystore "github.com/Layr-Labs/crypto-libs/pkg/keystore"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/urfave/cli/v2"
 	"log"
