@@ -8,10 +8,6 @@ replace github.com/Layr-Labs/devkit-cli => ./
 
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.8.0-testnet-final
-<<<<<<< Updated upstream
-	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737
-=======
->>>>>>> Stashed changes
 	github.com/Layr-Labs/multichain-go v0.0.13
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
@@ -99,12 +95,8 @@ require (
 	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
-<<<<<<< Updated upstream
-	golang.org/x/sync v0.15.0 // indirect
-=======
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/sync v0.16.0 // indirect
->>>>>>> Stashed changes
 	golang.org/x/sys v0.33.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
