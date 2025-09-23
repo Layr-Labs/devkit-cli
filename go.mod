@@ -8,7 +8,7 @@ replace github.com/Layr-Labs/devkit-cli => ./
 
 require (
 	github.com/Layr-Labs/eigenlayer-contracts v1.8.0-testnet-final
-	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737
+	github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250922231548-930e667774cc
 	github.com/Layr-Labs/multichain-go v0.0.13
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
@@ -93,7 +93,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
-	golang.org/x/sync v0.15.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 )
 

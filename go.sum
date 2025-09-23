@@ -10,6 +10,8 @@ github.com/Layr-Labs/eigenlayer-contracts v1.8.0-testnet-final h1:f+dHuhY4mrgBOw
 github.com/Layr-Labs/eigenlayer-contracts v1.8.0-testnet-final/go.mod h1:Ie8YE3EQkTHqG6/tnUS0He7/UPMkXPo/3OFXwSy0iRo=
 github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737 h1:UnBl34Y3xxQ4WTQ/O36dtY0CtHXZXvgyWxwEdJRCdHQ=
 github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250613205316-cb10040f5737/go.mod h1:bNDHU6OHvYrjPaUe/0GSUrfvO6OjGFWIWPehC0U6K40=
+github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250922231548-930e667774cc h1:7hTPNHMikTvB/6ygTlWBVnDfKrCXE6kTN43TDevYwNs=
+github.com/Layr-Labs/hourglass-monorepo/ponos v0.0.0-20250922231548-930e667774cc/go.mod h1:36FYh84fOM0viTZeYSp4dZB6Ecjj2zK0ywDAGeBlDhk=
 github.com/Layr-Labs/multichain-go v0.0.13 h1:4wQ2gpd2DUy13aaKwP8lRHfgPhyBbUo95HSIWQYypPg=
 github.com/Layr-Labs/multichain-go v0.0.13/go.mod h1:EK4rp+68FMQ5BYdSc7s1KWCGsT8cbQyTwENFEVtUR6M=
 github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERoyfY=
@@ -353,6 +355,7 @@ golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.15.0 h1:KWH3jNZsfyT6xfAfKiz6MRNmd46ByHDYaZ7KSkCtdW8=
 golang.org/x/sync v0.15.0/go.mod h1:1dzgHSNfp02xaA81J2MS99Qcpr2w7fw1gpm99rleRqA=
+golang.org/x/sync v0.16.0/go.mod h1:1dzgHSNfp02xaA81J2MS99Qcpr2w7fw1gpm99rleRqA=
 golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190222072716-a9d3bda3a223/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
