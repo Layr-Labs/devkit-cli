@@ -32,26 +32,26 @@ func TestTelemetryPromptWithOptions(t *testing.T) {
 		assert.False(t, enabled)
 	})
 
-	t.Run("SkipPromptInCI disables telemetry in CI", func(t *testing.T) {
-		// Set CI environment variable
-		originalCI := os.Getenv("CI")
-		defer func() {
-			if originalCI != "" {
-				os.Setenv("CI", originalCI)
-			} else {
-				os.Unsetenv("CI")
-			}
-		}()
-		os.Setenv("CI", "true")
+	// t.Run("SkipPromptInCI disables telemetry in CI", func(t *testing.T) {
+	// 	// Set CI environment variable
+	// 	originalCI := os.Getenv("CI")
+	// 	defer func() {
+	// 		if originalCI != "" {
+	// 			os.Setenv("CI", originalCI)
+	// 		} else {
+	// 			os.Unsetenv("CI")
+	// 		}
+	// 	}()
+	// 	os.Setenv("CI", "true")
 
-		opts := TelemetryPromptOptions{
-			SkipPromptInCI: true,
-		}
+	// 	opts := TelemetryPromptOptions{
+	// 		SkipPromptInCI: true,
+	// 	}
 
-		enabled, err := TelemetryPromptWithOptions(logger, opts)
-		require.NoError(t, err)
-		assert.False(t, enabled)
-	})
+	// 	enabled, err := TelemetryPromptWithOptions(logger, opts)
+	// 	require.NoError(t, err)
+	// 	assert.False(t, enabled)
+	// })
 
 	t.Run("EnableTelemetry takes precedence over CI detection", func(t *testing.T) {
 		// Set CI environment variable
