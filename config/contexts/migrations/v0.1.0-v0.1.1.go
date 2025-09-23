@@ -35,5 +35,10 @@ func Migration_0_1_0_to_0_1_1(user, old, new *yaml.Node) (*yaml.Node, error) {
 		return nil, err
 	}
 
+	// Upgrade the version
+	if v := migration.ResolveNode(user, []string{"version"}); v != nil {
+		v.Value = "0.1.1"
+	}
+
 	return user, nil
 }
