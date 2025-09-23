@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/crypto-libs/pkg/bn254"
 	blskeystore "github.com/Layr-Labs/crypto-libs/pkg/keystore"
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	ethkeystore "github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/urfave/cli/v2"
 	"log"
