@@ -1,10 +1,8 @@
 package common
 
 import (
-	"bufio"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 )
@@ -35,48 +33,48 @@ func TelemetryPromptWithOptions(logger iface.Logger, opts TelemetryPromptOptions
 		return false, nil
 	}
 
-	// Check if we're in a CI environment and should skip prompting
-	if opts.SkipPromptInCI && isCI() {
-		logger.Debug("Skipping telemetry prompt in CI environment, defaulting to disabled")
-		fmt.Println("⚠️  Detected CI environment - telemetry disabled by default")
-		fmt.Println("   You can enable it later with: devkit telemetry --enable --global")
-		fmt.Println()
-		return false, nil
-	}
+	// // Check if we're in a CI environment and should skip prompting
+	// if opts.SkipPromptInCI && isCI() {
+	// 	logger.Debug("Skipping telemetry prompt in CI environment, defaulting to disabled")
+	// 	fmt.Println("⚠️  Detected CI environment - telemetry disabled by default")
+	// 	fmt.Println("   You can enable it later with: devkit telemetry --enable --global")
+	// 	fmt.Println()
+	// 	return false, nil
+	// }
 
-	// Display telemetry information
-	displayTelemetryInfo()
+	// // Display telemetry information
+	// displayTelemetryInfo()
 
-	// Check if stdin is available (not in a non-interactive environment)
-	if !isStdinAvailable() {
-		logger.Debug("No stdin available, defaulting telemetry to disabled")
-		fmt.Println("⚠️  Non-interactive environment detected - telemetry disabled by default")
-		fmt.Println("   You can enable it later with: devkit telemetry --enable --global")
-		fmt.Println()
-		return false, nil
-	}
+	// // Check if stdin is available (not in a non-interactive environment)
+	// if !isStdinAvailable() {
+	// 	logger.Debug("No stdin available, defaulting telemetry to disabled")
+	// 	fmt.Println("⚠️  Non-interactive environment detected - telemetry disabled by default")
+	// 	fmt.Println("   You can enable it later with: devkit telemetry --enable --global")
+	// 	fmt.Println()
+	// 	return false, nil
+	// }
 
-	fmt.Print("Would you like to enable telemetry? [Y/n]: ")
+	// fmt.Print("Would you like to enable telemetry? [Y/n]: ")
 
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		return false, fmt.Errorf("failed to read user input: %w", err)
-	}
+	// reader := bufio.NewReader(os.Stdin)
+	// response, err := reader.ReadString('\n')
+	// if err != nil {
+	// 	return false, fmt.Errorf("failed to read user input: %w", err)
+	// }
 
-	response = strings.ToLower(strings.TrimSpace(response))
+	// response = strings.ToLower(strings.TrimSpace(response))
 
-	// Default to yes if empty response, no if they explicitly say no
-	enabled := response == "" || response == "y" || response == "Y" || response == "yes" || response == "Yes"
+	// // Default to yes if empty response, no if they explicitly say no
+	// enabled := response == "" || response == "y" || response == "Y" || response == "yes" || response == "Yes"
 
-	if enabled {
-		fmt.Println("✅ Telemetry enabled. Thank you for helping improve DevKit!")
-	} else {
-		fmt.Println("❌ Telemetry disabled. You can enable it later if you change your mind.")
-	}
-	fmt.Println()
+	// if enabled {
+	// 	fmt.Println("✅ Telemetry enabled. Thank you for helping improve DevKit!")
+	// } else {
+	// 	fmt.Println("❌ Telemetry disabled. You can enable it later if you change your mind.")
+	// }
+	// fmt.Println()
 
-	return enabled, nil
+	return true, nil
 }
 
 // displayTelemetryInfo shows the telemetry information banner
