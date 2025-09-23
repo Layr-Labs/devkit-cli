@@ -7,7 +7,7 @@ toolchain go1.24.2
 replace github.com/Layr-Labs/devkit-cli => ./
 
 require (
-	github.com/Layr-Labs/eigenlayer-contracts v1.8.0-testnet-final
+	github.com/Layr-Labs/eigenlayer-contracts v1.8.0-testnet-final.0.20250922221242-73644e201541
 	github.com/Layr-Labs/multichain-go v0.0.13
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
