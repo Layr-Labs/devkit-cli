@@ -45,7 +45,7 @@ func GetZeusAddresses(ctx context.Context, logger iface.Logger, contextName stri
 	l1ZeusEnv := "testnet-sepolia"
 	l2ZeusEnv := "testnet-base-sepolia"
 
-	// Overide with mainnet envs
+	// Override with mainnet envs
 	if contextName == "mainnet" {
 		l1ZeusEnv = "mainnet"
 		l2ZeusEnv = "base"
