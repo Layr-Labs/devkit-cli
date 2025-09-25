@@ -35,20 +35,30 @@ type L2ZeusAddressData struct {
 }
 
 // GetZeusAddresses runs the zeus env show commands and extracts core EigenLayer addresses.
-func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressData, *L2ZeusAddressData, error) {
+func GetZeusAddresses(ctx context.Context, logger iface.Logger, contextName string) (*L1ZeusAddressData, *L2ZeusAddressData, error) {
 	var (
 		l1Raw, l2Raw []byte
 		err          error
 	)
 
+	// Default zeus env to sepolia for testnet/devnet
+	l1ZeusEnv := "testnet-sepolia"
+	l2ZeusEnv := "testnet-base-sepolia"
+
+	// Overide with mainnet envs
+	if contextName == "mainnet" {
+		l1ZeusEnv = "mainnet"
+		l2ZeusEnv = "base"
+	}
+
 	// Run L1
-	l1Raw, err = runZeusJSON(ctx, "testnet-sepolia")
+	l1Raw, err = runZeusJSON(ctx, l1ZeusEnv)
 	if err != nil {
 		return nil, nil, fmt.Errorf("zeus L1: %w", err)
 	}
 
 	// Run L2
-	l2Raw, err = runZeusJSON(ctx, "testnet-base-sepolia")
+	l2Raw, err = runZeusJSON(ctx, l2ZeusEnv)
 	if err != nil {
 		return nil, nil, fmt.Errorf("zeus L2: %w", err)
 	}
@@ -126,7 +136,7 @@ func GetZeusAddresses(ctx context.Context, logger iface.Logger) (*L1ZeusAddressD
 // UpdateContextWithZeusAddresses updates the context configuration with addresses from Zeus
 func UpdateContextWithZeusAddresses(context context.Context, logger iface.Logger, contextMap *yaml.Node, contextName string) error {
 	logger.Title("Fetching EigenLayer core addresses for L1 and L2 from Zeus...")
-	l1Addresses, l2Addresses, err := GetZeusAddresses(context, logger)
+	l1Addresses, l2Addresses, err := GetZeusAddresses(context, logger, contextName)
 	if err != nil {
 		return err
 	}
