@@ -281,14 +281,14 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	logger.Info("Funding wallets on L1...")
 	err = devnet.FundWalletsDevnet(config, l1RpcUrl)
 	if err != nil {
-		return fmt.Errorf("funding L1 devnet wallets failed: %w", err)
+		return fmt.Errorf("funding L1 devnet wallets failed - please restart devnet and try again: %w", err)
 	}
 
 	// Fund the wallets defined in config on L2
 	logger.Info("Funding wallets on L2...")
 	err = devnet.FundWalletsDevnet(config, l2RpcUrl)
 	if err != nil {
-		return fmt.Errorf("failed L2 devnet wallets failed: %w", err)
+		return fmt.Errorf("failed L2 devnet wallets failed - please restart devnet and try again: %w", err)
 	}
 
 	// Fund stakers with strategy tokens
@@ -325,13 +325,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	logger.Info("Total startup time: %s", elapsed)
 
 	if err := WhitelistChainIdInCrossRegistryAction(cCtx, logger); err != nil {
-		return fmt.Errorf("whitelisting chain id in cross registry failed: %w", err)
+		return fmt.Errorf("whitelisting chain id in cross registry failed - please restart devnet and try again: %w", err)
 	}
 
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
-		if err := DeployL1ContractsAction(cCtx); err != nil { // Assumes DeployContractsAction remains as is or is also refactored if needed
-			return fmt.Errorf("deploy-contracts failed: %w", err)
+		if err := DeployL1ContractsAction(cCtx); err != nil {
+			return fmt.Errorf("deploy-contracts failed - please restart devnet and try again: %w", err)
 		}
 
 		// Sleep for 1 second to make sure new context values have been written
@@ -340,51 +340,51 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		logger.Title("Registering AVS with EigenLayer...")
 		if !cCtx.Bool("skip-setup") {
 			if err := UpdateAVSMetadataAction(cCtx, logger); err != nil {
-				return fmt.Errorf("updating AVS metadata failed: %w", err)
+				return fmt.Errorf("updating AVS metadata failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := SetAVSRegistrarAction(cCtx, logger); err != nil {
-				return fmt.Errorf("setting AVS registrar failed: %w", err)
+				return fmt.Errorf("setting AVS registrar failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := CreateAVSOperatorSetsAction(cCtx, logger); err != nil {
-				return fmt.Errorf("creating AVS operator sets failed: %w", err)
+				return fmt.Errorf("creating AVS operator sets failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := ConfigureOpSetCurveTypeAction(cCtx, logger); err != nil {
-				return fmt.Errorf("failed to configure OpSet in KeyRegistrar: %w", err)
+				return fmt.Errorf("failed to configure OpSet in KeyRegistrar - please restart devnet and try again: %w", err)
 			}
 
 			if err := CreateGenerationReservationAction(cCtx, logger); err != nil {
-				return fmt.Errorf("failed to request op set generation reservation: %w", err)
+				return fmt.Errorf("failed to request op set generation reservation - please restart devnet and try again: %w", err)
 			}
 
 			if err := RegisterOperatorsToEigenLayerFromConfigAction(cCtx, logger); err != nil {
-				return fmt.Errorf("registering operators failed: %w", err)
+				return fmt.Errorf("registering operators failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := RegisterKeyInKeyRegistrarAction(cCtx, logger); err != nil {
-				return fmt.Errorf("registering key in key registrar failed: %w", err)
+				return fmt.Errorf("registering key in key registrar failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := DepositIntoStrategiesAction(cCtx, logger); err != nil {
-				return fmt.Errorf("depositing into strategies failed: %w", err)
+				return fmt.Errorf("depositing into strategies failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := DelegateToOperatorsAction(cCtx, logger); err != nil {
-				return fmt.Errorf("delegating to operators failed: %w", err)
+				return fmt.Errorf("delegating to operators failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := SetAllocationDelayAction(cCtx, logger); err != nil {
-				return fmt.Errorf("setting allocation delay failed: %w", err)
+				return fmt.Errorf("setting allocation delay failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := ModifyAllocationsAction(cCtx, logger); err != nil {
-				return fmt.Errorf("modifying allocations failed: %w", err)
+				return fmt.Errorf("modifying allocations failed - please restart devnet and try again: %w", err)
 			}
 
 			if err := RegisterOperatorsToAvsFromConfigAction(cCtx, logger); err != nil {
-				return fmt.Errorf("registering operators to AVS failed: %w", err)
+				return fmt.Errorf("registering operators to AVS failed - please restart devnet and try again: %w", err)
 			}
 		} else {
 			logger.Info("Skipping AVS setup steps...")
@@ -403,7 +403,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	if !skipTransporter {
 		// Post initial stake roots to L1
 		if err := Transport(cCtx, true); err != nil && !errors.Is(err, context.Canceled) {
-			return fmt.Errorf("transport run failed: %w", err)
+			return fmt.Errorf("transport run failed - please restart devnet and try again: %w", err)
 		}
 
 		// Shallow-copy cli.Context so that ScheduleTransport sees the new ctx
@@ -424,16 +424,15 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Deploy L2 contracts only if L1 contracts were also deployed
 	if !skipDeployContracts {
-		if err := DeployL2ContractsAction(cCtx); err != nil && !errors.Is(err, context.Canceled) {
-			logger.Error("deploy-l2-contracts failed: %v", err)
-			return fmt.Errorf("deploy-l2-contracts failed: %w", err)
+		if err := StartDeployL2Action(cCtx); err != nil && !errors.Is(err, context.Canceled) {
+			return fmt.Errorf("start-l2-deploy failed - please restart devnet and try again: %w", err)
 		}
 	}
 
 	// Start offchain AVS components after starting devnet and deploying contracts unless skipped
 	if !skipDeployContracts && !skipAvsRun {
 		if err := AVSRun(cCtx); err != nil && !errors.Is(err, context.Canceled) {
-			return fmt.Errorf("avs run failed: %w", err)
+			return fmt.Errorf("avs run failed - please restart devnet and try again: %w", err)
 		}
 	}
 

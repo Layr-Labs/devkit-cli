@@ -215,62 +215,8 @@ func StartDeployL2Action(cCtx *cli.Context) error {
 	logger.Info("Starting L2 (%d) deployment to %s\n", l2ChainCfg.ChainID, contextName)
 
 	// Get operatorSets, check curveType, use contractCaller to check getOperatorSetOwner()
-	if len(envCtx.OperatorSets) > 0 {
-		// Collect AVS address
-		avsAddr := envCtx.Avs.Address
-		transportedOpSets := 0
-
-		// For each OperatorSets check if the transport has happened yet
-		for _, opSet := range envCtx.OperatorSets {
-			logger.Debug("Checking owner of AVS: %s and OperatorSet: %d", avsAddr, opSet.OperatorSetID)
-
-			// Collect appropriate CertVerifier based on curveType
-			var certVerifierAddr string
-			switch opSet.CurveType {
-			case common.BN254Curve:
-				certVerifierAddr = envCtx.EigenLayer.L2.BN254CertificateVerifier
-			case common.ECDSACurve:
-				certVerifierAddr = envCtx.EigenLayer.L2.ECDSACertificateVerifier
-			}
-
-			// Pass certVerifierAddr to contractCaller
-			if certVerifierAddr != "" {
-				contractCaller, err := common.NewContractCaller(
-					envCtx.Avs.AVSPrivateKey,
-					big.NewInt(int64(l2ChainCfg.ChainID)),
-					client,
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(""),
-					ethcommon.HexToAddress(certVerifierAddr),
-					logger,
-				)
-
-				// Attempt to get owner from appropriate certVerifier
-				var owner ethcommon.Address
-				switch opSet.CurveType {
-				case common.BN254Curve:
-					owner, err = contractCaller.GetBN254OperatorSetOwner(cCtx.Context, ethcommon.HexToAddress(avsAddr), uint32(opSet.OperatorSetID))
-				case common.ECDSACurve:
-					owner, err = contractCaller.GetECDSAOperatorSetOwner(cCtx.Context, ethcommon.HexToAddress(avsAddr), uint32(opSet.OperatorSetID))
-				}
-
-				logger.Debug(" - Owner is set: %s", owner)
-
-				// Test to make sure the transporter has ran before deploying to L2
-				if err == nil && owner != ethcommon.HexToAddress("") {
-					transportedOpSets++
-				}
-			}
-		}
-
-		// Throw error if any of the operatorSets has not been registered yet
-		if transportedOpSets < len(envCtx.OperatorSets) {
-			return fmt.Errorf("waiting on transporter, try again soon")
-		}
+	if err := CheckOperatorSetOwnerIsSet(cCtx, envCtx, l2ChainCfg, client, logger); err != nil && !errors.Is(err, context.Canceled) {
+		return fmt.Errorf("deploy-l2-contracts failed: %w", err)
 	}
 
 	// Deploy L2 contracts after transporter has been ran and operatorSetOwner has been set
@@ -566,6 +512,69 @@ func DeployL2ContractsAction(cCtx *cli.Context) error {
 	logger.Info("\n%s L2 contracts deployed successfully in %s", caser.String(contextName), elapsed)
 	return nil
 
+}
+
+func CheckOperatorSetOwnerIsSet(cCtx *cli.Context, envCtx common.ChainContextConfig, l2ChainCfg common.ChainConfig, client *ethclient.Client, logger iface.Logger) error {
+	// Get operatorSets, check curveType, use contractCaller to check getOperatorSetOwner()
+	if len(envCtx.OperatorSets) > 0 {
+		// Collect AVS address
+		avsAddr := envCtx.Avs.Address
+		transportedOpSets := 0
+
+		// For each OperatorSets check if the transport has happened yet
+		for _, opSet := range envCtx.OperatorSets {
+			logger.Debug("Checking owner of AVS: %s and OperatorSet: %d", avsAddr, opSet.OperatorSetID)
+
+			// Collect appropriate CertVerifier based on curveType
+			var certVerifierAddr string
+			switch opSet.CurveType {
+			case common.BN254Curve:
+				certVerifierAddr = envCtx.EigenLayer.L2.BN254CertificateVerifier
+			case common.ECDSACurve:
+				certVerifierAddr = envCtx.EigenLayer.L2.ECDSACertificateVerifier
+			}
+
+			// Pass certVerifierAddr to contractCaller
+			if certVerifierAddr != "" {
+				contractCaller, err := common.NewContractCaller(
+					envCtx.Avs.AVSPrivateKey,
+					big.NewInt(int64(l2ChainCfg.ChainID)),
+					client,
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(""),
+					ethcommon.HexToAddress(certVerifierAddr),
+					logger,
+				)
+
+				// Attempt to get owner from appropriate certVerifier
+				var owner ethcommon.Address
+				switch opSet.CurveType {
+				case common.BN254Curve:
+					owner, err = contractCaller.GetBN254OperatorSetOwner(cCtx.Context, ethcommon.HexToAddress(avsAddr), uint32(opSet.OperatorSetID))
+				case common.ECDSACurve:
+					owner, err = contractCaller.GetECDSAOperatorSetOwner(cCtx.Context, ethcommon.HexToAddress(avsAddr), uint32(opSet.OperatorSetID))
+				}
+
+				logger.Debug(" - Owner is set: %s", owner)
+
+				// Test to make sure the transporter has ran before deploying to L2
+				if err == nil && owner != ethcommon.HexToAddress("") {
+					transportedOpSets++
+				}
+			}
+		}
+
+		// Throw error if any of the operatorSets has not been registered yet
+		if transportedOpSets < len(envCtx.OperatorSets) {
+			return fmt.Errorf("waiting on transporter, try again soon")
+		}
+	}
+
+	return nil
 }
 
 func UpdateAVSMetadataAction(cCtx *cli.Context, logger iface.Logger) error {
