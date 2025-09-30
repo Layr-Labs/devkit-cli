@@ -239,3 +239,45 @@ func (g *GitClient) ParseCloneOutput(r io.Reader, rep Reporter, dest string, ref
 	}
 	return nil
 }
+
+func (g *GitClient) EnsureGitignoreEntry(path, entry string) error {
+	// Create .gitignore if missing
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		return fmt.Errorf("open %s: %w", path, err)
+	}
+	defer f.Close()
+
+	// Check if entry exists
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if strings.TrimSpace(scanner.Text()) == entry {
+			return nil // already present
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("scan %s: %w", path, err)
+	}
+
+	// Append entry
+	if _, err := f.WriteString("\n" + entry + "\n"); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	return nil
+}
+
+func (g *GitClient) Commit(file, msg string) error {
+	cmds := [][]string{
+		{"git", "add", file},
+		{"git", "commit", "-m", msg},
+	}
+
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("%s failed: %v\n%s", strings.Join(args, " "), err, string(out))
+		}
+	}
+	return nil
+}

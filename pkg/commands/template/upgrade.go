@@ -145,8 +145,20 @@ func createUpgradeCommand(
 				return fmt.Errorf("failed to get current working directory: %w", err)
 			}
 
+			// Create a gitClient for upgrade process
+			gitClient := template.NewGitClient()
+
+			// Ensure .gitignore entry is present for tempExternal
+			tempExternal := "temp_external"
+			if err := gitClient.EnsureGitignoreEntry(".gitignore", tempExternal); err != nil {
+				return fmt.Errorf("failed to add entry to .gitignore %s: %w", tempExternal, err)
+			}
+			if err := gitClient.Commit(".gitignore", fmt.Sprintf("chore: ensure %s is in .gitignore", tempExternal)); err != nil {
+				return fmt.Errorf("failed to commit entry to .gitignore %s: %w", tempExternal, err)
+			}
+
 			// Ensure parent exists
-			tempParent := filepath.Join(absProjectPath, "temp_external")
+			tempParent := filepath.Join(absProjectPath, tempExternal)
 			if err := os.MkdirAll(tempParent, 0o755); err != nil {
 				return fmt.Errorf("failed to create %s: %w", tempParent, err)
 			}
@@ -187,7 +199,7 @@ func createUpgradeCommand(
 
 			// Fetch main template
 			fetcher := &template.GitFetcher{
-				Client: template.NewGitClient(),
+				Client: gitClient,
 				Logger: *progresslogger.NewProgressLogger(
 					logger,
 					tracker,
