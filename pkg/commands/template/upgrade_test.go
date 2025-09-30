@@ -103,6 +103,11 @@ func TestUpgradeCommand(t *testing.T) {
 		t.Fatalf("Failed to write config file: %v", err)
 	}
 
+	// Create git repo in temp dir
+	if err := testutils.TestGitInit(testProjectsDir); err != nil {
+		t.Fatalf("Failed init git repo: %v", err)
+	}
+
 	// Create mock template info getter
 	mockTemplateInfoGetter := &MockTemplateInfoGetter{
 		projectName:      "template-upgrade-test",
@@ -137,6 +142,11 @@ func TestUpgradeCommand(t *testing.T) {
 
 	// Test upgrade command with version flag
 	t.Run("Upgrade command with version", func(t *testing.T) {
+		// Discard changes between runs
+		if err := testutils.TestGitDiscardChanges(testProjectsDir); err != nil {
+			t.Fatalf("Failed to clean working tree: %v", err)
+		}
+
 		// Create a flag set and context with no-op logger
 		set := flag.NewFlagSet("test", 0)
 		set.String("version", "v0.0.4", "")
@@ -186,6 +196,11 @@ func TestUpgradeCommand(t *testing.T) {
 
 	// Test upgrade command without version flag
 	t.Run("Upgrade command without version", func(t *testing.T) {
+		// Discard changes between runs
+		if err := testutils.TestGitDiscardChanges(testProjectsDir); err != nil {
+			t.Fatalf("Failed to clean working tree: %v", err)
+		}
+
 		// Create a flag set and context without version flag, with no-op logger
 		set := flag.NewFlagSet("test", 0)
 
@@ -233,6 +248,11 @@ func TestUpgradeCommand(t *testing.T) {
 
 	// Test upgrade command with incompatible to devkit version
 	t.Run("Upgrade command with incompatible version", func(t *testing.T) {
+		// Discard changes between runs
+		if err := testutils.TestGitDiscardChanges(testProjectsDir); err != nil {
+			t.Fatalf("Failed to clean working tree: %v", err)
+		}
+
 		// Create a flag set and context with no-op logger
 		set := flag.NewFlagSet("test", 0)
 		set.String("version", "v0.0.5", "")
@@ -258,6 +278,11 @@ func TestUpgradeCommand(t *testing.T) {
 
 	// Test with missing config file
 	t.Run("No config file", func(t *testing.T) {
+		// Discard changes between runs
+		if err := testutils.TestGitDiscardChanges(testProjectsDir); err != nil {
+			t.Fatalf("Failed to clean working tree: %v", err)
+		}
+
 		// Create a separate directory without a config file
 		noConfigDir := filepath.Join(testProjectsDir, "no-config")
 		err = os.MkdirAll(noConfigDir, 0755)

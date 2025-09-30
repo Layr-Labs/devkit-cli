@@ -148,13 +148,19 @@ func createUpgradeCommand(
 			// Create a gitClient for upgrade process
 			gitClient := template.NewGitClient()
 
+			// Check if working tree is clean before upgrading
+			clean, err := gitClient.GitIsClean()
+			if err != nil {
+				return fmt.Errorf("failed to check .git working tree state: %w", err)
+			}
+			if !clean {
+				return fmt.Errorf("uncommitted changes found, please commit or stash them before upgrading")
+			}
+
 			// Ensure .gitignore entry is present for tempExternal
 			tempExternal := "temp_external"
 			if err := gitClient.EnsureGitignoreEntry(".gitignore", tempExternal); err != nil {
 				return fmt.Errorf("failed to add entry to .gitignore %s: %w", tempExternal, err)
-			}
-			if err := gitClient.Commit(".gitignore", fmt.Sprintf("chore: ensure %s is in .gitignore", tempExternal)); err != nil {
-				return fmt.Errorf("failed to commit entry to .gitignore %s: %w", tempExternal, err)
 			}
 
 			// Ensure parent exists

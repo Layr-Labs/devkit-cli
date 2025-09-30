@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -248,4 +249,37 @@ func CaptureOutput(fn func()) (stdout string, stderr string) {
 	stderr = <-errC
 
 	return stdout, stderr
+}
+
+func TestGitCall(repoDir string, cmds [][]string) error {
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = repoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("git command %v failed: %v\n%s", args, err, out)
+		}
+	}
+	return nil
+}
+
+func TestGitInit(repoDir string) error {
+	// Init git repo
+	cmds := [][]string{
+		{"git", "init"},
+		{"git", "config", "user.name", "Test User"},
+		{"git", "config", "user.email", "test@example.com"},
+		{"git", "add", "."},
+		{"git", "commit", "--allow-empty", "-m", "initial commit"},
+	}
+	return TestGitCall(repoDir, cmds)
+}
+
+func TestGitDiscardChanges(repoDir string) error {
+	// Discard changes in working tree
+	cmds := [][]string{
+		{"git", "reset", "--hard"},
+		{"git", "clean", "-fdx"},
+	}
+	return TestGitCall(repoDir, cmds)
 }
