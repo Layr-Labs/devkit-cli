@@ -157,14 +157,14 @@ func createUpgradeCommand(
 				return fmt.Errorf("uncommitted changes found, please commit or stash them before upgrading")
 			}
 
-			// Ensure .gitignore entry is present for tempExternal
-			tempExternal := "temp_external"
-			if err := gitClient.EnsureGitignoreEntry(".gitignore", tempExternal); err != nil {
-				return fmt.Errorf("failed to add entry to .gitignore %s: %w", tempExternal, err)
+			// Ensure .gitignore entry is present for tempInternal
+			tempInternal := "temp_internal"
+			if err := gitClient.EnsureGitignoreEntry(".gitignore", fmt.Sprintf("%s/", tempInternal)); err != nil {
+				return fmt.Errorf("failed to add entry to .gitignore %s: %w", tempInternal, err)
 			}
 
 			// Ensure parent exists
-			tempParent := filepath.Join(absProjectPath, tempExternal)
+			tempParent := filepath.Join(absProjectPath, tempInternal)
 			if err := os.MkdirAll(tempParent, 0o755); err != nil {
 				return fmt.Errorf("failed to create %s: %w", tempParent, err)
 			}

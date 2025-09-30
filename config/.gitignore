@@ -29,6 +29,9 @@ Thumbs.db
 # Release outputs
 temp_external/
 
+# Internal upgrade directory
+temp_internal/
+
 # DevKit context configurations (only devnet.yaml is indexed)
 config/contexts/**/*
 !config/contexts/devnet.yaml
