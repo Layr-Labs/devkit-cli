@@ -145,18 +145,34 @@ func createUpgradeCommand(
 				return fmt.Errorf("failed to get current working directory: %w", err)
 			}
 
-			// Create temporary directory for cloning the template
-			tempDir, err := os.MkdirTemp("", "devkit-template-upgrade-*")
+			// Ensure parent exists
+			tempParent := filepath.Join(absProjectPath, "temp_external")
+			if err := os.MkdirAll(tempParent, 0o755); err != nil {
+				return fmt.Errorf("failed to create %s: %w", tempParent, err)
+			}
+
+			// Create run-specific temp dir inside tempParent
+			tempDir, err := os.MkdirTemp(tempParent, ".tmp-devkit-template-upgrade-*")
 			if err != nil {
 				return fmt.Errorf("failed to create temporary directory: %w", err)
 			}
-			defer os.RemoveAll(tempDir) // Clean up on exit
 
-			tempCacheDir, err := os.MkdirTemp("", "devkit-template-cache-*")
-			if err != nil {
-				return fmt.Errorf("failed to create temporary cache directory: %w", err)
-			}
-			defer os.RemoveAll(tempCacheDir) // Clean up on exit
+			// Remove tempParent if it is empty after tempDir cleanup
+			defer func() {
+				err = os.RemoveAll(tempDir)
+				if err != nil {
+					logger.Warn("failed to remove %s: %v\n", tempDir, err)
+				}
+				entries, err := os.ReadDir(tempParent)
+				if err != nil {
+					logger.Warn("could not read %s: %v\n", tempParent, err)
+				}
+				if len(entries) == 0 {
+					if err := os.Remove(tempParent); err != nil {
+						logger.Warn("failed to remove %s: %v\n", tempParent, err)
+					}
+				}
+			}()
 
 			logger.Info("Upgrading project template:")
 			logger.Info("  Project: %s", projectName)
