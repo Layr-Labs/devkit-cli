@@ -170,31 +170,40 @@ func (b *OCIArtifactBuilder) CreateEigenRuntimeArtifact(
 			cfg, err := config.Load(dockerConfigDir)
 			if err != nil {
 				b.logger.Debug("Failed to load Docker config from %s: %v", dockerConfigDir, err)
+				// Return empty credentials for anonymous access
 				return auth.Credential{}, nil
 			}
 
-			b.logger.Info("Loaded Docker config repo %s", repo)
-			b.logger.Info("Loaded Docker config reg %s", reg)
-			registryToLookup := reg
-			if reg == "docker.io" || reg == "registry-1.docker.io" {
-				registryToLookup = "https://index.docker.io/v1/"
+			// Try 1: Get auth directly from config file
+			authConfig, err := cfg.GetAuthConfig(reg)
+
+			// Try 2: If that didn't work and we have a credential store, try the native store
+			if (authConfig.Username == "" && authConfig.Password == "") && cfg.CredentialsStore != "" {
+				b.logger.Debug("No auth in config file, trying credential store")
+
+				// For native store, normalize to the exact key used in GitHub Actions
+				registryToLookup := reg
+				if reg == "docker.io" || reg == "registry-1.docker.io" {
+					registryToLookup = "https://index.docker.io/v1/"
+				}
+
+				store := credentials.NewNativeStore(cfg, cfg.CredentialsStore)
+				authConfig, err = store.Get(registryToLookup)
 			}
-			b.logger.Info("Loading registry %s from %s, %s",
-				registryToLookup,
-				dockerConfigDir,
-				cfg.CredentialsStore,
-			)
 
-			// Get the credentials store
-			store := credentials.NewNativeStore(cfg, cfg.CredentialsStore)
-
-			// Try to get credentials for the registry
-			authConfig, err := store.Get(registryToLookup)
-			b.logger.Info("auth config: %s, %s, %s, %s,", authConfig.Auth, authConfig.Username, authConfig.Password, authConfig.ServerAddress)
 			if err != nil {
-				b.logger.Info("No credentials found for registry %s: %v", registryToLookup, err)
+				b.logger.Debug("No credentials found for registry %s: %v", reg, err)
+				// Return empty credentials for anonymous access
 				return auth.Credential{}, nil
 			}
+
+			if authConfig.Username == "" && authConfig.Password == "" {
+				b.logger.Debug("Empty credentials for registry %s", reg)
+				// Return empty credentials for anonymous access
+				return auth.Credential{}, nil
+			}
+
+			b.logger.Debug("Found credentials for registry %s - Username: %s", reg, authConfig.Username)
 
 			// Convert to oras auth.Credential
 			cred := auth.Credential{
