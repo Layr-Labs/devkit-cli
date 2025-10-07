@@ -173,13 +173,13 @@ func (b *OCIArtifactBuilder) CreateEigenRuntimeArtifact(
 				return auth.Credential{}, nil
 			}
 
-			b.logger.Debug("Loaded Docker config repo %s", repo)
-			b.logger.Debug("Loaded Docker config reg %s", reg)
+			b.logger.Info("Loaded Docker config repo %s", repo)
+			b.logger.Info("Loaded Docker config reg %s", reg)
 			registryToLookup := reg
 			if reg == "docker.io" || reg == "registry-1.docker.io" {
 				registryToLookup = "https://index.docker.io/v1/"
 			}
-			b.logger.Debug("Loading registry %s from %s, %s",
+			b.logger.Info("Loading registry %s from %s, %s",
 				registryToLookup,
 				dockerConfigDir,
 				cfg.CredentialsStore,
