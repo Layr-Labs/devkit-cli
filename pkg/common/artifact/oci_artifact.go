@@ -170,18 +170,28 @@ func (b *OCIArtifactBuilder) CreateEigenRuntimeArtifact(
 			cfg, err := config.Load(dockerConfigDir)
 			if err != nil {
 				b.logger.Debug("Failed to load Docker config from %s: %v", dockerConfigDir, err)
-				// Return empty credentials for anonymous access
 				return auth.Credential{}, nil
 			}
+
+			b.logger.Debug("Loaded Docker config repo %s", repo)
+			b.logger.Debug("Loaded Docker config reg %s", reg)
+			registryToLookup := reg
+			if reg == "docker.io" || reg == "registry-1.docker.io" {
+				registryToLookup = "https://index.docker.io/v1/"
+			}
+			b.logger.Debug("Loading registry %s from %s, %s",
+				registryToLookup,
+				dockerConfigDir,
+				cfg.CredentialsStore,
+			)
 
 			// Get the credentials store
 			store := credentials.NewNativeStore(cfg, cfg.CredentialsStore)
 
 			// Try to get credentials for the registry
-			authConfig, err := store.Get(reg)
+			authConfig, err := store.Get(registryToLookup)
 			if err != nil {
-				b.logger.Debug("No credentials found for registry %s: %v", reg, err)
-				// Return empty credentials for anonymous access
+				b.logger.Debug("No credentials found for registry %s: %v", registryToLookup, err)
 				return auth.Credential{}, nil
 			}
 
@@ -194,6 +204,7 @@ func (b *OCIArtifactBuilder) CreateEigenRuntimeArtifact(
 			// Handle token-based auth (e.g., for Docker Hub)
 			if authConfig.IdentityToken != "" {
 				cred.RefreshToken = authConfig.IdentityToken
+				cred.AccessToken = authConfig.RegistryToken
 			}
 
 			return cred, nil
