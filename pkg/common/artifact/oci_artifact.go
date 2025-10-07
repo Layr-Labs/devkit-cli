@@ -190,8 +190,9 @@ func (b *OCIArtifactBuilder) CreateEigenRuntimeArtifact(
 
 			// Try to get credentials for the registry
 			authConfig, err := store.Get(registryToLookup)
+			b.logger.Info("auth config: %s, %s, %s, %s,", authConfig.Auth, authConfig.Username, authConfig.Password, authConfig.ServerAddress)
 			if err != nil {
-				b.logger.Debug("No credentials found for registry %s: %v", registryToLookup, err)
+				b.logger.Info("No credentials found for registry %s: %v", registryToLookup, err)
 				return auth.Credential{}, nil
 			}
 
