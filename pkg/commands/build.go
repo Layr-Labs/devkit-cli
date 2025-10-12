@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/Layr-Labs/devkit-cli/config/configs"
@@ -21,6 +22,10 @@ var BuildCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:  "context",
 			Usage: "Select the context to use in this command (devnet, testnet or mainnet)",
+		},
+		&cli.StringFlag{
+			Name:  "target",
+			Usage: "Override the build script target (relative or absolute path)",
 		},
 	}, common.GlobalFlags...),
 	Action: func(cCtx *cli.Context) error {
@@ -81,18 +86,43 @@ var BuildCommand = &cli.Command{
 		logger.Debug("Project Name: %s", cfg.Config.Project.Name)
 		logger.Debug("Building AVS components...")
 
-		// All scripts contained here
-		scriptsDir := filepath.Join(".devkit", "scripts")
+		// Resolve target script (defaults to .devkit/scripts/build)
+		defaultScript := filepath.Join(".devkit", "scripts", "build")
+		scriptPath := defaultScript
 
-		// Execute build via .devkit scripts with project name
-		output, err := common.CallTemplateScript(cCtx.Context, logger, dir, filepath.Join(scriptsDir, "build"), common.ExpectJSONResponse,
+		if override := cCtx.String("target"); override != "" {
+			if filepath.IsAbs(override) {
+				scriptPath = override
+			} else {
+				scriptPath = filepath.Join(".", filepath.Clean(override))
+			}
+
+			if _, statErr := os.Stat(scriptPath); statErr != nil {
+				if os.IsNotExist(statErr) {
+					return fmt.Errorf("custom build target not found: %s", scriptPath)
+				}
+				return fmt.Errorf("failed to access custom build target %s: %w", scriptPath, statErr)
+			}
+
+			logger.Info("Using custom build target: %s", scriptPath)
+		}
+
+		// Execute build via script with project name
+		params := [][]byte{
 			[]byte("--image"),
 			[]byte(cfg.Config.Project.Name),
 			[]byte("--tag"),
 			[]byte(version),
 			[]byte("--lang"),
 			[]byte(language),
-		)
+		}
+
+		// Forward any additional positional arguments to the build script
+		for _, arg := range cCtx.Args().Slice() {
+			params = append(params, []byte(arg))
+		}
+
+		output, err := common.CallTemplateScript(cCtx.Context, logger, dir, scriptPath, common.ExpectJSONResponse, params...)
 		if err != nil {
 			logger.Error("Build script failed with error: %v", err)
 			return fmt.Errorf("build failed: %w", err)
