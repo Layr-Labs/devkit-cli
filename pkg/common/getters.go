@@ -32,15 +32,26 @@ func GetForkUrlDefault(contextName string, cfg *ConfigWithContextConfig, chainNa
 // GetEigenLayerAddresses returns EigenLayer L1 addresses from the context config
 // Falls back to constants if not found in context
 func GetEigenLayerAddresses(contextName string, cfg *ConfigWithContextConfig) (allocationManager, delegationManager, strategyManager, keyRegistrar, crossChainRegistry, bn254TableCalculator, ecdsaTableCalculator, releaseManager string) {
+	// Default middleware addresses according to context
+	var BN254_TABLE_CALCULATOR_ADDRESS = SEPOLIA_BN254_TABLE_CALCULATOR_ADDRESS
+	var ECDSA_TABLE_CALCULATOR_ADDRESS = SEPOLIA_ECDSA_TABLE_CALCULATOR_ADDRESS
+	if contextName == "mainnet" {
+		BN254_TABLE_CALCULATOR_ADDRESS = MAINNET_BN254_TABLE_CALCULATOR_ADDRESS
+		ECDSA_TABLE_CALCULATOR_ADDRESS = MAINNET_ECDSA_TABLE_CALCULATOR_ADDRESS
+	}
+
+	// Return constants for undefined context
 	if cfg == nil || cfg.Context == nil {
 		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS, ECDSA_TABLE_CALCULATOR_ADDRESS, RELEASE_MANAGER_ADDRESS
 	}
 
+	// Return constants for missing context
 	ctx, found := cfg.Context[contextName]
 	if !found || ctx.EigenLayer == nil {
 		return ALLOCATION_MANAGER_ADDRESS, DELEGATION_MANAGER_ADDRESS, STRATEGY_MANAGER_ADDRESS, KEY_REGISTRAR_ADDRESS, CROSS_CHAIN_REGISTRY_ADDRESS, BN254_TABLE_CALCULATOR_ADDRESS, ECDSA_TABLE_CALCULATOR_ADDRESS, RELEASE_MANAGER_ADDRESS
 	}
 
+	// Default each address to constant if missing from discovered context
 	allocationManager = ctx.EigenLayer.L1.AllocationManager
 	if allocationManager == "" {
 		allocationManager = ALLOCATION_MANAGER_ADDRESS
