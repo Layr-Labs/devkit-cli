@@ -196,10 +196,22 @@ func contextCreateAction(cCtx *cli.Context) error {
 			logger.Info("Continuing with addresses from config...")
 		} else {
 			logger.Info("Successfully updated context with addresses from Zeus")
-			if err := common.WriteYAML(yamlPath, rootNode); err != nil {
-				return fmt.Errorf("failed to save updated context: %v", err)
-			}
 		}
+	}
+
+	// Place middleware addresses into context
+	bn254TableCalculator := common.SEPOLIA_BN254_TABLE_CALCULATOR_ADDRESS
+	ecdsaTableCalculator := common.SEPOLIA_ECDSA_TABLE_CALCULATOR_ADDRESS
+	if int(l1ChainID.Uint64()) == 1 {
+		bn254TableCalculator = common.MAINNET_BN254_TABLE_CALCULATOR_ADDRESS
+		ecdsaTableCalculator = common.MAINNET_ECDSA_TABLE_CALCULATOR_ADDRESS
+	}
+	common.WriteToPath(contextNode, strings.Split("eigenlayer.l1.bn254_table_calculator", "."), bn254TableCalculator)
+	common.WriteToPath(contextNode, strings.Split("eigenlayer.l1.ecdsa_table_calculator", "."), ecdsaTableCalculator)
+
+	// Save all updates to the yaml file
+	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
+		return fmt.Errorf("failed to save updated context: %v", err)
 	}
 
 	logContextCreated(logger, cntxDir, name, ctxDoc, cCtx.Bool("use"))
