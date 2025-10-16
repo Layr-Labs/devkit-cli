@@ -206,8 +206,16 @@ func contextCreateAction(cCtx *cli.Context) error {
 		bn254TableCalculator = common.MAINNET_BN254_TABLE_CALCULATOR_ADDRESS
 		ecdsaTableCalculator = common.MAINNET_ECDSA_TABLE_CALCULATOR_ADDRESS
 	}
-	common.WriteToPath(contextNode, strings.Split("eigenlayer.l1.bn254_table_calculator", "."), bn254TableCalculator)
-	common.WriteToPath(contextNode, strings.Split("eigenlayer.l1.ecdsa_table_calculator", "."), ecdsaTableCalculator)
+	bn254TableCalculatorPath := "eigenlayer.l1.bn254_table_calculator"
+	ecdsaTableCalculatorPath := "eigenlayer.l1.ecdsa_table_calculator"
+	_, err = common.WriteToPath(contextNode, strings.Split(bn254TableCalculatorPath, "."), bn254TableCalculator)
+	if err != nil {
+		return fmt.Errorf("setting value %s to %s failed: %w", bn254TableCalculatorPath, bn254TableCalculator, err)
+	}
+	_, err = common.WriteToPath(contextNode, strings.Split(ecdsaTableCalculatorPath, "."), ecdsaTableCalculator)
+	if err != nil {
+		return fmt.Errorf("setting value %s to %s failed: %w", ecdsaTableCalculatorPath, ecdsaTableCalculator, err)
+	}
 
 	// Save all updates to the yaml file
 	if err := common.WriteYAML(yamlPath, rootNode); err != nil {
