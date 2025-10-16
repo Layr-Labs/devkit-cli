@@ -235,12 +235,6 @@ func DeployL1ContractsAction(cCtx *cli.Context) error {
 	logger := common.LoggerFromContext(cCtx)
 	caser := cases.Title(language.English)
 
-	// Check if docker is running, else try to start it
-	err := common.EnsureDockerIsRunning(cCtx)
-	if err != nil {
-		return cli.Exit(err.Error(), 1)
-	}
-
 	// Start timing execution runtime
 	startTime := time.Now()
 
@@ -261,6 +255,7 @@ func DeployL1ContractsAction(cCtx *cli.Context) error {
 	contextName := cCtx.String("context")
 
 	// Check for context
+	var err error
 	var yamlPath string
 	var rootNode, contextNode *yaml.Node
 	if contextName == "" {

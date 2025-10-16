@@ -330,6 +330,13 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
+		// Check if docker is running, else try to start it
+		err := common.EnsureDockerIsRunning(cCtx)
+		if err != nil {
+			return cli.Exit(err.Error(), 1)
+		}
+
+		// Call deploy L1 action within devnet context
 		if err := DeployL1ContractsAction(cCtx); err != nil {
 			return fmt.Errorf("deploy-contracts failed - please restart devnet and try again: %w", err)
 		}
