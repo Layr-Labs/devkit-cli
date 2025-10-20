@@ -115,10 +115,11 @@ func (e *PatchEngine) Apply() error {
 		}
 
 		if userNode == nil {
-			parent, _ := findParent(e.User, rule.Path)
+			parent, idx := findParent(e.User, rule.Path)
 			if parent == nil {
 				continue
 			}
+
 			base := choose(false)
 			if base == nil {
 				continue
@@ -127,7 +128,18 @@ func (e *PatchEngine) Apply() error {
 			if rule.Transform != nil {
 				repl = rule.Transform(repl)
 			}
-			insertNode(parent, len(parent.Content), rule.Path[len(rule.Path)-1], CloneNode(repl))
+
+			last := rule.Path[len(rule.Path)-1]
+
+			if parent.Kind == yaml.MappingNode {
+				if idx >= 0 {
+					// Overwrite existing value for last key
+					parent.Content[idx+1] = CloneNode(repl)
+				} else {
+					// Missing node - insert once
+					insertNode(parent, len(parent.Content), last, CloneNode(repl))
+				}
+			}
 			continue
 		}
 
@@ -326,25 +338,40 @@ func findParent(root *yaml.Node, path []string) (*yaml.Node, int) {
 		root = root.Content[0]
 	}
 	curr := root
+
+	// walk strictly through all but the last segment
 	for _, p := range path[:len(path)-1] {
 		switch curr.Kind {
 		case yaml.MappingNode:
+			found := false
 			for j := 0; j < len(curr.Content)-1; j += 2 {
 				if curr.Content[j].Value == p {
 					// next node is value
 					curr = curr.Content[j+1]
+					found = true
 					break
 				}
 			}
-		case yaml.SequenceNode:
-			idx, _ := strconv.Atoi(p)
-			if idx < len(curr.Content) {
-				curr = curr.Content[idx]
+			if !found {
+				// missing mapping key, return nil and assert missing to caller
+				return nil, -1
 			}
+		case yaml.SequenceNode:
+			idx, err := strconv.Atoi(p)
+			if err != nil || idx < 0 || idx >= len(curr.Content) {
+				// invalid or out-of-range index, return nil and assert missing to caller
+				return nil, -1
+			}
+			curr = curr.Content[idx]
+		default:
+			// cannot descend further, return nil and assert missing to caller
+			return nil, -1
 		}
 	}
-	// now curr is parent of target
+
+	// curr is parent of target
 	target := path[len(path)-1]
+
 	// mapping parent
 	if curr.Kind == yaml.MappingNode {
 		for j := 0; j < len(curr.Content)-1; j += 2 {
@@ -352,13 +379,21 @@ func findParent(root *yaml.Node, path []string) (*yaml.Node, int) {
 				return curr, j
 			}
 		}
+		// parent exists but key is missing
+		return curr, -1
 	}
+
 	// sequence parent
 	if curr.Kind == yaml.SequenceNode {
-		idx, _ := strconv.Atoi(target)
+		idx, err := strconv.Atoi(target)
+		if err != nil || idx < 0 || idx >= len(curr.Content) {
+			// parent is sequence but target index missing
+			return curr, -1
+		}
 		return curr, idx
 	}
-	return curr, -1
+
+	return nil, -1
 }
 
 // insertNode inserts a key/value pair from a mapping or an element from a sequence
