@@ -236,7 +236,34 @@ func AdvanceBlocks(ctx *cli.Context, l1RpcUrl string, numBlocks uint64) error {
 	return nil
 }
 
+func IntToHex(u uint64) string { return fmt.Sprintf("0x%x", u) }
+
 func AdvanceBlocksToTS(client *rpc.Client, name string, fromTS, toTS uint64) error {
+	// Skip if already at or past target
+	if toTS <= fromTS {
+		return nil
+	}
+	delta := toTS - fromTS
+
+	// Set next block timestamp exactly, then mine once - supported by Hardhat, Ganache, and Anvil
+	if err := client.Call(nil, "evm_setNextBlockTimestamp", IntToHex(toTS)); err == nil {
+		if err := client.Call(nil, "evm_mine"); err == nil {
+			return nil
+		}
+	}
+
+	// Evm_mine with explicit timestamp - Hardhat supports evm_mine with { timestamp }
+	if err := client.Call(nil, "evm_mine", map[string]any{"timestamp": IntToHex(toTS)}); err == nil {
+		return nil
+	}
+
+	// Increase time by delta then mine once - supported by Hardhat, Ganache, Anvil
+	if err := client.Call(nil, "evm_increaseTime", IntToHex(delta)); err == nil {
+		if err := client.Call(nil, "evm_mine"); err == nil {
+			return nil
+		}
+	}
+
 	// Set number of blocks to move each iteration
 	const blocksPerBatch = 1
 
@@ -268,6 +295,9 @@ func GetTimestamp(client *rpc.Client, name string) (uint64, error) {
 }
 
 func SyncL1L2Timestamps(ctx *cli.Context, l1RpcUrl string, l2RpcUrl string) error {
+	// Define how much buffer to allow for timestamp proximity
+	const tsBuffer = 12
+
 	// Connect to l1
 	l1Client, err := rpc.Dial(l1RpcUrl)
 	if err != nil {
@@ -293,9 +323,9 @@ func SyncL1L2Timestamps(ctx *cli.Context, l1RpcUrl string, l2RpcUrl string) erro
 	}
 
 	// Advance one or the other until we reach sync
-	if l1TS > l2TS {
+	if l1TS > l2TS+tsBuffer {
 		return AdvanceBlocksToTS(l2Client, "L2", l2TS, l1TS)
-	} else if l2TS > l1TS {
+	} else if l2TS > l1TS+tsBuffer {
 		return AdvanceBlocksToTS(l1Client, "L1", l1TS, l2TS)
 	}
 
