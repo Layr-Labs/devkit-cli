@@ -29,6 +29,38 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return &yaml.Node{Kind: yaml.ScalarNode, Value: "28820370"}
 				},
 			},
+			// Update L1 AllocationManager address
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "allocation_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_ALLOCATION_MANAGER_ADDRESS, common.SEPOLIA_ALLOCATION_MANAGER_ADDRESS)
+				},
+			},
+			// Update L1 DelegationManager address
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "delegation_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_DELEGATION_MANAGER_ADDRESS, common.SEPOLIA_DELEGATION_MANAGER_ADDRESS)
+				},
+			},
+			// Update L1 StrategyManager address
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "strategy_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_STRATEGY_MANAGER_ADDRESS, common.SEPOLIA_STRATEGY_MANAGER_ADDRESS)
+				},
+			},
+			// Update L1 ReleaseManager address
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "release_manager"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_RELEASE_MANAGER_ADDRESS, common.SEPOLIA_RELEASE_MANAGER_ADDRESS)
+				},
+			},
 			// Update L1 CrossChainRegistry address
 			{
 				Path:      []string{"context", "eigenlayer", "l1", "cross_chain_registry"},
@@ -53,12 +85,20 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 					return GetAddressByChainIdFromCtx(user, common.MAINNET_KEY_REGISTRAR_ADDRESS, common.SEPOLIA_KEY_REGISTRAR_ADDRESS)
 				},
 			},
+			// Update L1 TaskMailbox address
+			{
+				Path:      []string{"context", "eigenlayer", "l1", "task_mailbox"},
+				Condition: migration.Always{},
+				Transform: func(_ *yaml.Node) *yaml.Node {
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_L1_TASK_MAILBOX_ADDRESS, common.SEPOLIA_L1_TASK_MAILBOX_ADDRESS)
+				},
+			},
 			// Update L2 TaskMailbox address
 			{
 				Path:      []string{"context", "eigenlayer", "l2", "task_mailbox"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return GetAddressByChainIdFromCtx(user, common.MAINNET_TASK_MAILBOX_ADDRESS, common.SEPOLIA_TASK_MAILBOX_ADDRESS)
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_L2_TASK_MAILBOX_ADDRESS, common.SEPOLIA_L2_TASK_MAILBOX_ADDRESS)
 				},
 			},
 			// Update L2 OperatorTableUpdater address
