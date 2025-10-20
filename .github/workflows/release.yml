@@ -183,7 +183,7 @@ jobs:
           esac
           mkdir -p "$HOME/bin"
           echo "::set-output name=url::$url"
-          curl -fsSL "$url" | tar xv -C "$HOME/bin"
+          curl -fsSL "$url" | tar -x -C "$HOME/bin" -f -
 
       - name: Verify installation
         run: |

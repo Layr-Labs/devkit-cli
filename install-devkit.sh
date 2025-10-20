@@ -63,9 +63,9 @@ DEVKIT_URL="${DEVKIT_BASE_URL}/${DEVKIT_VERSION}/devkit-${PLATFORM}-${DEVKIT_VER
 echo "Downloading DevKit ${DEVKIT_VERSION} for ${PLATFORM}..."
 
 if [[ "$INSTALL_DIR" == "/usr/local/bin" ]]; then
-    curl -sL "$DEVKIT_URL" | sudo tar xz -C "$INSTALL_DIR"
+    curl -sL "$DEVKIT_URL" | sudo tar -x -C "$INSTALL_DIR" -f -
 else
-    curl -sL "$DEVKIT_URL" | tar xz -C "$INSTALL_DIR"
+    curl -sL "$DEVKIT_URL" | tar -x -C "$INSTALL_DIR" -f -
 fi
 
 echo "✅ DevKit installed to $INSTALL_DIR/devkit"
