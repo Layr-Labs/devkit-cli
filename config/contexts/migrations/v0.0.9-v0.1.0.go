@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
 	"gopkg.in/yaml.v3"
@@ -12,9 +13,17 @@ import (
 func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 	// Add missing strategy upgrade to move stETH from holesky to sepolia
 	const (
-		oldStrat = "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
-		newStrat = "0x8b29d91e67b013e855EaFe0ad704aC4Ab086a574"
+		oldStrat        = "0x7D704507b76571a51d9caE8AdDAbBFd0ba0e63d3"
+		newSepoliaStrat = "0x8b29d91e67b013e855EaFe0ad704aC4Ab086a574"
+		newMainnetStrat = "0x93c4b944d05dfe6df7645a86cd2206016c51564d"
 	)
+
+	// check l1 chainId - if == 1 then use MAINNET address
+	chainId := migration.ResolveNode(user, []string{"context", "chains", "l1", "chain_id"})
+	newStrat := newSepoliaStrat
+	if chainId != nil && chainId.Value == "1" {
+		newStrat = newMainnetStrat
+	}
 
 	// Patch all changes in context
 	engine := migration.PatchEngine{
@@ -175,7 +184,7 @@ func Migration_0_0_9_to_0_1_0(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l1", "permission_controller"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x44632dfBdCb6D3E21EF613B0ca8A6A0c618F5a37"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_PERMISSION_CONTROLLER_ADDRESS, common.SEPOLIA_PERMISSION_CONTROLLER_ADDRESS)
 				},
 			},
 			// Update L1 fork block

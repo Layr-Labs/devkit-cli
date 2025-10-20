@@ -1,6 +1,7 @@
 package contextMigrations
 
 import (
+	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/migration"
 
 	"gopkg.in/yaml.v3"
@@ -33,7 +34,7 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l1", "cross_chain_registry"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0x287381B1570d9048c4B4C7EC94d21dDb8Aa1352a"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_CROSS_CHAIN_REGISTRY_ADDRESS, common.SEPOLIA_CROSS_CHAIN_REGISTRY_ADDRESS)
 				},
 			},
 			// Update L1 OperatorTableUpdater address
@@ -41,7 +42,7 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l1", "operator_table_updater"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_L1_OPERATOR_TABLE_UPDATER_ADDRESS, common.SEPOLIA_L1_OPERATOR_TABLE_UPDATER_ADDRESS)
 				},
 			},
 			// Update L1 KeyRegistrar address
@@ -49,7 +50,7 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l1", "key_registrar"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xA4dB30D08d8bbcA00D40600bee9F029984dB162a"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_KEY_REGISTRAR_ADDRESS, common.SEPOLIA_KEY_REGISTRAR_ADDRESS)
 				},
 			},
 			// Update L2 TaskMailbox address
@@ -57,7 +58,7 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l2", "task_mailbox"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xB99CC53e8db7018f557606C2a5B066527bF96b26"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_TASK_MAILBOX_ADDRESS, common.SEPOLIA_TASK_MAILBOX_ADDRESS)
 				},
 			},
 			// Update L2 OperatorTableUpdater address
@@ -65,7 +66,7 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l2", "operator_table_updater"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xB02A15c6Bd0882b35e9936A9579f35FB26E11476"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_L2_OPERATOR_TABLE_UPDATER_ADDRESS, common.SEPOLIA_L2_OPERATOR_TABLE_UPDATER_ADDRESS)
 				},
 			},
 			// Update L2 BN254CertificateVerifier address
@@ -73,7 +74,7 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l2", "bn254_certificate_verifier"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xff58A373c18268F483C1F5cA03Cf885c0C43373a"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_BN254_CERTIFICATE_VERIFIER_ADDRESS, common.SEPOLIA_BN254_CERTIFICATE_VERIFIER_ADDRESS)
 				},
 			},
 			// Update L2 ECDSACertificateVerifier address
@@ -81,23 +82,23 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 				Path:      []string{"context", "eigenlayer", "l2", "ecdsa_certificate_verifier"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xb3Cd1A457dEa9A9A6F6406c6419B1c326670A96F"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_ECDSA_CERTIFICATE_VERIFIER_ADDRESS, common.SEPOLIA_ECDSA_CERTIFICATE_VERIFIER_ADDRESS)
 				},
 			},
-			// Update L1 BN254TableCalculator address
+			// Update L1 BN254TableCalculator address (env aware - this will not be updated by zeus)
 			{
 				Path:      []string{"context", "eigenlayer", "l1", "bn254_table_calculator"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xa19E3B00cf4aC46B5e6dc0Bbb0Fb0c86D0D65603"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_BN254_TABLE_CALCULATOR_ADDRESS, common.SEPOLIA_BN254_TABLE_CALCULATOR_ADDRESS)
 				},
 			},
-			// Update L1 ECDSATableCalculator address
+			// Update L1 ECDSATableCalculator middleware address (env aware - this will not be updated by zeus)
 			{
 				Path:      []string{"context", "eigenlayer", "l1", "ecdsa_table_calculator"},
 				Condition: migration.Always{},
 				Transform: func(_ *yaml.Node) *yaml.Node {
-					return &yaml.Node{Kind: yaml.ScalarNode, Value: "0xaCB5DE6aa94a1908E6FA577C2ade65065333B450"}
+					return GetAddressByChainIdFromCtx(user, common.MAINNET_ECDSA_TABLE_CALCULATOR_ADDRESS, common.SEPOLIA_ECDSA_TABLE_CALCULATOR_ADDRESS)
 				},
 			},
 		},
@@ -113,4 +114,15 @@ func Migration_0_0_8_to_0_0_9(user, old, new *yaml.Node) (*yaml.Node, error) {
 	}
 
 	return user, nil
+}
+
+func GetAddressByChainIdFromCtx(ctx *yaml.Node, mainnetAddress, sepoliaAddress string) *yaml.Node {
+	// check l1 chainId - if == 1 then use MAINNET address
+	chainId := migration.ResolveNode(ctx, []string{"context", "chains", "l1", "chain_id"})
+	address := sepoliaAddress
+	if chainId != nil && chainId.Value == "1" {
+		address = mainnetAddress
+	}
+
+	return &yaml.Node{Kind: yaml.ScalarNode, Value: address}
 }
