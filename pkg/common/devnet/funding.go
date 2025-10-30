@@ -1,6 +1,7 @@
 package devnet
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"fmt"
@@ -48,6 +49,13 @@ var DefaultTokenHolders = map[common.Address]TokenFunding{
 
 // FundStakerWithTokens funds staker with strategy tokens using impersonation
 func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, stakerAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, mnemonic string, rpcURL string) error {
+	// Fund the staker if required
+	err := FundIfNeeded(ethClient, stakerAddress, mnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Switch funding strategy based on funding token
 	if tokenFunding.TokenName == "bEIGEN" {
 		// For bEIGEN, we need to call unwrap() on the EIGEN contract first
 		// to convert EIGEN tokens to bEIGEN tokens
@@ -335,11 +343,22 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string,
 
 	// Fund deployer
 	deployerPrivateKey := cfg.Context[DEVNET_CONTEXT].DeployerPrivateKey
-	deployedECDSAKey, err := crypto.HexToECDSA(strings.TrimPrefix(deployerPrivateKey, "0x"))
+	deployerECDSAKey, err := crypto.HexToECDSA(strings.TrimPrefix(deployerPrivateKey, "0x"))
 	if err != nil {
 		log.Fatalf("invalid private key %q: %v", deployerPrivateKey, err)
 	}
-	err = FundIfNeeded(ethClient, crypto.PubkeyToAddress(deployedECDSAKey.PublicKey), mnemonic)
+	err = FundIfNeeded(ethClient, crypto.PubkeyToAddress(deployerECDSAKey.PublicKey), mnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Fund app
+	appDeployerPrivateKey := cfg.Context[DEVNET_CONTEXT].AppDeployerPrivateKey
+	appDeployerECDSAKey, err := crypto.HexToECDSA(strings.TrimPrefix(appDeployerPrivateKey, "0x"))
+	if err != nil {
+		log.Fatalf("invalid private key %q: %v", appDeployerPrivateKey, err)
+	}
+	err = FundIfNeeded(ethClient, crypto.PubkeyToAddress(appDeployerECDSAKey.PublicKey), mnemonic)
 	if err != nil {
 		return err
 	}
@@ -405,8 +424,13 @@ func FundIfNeeded(ethClient *ethclient.Client, to common.Address, mnemonic strin
 		return fmt.Errorf("failed to get sender balance: %w", err)
 	}
 
+	// Check if the address we are sending to holds an EOA forwarder
+	if err := clearCodeIfEOAForwarder(context.Background(), ethClient.Client(), ethClient, to); err != nil {
+		return fmt.Errorf("clearCodeIfEOAForwarder: %w", err)
+	}
+
 	// Calculate total cost (value + gas (large gas limit here to allow for fallbacks when contract))
-	gasLimit := uint64(30000)
+	gasLimit := uint64(42000)
 	totalCost := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit)))
 	totalCost.Add(totalCost, value)
 
@@ -446,7 +470,7 @@ func FundIfNeeded(ethClient *ethclient.Client, to common.Address, mnemonic strin
 		return fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	log.Printf("Transaction sent at nonce %d from %s with val %d (tx: %s), waiting for confirmation...", nonce, fromAddress, value, signedTx.Hash().Hex())
+	log.Printf("Transaction sent (tx: %s), waiting for confirmation...", signedTx.Hash().Hex())
 
 	// Wait for transaction to be mined using bind.WaitMined
 	receipt, err := bind.WaitMined(context.Background(), ethClient, signedTx)
@@ -457,20 +481,6 @@ func FundIfNeeded(ethClient *ethclient.Client, to common.Address, mnemonic strin
 	if receipt.Status == 0 {
 		return fmt.Errorf("transaction failed")
 	}
-
-	minedTx, _, err := ethClient.TransactionByHash(context.Background(), signedTx.Hash())
-	if err != nil {
-		return err
-	}
-	if minedTx.To() == nil || *minedTx.To() != to {
-		return fmt.Errorf("unexpected tx.to: want %s got %v", to.Hex(), minedTx.To())
-	}
-	if minedTx.Value().Cmp(value) != 0 {
-		return fmt.Errorf("unexpected tx value: want %s got %s", value, minedTx.Value())
-	}
-
-	newBal, _ := ethClient.BalanceAt(context.Background(), to, nil)
-	log.Printf("recipient balance after: %s wei", newBal.String())
 
 	log.Printf("✅ Funded %s (tx: %s)", to, signedTx.Hash().Hex())
 	return nil
@@ -550,4 +560,48 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 	}
 
 	return tokenAddresses, nil
+}
+
+// isKnownEOAForwarder detects EOA acting as a delegated smart-contact (EIP-7702)
+func isKnownEOAForwarder(code []byte) bool {
+	if len(code) == 0 {
+		return false
+	}
+	if bytes.Contains(code, common.FromHex("0xef0100")) {
+		return true
+	}
+	return false
+}
+
+// clearCodeIfEOAForwarder clears code for any EOA forwarder
+func clearCodeIfEOAForwarder(ctx context.Context, rpcClient *rpc.Client, ethClient *ethclient.Client, addr common.Address) error {
+	code, err := ethClient.CodeAt(ctx, addr, nil)
+	if err != nil {
+		return err
+	}
+	if !isKnownEOAForwarder(code) {
+		return nil
+	}
+
+	// Detect supported method in devnet environment
+	method, err := DetectClientsMethod(ctx, rpcClient, "setCode")
+	if err != nil {
+		return fmt.Errorf("failed to detect setCode method: %w", err)
+	}
+
+	var res interface{}
+	// Set code to empty
+	if err := rpcClient.CallContext(ctx, &res, method, addr.Hex(), "0x"); err != nil {
+		return err
+	}
+
+	// sanity check
+	code2, err := ethClient.CodeAt(ctx, addr, nil)
+	if err != nil {
+		return err
+	}
+	if len(code2) != 0 {
+		return fmt.Errorf("failed to clear code at %s", addr.Hex())
+	}
+	return nil
 }

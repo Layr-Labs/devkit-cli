@@ -2,6 +2,8 @@ package devnet
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -333,58 +335,67 @@ func SyncL1L2Timestamps(ctx *cli.Context, l1RpcUrl string, l2RpcUrl string) erro
 	return nil
 }
 
-// DetectSetStorageMethod returns "anvil_setStorageAt", "hardhat_setStorageAt", or "" if none found.
-func DetectSetStorageMethod(rpcClient *rpc.Client) (string, error) {
-	// Quick sniff via client version
+// DetectClientsMethod returns "anvil_<method>", "hardhat_<method>", or "" if unsupported.
+func DetectClientsMethod(ctx context.Context, c *rpc.Client, method string) (string, error) {
+	// Fast path via clientVersion
 	var clientVersion string
-	_ = rpcClient.Call(&clientVersion, "web3_clientVersion")
-
+	_ = c.CallContext(ctx, &clientVersion, "web3_clientVersion")
 	lc := strings.ToLower(clientVersion)
-	if strings.Contains(lc, "anvil") || strings.Contains(lc, "foundry") || strings.Contains(lc, "reth") {
-		return "anvil_setStorageAt", nil
-	}
 	if strings.Contains(lc, "hardhat") {
-		return "hardhat_setStorageAt", nil
+		return "hardhat_" + method, nil
+	}
+	if strings.Contains(lc, "anvil") || strings.Contains(lc, "foundry") {
+		return "anvil_" + method, nil
 	}
 
-	// Fallback probe: call each method with no args to see whether the RPC server recognises it.
-	try := func(method string) (bool, string) {
-		var out interface{}
-		err := rpcClient.Call(&out, method) // intentionally no args
-		if err == nil {
-			// Method accepted and returned something without args
-			return true, ""
-		}
-		es := err.Error()
-		// Unknown-method / untagged enum style messages indicate unsupported method
-		// Accept anything that is NOT obviously "method not found" as evidence of support
-		unknownIndicators := []string{
-			"did not match any variant", // rust nodes
-			"method not found",
-			"unknown method",
-			"unrecognized method",
-		}
-		for _, f := range unknownIndicators {
-			if strings.Contains(strings.ToLower(es), f) {
-				return false, es
+	// Harmless identity probes
+	type q struct{ name string }
+	ids := []q{{"anvil_nodeInfo"}, {"hardhat_metadata"}}
+	batch := make([]rpc.BatchElem, 0, len(ids))
+	for i := range ids {
+		batch = append(batch, rpc.BatchElem{
+			Method: ids[i].name,
+			Args:   []any{},
+			Result: new(json.RawMessage),
+		})
+	}
+	_ = c.BatchCallContext(ctx, batch)
+	for i, el := range batch {
+		if el.Error == nil {
+			switch ids[i].name {
+			case "anvil_nodeInfo":
+				return "anvil_" + method, nil
+			case "hardhat_metadata":
+				return "hardhat_" + method, nil
 			}
 		}
-		// If error exists but does not match unknown indicators, treat it as "method exists but params bad"
-		return true, es
 	}
 
-	// Prefer anvil first (default env), then hardhat
-	if ok, reason := try("anvil_setStorageAt"); ok {
-		return "anvil_setStorageAt", nil
-	} else {
-		// keep reason for debugging
-		_ = reason
-	}
-	if ok, reason := try("hardhat_setStorageAt"); ok {
-		return "hardhat_setStorageAt", nil
-	} else {
-		_ = reason
+	// Direct capability probes. Call with no args to avoid unwanted side-effects
+	supports := func(prefix string) bool {
+		var out any
+		err := c.CallContext(ctx, &out, prefix+"_"+method)
+		if err == nil {
+			return true
+		}
+		var rerr rpc.Error
+		if errors.As(err, &rerr) {
+			// −32601 is method not found. Anything else means method exists but args invalid.
+			return rerr.ErrorCode() != -32601
+		}
+		// Fallback textual check only if not an *rpc.Error.
+		es := strings.ToLower(err.Error())
+		if strings.Contains(es, "method not found") || strings.Contains(es, "unknown method") || strings.Contains(es, "unrecognized method") {
+			return false
+		}
+		return true
 	}
 
-	return "", fmt.Errorf("no supported devnet setStorageAt method detected")
+	if supports("anvil") {
+		return "anvil_" + method, nil
+	}
+	if supports("hardhat") {
+		return "hardhat_" + method, nil
+	}
+	return "", nil
 }

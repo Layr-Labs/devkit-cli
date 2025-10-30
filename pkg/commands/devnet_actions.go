@@ -1269,7 +1269,7 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 	}
 	defer client.Close()
 
-	method, err := devnet.DetectSetStorageMethod(client.Client())
+	method, err := devnet.DetectClientsMethod(cCtx.Context, client.Client(), "setStorageAt")
 	if err != nil {
 		return fmt.Errorf("failed to detect setStorageAt method: %w", err)
 	}
