@@ -328,6 +328,85 @@ func EnsureKeyWithComment(root *yaml.Node, path []string, comment string) {
 	parent.Content = append(parent.Content, keyNode, valNode)
 }
 
+// InsertAfterKeyWithComment inserts:
+//
+//	# comment
+//	newKey: <newVal>
+//
+// into the mapping at pathToMap, positioned immediately after afterKey.
+// If afterKey is not found, it appends at the end.
+// If overwrite is true and newKey already exists, it overwrites its value in place and updates the comment.
+// Returns true if it mutated the tree.
+func InsertAfterKeyWithComment(
+	root *yaml.Node,
+	pathToMap []string,
+	afterKey string,
+	newKey string,
+	newVal *yaml.Node,
+	comment string,
+	overwrite bool,
+) bool {
+	if root == nil || len(pathToMap) == 0 {
+		return false
+	}
+	// Unwrap document node
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		root = root.Content[0]
+	}
+
+	parent := ResolveNode(root, pathToMap)
+	if parent == nil || parent.Kind != yaml.MappingNode {
+		return false
+	}
+
+	// If key already exists
+	for i := 0; i < len(parent.Content)-1; i += 2 {
+		if parent.Content[i].Value == newKey {
+			if !overwrite {
+				return false
+			}
+			// Overwrite value, update comment on key
+			parent.Content[i].HeadComment = strings.TrimSpace(comment)
+			parent.Content[i+1] = CloneNode(newVal)
+			return true
+		}
+	}
+
+	// Build key node with a head comment so it renders above the key
+	keyNode := &yaml.Node{
+		Kind:        yaml.ScalarNode,
+		Tag:         "!!str",
+		Value:       newKey,
+		HeadComment: strings.TrimSpace(comment),
+	}
+	valNode := CloneNode(newVal)
+	if valNode == nil {
+		// default to null if caller passed nil
+		valNode = &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null"}
+	}
+
+	// Find insertion point after afterKey
+	insertAt := -1
+	for i := 0; i < len(parent.Content)-1; i += 2 {
+		if parent.Content[i].Value == afterKey {
+			insertAt = i + 2 // after the found key's value
+			break
+		}
+	}
+	if insertAt < 0 || insertAt > len(parent.Content) {
+		// append at end
+		parent.Content = append(parent.Content, keyNode, valNode)
+		return true
+	}
+
+	// Splice in place: [..., insertAt-1] + [keyNode, valNode] + [insertAt...]
+	parent.Content = append(parent.Content, nil, nil)
+	copy(parent.Content[insertAt+2:], parent.Content[insertAt:])
+	parent.Content[insertAt] = keyNode
+	parent.Content[insertAt+1] = valNode
+	return true
+}
+
 // findParent locates the parent mapping or sequence node and the index/key position
 func findParent(root *yaml.Node, path []string) (*yaml.Node, int) {
 	if len(path) == 0 {

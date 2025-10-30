@@ -499,22 +499,25 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 	}
 
 	for _, opset := range opsets {
-		err = stakeTransport.SignAndTransportAvsStakeTable(
-			cCtx.Context,
-			referenceTimestamp,
-			l1Block.NumberU64(),
-			opset,
-			root,
-			tree,
-			dist,
-			ignoreChainIds,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to sign and transport AVS stake table for opset %v: %v", opset, err)
-		}
+		// Only transport the configured AVSs operatorSets
+		if strings.ToLower(opset.Avs.Hex()) == strings.ToLower(envCtx.Avs.Address) {
+			err = stakeTransport.SignAndTransportAvsStakeTable(
+				cCtx.Context,
+				referenceTimestamp,
+				l1Block.NumberU64(),
+				opset,
+				root,
+				tree,
+				dist,
+				ignoreChainIds,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to sign and transport AVS stake table for opset %v: %v", opset, err)
+			}
 
-		// log success
-		logger.Info("Successfully signed and transported AVS stake table for opset %v", opset)
+			// log success
+			logger.Info("Successfully signed and transported AVS stake table for opset %v", opset)
+		}
 	}
 
 	return nil

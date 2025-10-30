@@ -41,6 +41,11 @@ var DevnetCommand = &cli.Command{
 					Value: 9545,
 				},
 				&cli.BoolFlag{
+					Name:  "skip-forking",
+					Usage: "Skip forking L1 & L2 and deploy against provided RPCs",
+					Value: false,
+				},
+				&cli.BoolFlag{
 					Name:  "skip-avs-run",
 					Usage: "Skip starting offchain AVS components",
 					Value: false,

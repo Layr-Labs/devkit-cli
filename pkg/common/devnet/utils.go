@@ -332,3 +332,59 @@ func SyncL1L2Timestamps(ctx *cli.Context, l1RpcUrl string, l2RpcUrl string) erro
 	// Already in sync
 	return nil
 }
+
+// DetectSetStorageMethod returns "anvil_setStorageAt", "hardhat_setStorageAt", or "" if none found.
+func DetectSetStorageMethod(rpcClient *rpc.Client) (string, error) {
+	// Quick sniff via client version
+	var clientVersion string
+	_ = rpcClient.Call(&clientVersion, "web3_clientVersion")
+
+	lc := strings.ToLower(clientVersion)
+	if strings.Contains(lc, "anvil") || strings.Contains(lc, "foundry") || strings.Contains(lc, "reth") {
+		return "anvil_setStorageAt", nil
+	}
+	if strings.Contains(lc, "hardhat") {
+		return "hardhat_setStorageAt", nil
+	}
+
+	// Fallback probe: call each method with no args to see whether the RPC server recognises it.
+	try := func(method string) (bool, string) {
+		var out interface{}
+		err := rpcClient.Call(&out, method) // intentionally no args
+		if err == nil {
+			// Method accepted and returned something without args
+			return true, ""
+		}
+		es := err.Error()
+		// Unknown-method / untagged enum style messages indicate unsupported method
+		// Accept anything that is NOT obviously "method not found" as evidence of support
+		unknownIndicators := []string{
+			"did not match any variant", // rust nodes
+			"method not found",
+			"unknown method",
+			"unrecognized method",
+		}
+		for _, f := range unknownIndicators {
+			if strings.Contains(strings.ToLower(es), f) {
+				return false, es
+			}
+		}
+		// If error exists but does not match unknown indicators, treat it as "method exists but params bad"
+		return true, es
+	}
+
+	// Prefer anvil first (default env), then hardhat
+	if ok, reason := try("anvil_setStorageAt"); ok {
+		return "anvil_setStorageAt", nil
+	} else {
+		// keep reason for debugging
+		_ = reason
+	}
+	if ok, reason := try("hardhat_setStorageAt"); ok {
+		return "hardhat_setStorageAt", nil
+	} else {
+		_ = reason
+	}
+
+	return "", fmt.Errorf("no supported devnet setStorageAt method detected")
+}

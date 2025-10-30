@@ -641,28 +641,6 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	// Get RPC client from ethclient
 	rpcClient := cc.ethclient.Client()
 
-	// Check if owner already has sufficient balance
-	balance, err := cc.ethclient.BalanceAt(ctx, ownerCrossChainRegistry, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get owner balance: %w", err)
-	}
-
-	// Only fund if balance is less than 0.1 ETH
-	minBalance := big.NewInt(100000000000000000) // 0.1 ETH in wei
-	if balance.Cmp(minBalance) < 0 {
-		cc.logger.Info("Funding cross chain registry owner with 1 ETH")
-
-		// Use anvil_setBalance RPC method
-		err = rpcClient.Call(nil, "anvil_setBalance", ownerCrossChainRegistry.Hex(), "0x8AC7230489E80000") // 10 ETH in hex
-		if err != nil {
-			return fmt.Errorf("failed to set owner balance: %w", err)
-		}
-
-		cc.logger.Info("Successfully set owner balance to 10 ETH")
-	} else {
-		cc.logger.Info("Owner already has sufficient balance: %s wei", balance.String())
-	}
-
 	if err := ImpersonateAccount(rpcClient, ownerCrossChainRegistry); err != nil {
 		return fmt.Errorf("failed to impersonate account: %w", err)
 	}
@@ -696,7 +674,7 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	err = rpcClient.Call(&txHash, "eth_sendTransaction", map[string]interface{}{
 		"from":     ownerCrossChainRegistry.Hex(),
 		"to":       cc.crossChainRegistryAddr.Hex(),
-		"gas":      "0x30d40", // 200000 in hex
+		"gas":      "0x493e0", // 300000 in hex
 		"gasPrice": fmt.Sprintf("0x%x", gasPrice),
 		"value":    "0x0",
 		"data":     fmt.Sprintf("0x%x", addChainIDsToWhitelistData),

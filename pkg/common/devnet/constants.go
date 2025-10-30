@@ -1,14 +1,14 @@
 package devnet
 
+const DEVNET_CONTEXT = "devnet"
+
 // Foundry Image Date : 21 April 2025
 const FOUNDRY_IMAGE = "ghcr.io/foundry-rs/foundry:stable"
 const L1_CHAIN_ARGS = "--gas-limit 140000000 --base-fee 0 --gas-price 1000000 --no-rate-limit"
 const L2_CHAIN_ARGS = "--gas-limit 140000000 --base-fee 0 --gas-price 1000000 --no-rate-limit"
 
-const FUND_VALUE = "1000000000000000000"
-const DEVNET_CONTEXT = "devnet"
-const ANVIL_1_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-const ANVIL_2_KEY = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
+// Default funding amount for Operators and funded addresses
+const FUND_VALUE = "10000000000000000000"
 
 // Ref https://github.com/Layr-Labs/eigenlayer-contracts/blob/c08c9e849c27910f36f3ab746f3663a18838067f/src/contracts/core/AllocationManagerStorage.sol#L63
 const ALLOCATION_DELAY_INFO_SLOT = 155
@@ -32,6 +32,8 @@ const L2_CONTAINER_NAME_PREFIX = "devkit-devnet-l2-"
 
 const L1_CONTAINER_TYPE = "l1"
 const L2_CONTAINER_TYPE = "l2"
+
+const DEFAULT_MNEMONIC = "test test test test test test test test test test test junk"
 
 const DEFAULT_L1_ANVIL_CHAINID = 31337
 const DEFAULT_L2_ANVIL_CHAINID = 31338
