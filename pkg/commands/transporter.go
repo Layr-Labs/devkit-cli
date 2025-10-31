@@ -249,7 +249,11 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 		}
 	}
 
-	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+	l1LatestBlockNumber, err := l1Client.RPCClient.BlockNumber(cCtx.Context)
+	if err != nil {
+		return fmt.Errorf("failed to get latest block number for l1: %v", err)
+	}
+	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(l1LatestBlockNumber)))
 	if err != nil {
 		return fmt.Errorf("failed to get block by number for l1: %v", err)
 	}
