@@ -6,9 +6,11 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common/contracts"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
@@ -17,6 +19,7 @@ import (
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/DelegationManager"
 	keyregistrar "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/KeyRegistrar"
 	releasemanager "github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ReleaseManager"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -627,6 +630,38 @@ func (cc *ContractCaller) CreateGenerationReservation(ctx context.Context, opSet
 	return err
 }
 
+func (cc *ContractCaller) AlreadyWhitelisted(ctx context.Context, chainId uint64) (bool, error) {
+	parsed, err := crosschainregistry.CrossChainRegistryMetaData.GetAbi()
+	if err != nil {
+		return false, err
+	}
+
+	data, err := parsed.Pack("getSupportedChains")
+	if err != nil {
+		return false, err
+	}
+
+	out, err := cc.ethclient.CallContract(ctx, ethereum.CallMsg{
+		To:   &cc.crossChainRegistryAddr,
+		Data: data,
+	}, nil)
+	if err != nil {
+		return false, err
+	}
+
+	var ids []*big.Int
+	var addrs []common.Address
+	if err := parsed.UnpackIntoInterface(&[]interface{}{&ids, &addrs}, "getSupportedChains", out); err != nil {
+		return false, err
+	}
+	for _, id := range ids {
+		if id.Uint64() == chainId {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, operatorTableUpdater common.Address, chainId uint64) error {
 	var (
 		err      error
@@ -634,17 +669,28 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 		receipt  *types.Receipt
 	)
 
-	chainIds := []*big.Int{big.NewInt(int64(chainId))}
-	cc.logger.Info("Impersonating cross chain registry owner")
-	ownerCrossChainRegistry := common.HexToAddress(CrossChainRegistryOwnerAddress)
+	// Avoid attempting already whitelisted ids
+	ok, err := cc.AlreadyWhitelisted(ctx, chainId)
+	if err != nil {
+		return err
+	}
+	if ok {
+		cc.logger.Info("Chain %d already whitelisted - skipping", chainId)
+		return nil
+	}
 
 	// Get RPC client from ethclient
 	rpcClient := cc.ethclient.Client()
 
+	// Pack chainIds for addChainIDsToWhitelist
+	chainIds := []*big.Int{big.NewInt(int64(chainId))}
+
+	// Impersonate the owner (is a smart-contract - eip-3607 must be disabled)
+	cc.logger.Info("Impersonating cross chain registry owner")
+	ownerCrossChainRegistry := common.HexToAddress(CrossChainRegistryOwnerAddress)
 	if err := ImpersonateAccount(rpcClient, ownerCrossChainRegistry); err != nil {
 		return fmt.Errorf("failed to impersonate account: %w", err)
 	}
-
 	defer func() {
 		if err := StopImpersonatingAccount(rpcClient, ownerCrossChainRegistry); err != nil {
 			cc.logger.Error("failed to stop impersonating account: %w", err)
@@ -685,18 +731,11 @@ func (cc *ContractCaller) WhitelistChainIdInCrossRegistry(ctx context.Context, o
 	}
 
 	// Force the tx to be mined
-	err = rpcClient.Call(nil, "evm_mine")
+	receipt, err = cc.WaitReceiptByHash(ctx, cc.ethclient, txHash)
 	if err != nil {
-		return fmt.Errorf("evm_mine call failed: %w", err)
+		cc.logger.Error("Waiting for addChainIDsToWhitelist transaction (hash: %s) failed: %v", txHash.Hex(), err)
+		return fmt.Errorf("waiting for addChainIDsToWhitelist transaction (hash: %s): %w", txHash.Hex(), err)
 	}
-
-	// Wait for transaction receipt
-	receipt, err = cc.ethclient.TransactionReceipt(ctx, txHash)
-	if err != nil {
-		cc.logger.Error("failed to get transaction receipt: %w", err)
-		return fmt.Errorf("addChainIDsToWhitelist transaction failed: %w", err)
-	}
-
 	// Check for reverted tx and print receipt
 	if receipt.Status == 0 {
 		jsonBytes, err := json.MarshalIndent(receipt, "", "  ")
@@ -832,4 +871,20 @@ func (cc *ContractCaller) PackUint256Pair(x, y *big.Int) ([]byte, error) {
 		{Type: t},
 	}
 	return args.Pack(x, y)
+}
+
+// Wait for a tx to be mined by hash
+func (cc *ContractCaller) WaitReceiptByHash(ctx context.Context, c *ethclient.Client, h common.Hash) (*types.Receipt, error) {
+	for {
+		r, err := c.TransactionReceipt(ctx, h)
+		if errors.Is(err, ethereum.NotFound) {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Second):
+				continue
+			}
+		}
+		return r, err
+	}
 }
