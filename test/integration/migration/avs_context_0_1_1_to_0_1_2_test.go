@@ -59,13 +59,13 @@ context:
 
 	t.Run("mnemonic inserted with value", func(t *testing.T) {
 		// value node
-		val := migration.ResolveNode(migrated, []string{"context", "mnumonic"})
+		val := migration.ResolveNode(migrated, []string{"context", "mnemonic"})
 		if val == nil {
-			t.Fatalf("mnumonic key missing")
+			t.Fatalf("mnemonic key missing")
 		}
 		want := "test test test test test test test test test test test junk"
 		if val.Value != want {
-			t.Errorf("expected mnumonic value %q, got %q", want, val.Value)
+			t.Errorf("expected mnemonic value %q, got %q", want, val.Value)
 		}
 	})
 
@@ -76,38 +76,38 @@ context:
 			t.Fatalf("context mapping missing or wrong kind %d", ctx.Kind)
 		}
 		chainsIdx := -1
-		mnumonicIdx := -1
+		mnemonicIdx := -1
 		for i := 0; i < len(ctx.Content)-1; i += 2 {
 			k := ctx.Content[i]
 			switch k.Value {
 			case "chains":
 				chainsIdx = i
-			case "mnumonic":
-				mnumonicIdx = i
+			case "mnemonic":
+				mnemonicIdx = i
 			}
 		}
 		if chainsIdx < 0 {
 			t.Fatalf("context.chains key not found")
 		}
-		if mnumonicIdx < 0 {
-			t.Fatalf("context.mnumonic key not found")
+		if mnemonicIdx < 0 {
+			t.Fatalf("context.mnemonic key not found")
 		}
-		if mnumonicIdx != chainsIdx+2 {
-			t.Errorf("mnumonic not inserted immediately after chains: chainsIdx=%d mnumonicIdx=%d", chainsIdx, mnumonicIdx)
+		if mnemonicIdx != chainsIdx+2 {
+			t.Errorf("mnemonic not inserted immediately after chains: chainsIdx=%d mnemonicIdx=%d", chainsIdx, mnemonicIdx)
 		}
 	})
 
-	t.Run("comment attached to mnumonic key", func(t *testing.T) {
+	t.Run("comment attached to mnemonic key", func(t *testing.T) {
 		ctx := migration.ResolveNode(migrated, []string{"context"})
 		var keyNode *yaml.Node
 		for i := 0; i < len(ctx.Content)-1; i += 2 {
-			if ctx.Content[i].Value == "mnumonic" {
+			if ctx.Content[i].Value == "mnemonic" {
 				keyNode = ctx.Content[i]
 				break
 			}
 		}
 		if keyNode == nil {
-			t.Fatalf("mnumonic key node not found")
+			t.Fatalf("mnemonic key node not found")
 		}
 		wantComment := "Devnet mnemonic for unlocked accounts"
 		if keyNode.HeadComment != wantComment {

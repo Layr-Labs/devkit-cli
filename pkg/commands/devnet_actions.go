@@ -74,7 +74,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	}
 
 	// Check if docker is running, else try to start it
-	if skipForking == false {
+	if !skipForking {
 		if err := common.EnsureDockerIsRunning(cCtx); err != nil {
 
 			if errors.Is(err, context.Canceled) {
@@ -141,7 +141,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	l2ChainDescription := fmt.Sprintf("against RPC %s", l2RpcUrl)
 
 	// Start anvil containers
-	if skipForking == false {
+	if !skipForking {
 		l1Port := cCtx.Int("l1-port")
 		l2Port := cCtx.Int("l2-port")
 
@@ -270,7 +270,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// On cancel, stop the containers if we're not skipping deployContracts/avsRun and we're not persisting
 	if !skipDeployContracts && !skipAvsRun && !persist {
 		defer func() {
-			if skipForking == false {
+			if !skipForking {
 				logger.Info("Stopping containers")
 				// Use background context to avoid cancellation issues during cleanup
 				bgCtx := context.Background()
@@ -372,7 +372,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
 		// We only need docker if we're forking locally
-		if skipForking == false {
+		if !skipForking {
 			// Check if docker is running, else try to start it
 			err := common.EnsureDockerIsRunning(cCtx)
 			if err != nil {

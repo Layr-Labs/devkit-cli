@@ -504,7 +504,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 
 	for _, opset := range opsets {
 		// Only transport the configured AVSs operatorSets
-		if strings.ToLower(opset.Avs.Hex()) == strings.ToLower(envCtx.Avs.Address) {
+		if strings.EqualFold(opset.Avs.Hex(), envCtx.Avs.Address) {
 			err = stakeTransport.SignAndTransportAvsStakeTable(
 				cCtx.Context,
 				referenceTimestamp,
