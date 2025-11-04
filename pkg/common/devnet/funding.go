@@ -38,12 +38,12 @@ var DefaultTokenHolders = map[common.Address]TokenFunding{
 	common.HexToAddress(ST_ETH_TOKEN_ADDRESS): { // stETH token address
 		TokenName:     "stETH",
 		HolderAddress: common.HexToAddress("0xC8088abD2FdaF4819230EB0FdA2D9766FDF9F409"),                                    // Large stETH holder
-		Amount:        new(big.Int).Mul(big.NewInt(STRATEGY_TOKEN_FUNDING_AMOUNT_BY_LARGE_HOLDER_IN_ETH), big.NewInt(1e17)), // .1 tokens
+		Amount:        new(big.Int).Mul(big.NewInt(STRATEGY_TOKEN_FUNDING_AMOUNT_BY_LARGE_HOLDER_IN_ETH), big.NewInt(1e18)), // 1000 tokens
 	},
 	common.HexToAddress(B_EIGEN_TOKEN_ADDRESS): { // bEIGEN token address
 		TokenName:     "bEIGEN",
 		HolderAddress: common.HexToAddress("0x5f8C207382426D3f7F248E6321Cf93B34e66d6b9"),                                    // Large EIGEN holder that calls unwrap() to get bEIGEN
-		Amount:        new(big.Int).Mul(big.NewInt(STRATEGY_TOKEN_FUNDING_AMOUNT_BY_LARGE_HOLDER_IN_ETH), big.NewInt(1e17)), // .1 tokens
+		Amount:        new(big.Int).Mul(big.NewInt(STRATEGY_TOKEN_FUNDING_AMOUNT_BY_LARGE_HOLDER_IN_ETH), big.NewInt(1e18)), // 1000 tokens
 	},
 }
 
