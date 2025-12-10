@@ -377,17 +377,6 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string,
 		return err
 	}
 
-	// Fund transporter
-	transporterPrivateKey := cfg.Context[DEVNET_CONTEXT].Transporter.PrivateKey
-	transporterECDSAKey, err := crypto.HexToECDSA(strings.TrimPrefix(transporterPrivateKey, "0x"))
-	if err != nil {
-		return fmt.Errorf("failed to parse private key: %w", err)
-	}
-	err = FundIfNeeded(ethClient, crypto.PubkeyToAddress(transporterECDSAKey.PublicKey), mnemonic)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
