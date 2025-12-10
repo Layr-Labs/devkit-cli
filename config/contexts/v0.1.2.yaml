@@ -24,8 +24,6 @@ context:
   # Stake Root Transporter configuration
   transporter:
     schedule: "0 */2 * * *"
-    private_key: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"
-    bls_private_key: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"
     active_stake_roots: []
   # All key material (BLS and ECDSA) within this file should be used for local testing ONLY
   # ECDSA keys used are from Anvil's private key set

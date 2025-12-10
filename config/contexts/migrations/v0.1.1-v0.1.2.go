@@ -10,7 +10,24 @@ import (
 
 func Migration_0_1_1_to_0_1_2(user, old, new *yaml.Node) (*yaml.Node, error) {
 	// Update fork block heights to match ponos project
-	engine := migration.PatchEngine{}
+	engine := migration.PatchEngine{
+		Old:  old,
+		New:  new,
+		User: user,
+		Rules: []migration.PatchRule{
+			// Remove transporter keys
+			{
+				Path:      []string{"context", "transporter", "private_key"},
+				Condition: migration.Always{},
+				Remove:    true,
+			},
+			{
+				Path:      []string{"context", "transporter", "bls_private_key"},
+				Condition: migration.Always{},
+				Remove:    true,
+			},
+		},
+	}
 	if err := engine.Apply(); err != nil {
 		return nil, err
 	}

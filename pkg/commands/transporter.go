@@ -16,6 +16,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ICrossChainRegistry"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IOperatorTableUpdater"
+	"github.com/tyler-smith/go-bip39"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 
@@ -166,10 +167,8 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
-	// Debug logging to check what's loaded
-	logger.Info("Transporter config loaded - Private key present: %v, BLS key present: %v",
-		envCtx.Transporter.PrivateKey != "",
-		envCtx.Transporter.BlsPrivateKey != "")
+	// Extract devnet mnemonic
+	mnemonic := envCtx.Mnemonic
 
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
@@ -223,12 +222,46 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 		return fmt.Errorf("failed to get l1 chain for ID %d: %v", l1Config.ChainID, err)
 	}
 
-	// Check if private key is empty
-	if envCtx.Transporter.PrivateKey == "" {
-		return fmt.Errorf("transporter private key is empty. Please check config/contexts/devnet.yaml")
+	// Pull privateKey from random mnemonic to use as transporter owner
+	entropy, err := bip39.NewEntropy(256)
+	if err != nil {
+		return fmt.Errorf("entropy generation failed: %w", err)
+	}
+	randomMnemonic, err := bip39.NewMnemonic(entropy)
+	if err != nil {
+		return fmt.Errorf("mnemonic generation failed: %w", err)
+	}
+	privateKey, err := devnet.GetPrivateKeyFromMnemonic(randomMnemonic, "", 0)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	txSign, err := txSigner.NewPrivateKeySigner(envCtx.Transporter.PrivateKey)
+	// Convert ecdsaPrivateKey to hex
+	privateKeyHex := fmt.Sprintf("0x%x", privateKey.D.Bytes())
+	publicKeyHex := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	// Connect to an ethClient to fund transporter owner
+	l1EthClient, err := ethclient.Dial(l1RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	l2EthClient, err := ethclient.Dial(l2RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L2 RPC: %w", err)
+	}
+
+	// Fund transporter owner on both L1 and L2
+	err = devnet.FundIfNeeded(l1EthClient, publicKeyHex, mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to fund %s", publicKeyHex)
+	}
+	err = devnet.FundIfNeeded(l2EthClient, publicKeyHex, mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to fund %s", publicKeyHex)
+	}
+
+	// Create signer for transporter owner
+	txSign, err := txSigner.NewPrivateKeySigner(privateKeyHex)
 	if err != nil {
 		return fmt.Errorf("failed to create private key signer: %v", err)
 	}
@@ -265,13 +298,8 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 		return fmt.Errorf("failed to calculate stake table root: %v", err)
 	}
 
-	// Check if BLS private key is empty
-	if envCtx.Transporter.BlsPrivateKey == "" {
-		return fmt.Errorf("transporter BLS private key is empty. Please check config/contexts/devnet.yaml")
-	}
-
 	scheme := bn254.NewScheme()
-	genericPk, err := scheme.NewPrivateKeyFromHexString(envCtx.Transporter.BlsPrivateKey)
+	genericPk, err := scheme.NewPrivateKeyFromHexString(privateKeyHex)
 	if err != nil {
 		return fmt.Errorf("failed to create BLS private key: %v", err)
 	}
@@ -288,7 +316,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 	// On initial devnet Transport we take ownership of contracts and configure generator to use context keys
 	if contextName == devnet.DEVNET_CONTEXT && initialRun {
 		// Transfer ownership to our context configured PrivateKey
-		transferOwnership(logger, l1Config.RPCURL, crossChainRegistryAddress, envCtx.Transporter.PrivateKey)
+		transferOwnership(logger, l1Config.RPCURL, crossChainRegistryAddress, privateKeyHex)
 
 		// Construct registry caller
 		ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, l1Client.RPCClient)
@@ -320,7 +348,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			if chainId.Uint64() == uint64(l2ChainId) {
 				rpcURL = l2Config.RPCURL
 			}
-			transferOwnership(logger, rpcURL, tableUpdaterAddr, envCtx.Transporter.PrivateKey)
+			transferOwnership(logger, rpcURL, tableUpdaterAddr, privateKeyHex)
 
 			// Read the current generator (avs,id) from OperatorTableUpdater
 			gen, err := getGenerator(cCtx.Context, logger, cm, chainId, tableUpdaterAddr)
@@ -343,7 +371,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 
 			// Construct contractCaller with KeyRegistrar
 			contractCaller, err := common.NewContractCaller(
-				envCtx.Transporter.PrivateKey,
+				privateKeyHex,
 				big.NewInt(int64(l1ChainId)),
 				client,
 				ethcommon.HexToAddress(""),
@@ -360,7 +388,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			}
 
 			// Derive BN254 keys from the hex string (no keystore files needed)
-			blsHex := strings.TrimPrefix(envCtx.Transporter.BlsPrivateKey, "0x")
+			blsHex := strings.TrimPrefix(privateKeyHex, "0x")
 
 			// Extract key details
 			scheme := bn254.NewScheme()
@@ -394,7 +422,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			}
 
 			// EOA/operator address you want to register for this OperatorSet
-			opEOA := mustKey(logger, envCtx.Transporter.PrivateKey)
+			opEOA := mustKey(logger, privateKeyHex)
 			operatorAddress := crypto.PubkeyToAddress(opEOA.PublicKey)
 
 			// Build the message hash per registrar rules and sign with BLS private key
@@ -444,7 +472,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			certificateVerifierAddr := readBN254CertificateVerifier(cCtx.Context, logger, rpcURL, tableUpdaterAddr)
 
 			// Update generator using the transporter BLS key
-			if err := updateGeneratorFromContext(cCtx.Context, logger, cm, chainId, tableUpdaterAddr, certificateVerifierAddr, txSign, envCtx.Transporter.BlsPrivateKey, gen); err != nil {
+			if err := updateGeneratorFromContext(cCtx.Context, logger, cm, chainId, tableUpdaterAddr, certificateVerifierAddr, txSign, privateKeyHex, gen); err != nil {
 				return fmt.Errorf("updateGenerator chain %d at %s: %w", chainId.Uint64(), tableUpdaterAddr.Hex(), err)
 			}
 		}

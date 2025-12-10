@@ -8,7 +8,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// assumes testNode(t, yamlStr) helper exists in this package like in your other test
 func TestMigration_0_1_1_to_0_1_2(t *testing.T) {
 	oldYAML := `
 version: 0.1.1
@@ -29,6 +28,11 @@ context:
         block: 31408197
         url: ""
         block_time: 3
+  transporter:
+    schedule: "0 */2 * * *"
+    private_key: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"
+    bls_private_key: "0x5f8e6420b9cb0c940e3d3f8b99177980785906d16fb3571f70d7a05ecf5f2172"
+    active_stake_roots: []
 `
 
 	userNode := testNode(t, oldYAML)
@@ -112,6 +116,24 @@ context:
 		wantComment := "Devnet mnemonic for unlocked accounts"
 		if keyNode.HeadComment != wantComment {
 			t.Errorf("expected head comment %q, got %q", wantComment, keyNode.HeadComment)
+		}
+	})
+
+	t.Run("transporter keys removed", func(t *testing.T) {
+		priv := migration.ResolveNode(migrated, []string{"context", "transporter", "private_key"})
+		if priv != nil {
+			t.Errorf("expected context.transporter.private_key to be removed, got %v", priv)
+		}
+		bls := migration.ResolveNode(migrated, []string{"context", "transporter", "bls_private_key"})
+		if bls != nil {
+			t.Errorf("expected context.transporter.bls_private_key to be removed, got %v", bls)
+		}
+	})
+
+	t.Run("transporter other fields preserved", func(t *testing.T) {
+		scheduleNode := migration.ResolveNode(migrated, []string{"context", "transporter", "schedule"})
+		if scheduleNode == nil || scheduleNode.Value != "0 */2 * * *" {
+			t.Errorf("expected context.transporter.schedule preserved, got %v", scheduleNode)
 		}
 	})
 
