@@ -316,7 +316,10 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 	// On initial devnet Transport we take ownership of contracts and configure generator to use context keys
 	if contextName == devnet.DEVNET_CONTEXT && initialRun {
 		// Transfer ownership to our context configured PrivateKey
-		transferOwnership(logger, l1Config.RPCURL, crossChainRegistryAddress, privateKeyHex)
+		err := transferOwnership(logger, l1Config.RPCURL, mnemonic, crossChainRegistryAddress, privateKeyHex)
+		if err != nil {
+			return fmt.Errorf("failed to transfer ownership: %w", err)
+		}
 
 		// Construct registry caller
 		ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, l1Client.RPCClient)
@@ -348,7 +351,10 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			if chainId.Uint64() == uint64(l2ChainId) {
 				rpcURL = l2Config.RPCURL
 			}
-			transferOwnership(logger, rpcURL, tableUpdaterAddr, privateKeyHex)
+			err := transferOwnership(logger, rpcURL, mnemonic, tableUpdaterAddr, privateKeyHex)
+			if err != nil {
+				return fmt.Errorf("failed to transfer ownership: %w", err)
+			}
 
 			// Read the current generator (avs,id) from OperatorTableUpdater
 			gen, err := getGenerator(cCtx.Context, logger, cm, chainId, tableUpdaterAddr)
@@ -412,7 +418,8 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			if err := configureCurveTypeAsAVS(
 				cCtx.Context,
 				logger,
-				l1RpcUrl, // KeyRegistrar is on L1
+				l1RpcUrl, // KeyRegistrar is on L1,
+				mnemonic,
 				ethcommon.HexToAddress(envCtx.EigenLayer.L1.KeyRegistrar),
 				gen.Avs,
 				uint32(gen.Id),
@@ -929,11 +936,17 @@ func ScheduleTransportWithParserAndFunc(cCtx *cli.Context, cronExpr string, pars
 }
 
 // Impersonate the current owner and call *.transferOwnership(newOwner).
-func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Address, privateKey string) {
+func transferOwnership(logger iface.Logger, rpcURL string, mnemonic string, proxy ethcommon.Address, privateKey string) error {
 	ctx := context.Background()
 	c, err := rpc.DialContext(ctx, rpcURL)
 	if err != nil {
 		logger.Error("failed to connect to rpc: %w", err)
+	}
+
+	// Connect to an ethClient to fund AVS
+	ethClient, err := ethclient.Dial(rpcURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	// Transporter private key - used to derive the new owner address
@@ -950,6 +963,12 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	currOwner := readOwner(ctx, logger, c, ownableABI, proxy)
 	logger.Info("Current owner: %s", currOwner.Hex())
 
+	// Fund the current owner to ensure it can submit a transferOwnership tx
+	err = devnet.FundIfNeeded(ethClient, currOwner, mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to fund %s", currOwner)
+	}
+
 	// Impersonate the current owner and fund it
 	impersonate(ctx, logger, c, currOwner)
 	defer stopImpersonate(ctx, c, currOwner)
@@ -957,7 +976,7 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	// Pack transferOwnership(newOwner)
 	calldata, err := ownableABI.Pack("transferOwnership", newOwner)
 	if err != nil {
-		logger.Error("failed to pack callData %w", err)
+		return fmt.Errorf("failed to pack callData: %w", err)
 	}
 
 	// Send tx via eth_sendTransaction from the impersonated owner to the proxy
@@ -969,7 +988,7 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	}
 	var txHash ethcommon.Hash
 	if err := c.CallContext(ctx, &txHash, "eth_sendTransaction", tx); err != nil {
-		logger.Error("failed to send tx: %w", err)
+		return fmt.Errorf("failed to send tx: %w", err)
 	}
 
 	// Await for tx receipt
@@ -979,6 +998,8 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	// Verify
 	newOwnerRead := readOwner(ctx, logger, c, ownableABI, proxy)
 	logger.Info("New owner: %s", newOwnerRead.Hex())
+
+	return nil
 }
 
 // Impersonate the AVS and call KeyRegistrar.configureOperatorSet(opSet, curveType)
@@ -986,6 +1007,7 @@ func configureCurveTypeAsAVS(
 	ctx context.Context,
 	logger iface.Logger,
 	rpcURL string,
+	mnemonic string,
 	keyRegistrar ethcommon.Address,
 	avs ethcommon.Address,
 	opSetId uint32,
@@ -995,6 +1017,12 @@ func configureCurveTypeAsAVS(
 	c, err := rpc.DialContext(ctx, rpcURL)
 	if err != nil {
 		return fmt.Errorf("rpc dial: %w", err)
+	}
+
+	// Connect to an ethClient to fund AVS
+	ethClient, err := ethclient.Dial(rpcURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	// Build minimal ABI
@@ -1009,6 +1037,12 @@ func configureCurveTypeAsAVS(
 		Id  uint32
 	}
 	opSet := opSetT{Avs: avs, Id: opSetId}
+
+	// Fund the AVS to ensure it can submit configureOperatorSet tx
+	err = devnet.FundIfNeeded(ethClient, avs, mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to fund %s", avs)
+	}
 
 	// Read current curve type; skip if already set
 	calldataGet, _ := krABI.Pack("getOperatorSetCurveType", opSet)
