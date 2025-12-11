@@ -16,6 +16,7 @@ import (
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/ICrossChainRegistry"
 	"github.com/Layr-Labs/eigenlayer-contracts/pkg/bindings/IOperatorTableUpdater"
+	"github.com/tyler-smith/go-bip39"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 
@@ -166,10 +167,8 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 		return fmt.Errorf("context '%s' not found in configuration", contextName)
 	}
 
-	// Debug logging to check what's loaded
-	logger.Info("Transporter config loaded - Private key present: %v, BLS key present: %v",
-		envCtx.Transporter.PrivateKey != "",
-		envCtx.Transporter.BlsPrivateKey != "")
+	// Extract devnet mnemonic
+	mnemonic := envCtx.Mnemonic
 
 	// Get the values from env/config
 	crossChainRegistryAddress := ethcommon.HexToAddress(envCtx.EigenLayer.L1.CrossChainRegistry)
@@ -223,12 +222,46 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 		return fmt.Errorf("failed to get l1 chain for ID %d: %v", l1Config.ChainID, err)
 	}
 
-	// Check if private key is empty
-	if envCtx.Transporter.PrivateKey == "" {
-		return fmt.Errorf("transporter private key is empty. Please check config/contexts/devnet.yaml")
+	// Pull privateKey from random mnemonic to use as transporter owner
+	entropy, err := bip39.NewEntropy(256)
+	if err != nil {
+		return fmt.Errorf("entropy generation failed: %w", err)
+	}
+	randomMnemonic, err := bip39.NewMnemonic(entropy)
+	if err != nil {
+		return fmt.Errorf("mnemonic generation failed: %w", err)
+	}
+	privateKey, err := devnet.GetPrivateKeyFromMnemonic(randomMnemonic, "", 0)
+	if err != nil {
+		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	txSign, err := txSigner.NewPrivateKeySigner(envCtx.Transporter.PrivateKey)
+	// Convert ecdsaPrivateKey to hex
+	privateKeyHex := fmt.Sprintf("0x%x", privateKey.D.Bytes())
+	publicKeyHex := crypto.PubkeyToAddress(privateKey.PublicKey)
+
+	// Connect to an ethClient to fund transporter owner
+	l1EthClient, err := ethclient.Dial(l1RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	l2EthClient, err := ethclient.Dial(l2RpcUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L2 RPC: %w", err)
+	}
+
+	// Fund transporter owner on both L1 and L2
+	err = devnet.FundIfNeeded(l1EthClient, publicKeyHex, mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to fund %s", publicKeyHex)
+	}
+	err = devnet.FundIfNeeded(l2EthClient, publicKeyHex, mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to fund %s", publicKeyHex)
+	}
+
+	// Create signer for transporter owner
+	txSign, err := txSigner.NewPrivateKeySigner(privateKeyHex)
 	if err != nil {
 		return fmt.Errorf("failed to create private key signer: %v", err)
 	}
@@ -249,7 +282,11 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 		}
 	}
 
-	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(rpc.FinalizedBlockNumber)))
+	l1LatestBlockNumber, err := l1Client.RPCClient.BlockNumber(cCtx.Context)
+	if err != nil {
+		return fmt.Errorf("failed to get latest block number for l1: %v", err)
+	}
+	l1Block, err := l1Client.RPCClient.BlockByNumber(cCtx.Context, big.NewInt(int64(l1LatestBlockNumber)))
 	if err != nil {
 		return fmt.Errorf("failed to get block by number for l1: %v", err)
 	}
@@ -261,13 +298,8 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 		return fmt.Errorf("failed to calculate stake table root: %v", err)
 	}
 
-	// Check if BLS private key is empty
-	if envCtx.Transporter.BlsPrivateKey == "" {
-		return fmt.Errorf("transporter BLS private key is empty. Please check config/contexts/devnet.yaml")
-	}
-
 	scheme := bn254.NewScheme()
-	genericPk, err := scheme.NewPrivateKeyFromHexString(envCtx.Transporter.BlsPrivateKey)
+	genericPk, err := scheme.NewPrivateKeyFromHexString(privateKeyHex)
 	if err != nil {
 		return fmt.Errorf("failed to create BLS private key: %v", err)
 	}
@@ -284,7 +316,10 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 	// On initial devnet Transport we take ownership of contracts and configure generator to use context keys
 	if contextName == devnet.DEVNET_CONTEXT && initialRun {
 		// Transfer ownership to our context configured PrivateKey
-		transferOwnership(logger, l1Config.RPCURL, crossChainRegistryAddress, envCtx.Transporter.PrivateKey)
+		err := transferOwnership(logger, l1Config.RPCURL, mnemonic, crossChainRegistryAddress, privateKeyHex)
+		if err != nil {
+			return fmt.Errorf("failed to transfer ownership: %w", err)
+		}
 
 		// Construct registry caller
 		ccRegistryCaller, err := ICrossChainRegistry.NewICrossChainRegistryCaller(crossChainRegistryAddress, l1Client.RPCClient)
@@ -316,7 +351,10 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			if chainId.Uint64() == uint64(l2ChainId) {
 				rpcURL = l2Config.RPCURL
 			}
-			transferOwnership(logger, rpcURL, tableUpdaterAddr, envCtx.Transporter.PrivateKey)
+			err := transferOwnership(logger, rpcURL, mnemonic, tableUpdaterAddr, privateKeyHex)
+			if err != nil {
+				return fmt.Errorf("failed to transfer ownership: %w", err)
+			}
 
 			// Read the current generator (avs,id) from OperatorTableUpdater
 			gen, err := getGenerator(cCtx.Context, logger, cm, chainId, tableUpdaterAddr)
@@ -339,7 +377,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 
 			// Construct contractCaller with KeyRegistrar
 			contractCaller, err := common.NewContractCaller(
-				envCtx.Transporter.PrivateKey,
+				privateKeyHex,
 				big.NewInt(int64(l1ChainId)),
 				client,
 				ethcommon.HexToAddress(""),
@@ -356,7 +394,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			}
 
 			// Derive BN254 keys from the hex string (no keystore files needed)
-			blsHex := strings.TrimPrefix(envCtx.Transporter.BlsPrivateKey, "0x")
+			blsHex := strings.TrimPrefix(privateKeyHex, "0x")
 
 			// Extract key details
 			scheme := bn254.NewScheme()
@@ -380,7 +418,8 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			if err := configureCurveTypeAsAVS(
 				cCtx.Context,
 				logger,
-				l1RpcUrl, // KeyRegistrar is on L1
+				l1RpcUrl, // KeyRegistrar is on L1,
+				mnemonic,
 				ethcommon.HexToAddress(envCtx.EigenLayer.L1.KeyRegistrar),
 				gen.Avs,
 				uint32(gen.Id),
@@ -390,7 +429,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			}
 
 			// EOA/operator address you want to register for this OperatorSet
-			opEOA := mustKey(logger, envCtx.Transporter.PrivateKey)
+			opEOA := mustKey(logger, privateKeyHex)
 			operatorAddress := crypto.PubkeyToAddress(opEOA.PublicKey)
 
 			// Build the message hash per registrar rules and sign with BLS private key
@@ -440,7 +479,7 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 			certificateVerifierAddr := readBN254CertificateVerifier(cCtx.Context, logger, rpcURL, tableUpdaterAddr)
 
 			// Update generator using the transporter BLS key
-			if err := updateGeneratorFromContext(cCtx.Context, logger, cm, chainId, tableUpdaterAddr, certificateVerifierAddr, txSign, envCtx.Transporter.BlsPrivateKey, gen); err != nil {
+			if err := updateGeneratorFromContext(cCtx.Context, logger, cm, chainId, tableUpdaterAddr, certificateVerifierAddr, txSign, privateKeyHex, gen); err != nil {
 				return fmt.Errorf("updateGenerator chain %d at %s: %w", chainId.Uint64(), tableUpdaterAddr.Hex(), err)
 			}
 		}
@@ -499,22 +538,25 @@ func Transport(cCtx *cli.Context, initialRun bool) error {
 	}
 
 	for _, opset := range opsets {
-		err = stakeTransport.SignAndTransportAvsStakeTable(
-			cCtx.Context,
-			referenceTimestamp,
-			l1Block.NumberU64(),
-			opset,
-			root,
-			tree,
-			dist,
-			ignoreChainIds,
-		)
-		if err != nil {
-			return fmt.Errorf("failed to sign and transport AVS stake table for opset %v: %v", opset, err)
-		}
+		// Only transport the configured AVSs operatorSets
+		if strings.EqualFold(opset.Avs.Hex(), envCtx.Avs.Address) {
+			err = stakeTransport.SignAndTransportAvsStakeTable(
+				cCtx.Context,
+				referenceTimestamp,
+				l1Block.NumberU64(),
+				opset,
+				root,
+				tree,
+				dist,
+				ignoreChainIds,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to sign and transport AVS stake table for opset %v: %v", opset, err)
+			}
 
-		// log success
-		logger.Info("Successfully signed and transported AVS stake table for opset %v", opset)
+			// log success
+			logger.Info("Successfully signed and transported AVS stake table for opset %v", opset)
+		}
 	}
 
 	return nil
@@ -894,11 +936,17 @@ func ScheduleTransportWithParserAndFunc(cCtx *cli.Context, cronExpr string, pars
 }
 
 // Impersonate the current owner and call *.transferOwnership(newOwner).
-func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Address, privateKey string) {
+func transferOwnership(logger iface.Logger, rpcURL string, mnemonic string, proxy ethcommon.Address, privateKey string) error {
 	ctx := context.Background()
 	c, err := rpc.DialContext(ctx, rpcURL)
 	if err != nil {
 		logger.Error("failed to connect to rpc: %w", err)
+	}
+
+	// Connect to an ethClient to fund AVS
+	ethClient, err := ethclient.Dial(rpcURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	// Transporter private key - used to derive the new owner address
@@ -915,6 +963,12 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	currOwner := readOwner(ctx, logger, c, ownableABI, proxy)
 	logger.Info("Current owner: %s", currOwner.Hex())
 
+	// Fund the current owner to ensure it can submit a transferOwnership tx
+	err = devnet.FundIfNeeded(ethClient, currOwner, mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to fund %s", currOwner)
+	}
+
 	// Impersonate the current owner and fund it
 	impersonate(ctx, logger, c, currOwner)
 	defer stopImpersonate(ctx, c, currOwner)
@@ -922,7 +976,7 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	// Pack transferOwnership(newOwner)
 	calldata, err := ownableABI.Pack("transferOwnership", newOwner)
 	if err != nil {
-		logger.Error("failed to pack callData %w", err)
+		return fmt.Errorf("failed to pack callData: %w", err)
 	}
 
 	// Send tx via eth_sendTransaction from the impersonated owner to the proxy
@@ -934,7 +988,7 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	}
 	var txHash ethcommon.Hash
 	if err := c.CallContext(ctx, &txHash, "eth_sendTransaction", tx); err != nil {
-		logger.Error("failed to send tx: %w", err)
+		return fmt.Errorf("failed to send tx: %w", err)
 	}
 
 	// Await for tx receipt
@@ -944,6 +998,8 @@ func transferOwnership(logger iface.Logger, rpcURL string, proxy ethcommon.Addre
 	// Verify
 	newOwnerRead := readOwner(ctx, logger, c, ownableABI, proxy)
 	logger.Info("New owner: %s", newOwnerRead.Hex())
+
+	return nil
 }
 
 // Impersonate the AVS and call KeyRegistrar.configureOperatorSet(opSet, curveType)
@@ -951,6 +1007,7 @@ func configureCurveTypeAsAVS(
 	ctx context.Context,
 	logger iface.Logger,
 	rpcURL string,
+	mnemonic string,
 	keyRegistrar ethcommon.Address,
 	avs ethcommon.Address,
 	opSetId uint32,
@@ -960,6 +1017,12 @@ func configureCurveTypeAsAVS(
 	c, err := rpc.DialContext(ctx, rpcURL)
 	if err != nil {
 		return fmt.Errorf("rpc dial: %w", err)
+	}
+
+	// Connect to an ethClient to fund AVS
+	ethClient, err := ethclient.Dial(rpcURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	// Build minimal ABI
@@ -974,6 +1037,12 @@ func configureCurveTypeAsAVS(
 		Id  uint32
 	}
 	opSet := opSetT{Avs: avs, Id: opSetId}
+
+	// Fund the AVS to ensure it can submit configureOperatorSet tx
+	err = devnet.FundIfNeeded(ethClient, avs, mnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to fund %s", avs)
+	}
 
 	// Read current curve type; skip if already set
 	calldataGet, _ := krABI.Pack("getOperatorSetCurveType", opSet)

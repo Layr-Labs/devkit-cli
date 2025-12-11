@@ -269,6 +269,15 @@ DevNet management commands:
 | `stop --project.name`  | Stops the specific project's devnet                                  |
 | `stop --port`  | Stops the specific port e.g.: `stop --port 8545`                                  |
 
+
+Alternatively, `devnet` can be started against an already running forked environment (eg, local anvil instances or from remote BuildBear sandboxes). This will allow you to interact with a testnet without spinning up or spinning down the onchain environment each iteration. 
+
+Start/create your own forked sepolia instances and in your project directory, set the appropriate `rpc_urls` in your context and run:
+
+```bash
+devkit avs devnet start --skip-forking
+```
+
 ### 7️⃣ Simulate Task Execution (`devkit avs call`)
 
 Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.

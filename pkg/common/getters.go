@@ -5,6 +5,30 @@ import (
 	"os"
 )
 
+func GetRPCUrlDefault(contextName string, cfg *ConfigWithContextConfig, chainName string) (string, error) {
+	// Check in env first for L1 RPC url
+	l1RPCUrl := os.Getenv("L1_RPC_URL")
+	if chainName == "l1" && l1RPCUrl != "" {
+		return l1RPCUrl, nil
+	}
+
+	// Check in env first for L2 RPC url
+	l2RPCUrl := os.Getenv("L2_RPC_URL")
+	if chainName == "l2" && l2RPCUrl != "" {
+		return l2RPCUrl, nil
+	}
+
+	// Fallback to context defined value
+	chainConfig, found := cfg.Context[contextName].Chains[chainName]
+	if !found {
+		return "", fmt.Errorf("failed to get chainConfig for chainName : %s", chainName)
+	}
+	if chainConfig.RPCURL == "" {
+		return "", fmt.Errorf("rpc-url not set for %s; set rpc-url in ./config/context/%s.yaml or .env and consult README for guidance", chainName, contextName)
+	}
+	return chainConfig.RPCURL, nil
+}
+
 func GetForkUrlDefault(contextName string, cfg *ConfigWithContextConfig, chainName string) (string, error) {
 	// Check in env first for L1 fork url
 	l1ForkUrl := os.Getenv("L1_FORK_URL")

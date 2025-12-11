@@ -32,20 +32,12 @@ import (
 )
 
 func StartDevnetAction(cCtx *cli.Context) error {
-	// Check if docker is running, else try to start it
-	if err := common.EnsureDockerIsRunning(cCtx); err != nil {
-
-		if errors.Is(err, context.Canceled) {
-			return err // propagate the cancellation directly
-		}
-		return cli.Exit(err.Error(), 1)
-	}
-
 	// Get logger
 	logger := common.LoggerFromContext(cCtx)
 
 	// Extract vars
 	contextName := cCtx.String("context")
+	skipForking := cCtx.Bool("skip-forking")
 	skipAvsRun := cCtx.Bool("skip-avs-run")
 	skipDeployContracts := cCtx.Bool("skip-deploy-contracts")
 	skipTransporter := cCtx.Bool("skip-transporter")
@@ -81,6 +73,17 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		return fmt.Errorf("loading config and context failed: %w", err)
 	}
 
+	// Check if docker is running, else try to start it
+	if !skipForking {
+		if err := common.EnsureDockerIsRunning(cCtx); err != nil {
+
+			if errors.Is(err, context.Canceled) {
+				return err // propagate the cancellation directly
+			}
+			return cli.Exit(err.Error(), 1)
+		}
+	}
+
 	// Prevent runs when context is not devnet
 	if contextName != devnet.DEVNET_CONTEXT {
 		return fmt.Errorf("devnet start failed: `devkit avs devnet start` only available on devnet - please run `devkit avs devnet start --context devnet`")
@@ -113,137 +116,174 @@ func StartDevnetAction(cCtx *cli.Context) error {
 			}
 		}
 	}
-	l1Port := cCtx.Int("l1-port")
-	l2Port := cCtx.Int("l2-port")
-
-	if !devnet.IsPortAvailable(l2Port) {
-		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --l2-port", l2Port)
-	}
-
-	if !devnet.IsPortAvailable(l1Port) {
-		return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --l1-port", l1Port)
-	}
-	if !devnet.IsPortAvailable(l2Port) {
-		return fmt.Errorf("❌ L2 port %d is already in use. Please choose a different port using --port", l2Port)
-	}
-
-	chainImage := devnet.GetDevnetChainImageOrDefault(config)
-	l1ChainArgs := devnet.GetL1DevnetChainArgsOrDefault(config)
-	l2ChainArgs := devnet.GetL2DevnetChainArgsOrDefault(config)
 
 	// Start timer
 	startTime := time.Now()
 
-	logger.Info("Starting L1 and L2 devnets...\n")
+	// Mnemonic to use for unlocked accounts in anvil and for funding
+	mnemonic := envCtx.Mnemonic
+	if mnemonic == "" {
+		mnemonic = devnet.DEFAULT_MNEMONIC
+	}
 
-	// Docker-compose for anvil devnet
-	composePath := devnet.WriteEmbeddedArtifacts()
-	l1ForkUrl, err := common.GetForkUrlDefault(contextName, config, common.L1)
+	// Get RPC url
+	l1RpcUrl, err := common.GetRPCUrlDefault(contextName, config, common.L1)
 	if err != nil {
-		return fmt.Errorf("L1 fork URL error %w", err)
+		return fmt.Errorf("L1 RPC URL error %w", err)
 	}
-	l2ForkUrl, err := common.GetForkUrlDefault(contextName, config, common.L2)
+	l2RpcUrl, err := common.GetRPCUrlDefault(contextName, config, common.L2)
 	if err != nil {
-		return fmt.Errorf("L2 fork URL error: %w", err)
+		return fmt.Errorf("L2 RPC URL error %w", err)
 	}
 
-	// Error if the l1ForkUrl has not been modified
-	if l1ForkUrl == "" {
-		return fmt.Errorf("l1 fork-url not set; set l1 fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
-	}
-	// Error if the l2ForkUrl has not been modified
-	if l2ForkUrl == "" {
-		return fmt.Errorf("l2 fork-url not set; set l2 fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
-	}
+	// Describe where the deployment is taking place
+	l1ChainDescription := fmt.Sprintf("against RPC %s", l1RpcUrl)
+	l2ChainDescription := fmt.Sprintf("against RPC %s", l2RpcUrl)
 
-	// Ensure fork URL uses appropriate Docker host for container environments
-	l1DockerForkUrl := devnet.EnsureDockerHost(l1ForkUrl)
-	l2DockerForkUrl := devnet.EnsureDockerHost(l2ForkUrl)
-	// Get the l1 block_time from env/config
-	l1BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, common.L1)
-	if err != nil {
-		l1BlockTime = 12
-	}
+	// Start anvil containers
+	if !skipForking {
+		l1Port := cCtx.Int("l1-port")
+		l2Port := cCtx.Int("l2-port")
 
-	// Get the l2 block_time from env/config
-	l2BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, common.L2)
-	if err != nil {
-		l2BlockTime = 12
-	}
+		if !devnet.IsPortAvailable(l2Port) {
+			return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --l2-port", l2Port)
+		}
 
-	// Get the l1 chain_id from env/config
-	l1ChainId, err := devnet.GetDevnetChainIdOrDefault(config, common.L1, logger)
-	if err != nil {
-		l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
-	}
+		if !devnet.IsPortAvailable(l1Port) {
+			return fmt.Errorf("❌ Port %d is already in use. Please choose a different port using --l1-port", l1Port)
+		}
+		if !devnet.IsPortAvailable(l2Port) {
+			return fmt.Errorf("❌ L2 port %d is already in use. Please choose a different port using --port", l2Port)
+		}
 
-	// Get the l2 chain_id from env/config
-	l2ChainId, err := devnet.GetDevnetChainIdOrDefault(config, common.L2, logger)
-	if err != nil {
-		l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
-	}
+		chainImage := devnet.GetDevnetChainImageOrDefault(config)
+		l1ChainArgs := devnet.GetL1DevnetChainArgsOrDefault(config)
+		l2ChainArgs := devnet.GetL2DevnetChainArgsOrDefault(config)
 
-	// Append config defined details to chainArgs for l1
-	l1ChainArgs = fmt.Sprintf("%s --chain-id %d", l1ChainArgs, l1ChainId)
-	l1ChainArgs = fmt.Sprintf("%s --block-time %d", l1ChainArgs, l1BlockTime)
+		logger.Info("Starting L1 and L2 devnets...\n")
 
-	// Append config defined details to chainArgs for l2
-	l2ChainArgs = fmt.Sprintf("%s --chain-id %d", l2ChainArgs, l2ChainId)
-	l2ChainArgs = fmt.Sprintf("%s --block-time %d", l2ChainArgs, l2BlockTime)
+		// Docker-compose for anvil devnet
+		composePath := devnet.WriteEmbeddedArtifacts()
 
-	// Run docker compose up for anvil devnet
-	cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
+		// Get fork url
+		l1ForkUrl, err := common.GetForkUrlDefault(contextName, config, common.L1)
+		if err != nil {
+			return fmt.Errorf("L1 fork URL error %w", err)
+		}
+		l2ForkUrl, err := common.GetForkUrlDefault(contextName, config, common.L2)
+		if err != nil {
+			return fmt.Errorf("L2 fork URL error: %w", err)
+		}
 
-	l1ContainerName := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
-	l2ContainerName := fmt.Sprintf("devkit-devnet-l2-%s", config.Config.Project.Name)
-	l1ChainConfig, found := envCtx.Chains[common.L1]
-	if !found {
-		return fmt.Errorf("failed to find a chain with name: l1 in devnet.yaml")
-	}
-	l2ChainConfig, found := envCtx.Chains[common.L2]
-	if !found {
-		return fmt.Errorf("failed to find a chain with name: l2 in devnet.yaml")
-	}
+		// Error if the l1ForkUrl has not been modified
+		if l1ForkUrl == "" {
+			return fmt.Errorf("l1 fork-url not set; set l1 fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
+		}
+		// Error if the l2ForkUrl has not been modified
+		if l2ForkUrl == "" {
+			return fmt.Errorf("l2 fork-url not set; set l2 fork-url in ./config/context/devnet.yaml or .env and consult README for guidance")
+		}
 
-	cmd.Env = append(os.Environ(),
-		"FOUNDRY_IMAGE="+chainImage,
-		"L1_ANVIL_ARGS="+l1ChainArgs,
-		"L2_ANVIL_ARGS="+l2ChainArgs,
-		fmt.Sprintf("L1_DEVNET_PORT=%d", l1Port),
-		fmt.Sprintf("L2_DEVNET_PORT=%d", l2Port),
-		"L1_FORK_RPC_URL="+l1DockerForkUrl,
-		"L2_FORK_RPC_URL="+l2DockerForkUrl,
-		fmt.Sprintf("L1_FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
-		fmt.Sprintf("L2_FORK_BLOCK_NUMBER=%d", l2ChainConfig.Fork.Block),
-		"L1_AVS_CONTAINER_NAME="+l1ContainerName,
-		"L2_AVS_CONTAINER_NAME="+l2ContainerName,
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("❌ Failed to start devnet: %w", err)
+		// Ensure fork URL uses appropriate Docker host for container environments
+		l1DockerForkUrl := devnet.EnsureDockerHost(l1ForkUrl)
+		l2DockerForkUrl := devnet.EnsureDockerHost(l2ForkUrl)
+
+		// Get the l1 block_time from env/config
+		l1BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, common.L1)
+		if err != nil {
+			l1BlockTime = 12
+		}
+
+		// Get the l2 block_time from env/config
+		l2BlockTime, err := devnet.GetDevnetBlockTimeOrDefault(config, common.L2)
+		if err != nil {
+			l2BlockTime = 12
+		}
+
+		// Get the l1 chain_id from env/config
+		l1ChainId, err := devnet.GetDevnetChainIdOrDefault(config, common.L1, logger)
+		if err != nil {
+			l1ChainId = devnet.DEFAULT_L1_ANVIL_CHAINID
+		}
+
+		// Get the l2 chain_id from env/config
+		l2ChainId, err := devnet.GetDevnetChainIdOrDefault(config, common.L2, logger)
+		if err != nil {
+			l2ChainId = devnet.DEFAULT_L2_ANVIL_CHAINID
+		}
+
+		// Append config defined details to chainArgs for l1
+		l1ChainArgs = fmt.Sprintf("%s --chain-id %d", l1ChainArgs, l1ChainId)
+		l1ChainArgs = fmt.Sprintf("%s --block-time %d", l1ChainArgs, l1BlockTime)
+		l1ChainArgs = fmt.Sprintf("%s --mnemonic \"%s\"", l1ChainArgs, mnemonic)
+
+		// Append config defined details to chainArgs for l2
+		l2ChainArgs = fmt.Sprintf("%s --chain-id %d", l2ChainArgs, l2ChainId)
+		l2ChainArgs = fmt.Sprintf("%s --block-time %d", l2ChainArgs, l2BlockTime)
+		l2ChainArgs = fmt.Sprintf("%s --mnemonic \"%s\"", l2ChainArgs, mnemonic)
+
+		// Run docker compose up for anvil devnet
+		cmd := exec.CommandContext(cCtx.Context, "docker", "compose", "-p", config.Config.Project.Name, "-f", composePath, "up", "-d")
+
+		l1ContainerName := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
+		l2ContainerName := fmt.Sprintf("devkit-devnet-l2-%s", config.Config.Project.Name)
+		l1ChainConfig, found := envCtx.Chains[common.L1]
+		if !found {
+			return fmt.Errorf("failed to find a chain with name: l1 in devnet.yaml")
+		}
+		l2ChainConfig, found := envCtx.Chains[common.L2]
+		if !found {
+			return fmt.Errorf("failed to find a chain with name: l2 in devnet.yaml")
+		}
+
+		cmd.Env = append(os.Environ(),
+			"FOUNDRY_IMAGE="+chainImage,
+			"L1_ANVIL_ARGS="+l1ChainArgs,
+			"L2_ANVIL_ARGS="+l2ChainArgs,
+			fmt.Sprintf("L1_DEVNET_PORT=%d", l1Port),
+			fmt.Sprintf("L2_DEVNET_PORT=%d", l2Port),
+			"L1_FORK_RPC_URL="+l1DockerForkUrl,
+			"L2_FORK_RPC_URL="+l2DockerForkUrl,
+			fmt.Sprintf("L1_FORK_BLOCK_NUMBER=%d", l1ChainConfig.Fork.Block),
+			fmt.Sprintf("L2_FORK_BLOCK_NUMBER=%d", l2ChainConfig.Fork.Block),
+			"L1_AVS_CONTAINER_NAME="+l1ContainerName,
+			"L2_AVS_CONTAINER_NAME="+l2ContainerName,
+		)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("❌ Failed to start devnet: %w", err)
+		}
+
+		// Construct RPC url to pass to scripts for l1 and l2
+		l1RpcUrl = devnet.GetRPCURL(l1Port)
+		l2RpcUrl = devnet.GetRPCURL(l2Port)
+
+		// Describe where the deployment is taking place
+		l1ChainDescription = fmt.Sprintf("on port %d", l1Port)
+		l2ChainDescription = fmt.Sprintf("on port %d", l2Port)
+
+		// Wait for containers to be ready and funded
+		logger.Info("Waiting for devnet to be ready...")
 	}
 
 	// On cancel, stop the containers if we're not skipping deployContracts/avsRun and we're not persisting
 	if !skipDeployContracts && !skipAvsRun && !persist {
 		defer func() {
-			logger.Info("Stopping containers")
-			// Use background context to avoid cancellation issues during cleanup
-			bgCtx := context.Background()
+			if !skipForking {
+				logger.Info("Stopping containers")
+				// Use background context to avoid cancellation issues during cleanup
+				bgCtx := context.Background()
 
-			l1Container := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
-			l2Container := fmt.Sprintf("devkit-devnet-l2-%s", config.Config.Project.Name)
+				l1Container := fmt.Sprintf("devkit-devnet-l1-%s", config.Config.Project.Name)
+				l2Container := fmt.Sprintf("devkit-devnet-l2-%s", config.Config.Project.Name)
 
-			logger.Info("Stopping individual containers: %s, %s", l1Container, l2Container)
-			devnet.StopAndRemoveContainer(&cli.Context{Context: bgCtx}, l1Container)
-			devnet.StopAndRemoveContainer(&cli.Context{Context: bgCtx}, l2Container)
+				logger.Info("Stopping individual containers: %s, %s", l1Container, l2Container)
+				devnet.StopAndRemoveContainer(&cli.Context{Context: bgCtx}, l1Container)
+				devnet.StopAndRemoveContainer(&cli.Context{Context: bgCtx}, l2Container)
+			}
 		}()
 	}
-
-	// Construct RPC url to pass to scripts for l1 and l2
-	l1RpcUrl := devnet.GetRPCURL(l1Port)
-	l2RpcUrl := devnet.GetRPCURL(l2Port)
-	logger.Info("Waiting for devnet to be ready...")
 
 	// Get chains node
 	chainsNode := common.GetChildByKey(contextNode, "chains")
@@ -278,15 +318,15 @@ func StartDevnetAction(cCtx *cli.Context) error {
 	time.Sleep(4 * time.Second)
 
 	// Fund the wallets defined in config on L1
-	logger.Info("Funding wallets on L1...")
-	err = devnet.FundWalletsDevnet(config, l1RpcUrl)
+	logger.Info("Funding wallets on L1 (%s)...", l1RpcUrl)
+	err = devnet.FundWalletsDevnet(config, l1RpcUrl, mnemonic)
 	if err != nil {
 		return fmt.Errorf("funding L1 devnet wallets failed - please restart devnet and try again: %w", err)
 	}
 
 	// Fund the wallets defined in config on L2
-	logger.Info("Funding wallets on L2...")
-	err = devnet.FundWalletsDevnet(config, l2RpcUrl)
+	logger.Info("Funding wallets on L2 (%s)...", l2RpcUrl)
+	err = devnet.FundWalletsDevnet(config, l2RpcUrl, mnemonic)
 	if err != nil {
 		return fmt.Errorf("failed L2 devnet wallets failed - please restart devnet and try again: %w", err)
 	}
@@ -304,7 +344,8 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 
 		if len(tokenAddresses) > 0 {
-			err = devnet.FundStakersWithStrategyTokens(config, l1RpcUrl, tokenAddresses)
+			// Use DEAD address to mint strategy tokens to avoid minting to BURN
+			err = devnet.FundStakersWithStrategyTokens(config, l1RpcUrl, tokenAddresses, mnemonic)
 			if err != nil {
 				logger.Warn("Failed to fund stakers with strategy tokens: %v", err)
 				logger.Info("Continuing with devnet startup...")
@@ -320,20 +361,23 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Sleep for 1 second to make sure wallets are funded
 	time.Sleep(1 * time.Second)
-	logger.Info("\nL1 devnet started successfully on port %d", l1Port)
-	logger.Info("L2 devnet started successfully on port %d", l2Port)
+	logger.Info("\nL1 devnet started successfully %s", l1ChainDescription)
+	logger.Info("L2 devnet started successfully %s", l2ChainDescription)
 	logger.Info("Total startup time: %s", elapsed)
 
-	if err := WhitelistChainIdInCrossRegistryAction(cCtx, logger); err != nil {
+	if err := WhitelistChainIdInCrossRegistryAction(cCtx, logger, mnemonic); err != nil {
 		return fmt.Errorf("whitelisting chain id in cross registry failed - please restart devnet and try again: %w", err)
 	}
 
 	// Deploy the contracts after starting devnet unless skipped
 	if !skipDeployContracts {
-		// Check if docker is running, else try to start it
-		err := common.EnsureDockerIsRunning(cCtx)
-		if err != nil {
-			return cli.Exit(err.Error(), 1)
+		// We only need docker if we're forking locally
+		if !skipForking {
+			// Check if docker is running, else try to start it
+			err := common.EnsureDockerIsRunning(cCtx)
+			if err != nil {
+				return cli.Exit(err.Error(), 1)
+			}
 		}
 
 		// Call deploy L1 action within devnet context
@@ -1225,10 +1269,15 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 	}
 	defer client.Close()
 
-	// Instead of mining blocks(because it's infeasible for 126000 blocks(for mainnet) or 30 on sepolia), use anvil_setStorageAt to bypass ALLOCATION_CONFIGURATION_DELAY
+	method, err := devnet.DetectClientsMethod(cCtx.Context, client.Client(), "setStorageAt")
+	if err != nil {
+		return fmt.Errorf("failed to detect setStorageAt method: %w", err)
+	}
+
+	// Instead of mining blocks(because it's infeasible for 126000 blocks(for mainnet) or 30 on sepolia), use *_setStorageAt to bypass ALLOCATION_CONFIGURATION_DELAY
 	// We need to manipulate the storage that tracks when allocation delays were set for each operator by modifying
 	// the effectBlock field in the AllocationDelayInfo struct.
-	logger.Info("Bypassing allocation configuration delay using anvil_setStorageAt...")
+	logger.Info("Bypassing allocation configuration delay using %s...", method)
 
 	allocationManagerAddr, _, _, _, _, _, _, _ := common.GetEigenLayerAddresses(contextName, cfg)
 	currentBlock, err := client.BlockNumber(cCtx.Context)
@@ -1281,10 +1330,10 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 		binary.BigEndian.PutUint32(structValue[offset:], effectBlock)
 
 		var setStorageResult interface{}
-		err = rpcClient.Call(&setStorageResult, "anvil_setStorageAt",
+		err = rpcClient.Call(&setStorageResult, method,
 			allocationManagerAddr,
 			storageKey.Hex(),
-			hex.EncodeToString(structValue))
+			"0x"+hex.EncodeToString(structValue))
 		if err != nil {
 			logger.Warn("Failed to manipulate AllocationDelayInfo storage for operator %s: %v", op.Address, err)
 		} else {
@@ -1297,7 +1346,7 @@ func SetAllocationDelayAction(cCtx *cli.Context, logger iface.Logger) error {
 	return nil
 }
 
-func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logger) error {
+func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logger, mnemonic string) error {
 	// Extract vars
 	contextName := cCtx.String("context")
 
@@ -1375,7 +1424,6 @@ func WhitelistChainIdInCrossRegistryAction(cCtx *cli.Context, logger iface.Logge
 		return fmt.Errorf("failed to whitelist l2 ChainId in CrossChainRegistry: %w", err)
 	}
 
-	logger.Info("Successfully whitelisted l1 chain id in cross registry")
 	return nil
 }
 

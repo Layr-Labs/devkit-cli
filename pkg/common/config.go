@@ -196,6 +196,7 @@ type ArtifactConfig struct {
 type ChainContextConfig struct {
 	Name                  string                 `json:"name" yaml:"name"`
 	Chains                map[string]ChainConfig `json:"chains" yaml:"chains"`
+	Mnemonic              string                 `json:"mnemonic,omitempty" yaml:"mnemonic,omitempty"`
 	Transporter           Transporter            `json:"transporter,omitempty" yaml:"transporter,omitempty"`
 	DeployerPrivateKey    string                 `json:"deployer_private_key" yaml:"deployer_private_key"`
 	AppDeployerPrivateKey string                 `json:"app_private_key" yaml:"app_private_key"`

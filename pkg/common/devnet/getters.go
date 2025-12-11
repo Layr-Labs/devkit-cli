@@ -1,12 +1,17 @@
 package devnet
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/Layr-Labs/devkit-cli/pkg/common"
 	"github.com/Layr-Labs/devkit-cli/pkg/common/iface"
+	"github.com/ethereum/go-ethereum/crypto"
+	bip32 "github.com/tyler-smith/go-bip32"
+	bip39 "github.com/tyler-smith/go-bip39"
 )
 
 // GetL1DevnetChainArgsOrDefault extracts and formats the chain arguments for devnet.
@@ -155,4 +160,52 @@ func GetL1RPCURL(basePort int) string {
 // GetL2RPCURL returns the L2 RPC URL for the given port
 func GetL2RPCURL(basePort int) string {
 	return fmt.Sprintf("http://localhost:%d", GetL2Port(basePort))
+}
+
+// GetPrivateKeyFromMnemonic returns an ecdsa.PrivateKey from the index position on the mnemonic
+func GetPrivateKeyFromMnemonic(mnemonic, passphrase string, index uint32) (*ecdsa.PrivateKey, error) {
+	// Validate mnemonic
+	if !bip39.IsMnemonicValid(strings.TrimSpace(mnemonic)) {
+		return nil, fmt.Errorf("invalid mnemonic")
+	}
+
+	// BIP-39 seed
+	seed := bip39.NewSeed(mnemonic, passphrase)
+
+	// BIP-32 master key
+	masterKey, err := bip32.NewMasterKey(seed)
+	if err != nil {
+		return nil, fmt.Errorf("new master key: %w", err)
+	}
+
+	// Derivation path m/44'/60'/0'/0/index
+	const HardenedOffset = uint32(bip32.FirstHardenedChild) // 0x80000000
+	purpose, err := masterKey.NewChildKey(44 + HardenedOffset)
+	if err != nil {
+		return nil, err
+	}
+	coinType, err := purpose.NewChildKey(60 + HardenedOffset)
+	if err != nil {
+		return nil, err
+	}
+	account, err := coinType.NewChildKey(0 + HardenedOffset)
+	if err != nil {
+		return nil, err
+	}
+	change, err := account.NewChildKey(0) // change = 0
+	if err != nil {
+		return nil, err
+	}
+	addrKey, err := change.NewChildKey(index) // non-hardened index
+	if err != nil {
+		return nil, err
+	}
+
+	// addrKey.Key should be 32 bytes private key material
+	if len(addrKey.Key) != 32 {
+		return nil, fmt.Errorf("unexpected key length: %d", len(addrKey.Key))
+	}
+
+	priv := crypto.ToECDSAUnsafe(addrKey.Key)
+	return priv, nil
 }

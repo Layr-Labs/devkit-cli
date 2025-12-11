@@ -2,6 +2,8 @@ package devnet
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -331,4 +333,69 @@ func SyncL1L2Timestamps(ctx *cli.Context, l1RpcUrl string, l2RpcUrl string) erro
 
 	// Already in sync
 	return nil
+}
+
+// DetectClientsMethod returns "anvil_<method>", "hardhat_<method>", or "" if unsupported.
+func DetectClientsMethod(ctx context.Context, c *rpc.Client, method string) (string, error) {
+	// Fast path via clientVersion
+	var clientVersion string
+	_ = c.CallContext(ctx, &clientVersion, "web3_clientVersion")
+	lc := strings.ToLower(clientVersion)
+	if strings.Contains(lc, "hardhat") {
+		return "hardhat_" + method, nil
+	}
+	if strings.Contains(lc, "anvil") || strings.Contains(lc, "foundry") {
+		return "anvil_" + method, nil
+	}
+
+	// Harmless identity probes
+	type q struct{ name string }
+	ids := []q{{"anvil_nodeInfo"}, {"hardhat_metadata"}}
+	batch := make([]rpc.BatchElem, 0, len(ids))
+	for i := range ids {
+		batch = append(batch, rpc.BatchElem{
+			Method: ids[i].name,
+			Args:   []any{},
+			Result: new(json.RawMessage),
+		})
+	}
+	_ = c.BatchCallContext(ctx, batch)
+	for i, el := range batch {
+		if el.Error == nil {
+			switch ids[i].name {
+			case "anvil_nodeInfo":
+				return "anvil_" + method, nil
+			case "hardhat_metadata":
+				return "hardhat_" + method, nil
+			}
+		}
+	}
+
+	// Direct capability probes. Call with no args to avoid unwanted side-effects
+	supports := func(prefix string) bool {
+		var out any
+		err := c.CallContext(ctx, &out, prefix+"_"+method)
+		if err == nil {
+			return true
+		}
+		var rerr rpc.Error
+		if errors.As(err, &rerr) {
+			// −32601 is method not found. Anything else means method exists but args invalid.
+			return rerr.ErrorCode() != -32601
+		}
+		// Fallback textual check only if not an *rpc.Error.
+		es := strings.ToLower(err.Error())
+		if strings.Contains(es, "method not found") || strings.Contains(es, "unknown method") || strings.Contains(es, "unrecognized method") {
+			return false
+		}
+		return true
+	}
+
+	if supports("anvil") {
+		return "anvil_" + method, nil
+	}
+	if supports("hardhat") {
+		return "hardhat_" + method, nil
+	}
+	return "", nil
 }

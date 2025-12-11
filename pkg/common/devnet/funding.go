@@ -1,6 +1,7 @@
 package devnet
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"fmt"
@@ -47,7 +48,14 @@ var DefaultTokenHolders = map[common.Address]TokenFunding{
 }
 
 // FundStakerWithTokens funds staker with strategy tokens using impersonation
-func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, stakerAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, rpcURL string) error {
+func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, stakerAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, mnemonic string, rpcURL string) error {
+	// Fund the staker if required
+	err := FundIfNeeded(ethClient, stakerAddress, mnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Switch funding strategy based on funding token
 	if tokenFunding.TokenName == "bEIGEN" {
 		// For bEIGEN, we need to call unwrap() on the EIGEN contract first
 		// to convert EIGEN tokens to bEIGEN tokens
@@ -83,7 +91,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		// if holder balance < 0.1 ether, fund it
 		fundValue, _ := strconv.ParseInt(FUND_VALUE, 10, 64)
 		if balance.Cmp(big.NewInt(fundValue)) < 0 {
-			err = fundIfNeeded(ethClient, tokenFunding.HolderAddress, ANVIL_2_KEY)
+			err = FundIfNeeded(ethClient, tokenFunding.HolderAddress, mnemonic)
 			if err != nil {
 				return fmt.Errorf("failed to fund holder address: %w", err)
 			}
@@ -119,18 +127,14 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 			log.Printf("⚠️  Failed to stop impersonating after unwrap %s: %v", tokenFunding.HolderAddress.Hex(), err)
 		}
 	} else if tokenFunding.TokenName == "stETH" {
-		// Get config
-		anvil1Key := ANVIL_2_KEY
-		anvil1Key = strings.TrimPrefix(anvil1Key, "0x")
-		privateKey, err := crypto.HexToECDSA(anvil1Key)
+		privateKey, err := GetPrivateKeyFromMnemonic(mnemonic, "", 1)
 		if err != nil {
-			return fmt.Errorf("failed to parse private key: %w", err)
+			log.Fatalf("derive error: %v", err)
 		}
-
-		anvil1Address := crypto.PubkeyToAddress(privateKey.PublicKey)
+		fromAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
 
 		// Start impersonating the token holder
-		if err := devkitcommon.ImpersonateAccount(rpcClient, anvil1Address); err != nil {
+		if err := devkitcommon.ImpersonateAccount(rpcClient, fromAddress); err != nil {
 			return fmt.Errorf("failed to impersonate token holder: %w", err)
 		}
 
@@ -155,9 +159,9 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		// Send submit transaction from impersonated account using RPC
 		var submitTxHash common.Hash
 		err = rpcClient.Call(&submitTxHash, "eth_sendTransaction", map[string]interface{}{
-			"from":     anvil1Address.Hex(),
+			"from":     fromAddress.Hex(),
 			"to":       ST_ETH_TOKEN_ADDRESS,
-			"gas":      "0x30d40", // 200000 in hex
+			"gas":      "0x493e0", // 300000 in hex
 			"gasPrice": fmt.Sprintf("0x%x", gasPrice),
 			"value":    fmt.Sprintf("0x%x", tokenFunding.Amount),
 			"data":     fmt.Sprintf("0x%x", submitData),
@@ -187,7 +191,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		// Send transfer transaction from impersonated account using RPC
 		var transferTxHash common.Hash
 		err = rpcClient.Call(&transferTxHash, "eth_sendTransaction", map[string]interface{}{
-			"from":     anvil1Address.Hex(),
+			"from":     fromAddress.Hex(),
 			"to":       ST_ETH_TOKEN_ADDRESS,
 			"gas":      "0x30d40", // 200000 in hex
 			"gasPrice": fmt.Sprintf("0x%x", gasPrice),
@@ -210,8 +214,8 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		}
 
 		// Stop impersonating for transfer
-		if err := devkitcommon.StopImpersonatingAccount(rpcClient, anvil1Address); err != nil {
-			log.Printf("⚠️  Failed to stop impersonating after transfer %s: %v", anvil1Address.Hex(), err)
+		if err := devkitcommon.StopImpersonatingAccount(rpcClient, fromAddress); err != nil {
+			log.Printf("⚠️  Failed to stop impersonating after transfer %s: %v", fromAddress.Hex(), err)
 		}
 	}
 
@@ -219,7 +223,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 }
 
 // FundStakersWithStrategyTokens funds all stakers with the specified strategy tokens
-func FundStakersWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, tokenAddresses []string) error {
+func FundStakersWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, tokenAddresses []string, mnemonic string) error {
 	if os.Getenv("SKIP_TOKEN_FUNDING") == "true" {
 		log.Println("🔧 Skipping token funding (test mode)")
 		return nil
@@ -253,7 +257,7 @@ func FundStakersWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, rp
 				continue
 			}
 
-			err := FundStakerWithTokens(ctx, ethClient, rpcClient, stakerAddr, tokenFunding, tokenAddress, rpcURL)
+			err := FundStakerWithTokens(ctx, ethClient, rpcClient, stakerAddr, tokenFunding, tokenAddress, mnemonic, rpcURL)
 			if err != nil {
 				log.Printf("❌ Failed to fund %s with %s (%s): %v", stakerAddr.Hex(), tokenFunding.TokenName, tokenAddressStr, err)
 				continue
@@ -289,7 +293,7 @@ func waitForTransaction(ctx context.Context, client *ethclient.Client, txHash co
 
 // FundWallets sends ETH to a list of addresses
 // Only funds wallets with balance < 0.3 ether.
-func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) error {
+func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, mnemonic string) error {
 	if os.Getenv("SKIP_DEVNET_FUNDING") == "true" {
 		log.Println("🔧 Skipping devnet wallet funding (test mode)")
 		return nil
@@ -331,19 +335,44 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 		} else {
 			log.Fatalf("no ECDSA key configuration found for operator %s", operator.Address)
 		}
-		err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY)
+		err = FundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), mnemonic)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Fund transporter
-	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(cfg.Context[DEVNET_CONTEXT].Transporter.PrivateKey, "0x"))
+	// Fund deployer
+	deployerPrivateKey := cfg.Context[DEVNET_CONTEXT].DeployerPrivateKey
+	deployerECDSAKey, err := crypto.HexToECDSA(strings.TrimPrefix(deployerPrivateKey, "0x"))
 	if err != nil {
-		return fmt.Errorf("failed to parse private key: %w", err)
+		log.Fatalf("invalid private key %q: %v", deployerPrivateKey, err)
+	}
+	err = FundIfNeeded(ethClient, crypto.PubkeyToAddress(deployerECDSAKey.PublicKey), mnemonic)
+	if err != nil {
+		return err
 	}
 
-	err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY)
+	// Fund app
+	appDeployerPrivateKey := cfg.Context[DEVNET_CONTEXT].AppDeployerPrivateKey
+	appDeployerECDSAKey, err := crypto.HexToECDSA(strings.TrimPrefix(appDeployerPrivateKey, "0x"))
+	if err != nil {
+		log.Fatalf("invalid private key %q: %v", appDeployerPrivateKey, err)
+	}
+	err = FundIfNeeded(ethClient, crypto.PubkeyToAddress(appDeployerECDSAKey.PublicKey), mnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Fund AVS
+	avsAddress := common.HexToAddress(cfg.Context[DEVNET_CONTEXT].Avs.Address)
+	err = FundIfNeeded(ethClient, avsAddress, mnemonic)
+	if err != nil {
+		return err
+	}
+
+	// Fund crossChainRegistry owner
+	ownerCrossChainRegistry := common.HexToAddress(devkitcommon.CrossChainRegistryOwnerAddress)
+	err = FundIfNeeded(ethClient, ownerCrossChainRegistry, mnemonic)
 	if err != nil {
 		return err
 	}
@@ -351,7 +380,8 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 	return nil
 }
 
-func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string) error {
+func FundIfNeeded(ethClient *ethclient.Client, to common.Address, mnemonic string) error {
+	// Check balance of recipient
 	balance, err := ethClient.BalanceAt(context.Background(), to, nil)
 	if err != nil {
 		log.Printf(" Please check if your L1 and L2 fork rpc url is up")
@@ -365,15 +395,13 @@ func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string
 		return nil
 	}
 
-	value, _ := new(big.Int).SetString(FUND_VALUE, 10) // 1 ETH in wei
+	value, _ := new(big.Int).SetString(FUND_VALUE, 10) // 10 ETH in wei
 	gasPrice, err := ethClient.SuggestGasPrice(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to get gas price: %w", err)
 	}
 
-	// Get the nonce for the sender
-	fromKey = strings.TrimPrefix(fromKey, "0x")
-	privateKey, err := crypto.HexToECDSA(fromKey)
+	privateKey, err := GetPrivateKeyFromMnemonic(mnemonic, "", 1)
 	if err != nil {
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
@@ -385,16 +413,21 @@ func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string
 		return fmt.Errorf("failed to get sender balance: %w", err)
 	}
 
-	// Calculate total cost (value + gas)
-	gasLimit := uint64(21000)
+	// Check if the address we are sending to holds an EOA forwarder
+	if err := clearCodeIfEOAForwarder(context.Background(), ethClient.Client(), ethClient, to); err != nil {
+		return fmt.Errorf("clearCodeIfEOAForwarder: %w", err)
+	}
+
+	// Calculate total cost (value + gas (large gas limit here to allow for fallbacks when contract))
+	gasLimit := uint64(42000)
 	totalCost := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit)))
 	totalCost.Add(totalCost, value)
 
 	if senderBalance.Cmp(totalCost) < 0 {
-		return fmt.Errorf("funder has insufficient balance: has %s wei, needs %s wei", senderBalance.String(), totalCost.String())
+		return fmt.Errorf("funder (%s) has insufficient balance: has %s wei, needs %s wei", fromAddress, senderBalance.String(), totalCost.String())
 	}
 
-	nonce, err := ethClient.PendingNonceAt(context.Background(), fromAddress)
+	nonce, err := ethClient.NonceAt(context.Background(), fromAddress, nil)
 	if err != nil {
 		return fmt.Errorf("failed to get nonce: %w", err)
 	}
@@ -426,7 +459,7 @@ func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string
 		return fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	log.Printf("Transaction sent, waiting for confirmation...")
+	log.Printf("Transaction sent (tx: %s), waiting for confirmation...", signedTx.Hash().Hex())
 
 	// Wait for transaction to be mined using bind.WaitMined
 	receipt, err := bind.WaitMined(context.Background(), ethClient, signedTx)
@@ -516,4 +549,48 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 	}
 
 	return tokenAddresses, nil
+}
+
+// isKnownEOAForwarder detects EOA acting as a delegated smart-contact (EIP-7702)
+func isKnownEOAForwarder(code []byte) bool {
+	if len(code) == 0 {
+		return false
+	}
+	if bytes.Contains(code, common.FromHex("0xef0100")) {
+		return true
+	}
+	return false
+}
+
+// clearCodeIfEOAForwarder clears code for any EOA forwarder
+func clearCodeIfEOAForwarder(ctx context.Context, rpcClient *rpc.Client, ethClient *ethclient.Client, addr common.Address) error {
+	code, err := ethClient.CodeAt(ctx, addr, nil)
+	if err != nil {
+		return err
+	}
+	if !isKnownEOAForwarder(code) {
+		return nil
+	}
+
+	// Detect supported method in devnet environment
+	method, err := DetectClientsMethod(ctx, rpcClient, "setCode")
+	if err != nil {
+		return fmt.Errorf("failed to detect setCode method: %w", err)
+	}
+
+	var res interface{}
+	// Set code to empty
+	if err := rpcClient.CallContext(ctx, &res, method, addr.Hex(), "0x"); err != nil {
+		return err
+	}
+
+	// sanity check
+	code2, err := ethClient.CodeAt(ctx, addr, nil)
+	if err != nil {
+		return err
+	}
+	if len(code2) != 0 {
+		return fmt.Errorf("failed to clear code at %s", addr.Hex())
+	}
+	return nil
 }
