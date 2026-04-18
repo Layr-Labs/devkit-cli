@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"log"
 	"math/big"
 	"os"
 	"strconv"
@@ -47,7 +46,7 @@ var DefaultTokenHolders = map[common.Address]TokenFunding{
 }
 
 // FundStakerWithTokens funds staker with strategy tokens using impersonation
-func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, stakerAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, rpcURL string) error {
+func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcClient *rpc.Client, stakerAddress common.Address, tokenFunding TokenFunding, tokenAddress common.Address, rpcURL string, logger iface.Logger) error {
 	if tokenFunding.TokenName == "bEIGEN" {
 		// For bEIGEN, we need to call unwrap() on the EIGEN contract first
 		// to convert EIGEN tokens to bEIGEN tokens
@@ -83,7 +82,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		// if holder balance < 0.1 ether, fund it
 		fundValue, _ := strconv.ParseInt(FUND_VALUE, 10, 64)
 		if balance.Cmp(big.NewInt(fundValue)) < 0 {
-			err = fundIfNeeded(ethClient, tokenFunding.HolderAddress, ANVIL_2_KEY)
+			err = fundIfNeeded(ethClient, tokenFunding.HolderAddress, ANVIL_2_KEY, logger)
 			if err != nil {
 				return fmt.Errorf("failed to fund holder address: %w", err)
 			}
@@ -108,7 +107,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 		if err != nil {
 			return fmt.Errorf("unwrap transaction failed: %w", err)
 		}
-		log.Printf("EIGEN to bEIGEN unwrap transaction receipt: %v", unwrapReceipt.TxHash)
+		logger.Info("EIGEN to bEIGEN unwrap transaction receipt: %v", unwrapReceipt.TxHash)
 
 		if unwrapReceipt.Status == 0 {
 			return fmt.Errorf("EIGEN to bEIGEN unwrap transaction reverted")
@@ -116,7 +115,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 
 		// Stop impersonating for unwrap (we'll impersonate again for transfer)
 		if err := devkitcommon.StopImpersonatingAccount(rpcClient, tokenFunding.HolderAddress); err != nil {
-			log.Printf("⚠️  Failed to stop impersonating after unwrap %s: %v", tokenFunding.HolderAddress.Hex(), err)
+			logger.Warn("⚠️  Failed to stop impersonating after unwrap %s: %v", tokenFunding.HolderAddress.Hex(), err)
 		}
 	} else if tokenFunding.TokenName == "stETH" {
 		// Get config
@@ -172,7 +171,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 			return fmt.Errorf("submit transaction failed: %w", err)
 		}
 
-		log.Printf("stETH transaction receipt: %v", submitReceipt.TxHash)
+		logger.Info("stETH transaction receipt: %v", submitReceipt.TxHash)
 
 		if submitReceipt.Status == 0 {
 			return fmt.Errorf("stETH transaction reverted")
@@ -211,7 +210,7 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 
 		// Stop impersonating for transfer
 		if err := devkitcommon.StopImpersonatingAccount(rpcClient, anvil1Address); err != nil {
-			log.Printf("⚠️  Failed to stop impersonating after transfer %s: %v", anvil1Address.Hex(), err)
+			logger.Warn("⚠️  Failed to stop impersonating after transfer %s: %v", anvil1Address.Hex(), err)
 		}
 	}
 
@@ -219,9 +218,9 @@ func FundStakerWithTokens(ctx context.Context, ethClient *ethclient.Client, rpcC
 }
 
 // FundStakersWithStrategyTokens funds all stakers with the specified strategy tokens
-func FundStakersWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, tokenAddresses []string) error {
+func FundStakersWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, tokenAddresses []string, logger iface.Logger) error {
 	if os.Getenv("SKIP_TOKEN_FUNDING") == "true" {
-		log.Println("🔧 Skipping token funding (test mode)")
+		logger.Info("🔧 Skipping token funding (test mode)")
 		return nil
 	}
 
@@ -249,13 +248,13 @@ func FundStakersWithStrategyTokens(cfg *devkitcommon.ConfigWithContextConfig, rp
 			tokenFunding, exists := DefaultTokenHolders[tokenAddress]
 
 			if !exists {
-				log.Printf("Unknown token address: %s, skipping", tokenAddress.Hex())
+				logger.Info("Unknown token address: %s, skipping", tokenAddress.Hex())
 				continue
 			}
 
-			err := FundStakerWithTokens(ctx, ethClient, rpcClient, stakerAddr, tokenFunding, tokenAddress, rpcURL)
+			err := FundStakerWithTokens(ctx, ethClient, rpcClient, stakerAddr, tokenFunding, tokenAddress, rpcURL, logger)
 			if err != nil {
-				log.Printf("❌ Failed to fund %s with %s (%s): %v", stakerAddr.Hex(), tokenFunding.TokenName, tokenAddressStr, err)
+				logger.Error("❌ Failed to fund %s with %s (%s): %v", stakerAddr.Hex(), tokenFunding.TokenName, tokenAddressStr, err)
 				continue
 			}
 		}
@@ -289,9 +288,9 @@ func waitForTransaction(ctx context.Context, client *ethclient.Client, txHash co
 
 // FundWallets sends ETH to a list of addresses
 // Only funds wallets with balance < 0.3 ether.
-func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string) error {
+func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string, logger iface.Logger) error {
 	if os.Getenv("SKIP_DEVNET_FUNDING") == "true" {
-		log.Println("🔧 Skipping devnet wallet funding (test mode)")
+		logger.Info("🔧 Skipping devnet wallet funding (test mode)")
 		return nil
 	}
 
@@ -311,12 +310,12 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 			// Load from keystore
 			keystoreData, err := os.ReadFile(operator.Keystores[0].ECDSAKeystorePath)
 			if err != nil {
-				log.Fatalf("failed to read ECDSA keystore file %s: %v", operator.Keystores[0].ECDSAKeystorePath, err)
+				return fmt.Errorf("failed to read ECDSA keystore file %s: %w", operator.Keystores[0].ECDSAKeystorePath, err)
 			}
 
 			key, err := keystore.DecryptKey(keystoreData, operator.Keystores[0].ECDSAKeystorePassword)
 			if err != nil {
-				log.Fatalf("failed to decrypt ECDSA keystore: %v", err)
+				return fmt.Errorf("failed to decrypt ECDSA keystore: %w", err)
 			}
 
 			privateKey = key.PrivateKey
@@ -326,12 +325,12 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 			var err error
 			privateKey, err = crypto.HexToECDSA(cleanedKey)
 			if err != nil {
-				log.Fatalf("invalid private key %q: %v", operator.ECDSAKey, err)
+				return fmt.Errorf("invalid private key %q: %w", operator.ECDSAKey, err)
 			}
 		} else {
-			log.Fatalf("no ECDSA key configuration found for operator %s", operator.Address)
+			return fmt.Errorf("no ECDSA key configuration found for operator %s", operator.Address)
 		}
-		err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY)
+		err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY, logger)
 		if err != nil {
 			return err
 		}
@@ -343,7 +342,7 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 		return fmt.Errorf("failed to parse private key: %w", err)
 	}
 
-	err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY)
+	err = fundIfNeeded(ethClient, crypto.PubkeyToAddress(privateKey.PublicKey), ANVIL_2_KEY, logger)
 	if err != nil {
 		return err
 	}
@@ -351,17 +350,17 @@ func FundWalletsDevnet(cfg *devkitcommon.ConfigWithContextConfig, rpcURL string)
 	return nil
 }
 
-func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string) error {
+func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string, logger iface.Logger) error {
 	balance, err := ethClient.BalanceAt(context.Background(), to, nil)
 	if err != nil {
-		log.Printf(" Please check if your L1 and L2 fork rpc url is up")
+		logger.Warn(" Please check if your L1 and L2 fork rpc url is up")
 		return fmt.Errorf("failed to get balance for account %s %v", to.String(), err)
 	}
 	threshold := new(big.Int)
 	threshold.SetString("300000000000000000", 10) // 0.3 ETH in wei
 
 	if balance.Cmp(threshold) >= 0 {
-		log.Printf("✅ %s already has sufficient balance (%s wei)", to, balance.String())
+		logger.Info("✅ %s already has sufficient balance (%s wei)", to, balance.String())
 		return nil
 	}
 
@@ -422,11 +421,11 @@ func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string
 
 	err = ethClient.SendTransaction(context.Background(), signedTx)
 	if err != nil {
-		log.Printf("Failed to send eth funding transaction: %v", err)
+		logger.Error("Failed to send eth funding transaction: %v", err)
 		return fmt.Errorf("failed to send transaction: %w", err)
 	}
 
-	log.Printf("Transaction sent, waiting for confirmation...")
+	logger.Info("Transaction sent, waiting for confirmation...")
 
 	// Wait for transaction to be mined using bind.WaitMined
 	receipt, err := bind.WaitMined(context.Background(), ethClient, signedTx)
@@ -438,7 +437,7 @@ func fundIfNeeded(ethClient *ethclient.Client, to common.Address, fromKey string
 		return fmt.Errorf("transaction failed")
 	}
 
-	log.Printf("✅ Funded %s (tx: %s)", to, signedTx.Hash().Hex())
+	logger.Info("✅ Funded %s (tx: %s)", to, signedTx.Hash().Hex())
 	return nil
 }
 
@@ -484,7 +483,7 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 		// Register strategies from this operator's allocations
 		err := contractCaller.RegisterStrategiesFromConfig(&operator)
 		if err != nil {
-			log.Printf("⚠️  Failed to register strategies for operator %s: %v", operator.Address, err)
+			logger.Warn("⚠️  Failed to register strategies for operator %s: %v", operator.Address, err)
 			continue
 		}
 
@@ -494,14 +493,14 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 
 			strategy, err := contractCaller.GetRegistry().GetStrategy(strategyAddress)
 			if err != nil {
-				log.Printf("⚠️  Failed to get strategy contract %s: %v", allocation.StrategyAddress, err)
+				logger.Warn("⚠️  Failed to get strategy contract %s: %v", allocation.StrategyAddress, err)
 				continue
 			}
 
 			// Call underlyingToken() on the strategy contract using the binding
 			underlyingTokenAddr, err := strategy.UnderlyingToken(nil)
 			if err != nil {
-				log.Printf("⚠️  Failed to call underlyingToken() on strategy %s: %v", allocation.StrategyAddress, err)
+				logger.Warn("⚠️  Failed to call underlyingToken() on strategy %s: %v", allocation.StrategyAddress, err)
 				continue
 			}
 
@@ -510,7 +509,7 @@ func GetUnderlyingTokenAddressesFromStrategies(cfg *devkitcommon.ConfigWithConte
 			if !uniqueTokenAddresses[tokenAddrStr] {
 				uniqueTokenAddresses[tokenAddrStr] = true
 				tokenAddresses = append(tokenAddresses, tokenAddrStr)
-				log.Printf("📋 Found underlying token %s for strategy %s (%s)", tokenAddrStr, allocation.Name, allocation.StrategyAddress)
+				logger.Info("📋 Found underlying token %s for strategy %s (%s)", tokenAddrStr, allocation.Name, allocation.StrategyAddress)
 			}
 		}
 	}
