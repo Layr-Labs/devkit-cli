@@ -279,14 +279,14 @@ func StartDevnetAction(cCtx *cli.Context) error {
 
 	// Fund the wallets defined in config on L1
 	logger.Info("Funding wallets on L1...")
-	err = devnet.FundWalletsDevnet(config, l1RpcUrl)
+	err = devnet.FundWalletsDevnet(config, l1RpcUrl, logger)
 	if err != nil {
 		return fmt.Errorf("funding L1 devnet wallets failed - please restart devnet and try again: %w", err)
 	}
 
 	// Fund the wallets defined in config on L2
 	logger.Info("Funding wallets on L2...")
-	err = devnet.FundWalletsDevnet(config, l2RpcUrl)
+	err = devnet.FundWalletsDevnet(config, l2RpcUrl, logger)
 	if err != nil {
 		return fmt.Errorf("failed L2 devnet wallets failed - please restart devnet and try again: %w", err)
 	}
@@ -304,7 +304,7 @@ func StartDevnetAction(cCtx *cli.Context) error {
 		}
 
 		if len(tokenAddresses) > 0 {
-			err = devnet.FundStakersWithStrategyTokens(config, l1RpcUrl, tokenAddresses)
+			err = devnet.FundStakersWithStrategyTokens(config, l1RpcUrl, tokenAddresses, logger)
 			if err != nil {
 				logger.Warn("Failed to fund stakers with strategy tokens: %v", err)
 				logger.Info("Continuing with devnet startup...")
