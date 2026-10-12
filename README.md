@@ -146,9 +146,11 @@ devkit avs cr<TAB>    # Completes to: devkit avs create
 
 ## 🚧 Step-by-Step Guide
 
+> **Goal:** get from install → working local AVS call as quickly as possible. Educational background lives in [How DevKit works](#-how-devkit-works) further below — you can skip it until after your first successful run.
+
 ### 1️⃣ Create a New AVS Project (`devkit avs create`)
 
-Sets up a new AVS project with the recommended structure, configuration files, and boilerplate code. This helps you get started quickly without needing to manually organize files or determine a layout. Details:
+Sets up a new AVS project with the recommended structure, configuration files, and boilerplate code:
 
 * Initializes a new project based on the default Hourglass task-based architecture in Go. Refer to [here](https://github.com/Layr-Labs/hourglass-avs-template?tab=readme-ov-file#what-is-hourglass) for details on the Hourglass architecture.
 * Generates boilerplate code and default configuration.
@@ -174,43 +176,49 @@ source ~/.zprofile
 > [!IMPORTANT]
 > All subsequent `devkit avs` commands must be run from the root of your AVS project—the directory containing the [config](https://github.com/Layr-Labs/devkit-cli/tree/main/config) folder. The `config` folder contains the base `config.yaml` with the `contexts` folder which houses the respective context yaml files, example `devnet.yaml`.
 
-<!-- Put in section about editing main.go file to replace comments with your actual business logic
--->
-
 ### 2️⃣ Implement Your AVS Task Logic (`main.go`)
-After scaffolding your project, navigate into the project directory and begin implementing your AVS-specific logic. The core logic for task validation and execution lives in the `main.go` file inside the cmd folder:
+
+For a **vanilla hello-world**, you can keep the scaffolded `HandleTask` / `ValidateTask` stubs and jump to step 3. Customize `cmd/main.go` when you are ready to encode real business logic:
 
 ```bash
 cd my-avs-project/cmd
 ```
 
 Within `main.go`, you'll find two critical methods on the `TaskWorker` type:
-- **`HandleTask(*TaskRequest)`**  
-  This is where you implement your AVS's core business logic. It processes an incoming task and returns a `TaskResponse`. Replace the placeholder comment with the actual logic you want to run during task execution.
+- **`HandleTask(*TaskRequest)`** — core business logic; processes an incoming task and returns a `TaskResponse`.
+- **`ValidateTask(*TaskRequest)`** — pre-validate a task (argument format, access control, etc.) before execution.
 
-- **`ValidateTask(*TaskRequest)`**  
-  This method allows you to pre-validate a task before executing it. Use this to ensure your task meets your AVS's criteria (e.g., argument format, access control, etc.).
+These functions are invoked automatically when using `devkit avs call`.
 
-These functions will be invoked automatically when using `devkit avs call`, enabling you to quickly test and iterate on your AVS logic.
+> **💡 Tip — confirm the operator received the call:**  
+> Add a log (or `fmt.Println`) inside `ValidateTask` / `HandleTask`, for example `fmt.Println("ValidateTask: Task ID:", t.TaskId)`, then watch the operator container logs while you run `devkit avs call`. If that line appears, the task reached an operator.
 
-> **💡 Tip:**  
-> You can add logging inside these methods using the `tw.logger.Sugar().Infow(...)` lines to debug and inspect task input and output during development.
+### 3️⃣ Set fork RPC URLs (required)
 
-### 3️⃣ Set RPC Endpoint URL
+Local DevNet **forks** public chain state into Anvil. You must point DevKit at RPC endpoints it can fork from:
 
-Set the `*_FORK_URL` values to **Ethereum Sepolia** and **Base Sepolia** RPC **archive node** endpoint URLs. These endpoints are needed to fork the appropriate chain state (testnet) to your local environment (devnet) for testing. Please note the following important details:
-- Only the **Sepolia** testnet is supported at this time.
-- The RPC endpoint should be an **archive** node, not a _full_ node. More context is available [here](https://www.quicknode.com/guides/infrastructure/node-setup/ethereum-full-node-vs-archive-node).
-- For initial testing purposes we recommend setting `L1_FORK_URL` to **Ethereum Sepolia** and `L2_FORK_URL` to **Base Sepolia**.
+1. Copy the env template:
+   ```bash
+   cp .env.example .env
+   ```
+2. Set these variables in `.env` (required for a basic project — you do **not** need to edit `config.yaml` / context YAMLs yet):
+   - **`L1_FORK_URL`** — Ethereum **Sepolia** archive RPC URL
+   - **`L2_FORK_URL`** — Base **Sepolia** archive RPC URL
+3. Use **Sepolia** networks only (mainnet / Hoodi are not supported for this flow yet).
+4. Prefer an **archive** endpoint (not a pruned full node). A fork URL is an ordinary HTTPS RPC URL used by Anvil to copy EVM state locally — see [full vs archive nodes](https://www.quicknode.com/guides/infrastructure/node-setup/ethereum-full-node-vs-archive-node).
+
+**Free public endpoints to try quickly** (rate-limited; swap in QuickNode / Alchemy / 1RPC when you need reliability):
+
+* L1 examples: `https://ethereum-sepolia-rpc.publicnode.com`, `https://1rpc.io/sepolia`
+* L2 examples: use a Base Sepolia archive URL from your provider dashboard (PublicNode / Alchemy / QuickNode all expose one)
 
 ```bash
-cp .env.example .env
-# edit `.env` and set your L1_FORK_URL and L2_FORK_URL to point to your RPC endpoints
+# .env
+L1_FORK_URL=https://ethereum-sepolia-rpc.publicnode.com
+L2_FORK_URL=<your-base-sepolia-archive-rpc>
 ```
 
-You are welcome to use any reliable RPC provider (e.g. QuickNode, Alchemy).
-
-
+> **Config files:** for hello-world you can skip `devkit avs config` / `devkit avs context`. Defaults in the scaffolded YAMLs are enough; `.env` fork URLs take precedence over context YAML. See [Configure Your AVS](#configure-your-avs-devkit-avs-config--devkit-avs-context) under Optional Commands when you need custom keys, names, or contexts.
 
 ### 4️⃣ Build Your AVS (`devkit avs build`)
 
@@ -271,7 +279,7 @@ DevNet management commands:
 
 ### 7️⃣ Simulate Task Execution (`devkit avs call`)
 
-Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated. Useful for testing end-to-end behavior of your logic in a local environment.
+Triggers task execution through your AVS, simulating how a task would be submitted, processed, and validated.
 
 * Simulate the full lifecycle of task submission and execution.
 * Validate both off-chain and on-chain logic.
@@ -283,7 +291,14 @@ Run this from your project directory:
 devkit avs call signature="(uint256,string)" args='(5,"hello")'
 ```
 
-Optionally, submit tasks directly to the on-chain TaskMailbox contract via a frontend or another method for more realistic testing scenarios.
+What this command does:
+
+* **`signature`** — Solidity-style ABI type list for the task payload (here a `uint256` and a `string`).
+* **`args`** — the concrete values passed into `HandleTask` / `ValidateTask` (here `5` and `"hello"`).
+
+They must match the types your AVS logic expects. After calling, use the logging tip in step 2 to confirm an operator picked up the task.
+
+> Submitting tasks through the on-chain **TaskMailbox** (frontend or another client) is optional and covered under [Optional Commands](#submit-tasks-via-taskmailbox-optional).
 
 ### 8️⃣ Publish AVS Release (`devkit avs release`)
 
@@ -347,19 +362,34 @@ devkit avs release publish \
 
 ---
 
+## 🧠 How DevKit works
+
+Read this after your first successful `devkit avs call`, or whenever you want the mental model behind the steps above.
+
+* **Scaffold + template** — `devkit avs create` copies a versioned Hourglass AVS template (Go operator/aggregator plus Foundry contracts). `devkit avs template info|upgrade` manages that pin.
+* **Forked local DevNet** — `devkit avs devnet start` boots Dockerized Anvil chains whose state is forked from the L1/L2 RPC URLs in `.env`, then deploys EigenLayer + AVS contracts and registers operators.
+* **Offchain Hourglass paths** — Operators and the aggregator run beside the chains. `devkit avs call` submits a task through that stack so your `ValidateTask` / `HandleTask` code runs locally without a frontend.
+* **Contexts** — `config.yaml` names the project; `contexts/<name>.yaml` holds environment-specific addresses and keys. `.env` fork URLs override YAML for local forks. Use separate contexts (e.g. `devnet` vs `testnet`) when you leave pure local mode.
+* **Release path** — `devkit avs release` publishes images and ReleaseManager artifacts so operators can upgrade; not needed for local simulation.
+
+For architecture depth on Hourglass itself, see the [Hourglass AVS template](https://github.com/Layr-Labs/hourglass-avs-template).
+
+---
+
 ## Optional Commands
 
+### Submit tasks via TaskMailbox (optional)
+
+`devkit avs call` is the fastest local path. For a more realistic path, submit tasks directly to the on-chain **TaskMailbox** contract (the Hourglass inbox that operators watch). After `devkit avs devnet start`, the TaskMailbox proxy address is written into your context (see `l1.task_mailbox` / `l2.task_mailbox` in `config/contexts/devnet.yaml`). You can call it from a frontend, cast, or any client the same way you would on testnet. Background on the Hourglass task mailbox model: [Hourglass AVS template](https://github.com/Layr-Labs/hourglass-avs-template?tab=readme-ov-file#what-is-hourglass).
 
 ### Configure Your AVS (`devkit avs config` & `devkit avs context`)
 
-Configure both project-level and context-specific settings via the following files:
+**Not required for hello-world.** Scaffolded defaults plus the `.env` fork URLs from step 3 are enough to build, start DevNet, and `devkit avs call`. Use this section when you need to change project metadata, operator keys, or context-specific runtime parameters.
 
-- **`config.yaml`**  
-  Defines project-wide settings such as AVS name, version, and available context names.  
-- **`contexts/<context>.yaml`**  
-  Contains environment-specific settings for a given context (e.g., `devnet`), including the Ethereum fork URL, block height, operator keys, AVS keys, and other runtime parameters.
+- **`config.yaml`** — project-wide settings (AVS name, version, available context names).
+- **`contexts/<context>.yaml`** — environment-specific settings (fork URL overrides, block height, operator keys, AVS keys, and other runtime parameters).
 
-You can view or modify these configurations using the DevKit CLI or by editing the `config.yaml` or the `contexts/*.yaml` files manually.
+You can view or modify these configurations using the DevKit CLI or by editing the YAML files manually.
 
 ---
 
